@@ -226,15 +226,21 @@ async function main() {
     presetsEl.innerHTML = "";
     for (const p of character.presets) {
       const ex = variants.examples.find((e) => e.id === p.example);
+      const thumb = ex?.file || p.thumbnail;
+      const selected = character.presets.find((x) =>
+        x.head === character.loadout.head &&
+        x.uniform === character.loadout.uniform &&
+        x.pants === character.loadout.pants
+      )?.id === p.id;
       const btn = el("button", {
-        class: `preset${character.exampleId === p.example && character.mode !== "modular" ? " selected" : ""}`,
+        class: `preset${selected ? " selected" : ""}`,
         type: "button",
         onclick: () => {
           character.applyPreset(p.id);
           refreshAll();
         },
       }, [
-        ex ? el("img", { src: ASSET(ex.file), alt: p.name }) : null,
+        thumb ? el("img", { src: ASSET(thumb), alt: p.name }) : null,
         el("span", {}, p.name),
       ]);
       presetsEl.append(btn);

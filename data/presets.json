@@ -64,7 +64,8 @@
       "back": "rope",
       "belt": ["holster", "baton", "flashlight"],
       "patch": "flag_es",
-      "example": null
+      "example": null,
+      "thumbnail": "character/variants/tan.png"
     }
   ]
 }
