@@ -1,0 +1,148 @@
+{
+  "frameWidth": 170,
+  "frameHeight": 224,
+  "directions": [
+    "back",
+    "right",
+    "left",
+    "front"
+  ],
+  "animations": {
+    "back": {
+      "idle": {
+        "frames": [
+          "character/animations/back_idle_0.png"
+        ],
+        "frameCount": 1,
+        "fps": 1
+      },
+      "walk": {
+        "frames": [
+          "character/animations/back_walk_0.png",
+          "character/animations/back_walk_1.png"
+        ],
+        "frameCount": 2,
+        "fps": 6
+      },
+      "run": {
+        "frames": [
+          "character/animations/back_run_0.png",
+          "character/animations/back_run_1.png",
+          "character/animations/back_run_2.png"
+        ],
+        "frameCount": 3,
+        "fps": 10
+      },
+      "shoot": {
+        "frames": [
+          "character/animations/back_shoot_0.png",
+          "character/animations/back_shoot_1.png"
+        ],
+        "frameCount": 2,
+        "fps": 8
+      }
+    },
+    "right": {
+      "idle": {
+        "frames": [
+          "character/animations/right_idle_0.png"
+        ],
+        "frameCount": 1,
+        "fps": 1
+      },
+      "walk": {
+        "frames": [
+          "character/animations/right_walk_0.png",
+          "character/animations/right_walk_1.png"
+        ],
+        "frameCount": 2,
+        "fps": 6
+      },
+      "run": {
+        "frames": [
+          "character/animations/right_run_0.png",
+          "character/animations/right_run_1.png",
+          "character/animations/right_run_2.png"
+        ],
+        "frameCount": 3,
+        "fps": 10
+      },
+      "shoot": {
+        "frames": [
+          "character/animations/right_shoot_0.png",
+          "character/animations/right_shoot_1.png"
+        ],
+        "frameCount": 2,
+        "fps": 8
+      }
+    },
+    "left": {
+      "idle": {
+        "frames": [
+          "character/animations/left_idle_0.png"
+        ],
+        "frameCount": 1,
+        "fps": 1
+      },
+      "walk": {
+        "frames": [
+          "character/animations/left_walk_0.png",
+          "character/animations/left_walk_1.png"
+        ],
+        "frameCount": 2,
+        "fps": 6
+      },
+      "run": {
+        "frames": [
+          "character/animations/left_run_0.png",
+          "character/animations/left_run_1.png",
+          "character/animations/left_run_2.png"
+        ],
+        "frameCount": 3,
+        "fps": 10
+      },
+      "shoot": {
+        "frames": [
+          "character/animations/left_shoot_0.png",
+          "character/animations/left_shoot_1.png"
+        ],
+        "frameCount": 2,
+        "fps": 8
+      }
+    },
+    "front": {
+      "idle": {
+        "frames": [
+          "character/animations/front_idle_0.png"
+        ],
+        "frameCount": 1,
+        "fps": 1
+      },
+      "walk": {
+        "frames": [
+          "character/animations/front_walk_0.png",
+          "character/animations/front_walk_1.png"
+        ],
+        "frameCount": 2,
+        "fps": 6
+      },
+      "run": {
+        "frames": [
+          "character/animations/front_run_0.png",
+          "character/animations/front_run_1.png",
+          "character/animations/front_run_2.png"
+        ],
+        "frameCount": 3,
+        "fps": 10
+      },
+      "shoot": {
+        "frames": [
+          "character/animations/front_shoot_0.png",
+          "character/animations/front_shoot_1.png"
+        ],
+        "frameCount": 2,
+        "fps": 8
+      }
+    }
+  }
+}

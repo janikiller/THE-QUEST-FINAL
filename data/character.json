@@ -1,0 +1,29 @@
+{
+  "id": "police_rpg_character",
+  "name": "Agente",
+  "style": "isometric_chibi",
+  "system": "paper_doll",
+  "directions": ["front", "back", "left", "right"],
+  "actions": ["idle", "walk", "run", "shoot"],
+  "layers": [
+    { "id": "pants", "z": 10, "required": true },
+    { "id": "uniform", "z": 20, "required": true },
+    { "id": "belt", "z": 30, "required": false, "multi": true },
+    { "id": "back", "z": 40, "required": false },
+    { "id": "head", "z": 50, "required": true },
+    { "id": "patch", "z": 60, "required": false }
+  ],
+  "defaultLoadout": {
+    "head": "cap_blue",
+    "uniform": "vest_blue",
+    "pants": "pants_blue",
+    "back": null,
+    "belt": ["holster", "radio", "handcuffs"],
+    "patch": "policia"
+  },
+  "animationSource": "character_animations.json",
+  "partsSource": "character_parts.json",
+  "variantsSource": "character_variants.json",
+  "presetsSource": "presets.json",
+  "notes": "Sistema modular tipo paper-doll basado en la lámina de referencia policial. Las animaciones base usan el sprite sheet completo; las piezas modulares sirven para personalización y UI de inventario."
+}

@@ -1,0 +1,70 @@
+{
+  "presets": [
+    {
+      "id": "patrol",
+      "name": "Patrulla",
+      "head": "cap_blue",
+      "uniform": "vest_blue",
+      "pants": "pants_blue",
+      "back": null,
+      "belt": ["holster", "handcuffs", "radio"],
+      "patch": "policia",
+      "example": "patrol"
+    },
+    {
+      "id": "swat",
+      "name": "U.P.R. / Táctico",
+      "head": "balaclava",
+      "uniform": "vest_black",
+      "pants": "pants_black",
+      "back": "backpack",
+      "belt": ["holster", "baton", "taser"],
+      "patch": "upr",
+      "example": "swat"
+    },
+    {
+      "id": "traffic",
+      "name": "Tráfico",
+      "head": "cap_blue",
+      "uniform": "vest_hivis",
+      "pants": "pants_navy",
+      "back": null,
+      "belt": ["holster", "flashlight", "radio"],
+      "patch": "trafico",
+      "example": "traffic"
+    },
+    {
+      "id": "k9",
+      "name": "K9",
+      "head": "hair_brown",
+      "uniform": "vest_blue",
+      "pants": "pants_blue",
+      "back": "backpack",
+      "belt": ["holster", "radio", "pouch"],
+      "patch": "k9",
+      "example": "k9"
+    },
+    {
+      "id": "special",
+      "name": "Unidad Especial",
+      "head": "cap_white",
+      "uniform": "vest_blue",
+      "pants": "pants_navy",
+      "back": "radio_antenna",
+      "belt": ["holster", "handcuffs", "radio"],
+      "patch": "goes",
+      "example": "special"
+    },
+    {
+      "id": "rural",
+      "name": "Guardia / Rural",
+      "head": "hair_black",
+      "uniform": "shirt_tan",
+      "pants": "pants_tan",
+      "back": "rope",
+      "belt": ["holster", "baton", "flashlight"],
+      "patch": "flag_es",
+      "example": null
+    }
+  ]
+}

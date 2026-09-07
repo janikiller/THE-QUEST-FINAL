@@ -1,0 +1,10 @@
+{
+  "name": "the-quest-final",
+  "version": "0.1.0",
+  "private": true,
+  "description": "THE QUEST FINAL — personaje policial RPG modular",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "preview": "python3 -m http.server 8080"
+  }
+}

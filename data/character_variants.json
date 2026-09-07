@@ -1,0 +1,66 @@
+{
+  "colors": [
+    {
+      "id": "blue",
+      "file": "character/variants/blue.png",
+      "w": 167,
+      "h": 372
+    },
+    {
+      "id": "black",
+      "file": "character/variants/black.png",
+      "w": 168,
+      "h": 372
+    },
+    {
+      "id": "green",
+      "file": "character/variants/green.png",
+      "w": 163,
+      "h": 372
+    },
+    {
+      "id": "hivis",
+      "file": "character/variants/hivis.png",
+      "w": 167,
+      "h": 374
+    },
+    {
+      "id": "tan",
+      "file": "character/variants/tan.png",
+      "w": 164,
+      "h": 374
+    }
+  ],
+  "examples": [
+    {
+      "id": "patrol",
+      "file": "character/examples/patrol.png",
+      "w": 176,
+      "h": 406
+    },
+    {
+      "id": "swat",
+      "file": "character/examples/swat.png",
+      "w": 179,
+      "h": 409
+    },
+    {
+      "id": "traffic",
+      "file": "character/examples/traffic.png",
+      "w": 177,
+      "h": 408
+    },
+    {
+      "id": "k9",
+      "file": "character/examples/k9.png",
+      "w": 200,
+      "h": 409
+    },
+    {
+      "id": "special",
+      "file": "character/examples/special.png",
+      "w": 173,
+      "h": 408
+    }
+  ]
+}

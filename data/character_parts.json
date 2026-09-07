@@ -1,0 +1,188 @@
+{
+  "heads": [
+    {
+      "id": "cap_blue",
+      "file": "character/heads/cap_blue.png",
+      "w": 153,
+      "h": 152
+    },
+    {
+      "id": "hair_brown",
+      "file": "character/heads/hair_brown.png",
+      "w": 156,
+      "h": 153
+    },
+    {
+      "id": "hair_black",
+      "file": "character/heads/hair_black.png",
+      "w": 150,
+      "h": 152
+    },
+    {
+      "id": "hair_blonde",
+      "file": "character/heads/hair_blonde.png",
+      "w": 150,
+      "h": 153
+    },
+    {
+      "id": "cap_white",
+      "file": "character/heads/cap_white.png",
+      "w": 150,
+      "h": 153
+    },
+    {
+      "id": "balaclava",
+      "file": "character/heads/balaclava.png",
+      "w": 131,
+      "h": 156
+    }
+  ],
+  "uniforms": [
+    {
+      "id": "vest_blue",
+      "file": "character/uniforms/vest_blue.png",
+      "w": 189,
+      "h": 174
+    },
+    {
+      "id": "vest_hivis",
+      "file": "character/uniforms/vest_hivis.png",
+      "w": 183,
+      "h": 169
+    },
+    {
+      "id": "vest_black",
+      "file": "character/uniforms/vest_black.png",
+      "w": 189,
+      "h": 176
+    },
+    {
+      "id": "shirt_tan",
+      "file": "character/uniforms/shirt_tan.png",
+      "w": 185,
+      "h": 173
+    }
+  ],
+  "pants": [
+    {
+      "id": "pants_blue",
+      "file": "character/pants/pants_blue.png",
+      "w": 129,
+      "h": 204
+    },
+    {
+      "id": "pants_black",
+      "file": "character/pants/pants_black.png",
+      "w": 131,
+      "h": 205
+    },
+    {
+      "id": "pants_tan",
+      "file": "character/pants/pants_tan.png",
+      "w": 129,
+      "h": 203
+    },
+    {
+      "id": "pants_navy",
+      "file": "character/pants/pants_navy.png",
+      "w": 128,
+      "h": 205
+    }
+  ],
+  "back": [
+    {
+      "id": "radio_antenna",
+      "file": "character/back/radio_antenna.png",
+      "w": 60,
+      "h": 178
+    },
+    {
+      "id": "backpack",
+      "file": "character/back/backpack.png",
+      "w": 159,
+      "h": 184
+    },
+    {
+      "id": "medkit",
+      "file": "character/back/medkit.png",
+      "w": 117,
+      "h": 150
+    },
+    {
+      "id": "rope",
+      "file": "character/back/rope.png",
+      "w": 98,
+      "h": 174
+    }
+  ],
+  "belt": [
+    {
+      "id": "holster",
+      "file": "character/belt/holster.png",
+      "w": 98,
+      "h": 133
+    },
+    {
+      "id": "taser",
+      "file": "character/belt/taser.png",
+      "w": 128,
+      "h": 110
+    },
+    {
+      "id": "baton",
+      "file": "character/belt/baton.png",
+      "w": 114,
+      "h": 145
+    },
+    {
+      "id": "handcuffs",
+      "file": "character/belt/handcuffs.png",
+      "w": 150,
+      "h": 137
+    },
+    {
+      "id": "radio",
+      "file": "character/belt/radio.png",
+      "w": 65,
+      "h": 162
+    },
+    {
+      "id": "flashlight",
+      "file": "character/belt/flashlight.png",
+      "w": 113,
+      "h": 109
+    },
+    {
+      "id": "pouch",
+      "file": "character/belt/pouch.png",
+      "w": 94,
+      "h": 119
+    }
+  ],
+  "patches": [
+    {
+      "id": "policia",
+      "label": "POLICIA"
+    },
+    {
+      "id": "flag_es",
+      "label": "España"
+    },
+    {
+      "id": "upr",
+      "label": "U.P.R."
+    },
+    {
+      "id": "goes",
+      "label": "G.O.E.S."
+    },
+    {
+      "id": "k9",
+      "label": "K9"
+    },
+    {
+      "id": "trafico",
+      "label": "TRÁFICO"
+    }
+  ]
+}

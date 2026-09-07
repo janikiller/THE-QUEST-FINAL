@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>THE QUEST FINAL — Personaje Policial RPG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <header class="top">
+    <div class="brand">
+      <span class="brand-mark">TQ</span>
+      <div>
+        <p class="brand-name">THE QUEST FINAL</p>
+        <p class="brand-sub">Constructor de personaje policial</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-panel="custom" type="button">Personalizar</button>
+      <button class="tab" data-panel="animate" type="button">Animaciones</button>
+      <button class="tab" data-panel="vehicle" type="button">Patrulla</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="stage-wrap">
+      <div class="stage" id="stage">
+        <canvas id="preview" width="420" height="480" aria-label="Vista previa del personaje"></canvas>
+        <div class="stage-floor"></div>
+      </div>
+      <div class="stage-meta">
+        <h1 id="agent-title">Agente · Patrulla</h1>
+        <p id="agent-desc">Sistema paper-doll: cabeza, uniforme, pantalones, espalda y cinturón.</p>
+        <div class="controls-row">
+          <label>Dirección
+            <select id="direction">
+              <option value="front">Frente</option>
+              <option value="back">Espalda</option>
+              <option value="left">Izquierda</option>
+              <option value="right">Derecha</option>
+            </select>
+          </label>
+          <label>Acción
+            <select id="action">
+              <option value="idle">Idle</option>
+              <option value="walk">Caminar</option>
+              <option value="run">Correr</option>
+              <option value="shoot">Disparar</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel" id="panel-custom">
+      <h2>Presets</h2>
+      <div class="preset-grid" id="presets"></div>
+
+      <h2>Cabeza</h2>
+      <div class="part-grid" id="heads"></div>
+
+      <h2>Uniforme</h2>
+      <div class="part-grid" id="uniforms"></div>
+
+      <h2>Pantalones</h2>
+      <div class="part-grid" id="pants"></div>
+
+      <h2>Espalda</h2>
+      <div class="part-grid" id="back"></div>
+
+      <h2>Cinturón</h2>
+      <div class="part-grid multi" id="belt"></div>
+
+      <h2>Unidad</h2>
+      <div class="chip-row" id="patches"></div>
+    </aside>
+
+    <aside class="panel hidden" id="panel-animate">
+      <h2>Sprites de animación</h2>
+      <p class="hint">4 direcciones · idle / caminar / correr / disparar</p>
+      <div class="anim-strip" id="anim-strip"></div>
+      <h2>Ejemplos finales</h2>
+      <div class="example-grid" id="examples"></div>
+      <h2>Variantes de color</h2>
+      <div class="example-grid" id="colors"></div>
+    </aside>
+
+    <aside class="panel hidden" id="panel-vehicle">
+      <h2>Patrulla</h2>
+      <div class="vehicle-hero" id="vehicle-hero"></div>
+      <h2>Variantes</h2>
+      <div class="example-grid" id="vehicle-variants"></div>
+      <h2>Movimiento</h2>
+      <div class="anim-strip" id="vehicle-move"></div>
+      <p class="hint">Luces: <span class="dot blue"></span> activas · <span class="dot red"></span> freno · <span class="dot orange"></span> intermitente</p>
+    </aside>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
