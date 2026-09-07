@@ -2,6 +2,7 @@
   "name": "the-quest-final",
   "version": "0.2.0",
   "private": true,
+  "type": "module",
   "description": "THE QUEST FINAL — RPG policial narrativo con inventario, 5 habilidades e historia ramificada",
   "scripts": {
     "start": "python3 -m http.server 8080",

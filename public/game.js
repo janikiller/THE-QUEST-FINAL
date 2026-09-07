@@ -61,6 +61,12 @@ function loadSave() {
   }
 }
 
+function prettyId(id) {
+  return String(id || "")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function skillLabel(id) {
   return data.skills.skills.find((s) => s.id === id)?.name || id;
 }
@@ -134,7 +140,7 @@ function renderParts() {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "part" + (on ? " selected" : "");
-      btn.innerHTML = `<img src="${ASSET(part.file)}" alt="" /><span>${part.id}</span>`;
+      btn.innerHTML = `<img src="${ASSET(part.file)}" alt="" /><span>${prettyId(part.id)}</span>`;
       btn.addEventListener("click", () => {
         const set = new Set(state.loadout.belt);
         if (set.has(part.id)) set.delete(part.id);
@@ -157,7 +163,7 @@ function renderParts() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "part" + (selected ? " selected" : "");
-    btn.innerHTML = `<img src="${ASSET(part.file)}" alt="" /><span>${part.id.replaceAll("_", " ")}</span>`;
+    btn.innerHTML = `<img src="${ASSET(part.file)}" alt="" /><span>${prettyId(part.id)}</span>`;
     btn.addEventListener("click", () => {
       if (loadoutKey === "back" && state.loadout.back === part.id) state.loadout.back = null;
       else state.loadout[loadoutKey] = part.id;
@@ -230,7 +236,7 @@ function renderCity() {
   const node = story.node();
   $("#campaign-art").src = ASSET(
     state.campaignDone
-      ? "events/tiles/especiales/operacion_especial.png"
+      ? "events/tiles/civiles/persona_desaparecida.png"
       : node?.image || data.story.nodes.start.image
   );
   $("#campaign-title").textContent = state.campaignDone

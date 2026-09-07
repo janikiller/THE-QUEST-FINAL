@@ -56,14 +56,14 @@
       "name": "Lata abierta",
       "desc": "Conducía bebiendo. Multa clara.",
       "kind": "EVIDENCIA",
-      "icon": "events/tiles/trafico/conductor_ebrio.png"
+      "icon": "events/tiles/civiles/persona_intoxicada.png"
     },
     {
       "id": "seguro_caducado",
       "name": "Seguro caducado",
       "desc": "El papel está mojado y fuera de fecha.",
       "kind": "EVIDENCIA",
-      "icon": "events/tiles/trafico/control_de_trafico.png"
+      "icon": "events/tiles/organizado/ciberdelito.png"
     },
     {
       "id": "tarjeta_lumen",

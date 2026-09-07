@@ -7,7 +7,7 @@
     "start": {
       "id": "start",
       "title": "Control en Avenida Lumen",
-      "image": "events/tiles/trafico/control_de_trafico.png",
+      "image": "events/tiles/civiles/persona_intoxicada.png",
       "text": "Sale a la acera. Jadea. El camarero por fin habla: «ha enseñado algo en el bolsillo». El olor a cerveza barata se mezcla con el asfalto caliente de la noche.",
       "choices": [
         {
@@ -40,7 +40,7 @@
     "evidence_found": {
       "id": "evidence_found",
       "title": "Evidencia en el bolsillo",
-      "image": "events/tiles/trafico/conductor_ebrio.png",
+      "image": "events/tiles/civiles/persona_en_crisis.png",
       "text": "Lata abierta. Seguro caducado, mojado. Y al fondo, una tarjeta del Bar Lumen manchada. En el dorso, a bolígrafo: «Iván. Portal 3. No llames.»",
       "gainItems": ["lata_abierta", "seguro_caducado", "tarjeta_lumen"],
       "gainXp": { "search": 1 },
@@ -175,7 +175,7 @@
     "radio_intel": {
       "id": "radio_intel",
       "title": "Centralita responde",
-      "image": "events/tiles/especiales/operacion_especial.png",
+      "image": "events/tiles/organizado/reunion_sospechosa.png",
       "text": "«Portal 3, Barrio Norte. Denuncia antigua: olor a químicos. Una Marina R. desaparecida hace nueve días. Vecino del 2ºB: «siempre hay gente rara».»",
       "gainXp": { "tactics": 1 },
       "prestige": 1,
@@ -511,7 +511,7 @@
     "ending_backup": {
       "id": "ending_backup",
       "title": "Refuerzos",
-      "image": "events/tiles/especiales/operacion_especial.png",
+      "image": "events/tiles/civiles/auxilio_medico.png",
       "text": "Haces el perímetro. U.P.R. abre. Marina sale envuelta en una manta. Tú firmas el informe con las manos todavía oliendo a lejía.",
       "prestige": 4,
       "gainXp": { "tactics": 2 },
