@@ -1,0 +1,97 @@
+{
+  "belt": [
+    {
+      "id": "holster",
+      "name": "Funda",
+      "desc": "Servicio reglamentario. Solo si no queda otra.",
+      "slot": "belt",
+      "file": "character/belt/holster.png"
+    },
+    {
+      "id": "handcuffs",
+      "name": "Esposas",
+      "desc": "Cierra el trato cuando las palabras fallan.",
+      "slot": "belt",
+      "file": "character/belt/handcuffs.png"
+    },
+    {
+      "id": "radio",
+      "name": "Radio",
+      "desc": "Centralita, refuerzos y silencio cuando hace falta.",
+      "slot": "belt",
+      "file": "character/belt/radio.png"
+    },
+    {
+      "id": "baton",
+      "name": "Porra",
+      "desc": "Distancia corta. Control, no espectáculo.",
+      "slot": "belt",
+      "file": "character/belt/baton.png"
+    },
+    {
+      "id": "taser",
+      "name": "Táser",
+      "desc": "Opción intermedia entre voz y disparo.",
+      "slot": "belt",
+      "file": "character/belt/taser.png"
+    },
+    {
+      "id": "flashlight",
+      "name": "Linterna",
+      "desc": "Portales, sótanos y mentiras a oscuras.",
+      "slot": "belt",
+      "file": "character/belt/flashlight.png"
+    },
+    {
+      "id": "pouch",
+      "name": "Bolsa",
+      "desc": "Guantes, bolsas de evidencia, rotulador.",
+      "slot": "belt",
+      "file": "character/belt/pouch.png"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "lata_abierta",
+      "name": "Lata abierta",
+      "desc": "Conducía bebiendo. Multa clara.",
+      "kind": "EVIDENCIA",
+      "icon": "events/tiles/trafico/conductor_ebrio.png"
+    },
+    {
+      "id": "seguro_caducado",
+      "name": "Seguro caducado",
+      "desc": "El papel está mojado y fuera de fecha.",
+      "kind": "EVIDENCIA",
+      "icon": "events/tiles/trafico/control_de_trafico.png"
+    },
+    {
+      "id": "tarjeta_lumen",
+      "name": "Tarjeta del Bar Lumen",
+      "desc": "Manchada. Dorso: «Iván. Portal 3. No llames.»",
+      "kind": "EVIDENCIA",
+      "icon": "events/tiles/civiles/persona_en_crisis.png"
+    },
+    {
+      "id": "dni_falso",
+      "name": "DNI que no encaja",
+      "desc": "La foto sonríe. La cara delante no.",
+      "kind": "EVIDENCIA",
+      "icon": "events/tiles/organizado/ciberdelito.png"
+    },
+    {
+      "id": "llave_portal",
+      "name": "Llave del portal",
+      "desc": "Fría, recién limpiada con lejía.",
+      "kind": "PISTA",
+      "icon": "events/tiles/organizado/casa_segura.png"
+    },
+    {
+      "id": "nota_hermana",
+      "name": "Nota de Marina",
+      "desc": "«Si lees esto, no subas solo.»",
+      "kind": "PISTA",
+      "icon": "events/tiles/civiles/persona_desaparecida.png"
+    }
+  ]
+}

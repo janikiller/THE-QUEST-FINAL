@@ -1,0 +1,42 @@
+{
+  "pointBudget": 5,
+  "maxStart": 3,
+  "maxLevel": 5,
+  "skills": [
+    {
+      "id": "persuasion",
+      "name": "Persuasión",
+      "short": "Hablar",
+      "desc": "Hacer hablar, negociar y abrir puertas con palabras.",
+      "color": "#c9a46a"
+    },
+    {
+      "id": "intimidation",
+      "name": "Intimidación",
+      "short": "Presencia",
+      "desc": "Imponer autoridad cuando la calle no colabora.",
+      "color": "#d64545"
+    },
+    {
+      "id": "observation",
+      "name": "Observación",
+      "short": "Mirada",
+      "desc": "Leer manos, mentiras y detalles que otros pasan.",
+      "color": "#5aa7ff"
+    },
+    {
+      "id": "search",
+      "name": "Registro",
+      "short": "Cacheo",
+      "desc": "Encontrar evidencia en bolsillos, portales y coches.",
+      "color": "#6bcf8e"
+    },
+    {
+      "id": "tactics",
+      "name": "Táctica",
+      "short": "Calle",
+      "desc": "Decisiones arriesgadas con pulso firme.",
+      "color": "#9b7bff"
+    }
+  ]
+}

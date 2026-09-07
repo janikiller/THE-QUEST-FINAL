@@ -1,8 +1,8 @@
 {
   "name": "the-quest-final",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "THE QUEST FINAL — personaje policial RPG modular",
+  "description": "THE QUEST FINAL — RPG policial narrativo con inventario, 5 habilidades e historia ramificada",
   "scripts": {
     "start": "python3 -m http.server 8080",
     "preview": "python3 -m http.server 8080"

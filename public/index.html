@@ -3,103 +3,223 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>THE QUEST FINAL — Personaje Policial RPG</title>
+  <title>THE QUEST FINAL</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="game.css" />
 </head>
 <body>
-  <div class="bg-grid"></div>
-  <header class="top">
-    <div class="brand">
-      <span class="brand-mark">TQ</span>
-      <div>
-        <p class="brand-name">THE QUEST FINAL</p>
-        <p class="brand-sub">Constructor de personaje policial</p>
+  <div id="app">
+    <!-- TITLE -->
+    <section class="screen" id="screen-title" data-active="true">
+      <div class="title-atmosphere" aria-hidden="true"></div>
+      <div class="title-vignette" aria-hidden="true"></div>
+      <div class="title-content">
+        <p class="eyebrow">Barrio Norte · turno de noche</p>
+        <h1 class="logo">THE QUEST<br /><span>FINAL</span></h1>
+        <p class="tagline">Eres policía. La ciudad no duerme. Las decisiones dejan marca.</p>
+        <div class="title-actions">
+          <button type="button" class="btn primary" id="btn-new">Crear agente</button>
+          <button type="button" class="btn ghost" id="btn-continue" hidden>Continuar</button>
+        </div>
+        <p class="hint-keys">WASD o flechas en el mapa · I inventario · Esc cerrar</p>
       </div>
-    </div>
-    <nav class="tabs" role="tablist">
-      <button class="tab active" data-panel="custom" type="button">Personalizar</button>
-      <button class="tab" data-panel="animate" type="button">Animaciones</button>
-      <button class="tab" data-panel="vehicle" type="button">Patrulla</button>
-    </nav>
-  </header>
+    </section>
 
-  <main>
-    <section class="stage-wrap">
-      <div class="stage" id="stage">
-        <canvas id="preview" width="420" height="480" aria-label="Vista previa del personaje"></canvas>
-        <div class="stage-floor"></div>
-      </div>
-      <div class="stage-meta">
-        <h1 id="agent-title">Agente · Patrulla</h1>
-        <p id="agent-desc">Sistema paper-doll: cabeza, uniforme, pantalones, espalda y cinturón.</p>
-        <div class="controls-row">
-          <label>Dirección
-            <select id="direction">
-              <option value="front">Frente</option>
-              <option value="back">Espalda</option>
-              <option value="left">Izquierda</option>
-              <option value="right">Derecha</option>
-            </select>
+    <!-- CHARACTER CREATE -->
+    <section class="screen" id="screen-create">
+      <header class="bar">
+        <div class="brand-inline">
+          <span class="badge">TQ</span>
+          <div>
+            <strong>Crear agente</strong>
+            <span>Aspecto · 5 habilidades · cinturón</span>
+          </div>
+        </div>
+        <button type="button" class="btn ghost" id="btn-create-back">Volver</button>
+      </header>
+      <div class="create-layout">
+        <div class="create-stage">
+          <canvas id="create-canvas" width="420" height="520" aria-label="Tu agente"></canvas>
+          <div class="stage-glow"></div>
+          <label class="field name-field">
+            <span>Nombre en placa</span>
+            <input id="agent-name" maxlength="18" placeholder="Apellido" autocomplete="off" />
           </label>
-          <label>Acción
-            <select id="action">
-              <option value="idle">Idle</option>
-              <option value="walk">Caminar</option>
-              <option value="run">Correr</option>
-              <option value="shoot">Disparar</option>
-            </select>
-          </label>
+        </div>
+        <div class="create-panels">
+          <div class="panel-block">
+            <h2>Unidad</h2>
+            <div class="preset-row" id="preset-row"></div>
+          </div>
+          <div class="panel-block">
+            <h2>Piezas</h2>
+            <div class="parts-tabs" id="parts-tabs">
+              <button type="button" class="chip active" data-part="heads">Cabeza</button>
+              <button type="button" class="chip" data-part="uniforms">Uniforme</button>
+              <button type="button" class="chip" data-part="pants">Pantalón</button>
+              <button type="button" class="chip" data-part="back">Espalda</button>
+              <button type="button" class="chip" data-part="belt">Cinturón</button>
+            </div>
+            <div class="parts-grid" id="parts-grid"></div>
+          </div>
+          <div class="panel-block">
+            <h2>Habilidades <span class="points" id="skill-points">5 puntos</span></h2>
+            <p class="micro">Reparto inicial. Suben al completar misiones.</p>
+            <div class="skills-editor" id="skills-editor"></div>
+          </div>
+          <button type="button" class="btn primary wide" id="btn-start-duty">Entrar de servicio</button>
         </div>
       </div>
     </section>
 
-    <aside class="panel" id="panel-custom">
-      <h2>Presets</h2>
-      <div class="preset-grid" id="presets"></div>
+    <!-- CITY / HQ -->
+    <section class="screen" id="screen-city">
+      <header class="hud">
+        <div class="hud-left">
+          <span class="badge small">TQ</span>
+          <div class="hud-stats">
+            <span id="hud-time">21:10</span>
+            <span class="sep">·</span>
+            <span>Prestigio <b id="hud-prestige">0</b></span>
+            <span class="sep">·</span>
+            <span>Ítems <b id="hud-items">0</b></span>
+          </div>
+        </div>
+        <div class="hud-right">
+          <button type="button" class="icon-btn" id="btn-inventory" title="Inventario (I)">Inventario</button>
+          <button type="button" class="icon-btn" id="btn-skills" title="Habilidades">Habilidades</button>
+        </div>
+      </header>
 
-      <h2>Cabeza</h2>
-      <div class="part-grid" id="heads"></div>
+      <div class="city-shell">
+        <aside class="agent-card" id="agent-card">
+          <canvas id="city-canvas" width="280" height="340"></canvas>
+          <div class="agent-meta">
+            <h2 id="city-agent-name">Agente</h2>
+            <p id="city-agent-unit">Patrulla</p>
+            <div class="mini-skills" id="mini-skills"></div>
+          </div>
+        </aside>
 
-      <h2>Uniforme</h2>
-      <div class="part-grid" id="uniforms"></div>
+        <main class="briefing">
+          <div class="campaign-hero" id="campaign-hero">
+            <img id="campaign-art" alt="" />
+            <div class="campaign-copy">
+              <p class="eyebrow">Caso principal</p>
+              <h1 id="campaign-title">Portal 3</h1>
+              <p id="campaign-blurb"></p>
+              <button type="button" class="btn primary" id="btn-campaign">Continuar caso</button>
+            </div>
+          </div>
 
-      <h2>Pantalones</h2>
-      <div class="part-grid" id="pants"></div>
+          <h2 class="section-label">Centralita · misiones de barrio</h2>
+          <div class="mission-grid" id="mission-grid"></div>
+        </main>
+      </div>
+    </section>
 
-      <h2>Espalda</h2>
-      <div class="part-grid" id="back"></div>
+    <!-- MISSION / STORY -->
+    <section class="screen" id="screen-mission">
+      <div class="mission-frame">
+        <div class="mission-art-wrap">
+          <img id="mission-art" alt="Escena de la misión" />
+          <div class="mission-art-fade"></div>
+        </div>
+        <div class="mission-body">
+          <header class="mission-head">
+            <p class="eyebrow" id="mission-kicker">Caso</p>
+            <h1 id="mission-title">—</h1>
+            <div class="mission-hud">
+              <span id="mission-time">21:10</span>
+              <span>· Prestigio <b id="mission-prestige">0</b></span>
+            </div>
+          </header>
+          <p class="mission-text" id="mission-text"></p>
+          <div class="check-toast" id="check-toast" hidden></div>
+          <div class="choices" id="mission-choices"></div>
+          <div class="mission-footer">
+            <button type="button" class="btn ghost" id="btn-mission-inv">Inventario</button>
+            <button type="button" class="btn ghost" id="btn-mission-leave" hidden>Volver al barrio</button>
+          </div>
+        </div>
+      </div>
+    </section>
 
-      <h2>Cinturón</h2>
-      <div class="part-grid multi" id="belt"></div>
+    <!-- INVENTORY MODAL -->
+    <div class="modal" id="modal-inventory" hidden>
+      <div class="modal-panel inventory-panel">
+        <header class="modal-head">
+          <div>
+            <p class="eyebrow">Personaje</p>
+            <h2>Inventario · pasa un objeto al cinturón para usarlo</h2>
+          </div>
+          <button type="button" class="btn ghost" data-close="inventory">Cerrar</button>
+        </header>
+        <div class="inventory-grid">
+          <div class="inv-character">
+            <canvas id="inv-canvas" width="320" height="400"></canvas>
+            <p class="inv-name" id="inv-name">Agente</p>
+            <div class="belt-slots" id="belt-slots"></div>
+          </div>
+          <div class="inv-lists">
+            <h3>Evidencia y pistas</h3>
+            <div class="item-list" id="evidence-list"></div>
+            <h3>Equipo disponible</h3>
+            <div class="item-list compact" id="gear-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-      <h2>Unidad</h2>
-      <div class="chip-row" id="patches"></div>
-    </aside>
+    <!-- SKILLS MODAL -->
+    <div class="modal" id="modal-skills" hidden>
+      <div class="modal-panel skills-panel">
+        <header class="modal-head">
+          <div>
+            <p class="eyebrow">Progresión</p>
+            <h2>Cinco habilidades</h2>
+          </div>
+          <button type="button" class="btn ghost" data-close="skills">Cerrar</button>
+        </header>
+        <div class="skills-view" id="skills-view"></div>
+        <p class="micro">Suben al superar chequeos y misiones. El prestigio marca tu reputación en el barrio.</p>
+      </div>
+    </div>
 
-    <aside class="panel hidden" id="panel-animate">
-      <h2>Sprites de animación</h2>
-      <p class="hint">4 direcciones · idle / caminar / correr / disparar</p>
-      <div class="anim-strip" id="anim-strip"></div>
-      <h2>Ejemplos finales</h2>
-      <div class="example-grid" id="examples"></div>
-      <h2>Variantes de color</h2>
-      <div class="example-grid" id="colors"></div>
-    </aside>
+    <!-- SIDE MISSION MODAL -->
+    <div class="modal" id="modal-side" hidden>
+      <div class="modal-panel side-panel">
+        <img id="side-art" alt="" />
+        <div class="side-copy">
+          <p class="eyebrow" id="side-kicker">Centralita</p>
+          <h2 id="side-title">—</h2>
+          <p id="side-blurb"></p>
+          <p class="side-check" id="side-check"></p>
+          <div class="title-actions">
+            <button type="button" class="btn primary" id="btn-side-go">Intervenir</button>
+            <button type="button" class="btn ghost" data-close="side">Ignorar</button>
+          </div>
+          <p class="side-result" id="side-result" hidden></p>
+        </div>
+      </div>
+    </div>
 
-    <aside class="panel hidden" id="panel-vehicle">
-      <h2>Patrulla</h2>
-      <div class="vehicle-hero" id="vehicle-hero"></div>
-      <h2>Variantes</h2>
-      <div class="example-grid" id="vehicle-variants"></div>
-      <h2>Movimiento</h2>
-      <div class="anim-strip" id="vehicle-move"></div>
-      <p class="hint">Luces: <span class="dot blue"></span> activas · <span class="dot red"></span> freno · <span class="dot orange"></span> intermitente</p>
-    </aside>
-  </main>
+    <!-- ENDING -->
+    <div class="modal" id="modal-ending" hidden>
+      <div class="modal-panel ending-panel">
+        <p class="eyebrow">Fin de la noche</p>
+        <h2 id="ending-title">—</h2>
+        <p id="ending-text"></p>
+        <div class="title-actions">
+          <button type="button" class="btn primary" id="btn-ending-city">Volver al barrio</button>
+          <button type="button" class="btn ghost" id="btn-ending-new">Nuevo agente</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="game.js"></script>
 </body>
 </html>

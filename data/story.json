@@ -1,0 +1,610 @@
+{
+  "campaignId": "portal_3",
+  "title": "Portal 3",
+  "subtitle": "Una noche en Barrio Norte",
+  "intro": "Centralita: control de tráfico en Avenida Lumen. Un conductor nervioso. Una tarjeta manchada. Un nombre: Iván.",
+  "nodes": {
+    "start": {
+      "id": "start",
+      "title": "Control en Avenida Lumen",
+      "image": "events/tiles/trafico/control_de_trafico.png",
+      "text": "Sale a la acera. Jadea. El camarero por fin habla: «ha enseñado algo en el bolsillo». El olor a cerveza barata se mezcla con el asfalto caliente de la noche.",
+      "choices": [
+        {
+          "id": "cachear",
+          "label": "Registrar bolsillos",
+          "skill": "search",
+          "diff": 1,
+          "success": "evidence_found",
+          "fail": "hesitation"
+        },
+        {
+          "id": "hablar",
+          "label": "Hacerle hablar: nombre, destino, por qué tiembla",
+          "skill": "persuasion",
+          "diff": 2,
+          "risk": 40,
+          "success": "talk_ok",
+          "fail": "talk_shut"
+        },
+        {
+          "id": "mirar",
+          "label": "Esperar y mirar las manos",
+          "skill": "observation",
+          "diff": 1,
+          "success": "hands_seen",
+          "fail": "missed_hands"
+        }
+      ]
+    },
+    "evidence_found": {
+      "id": "evidence_found",
+      "title": "Evidencia en el bolsillo",
+      "image": "events/tiles/trafico/conductor_ebrio.png",
+      "text": "Lata abierta. Seguro caducado, mojado. Y al fondo, una tarjeta del Bar Lumen manchada. En el dorso, a bolígrafo: «Iván. Portal 3. No llames.»",
+      "gainItems": ["lata_abierta", "seguro_caducado", "tarjeta_lumen"],
+      "gainXp": { "search": 1 },
+      "prestige": 1,
+      "choices": [
+        {
+          "id": "go_portal",
+          "label": "Ir al Portal 3 ahora",
+          "next": "portal_arrival"
+        },
+        {
+          "id": "call_in",
+          "label": "Avisar a centralita y pedir historial",
+          "skill": "tactics",
+          "diff": 1,
+          "success": "radio_intel",
+          "fail": "portal_arrival"
+        }
+      ]
+    },
+    "hesitation": {
+      "id": "hesitation",
+      "title": "Se pone rígido",
+      "image": "events/tiles/civiles/persona_agresiva.png",
+      "text": "Tensa los hombros. «No toques.» La gente del bar observa desde la terraza. Tienes que decidir si forzar o cambiar de enfoque.",
+      "choices": [
+        {
+          "id": "force",
+          "label": "Imponer: registro completo",
+          "skill": "intimidation",
+          "diff": 2,
+          "risk": 55,
+          "success": "evidence_found",
+          "fail": "scene_escalates"
+        },
+        {
+          "id": "soft",
+          "label": "Bajar el tono y preguntar por Iván",
+          "skill": "persuasion",
+          "diff": 2,
+          "success": "talk_ok",
+          "fail": "talk_shut"
+        }
+      ]
+    },
+    "talk_ok": {
+      "id": "talk_ok",
+      "title": "Habla",
+      "image": "events/tiles/civiles/persona_en_crisis.png",
+      "text": "«Busco a mi hermana. Marina. Dijo que estaría en el Lumen… pero solo me dieron esta tarjeta.» Te enseña el dorso sin que lo pidas: Portal 3. No llames.",
+      "gainItems": ["tarjeta_lumen"],
+      "flags": ["ivan_cooperates"],
+      "gainXp": { "persuasion": 1 },
+      "prestige": 1,
+      "choices": [
+        {
+          "id": "to_portal",
+          "label": "Acompañarlo al portal",
+          "next": "portal_with_ivan"
+        },
+        {
+          "id": "alone",
+          "label": "Dejarlo y ir solo",
+          "next": "portal_arrival"
+        }
+      ]
+    },
+    "talk_shut": {
+      "id": "talk_shut",
+      "title": "Se cierra",
+      "image": "events/tiles/civiles/persona_intoxicada.png",
+      "text": "Niebla en la mirada. «No sé nada.» Pero la tarjeta asoma del bolsillo interior. Puedes ver el trazo: Portal 3.",
+      "gainItems": ["tarjeta_lumen"],
+      "choices": [
+        {
+          "id": "grab",
+          "label": "Registrar el resto con esa causa",
+          "skill": "search",
+          "diff": 2,
+          "success": "evidence_found",
+          "fail": "scene_escalates"
+        },
+        {
+          "id": "release",
+          "label": "Identificar y soltar. Anotar el DNI",
+          "next": "bad_dni"
+        }
+      ]
+    },
+    "hands_seen": {
+      "id": "hands_seen",
+      "title": "Las manos no mienten",
+      "image": "events/tiles/organizado/seguimiento.png",
+      "text": "Uñas limpias de lejía. Temblor en el anular. Un roce de tinta en la palma: el mismo trazo que en la tarjeta del Lumen. Él ha escrito el mensaje.",
+      "gainItems": ["tarjeta_lumen"],
+      "gainXp": { "observation": 1 },
+      "prestige": 1,
+      "flags": ["saw_bleach_hands"],
+      "choices": [
+        {
+          "id": "confront",
+          "label": "Confrontarlo con lo que has visto",
+          "skill": "intimidation",
+          "diff": 2,
+          "success": "talk_ok",
+          "fail": "hesitation"
+        },
+        {
+          "id": "follow_card",
+          "label": "Ir al Portal 3 sin decirle",
+          "next": "portal_arrival"
+        }
+      ]
+    },
+    "missed_hands": {
+      "id": "missed_hands",
+      "title": "Se te escapa",
+      "image": "events/tiles/clima/niebla.png",
+      "text": "Mira al suelo. Tú miras al neón. Cuando vuelves la vista, ya ha metido la mano en el bolsillo. Algo cruje. Demasiado tarde para ser sutil.",
+      "choices": [
+        {
+          "id": "now",
+          "label": "Registrar bolsillos ya",
+          "skill": "search",
+          "diff": 2,
+          "risk": 50,
+          "success": "evidence_found",
+          "fail": "scene_escalates"
+        }
+      ]
+    },
+    "radio_intel": {
+      "id": "radio_intel",
+      "title": "Centralita responde",
+      "image": "events/tiles/especiales/operacion_especial.png",
+      "text": "«Portal 3, Barrio Norte. Denuncia antigua: olor a químicos. Una Marina R. desaparecida hace nueve días. Vecino del 2ºB: «siempre hay gente rara».»",
+      "gainXp": { "tactics": 1 },
+      "prestige": 1,
+      "flags": ["has_intel"],
+      "choices": [
+        {
+          "id": "go",
+          "label": "Entrar al portal con linterna",
+          "next": "portal_arrival"
+        }
+      ]
+    },
+    "bad_dni": {
+      "id": "bad_dni",
+      "title": "El DNI no encaja",
+      "image": "events/tiles/organizado/ciberdelito.png",
+      "text": "No saca nada. Se cansa. Al final enseña un DNI que no acaba de encajar con la cara. Encuentras: DNI que no encaja.",
+      "gainItems": ["dni_falso", "tarjeta_lumen"],
+      "gainXp": { "observation": 1 },
+      "prestige": 1,
+      "choices": [
+        {
+          "id": "detain",
+          "label": "Detenerlo e ir al portal después",
+          "next": "portal_arrival",
+          "flags": ["ivan_detained"]
+        },
+        {
+          "id": "use_as_guide",
+          "label": "Usarlo de guía al Portal 3",
+          "skill": "intimidation",
+          "diff": 2,
+          "success": "portal_with_ivan",
+          "fail": "portal_arrival"
+        }
+      ]
+    },
+    "scene_escalates": {
+      "id": "scene_escalates",
+      "title": "La terraza se levanta",
+      "image": "events/tiles/delitos/pelea_en_la_calle.png",
+      "text": "Alguien grita. Un vaso cae. El conductor aprovecha el caos y echa a correr hacia los portales. Pierdes el cuerpo… pero no la tarjeta, que queda en el suelo.",
+      "gainItems": ["tarjeta_lumen"],
+      "prestige": -1,
+      "choices": [
+        {
+          "id": "chase",
+          "label": "Perseguir hacia el Portal 3",
+          "skill": "tactics",
+          "diff": 2,
+          "risk": 45,
+          "success": "portal_with_ivan",
+          "fail": "portal_arrival"
+        }
+      ]
+    },
+    "portal_arrival": {
+      "id": "portal_arrival",
+      "title": "Portal 3",
+      "image": "events/tiles/organizado/casa_segura.png",
+      "text": "El portal huele a lejía y a miedo viejo. El rellano del primero está demasiado limpio. En el buzón 3A, una etiqueta a medio arrancar: M. R.",
+      "choices": [
+        {
+          "id": "listen",
+          "label": "Escuchar detrás de la puerta",
+          "skill": "observation",
+          "diff": 2,
+          "success": "voices",
+          "fail": "quiet_door"
+        },
+        {
+          "id": "knock",
+          "label": "Llamar como policía",
+          "skill": "intimidation",
+          "diff": 2,
+          "success": "door_opens",
+          "fail": "door_silence"
+        },
+        {
+          "id": "pick",
+          "label": "Entrar con causa (tarjeta + olor a químicos)",
+          "skill": "tactics",
+          "diff": 3,
+          "risk": 60,
+          "success": "inside_flat",
+          "fail": "neighbor_watches",
+          "requireFlag": "has_intel",
+          "alt": "neighbor_watches"
+        }
+      ]
+    },
+    "portal_with_ivan": {
+      "id": "portal_with_ivan",
+      "title": "Iván en el último escalón",
+      "image": "events/tiles/civiles/persona_desaparecida.png",
+      "text": "Iván está en el último escalón, las rodillas abiertas, la respiración corta. «Marina estaba aquí. El vecino del 2º me mira siempre.» Una sombra se mueve detrás del visor del 2ºB.",
+      "flags": ["ivan_present"],
+      "choices": [
+        {
+          "id": "ask_ivan",
+          "label": "Hacerle hablar: nombre, piso, por qué espera · arriesgada",
+          "skill": "persuasion",
+          "diff": 2,
+          "risk": 55,
+          "success": "ivan_truth",
+          "fail": "ivan_panics"
+        },
+        {
+          "id": "watch_hands",
+          "label": "Esperar y mirar las manos",
+          "skill": "observation",
+          "diff": 1,
+          "success": "ivan_key",
+          "fail": "neighbor_watches"
+        },
+        {
+          "id": "pockets_now",
+          "label": "Registrar bolsillos ya",
+          "skill": "search",
+          "diff": 2,
+          "success": "ivan_key",
+          "fail": "ivan_panics"
+        }
+      ]
+    },
+    "voices": {
+      "id": "voices",
+      "title": "Voces detrás",
+      "image": "events/tiles/organizado/reunion_sospechosa.png",
+      "text": "Dos voces. Una mujer cansada. Un hombre que dice «ya casi». Metálico: grilletes suaves, no de cocina.",
+      "gainXp": { "observation": 1 },
+      "prestige": 1,
+      "flags": ["heard_voices"],
+      "choices": [
+        {
+          "id": "breach",
+          "label": "Entrar ya",
+          "skill": "tactics",
+          "diff": 3,
+          "risk": 50,
+          "success": "rescue_ok",
+          "fail": "rescue_messy"
+        },
+        {
+          "id": "radio",
+          "label": "Pedir refuerzos y contener",
+          "skill": "tactics",
+          "diff": 2,
+          "success": "ending_backup",
+          "fail": "rescue_messy"
+        }
+      ]
+    },
+    "quiet_door": {
+      "id": "quiet_door",
+      "title": "Silencio demasiado limpio",
+      "image": "events/tiles/clima/niebla.png",
+      "text": "Nada. Solo el eco de tu propia respiración y el olor a lejía. En el felpudo, una llave todavía húmeda.",
+      "gainItems": ["llave_portal"],
+      "choices": [
+        {
+          "id": "use_key",
+          "label": "Usar la llave",
+          "next": "inside_flat"
+        },
+        {
+          "id": "check_2b",
+          "label": "Mirar el 2ºB primero",
+          "next": "neighbor_watches"
+        }
+      ]
+    },
+    "door_opens": {
+      "id": "door_opens",
+      "title": "Abre un hombre",
+      "image": "events/tiles/organizado/corrupcion.png",
+      "text": "Sonrisa de vendedor. «¿Póliza? ¿Censo?» Detrás, un pasillo apagado y un olor que no es de cocina.",
+      "choices": [
+        {
+          "id": "push",
+          "label": "Empujar con autoridad y entrar",
+          "skill": "intimidation",
+          "diff": 3,
+          "risk": 55,
+          "success": "inside_flat",
+          "fail": "rescue_messy"
+        },
+        {
+          "id": "bluff",
+          "label": "Bluff: «Marina R. nos llamó»",
+          "skill": "persuasion",
+          "diff": 3,
+          "success": "inside_flat",
+          "fail": "door_silence"
+        }
+      ]
+    },
+    "door_silence": {
+      "id": "door_silence",
+      "title": "Cierran",
+      "image": "events/tiles/delitos/robo_en_vivienda.png",
+      "text": "La puerta se cierra. Cerrojo. Pasos rápidos hacia el fondo. No tienes mucho tiempo.",
+      "choices": [
+        {
+          "id": "kick",
+          "label": "Forzar entrada",
+          "skill": "tactics",
+          "diff": 3,
+          "risk": 65,
+          "success": "rescue_messy",
+          "fail": "ending_escaped"
+        }
+      ]
+    },
+    "neighbor_watches": {
+      "id": "neighbor_watches",
+      "title": "El vecino del 2ºB",
+      "image": "events/tiles/organizado/seguimiento.png",
+      "text": "El visor se oscurece. Alguien respira al otro lado. Bajo la puerta, un papel doblado: «Si lees esto, no subas solo.» Firma: Marina.",
+      "gainItems": ["nota_hermana"],
+      "prestige": 1,
+      "choices": [
+        {
+          "id": "ally",
+          "label": "Convencer al vecino de abrir",
+          "skill": "persuasion",
+          "diff": 3,
+          "success": "ending_ally",
+          "fail": "inside_flat"
+        },
+        {
+          "id": "ignore",
+          "label": "Ignorar la nota y subir al 3A",
+          "next": "inside_flat"
+        }
+      ]
+    },
+    "ivan_truth": {
+      "id": "ivan_truth",
+      "title": "La verdad de Iván",
+      "image": "events/tiles/civiles/auxilio_medico.png",
+      "text": "«Me dijeron que si venía solo la soltaban. Mentira. Quieren otro cuerpo que limpie.» Te da una llave. Temblando.",
+      "gainItems": ["llave_portal", "nota_hermana"],
+      "gainXp": { "persuasion": 1 },
+      "prestige": 2,
+      "flags": ["ivan_truth"],
+      "choices": [
+        {
+          "id": "enter",
+          "label": "Abrir el 3A juntos",
+          "next": "rescue_ok"
+        }
+      ]
+    },
+    "ivan_key": {
+      "id": "ivan_key",
+      "title": "Llave y silencio",
+      "image": "events/tiles/organizado/casa_segura.png",
+      "text": "En el bolsillo interior: llave del portal y un trozo de papel con el mismo trazo tembloroso. Marina sigue dentro — o lo estuvo hace poco.",
+      "gainItems": ["llave_portal", "nota_hermana"],
+      "gainXp": { "search": 1 },
+      "prestige": 1,
+      "choices": [
+        {
+          "id": "go_in",
+          "label": "Entrar al 3A",
+          "next": "inside_flat"
+        }
+      ]
+    },
+    "ivan_panics": {
+      "id": "ivan_panics",
+      "title": "Iván pierde el control",
+      "image": "events/tiles/civiles/persona_agresiva.png",
+      "text": "Empuja. Grita el nombre de Marina. La puerta del 2ºB se abre un palmo: un ojo, una pistola improvisada de cocina, miedo.",
+      "prestige": -1,
+      "choices": [
+        {
+          "id": "contain",
+          "label": "Contener a Iván y negociar con el vecino",
+          "skill": "intimidation",
+          "diff": 3,
+          "success": "ending_ally",
+          "fail": "rescue_messy"
+        }
+      ]
+    },
+    "inside_flat": {
+      "id": "inside_flat",
+      "title": "Dentro del 3A",
+      "image": "events/tiles/organizado/laboratorio_ilegal.png",
+      "text": "Cubos. Tubos. Una silla con restos de cinta. Marina está en el suelo, consciente, mirándote como si no creyera que alguien haya venido.",
+      "gainXp": { "tactics": 1 },
+      "choices": [
+        {
+          "id": "secure",
+          "label": "Asegurar estancia y sacar a Marina",
+          "skill": "tactics",
+          "diff": 2,
+          "success": "rescue_ok",
+          "fail": "rescue_messy"
+        },
+        {
+          "id": "chase_suspect",
+          "label": "Perseguir al que huye por la ventana",
+          "skill": "tactics",
+          "diff": 3,
+          "risk": 50,
+          "success": "ending_catch",
+          "fail": "ending_escaped"
+        }
+      ]
+    },
+    "rescue_ok": {
+      "id": "rescue_ok",
+      "title": "Marina sale",
+      "image": "events/tiles/civiles/persona_desaparecida.png",
+      "text": "La sacas al rellano. Respira. Iván —si está— se derrumba de alivio. Centralita confirma: laboratorio improvisado, dos detenidos en la escalera de servicio.",
+      "prestige": 3,
+      "gainXp": { "tactics": 1, "observation": 1 },
+      "ending": "good",
+      "choices": []
+    },
+    "rescue_messy": {
+      "id": "rescue_messy",
+      "title": "Caos en el rellano",
+      "image": "events/tiles/emergencias/persona_atrapada.png",
+      "text": "Hay gritos, un forcejeo, sangre en el felpudo. Marina vive. El laboratorio queda a medias. Prestigio herido, pero la noche no se lleva a nadie.",
+      "prestige": 1,
+      "ending": "mixed",
+      "choices": []
+    },
+    "ending_backup": {
+      "id": "ending_backup",
+      "title": "Refuerzos",
+      "image": "events/tiles/especiales/operacion_especial.png",
+      "text": "Haces el perímetro. U.P.R. abre. Marina sale envuelta en una manta. Tú firmas el informe con las manos todavía oliendo a lejía.",
+      "prestige": 4,
+      "gainXp": { "tactics": 2 },
+      "ending": "good",
+      "choices": []
+    },
+    "ending_ally": {
+      "id": "ending_ally",
+      "title": "El vecino habla",
+      "image": "events/tiles/civiles/auxilio_medico.png",
+      "text": "El 2ºB abre. «Yo dejé la nota.» Os guía por la terraza. Entrada limpia. Marina libre. Un nombre nuevo en la libreta: la red es más grande que un portal.",
+      "prestige": 4,
+      "gainXp": { "persuasion": 1, "observation": 1 },
+      "ending": "good",
+      "flags": ["wider_case"],
+      "choices": []
+    },
+    "ending_catch": {
+      "id": "ending_catch",
+      "title": "En la azotea",
+      "image": "events/tiles/delitos/huida_de_la_ley.png",
+      "text": "Lo alcanzas entre tendederos. Esposas. Abajo, tus compañeros sacan a Marina. Cierras el círculo con el pulso alto y la ciudad todavía despierta.",
+      "prestige": 5,
+      "gainXp": { "tactics": 2, "intimidation": 1 },
+      "ending": "best",
+      "choices": []
+    },
+    "ending_escaped": {
+      "id": "ending_escaped",
+      "title": "Se escapa",
+      "image": "events/tiles/clima/niebla.png",
+      "text": "Te queda el olor a lejía y una libreta a medias. Marina no está. Iván tampoco. La tarjeta del Lumen sigue manchada en tu inventario — y la noche no ha terminado.",
+      "prestige": 0,
+      "ending": "bad",
+      "choices": []
+    }
+  },
+  "sideMissions": [
+    {
+      "id": "pelea_calle",
+      "eventId": "pelea_en_la_calle",
+      "title": "Pelea en la calle",
+      "blurb": "Dos voces, un cristal. Separar sin convertir esto en noticia.",
+      "skill": "intimidation",
+      "diff": 2,
+      "xpSkill": "intimidation",
+      "prestige": 1,
+      "image": "events/tiles/delitos/pelea_en_la_calle.png"
+    },
+    {
+      "id": "persona_crisis",
+      "eventId": "persona_en_crisis",
+      "title": "Persona en crisis",
+      "blurb": "Puente viejo. Hablar despacio. No empujar el reloj.",
+      "skill": "persuasion",
+      "diff": 2,
+      "xpSkill": "persuasion",
+      "prestige": 1,
+      "image": "events/tiles/civiles/persona_en_crisis.png"
+    },
+    {
+      "id": "robo_tienda",
+      "eventId": "robo_en_tienda",
+      "title": "Robo en tienda",
+      "blurb": "Cámara borrosa. Un testigo. Buscar lo que no se ve a simple vista.",
+      "skill": "observation",
+      "diff": 2,
+      "xpSkill": "observation",
+      "prestige": 1,
+      "image": "events/tiles/delitos/robo_en_tienda.png"
+    },
+    {
+      "id": "lab_ilegal",
+      "eventId": "laboratorio_ilegal",
+      "title": "Laboratorio ilegal",
+      "blurb": "Olor familiar. Entrar con cabeza fría.",
+      "skill": "tactics",
+      "diff": 3,
+      "xpSkill": "tactics",
+      "prestige": 2,
+      "image": "events/tiles/organizado/laboratorio_ilegal.png",
+      "requireCampaign": true
+    },
+    {
+      "id": "desaparecida",
+      "eventId": "persona_desaparecida",
+      "title": "Persona desaparecida",
+      "blurb": "Carteles en el barrio. Una hermana. Un portal.",
+      "skill": "search",
+      "diff": 2,
+      "xpSkill": "search",
+      "prestige": 1,
+      "image": "events/tiles/civiles/persona_desaparecida.png"
+    }
+  ]
+}
