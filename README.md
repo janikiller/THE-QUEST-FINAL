@@ -1,67 +1,72 @@
 # THE QUEST FINAL
 
-RPG isométrico con personaje policial modular (paper-doll).
+RPG isométrico policial. Este branch añade el catálogo de **Eventos en la ciudad** listo para usar en el juego.
 
-## Assets del personaje
+## Assets de eventos
 
-Convertidos desde la lámina de referencia a sprites usables:
+Convertidos desde la lámina de referencia a tiles usables:
 
 | Carpeta | Contenido |
 |---|---|
-| `assets/character/animations/` | 32 frames · 4 direcciones · idle / caminar / correr / disparar |
-| `assets/character/heads/` | Gorra azul, pelos, gorra blanca, pasamontañas |
-| `assets/character/uniforms/` | Chaleco azul, alta visibilidad, táctico negro, camisa beige |
-| `assets/character/pants/` | Azul, negro, beige, navy |
-| `assets/character/back/` | Antena, mochila, botiquín, cuerda |
-| `assets/character/belt/` | Funda, taser, porra, esposas, radio, linterna, bolsa |
-| `assets/character/variants/` | Variantes de color (espalda) |
-| `assets/character/examples/` | Presets finales (patrulla, SWAT, tráfico, K9, especial) |
-| `assets/vehicle/` | Patrulla + movimiento + variantes (Policía, Guardia Civil, Tráfico, UPR) |
+| `assets/events/tiles/` | 70 escenarios · 7 categorías × 10 eventos |
+| `assets/events/categories/` | 7 tarjetas de categoría (Delitos, Emergencias, Tráfico, Civiles, Organizado, Clima, Especiales) |
+| `assets/source/city_events_reference.jpg` | Lámina original |
 
 Datos de juego en `data/`:
 
-- `character.json` — definición del sistema paper-doll
-- `character_animations.json` — atlas de animaciones
-- `character_parts.json` — catálogo de piezas
-- `character_variants.json` — colores y ejemplos
-- `presets.json` — loadouts listos
-- `vehicle.json` — patrulla
+- `events.json` — catálogo completo (severidad, unidades, XP, duración, ruta del tile)
+- `event_categories.json` — categorías + color + lista de IDs
+- `events_index.json` — índice rápido `byId` / `byCategory`
 
-## Preview
+## Preview (centralita)
 
 ```bash
 python3 -m http.server 8080
 ```
 
-Abre `http://localhost:8080/public/` para:
+Abre `http://localhost:8080/public/events.html` para:
 
-1. **Personalizar** — presets + piezas modulares
-2. **Animaciones** — idle / caminar / correr / disparar en 4 direcciones
-3. **Patrulla** — vehículo y variantes
+1. Filtrar por categoría
+2. Seleccionar un evento y **despacharlo** como misión activa
+3. Aplicar clima de ciudad
+4. Generar un evento aleatorio
 
 ## Código
 
-- `src/PoliceCharacter.js` — controlador del personaje (animaciones + capas)
-- `public/app.js` — constructor visual
+- `src/CityEvents.js` — despachador de eventos / clima / resolución de misiones
+- `scripts/slice_city_events.py` — re-corta la lámina si cambia la referencia
+- `public/events-app.js` — centralita visual
 
 ## Uso rápido en tu motor
 
 ```js
-import { PoliceCharacter } from "./src/PoliceCharacter.js";
+import { CityEvents } from "./src/CityEvents.js";
 
-const character = new PoliceCharacter({
-  animations: await fetch("./data/character_animations.json").then((r) => r.json()),
-  parts: await fetch("./data/character_parts.json").then((r) => r.json()),
-  loadout: {
-    head: "cap_blue",
-    uniform: "vest_blue",
-    pants: "pants_blue",
-    back: null,
-    belt: ["holster", "radio"],
-  },
+const city = new CityEvents({
+  catalog: await fetch("./data/events.json").then((r) => r.json()),
+  categories: await fetch("./data/event_categories.json").then((r) => r.json()),
 });
 
-character.setDirection("front");
-character.play("run");
-const framePath = character.update(1 / 60); // → character/animations/front_run_N.png
+// Misión
+const heist = city.dispatch("atraco_a_banco");
+console.log(heist.location, heist.units, heist.xp);
+
+// Clima
+city.setWeather("tormenta_electrica");
+
+// Aleatorio de una categoría
+city.dispatchRandom({ category: "trafico" });
+
+// Resolver
+city.resolve(heist.instanceId, { success: true });
 ```
+
+## Categorías
+
+1. **Delitos** — robos, peleas, secuestro…
+2. **Emergencias** — incendios, explosión, derrumbe…
+3. **Tráfico** — controles, persecución, atropello…
+4. **Civiles** — desaparecidos, crisis, auxilio…
+5. **Organizado** — lab ilegal, redada, contrabando…
+6. **Clima** — lluvia, niebla, ola de calor… (afecta atmósfera)
+7. **Eventos especiales** — concierto, feria, operación especial…

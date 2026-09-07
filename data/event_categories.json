@@ -1,0 +1,166 @@
+{
+  "id": "city_event_categories",
+  "categories": [
+    {
+      "id": "delitos",
+      "name": "Delitos",
+      "tagline": "El crimen nunca descansa",
+      "color": "#2f6bff",
+      "icon": "shield",
+      "file": "events/categories/delitos.png",
+      "w": 113,
+      "h": 108,
+      "row": 0,
+      "eventIds": [
+        "robo_en_tienda",
+        "atraco_a_banco",
+        "robo_de_vehiculo",
+        "violencia_domestica",
+        "pelea_en_la_calle",
+        "venta_de_drogas",
+        "vandalismo",
+        "robo_en_vivienda",
+        "secuestro",
+        "huida_de_la_ley"
+      ]
+    },
+    {
+      "id": "emergencias",
+      "name": "Emergencias",
+      "tagline": "Cuando cada segundo cuenta",
+      "color": "#e23a3a",
+      "icon": "flame",
+      "file": "events/categories/emergencias.png",
+      "w": 113,
+      "h": 114,
+      "row": 1,
+      "eventIds": [
+        "incendio_de_coche",
+        "incendio_en_edificio",
+        "explosion",
+        "fuga_de_gas",
+        "accidente_multiple",
+        "persona_atrapada",
+        "arbol_caido",
+        "inundacion",
+        "apagon",
+        "derrumbe"
+      ]
+    },
+    {
+      "id": "trafico",
+      "name": "Tráfico",
+      "tagline": "En movimiento, también hay riesgos",
+      "color": "#2faf5a",
+      "icon": "car",
+      "file": "events/categories/trafico.png",
+      "w": 113,
+      "h": 106,
+      "row": 2,
+      "eventIds": [
+        "control_de_trafico",
+        "exceso_de_velocidad",
+        "accidente_leve",
+        "vuelco",
+        "atropello",
+        "conduccion_temeraria",
+        "persecucion",
+        "vehiculo_averiado",
+        "conductor_ebrio",
+        "camion_en_problemas"
+      ]
+    },
+    {
+      "id": "civiles",
+      "name": "Civiles",
+      "tagline": "La gente también necesita ayuda",
+      "color": "#9b4dff",
+      "icon": "people",
+      "file": "events/categories/civiles.png",
+      "w": 113,
+      "h": 98,
+      "row": 3,
+      "eventIds": [
+        "persona_desaparecida",
+        "persona_perdida",
+        "persona_agresiva",
+        "persona_en_crisis",
+        "auxilio_medico",
+        "animal_suelto",
+        "menor_sin_supervision",
+        "persona_intoxicada",
+        "intento_de_suicidio",
+        "manifestacion"
+      ]
+    },
+    {
+      "id": "organizado",
+      "name": "Organizado",
+      "tagline": "Detrás de cada caso hay algo más",
+      "color": "#e0b12a",
+      "icon": "mask",
+      "file": "events/categories/organizado.png",
+      "w": 113,
+      "h": 96,
+      "row": 4,
+      "eventIds": [
+        "reunion_sospechosa",
+        "laboratorio_ilegal",
+        "transporte_de_armas",
+        "redada",
+        "seguimiento",
+        "casa_segura",
+        "contrabando",
+        "ciberdelito",
+        "corrupcion",
+        "trata_de_personas"
+      ]
+    },
+    {
+      "id": "clima",
+      "name": "Clima",
+      "tagline": "El tiempo también afecta",
+      "color": "#4eb7ff",
+      "icon": "cloud",
+      "file": "events/categories/clima.png",
+      "w": 113,
+      "h": 74,
+      "row": 5,
+      "eventIds": [
+        "dia_soleado",
+        "lluvia",
+        "tormenta_electrica",
+        "niebla",
+        "nieve",
+        "viento_fuerte",
+        "ola_de_calor",
+        "tormenta_tropical",
+        "granizo",
+        "inundaciones"
+      ]
+    },
+    {
+      "id": "especiales",
+      "name": "Eventos especiales",
+      "tagline": "La ciudad siempre se mueve",
+      "color": "#ff7a2f",
+      "icon": "calendar",
+      "file": "events/categories/especiales.png",
+      "w": 113,
+      "h": 94,
+      "row": 6,
+      "eventIds": [
+        "concierto",
+        "evento_deportivo",
+        "feria",
+        "desfile",
+        "visita_oficial",
+        "protesta",
+        "obras",
+        "festivo",
+        "accidente_portuario",
+        "operacion_especial"
+      ]
+    }
+  ]
+}

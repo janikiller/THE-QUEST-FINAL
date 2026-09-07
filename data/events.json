@@ -1,0 +1,1321 @@
+{
+  "id": "city_events",
+  "name": "Eventos en la ciudad",
+  "tagline": "Una ciudad viva, llena de historias",
+  "mission": "Hacer una ciudad más segura",
+  "source": "assets/source/city_events_reference.jpg",
+  "grid": {
+    "rows": 7,
+    "cols": 10
+  },
+  "count": 70,
+  "categoriesSource": "event_categories.json",
+  "events": [
+    {
+      "id": "robo_en_tienda",
+      "name": "Robo en tienda",
+      "category": "delitos",
+      "severity": "high",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 120,
+      "xp": 100,
+      "file": "events/tiles/delitos/robo_en_tienda.png",
+      "w": 137,
+      "h": 106,
+      "row": 0,
+      "col": 0,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "atraco_a_banco",
+      "name": "Atraco a banco",
+      "category": "delitos",
+      "severity": "critical",
+      "units": [
+        "policia",
+        "swat"
+      ],
+      "durationSec": 300,
+      "xp": 200,
+      "file": "events/tiles/delitos/atraco_a_banco.png",
+      "w": 138,
+      "h": 106,
+      "row": 0,
+      "col": 1,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "robo_de_vehiculo",
+      "name": "Robo de vehículo",
+      "category": "delitos",
+      "severity": "medium",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 90,
+      "xp": 50,
+      "file": "events/tiles/delitos/robo_de_vehiculo.png",
+      "w": 138,
+      "h": 106,
+      "row": 0,
+      "col": 2,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "violencia_domestica",
+      "name": "Violencia doméstica",
+      "category": "delitos",
+      "severity": "high",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 150,
+      "xp": 100,
+      "file": "events/tiles/delitos/violencia_domestica.png",
+      "w": 137,
+      "h": 106,
+      "row": 0,
+      "col": 3,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "pelea_en_la_calle",
+      "name": "Pelea en la calle",
+      "category": "delitos",
+      "severity": "medium",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 60,
+      "xp": 50,
+      "file": "events/tiles/delitos/pelea_en_la_calle.png",
+      "w": 138,
+      "h": 106,
+      "row": 0,
+      "col": 4,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "venta_de_drogas",
+      "name": "Venta de drogas",
+      "category": "delitos",
+      "severity": "medium",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 120,
+      "xp": 50,
+      "file": "events/tiles/delitos/venta_de_drogas.png",
+      "w": 138,
+      "h": 106,
+      "row": 0,
+      "col": 5,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "vandalismo",
+      "name": "Vandalismo",
+      "category": "delitos",
+      "severity": "low",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 45,
+      "xp": 25,
+      "file": "events/tiles/delitos/vandalismo.png",
+      "w": 137,
+      "h": 106,
+      "row": 0,
+      "col": 6,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "robo_en_vivienda",
+      "name": "Robo en vivienda",
+      "category": "delitos",
+      "severity": "high",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 150,
+      "xp": 100,
+      "file": "events/tiles/delitos/robo_en_vivienda.png",
+      "w": 138,
+      "h": 106,
+      "row": 0,
+      "col": 7,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "secuestro",
+      "name": "Secuestro",
+      "category": "delitos",
+      "severity": "critical",
+      "units": [
+        "policia",
+        "swat"
+      ],
+      "durationSec": 360,
+      "xp": 200,
+      "file": "events/tiles/delitos/secuestro.png",
+      "w": 138,
+      "h": 106,
+      "row": 0,
+      "col": 8,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "huida_de_la_ley",
+      "name": "Huida de la ley",
+      "category": "delitos",
+      "severity": "high",
+      "units": [
+        "policia",
+        "trafico"
+      ],
+      "durationSec": 180,
+      "xp": 100,
+      "file": "events/tiles/delitos/huida_de_la_ley.png",
+      "w": 138,
+      "h": 106,
+      "row": 0,
+      "col": 9,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "incendio_de_coche",
+      "name": "Incendio de coche",
+      "category": "emergencias",
+      "severity": "high",
+      "units": [
+        "bomberos"
+      ],
+      "durationSec": 90,
+      "xp": 100,
+      "file": "events/tiles/emergencias/incendio_de_coche.png",
+      "w": 137,
+      "h": 112,
+      "row": 1,
+      "col": 0,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "incendio_en_edificio",
+      "name": "Incendio en edificio",
+      "category": "emergencias",
+      "severity": "critical",
+      "units": [
+        "bomberos",
+        "samur"
+      ],
+      "durationSec": 300,
+      "xp": 200,
+      "file": "events/tiles/emergencias/incendio_en_edificio.png",
+      "w": 138,
+      "h": 112,
+      "row": 1,
+      "col": 1,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "explosion",
+      "name": "Explosión",
+      "category": "emergencias",
+      "severity": "critical",
+      "units": [
+        "bomberos",
+        "policia",
+        "samur"
+      ],
+      "durationSec": 240,
+      "xp": 200,
+      "file": "events/tiles/emergencias/explosion.png",
+      "w": 138,
+      "h": 112,
+      "row": 1,
+      "col": 2,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "fuga_de_gas",
+      "name": "Fuga de gas",
+      "category": "emergencias",
+      "severity": "high",
+      "units": [
+        "bomberos"
+      ],
+      "durationSec": 120,
+      "xp": 100,
+      "file": "events/tiles/emergencias/fuga_de_gas.png",
+      "w": 137,
+      "h": 112,
+      "row": 1,
+      "col": 3,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "accidente_multiple",
+      "name": "Accidente múltiple",
+      "category": "emergencias",
+      "severity": "high",
+      "units": [
+        "samur",
+        "policia",
+        "trafico"
+      ],
+      "durationSec": 180,
+      "xp": 100,
+      "file": "events/tiles/emergencias/accidente_multiple.png",
+      "w": 138,
+      "h": 112,
+      "row": 1,
+      "col": 4,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "persona_atrapada",
+      "name": "Persona atrapada",
+      "category": "emergencias",
+      "severity": "critical",
+      "units": [
+        "bomberos",
+        "samur"
+      ],
+      "durationSec": 180,
+      "xp": 200,
+      "file": "events/tiles/emergencias/persona_atrapada.png",
+      "w": 138,
+      "h": 112,
+      "row": 1,
+      "col": 5,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "arbol_caido",
+      "name": "Árbol caído",
+      "category": "emergencias",
+      "severity": "medium",
+      "units": [
+        "bomberos",
+        "trafico"
+      ],
+      "durationSec": 90,
+      "xp": 50,
+      "file": "events/tiles/emergencias/arbol_caido.png",
+      "w": 137,
+      "h": 112,
+      "row": 1,
+      "col": 6,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "inundacion",
+      "name": "Inundación",
+      "category": "emergencias",
+      "severity": "high",
+      "units": [
+        "bomberos",
+        "policia"
+      ],
+      "durationSec": 200,
+      "xp": 100,
+      "file": "events/tiles/emergencias/inundacion.png",
+      "w": 138,
+      "h": 112,
+      "row": 1,
+      "col": 7,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "apagon",
+      "name": "Apagón",
+      "category": "emergencias",
+      "severity": "medium",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 120,
+      "xp": 50,
+      "file": "events/tiles/emergencias/apagon.png",
+      "w": 138,
+      "h": 112,
+      "row": 1,
+      "col": 8,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "derrumbe",
+      "name": "Derrumbe",
+      "category": "emergencias",
+      "severity": "critical",
+      "units": [
+        "bomberos",
+        "samur",
+        "policia"
+      ],
+      "durationSec": 300,
+      "xp": 200,
+      "file": "events/tiles/emergencias/derrumbe.png",
+      "w": 138,
+      "h": 112,
+      "row": 1,
+      "col": 9,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "control_de_trafico",
+      "name": "Control de tráfico",
+      "category": "trafico",
+      "severity": "low",
+      "units": [
+        "trafico"
+      ],
+      "durationSec": 60,
+      "xp": 25,
+      "file": "events/tiles/trafico/control_de_trafico.png",
+      "w": 137,
+      "h": 104,
+      "row": 2,
+      "col": 0,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "exceso_de_velocidad",
+      "name": "Exceso de velocidad",
+      "category": "trafico",
+      "severity": "low",
+      "units": [
+        "trafico"
+      ],
+      "durationSec": 45,
+      "xp": 25,
+      "file": "events/tiles/trafico/exceso_de_velocidad.png",
+      "w": 138,
+      "h": 104,
+      "row": 2,
+      "col": 1,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "accidente_leve",
+      "name": "Accidente leve",
+      "category": "trafico",
+      "severity": "medium",
+      "units": [
+        "trafico",
+        "policia"
+      ],
+      "durationSec": 75,
+      "xp": 50,
+      "file": "events/tiles/trafico/accidente_leve.png",
+      "w": 138,
+      "h": 104,
+      "row": 2,
+      "col": 2,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "vuelco",
+      "name": "Vuelco",
+      "category": "trafico",
+      "severity": "high",
+      "units": [
+        "trafico",
+        "samur",
+        "bomberos"
+      ],
+      "durationSec": 150,
+      "xp": 100,
+      "file": "events/tiles/trafico/vuelco.png",
+      "w": 137,
+      "h": 104,
+      "row": 2,
+      "col": 3,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "atropello",
+      "name": "Atropello",
+      "category": "trafico",
+      "severity": "critical",
+      "units": [
+        "samur",
+        "policia",
+        "trafico"
+      ],
+      "durationSec": 180,
+      "xp": 200,
+      "file": "events/tiles/trafico/atropello.png",
+      "w": 138,
+      "h": 104,
+      "row": 2,
+      "col": 4,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "conduccion_temeraria",
+      "name": "Conducción temeraria",
+      "category": "trafico",
+      "severity": "medium",
+      "units": [
+        "trafico"
+      ],
+      "durationSec": 60,
+      "xp": 50,
+      "file": "events/tiles/trafico/conduccion_temeraria.png",
+      "w": 138,
+      "h": 104,
+      "row": 2,
+      "col": 5,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "persecucion",
+      "name": "Persecución",
+      "category": "trafico",
+      "severity": "critical",
+      "units": [
+        "policia",
+        "trafico"
+      ],
+      "durationSec": 200,
+      "xp": 200,
+      "file": "events/tiles/trafico/persecucion.png",
+      "w": 137,
+      "h": 104,
+      "row": 2,
+      "col": 6,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "vehiculo_averiado",
+      "name": "Vehículo averiado",
+      "category": "trafico",
+      "severity": "low",
+      "units": [
+        "trafico"
+      ],
+      "durationSec": 45,
+      "xp": 25,
+      "file": "events/tiles/trafico/vehiculo_averiado.png",
+      "w": 138,
+      "h": 104,
+      "row": 2,
+      "col": 7,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "conductor_ebrio",
+      "name": "Conductor ebrio",
+      "category": "trafico",
+      "severity": "high",
+      "units": [
+        "trafico",
+        "policia"
+      ],
+      "durationSec": 90,
+      "xp": 100,
+      "file": "events/tiles/trafico/conductor_ebrio.png",
+      "w": 138,
+      "h": 104,
+      "row": 2,
+      "col": 8,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "camion_en_problemas",
+      "name": "Camión en problemas",
+      "category": "trafico",
+      "severity": "medium",
+      "units": [
+        "trafico",
+        "bomberos"
+      ],
+      "durationSec": 120,
+      "xp": 50,
+      "file": "events/tiles/trafico/camion_en_problemas.png",
+      "w": 138,
+      "h": 104,
+      "row": 2,
+      "col": 9,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "persona_desaparecida",
+      "name": "Persona desaparecida",
+      "category": "civiles",
+      "severity": "high",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 240,
+      "xp": 100,
+      "file": "events/tiles/civiles/persona_desaparecida.png",
+      "w": 137,
+      "h": 96,
+      "row": 3,
+      "col": 0,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "persona_perdida",
+      "name": "Persona perdida",
+      "category": "civiles",
+      "severity": "medium",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 90,
+      "xp": 50,
+      "file": "events/tiles/civiles/persona_perdida.png",
+      "w": 138,
+      "h": 96,
+      "row": 3,
+      "col": 1,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "persona_agresiva",
+      "name": "Persona agresiva",
+      "category": "civiles",
+      "severity": "high",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 90,
+      "xp": 100,
+      "file": "events/tiles/civiles/persona_agresiva.png",
+      "w": 138,
+      "h": 96,
+      "row": 3,
+      "col": 2,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "persona_en_crisis",
+      "name": "Persona en crisis",
+      "category": "civiles",
+      "severity": "high",
+      "units": [
+        "policia",
+        "samur"
+      ],
+      "durationSec": 120,
+      "xp": 100,
+      "file": "events/tiles/civiles/persona_en_crisis.png",
+      "w": 137,
+      "h": 96,
+      "row": 3,
+      "col": 3,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "auxilio_medico",
+      "name": "Auxilio médico",
+      "category": "civiles",
+      "severity": "high",
+      "units": [
+        "samur"
+      ],
+      "durationSec": 90,
+      "xp": 100,
+      "file": "events/tiles/civiles/auxilio_medico.png",
+      "w": 138,
+      "h": 96,
+      "row": 3,
+      "col": 4,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "animal_suelto",
+      "name": "Animal suelto",
+      "category": "civiles",
+      "severity": "low",
+      "units": [
+        "policia",
+        "k9"
+      ],
+      "durationSec": 60,
+      "xp": 25,
+      "file": "events/tiles/civiles/animal_suelto.png",
+      "w": 138,
+      "h": 96,
+      "row": 3,
+      "col": 5,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "menor_sin_supervision",
+      "name": "Menor sin supervisión",
+      "category": "civiles",
+      "severity": "medium",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 75,
+      "xp": 50,
+      "file": "events/tiles/civiles/menor_sin_supervision.png",
+      "w": 137,
+      "h": 96,
+      "row": 3,
+      "col": 6,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "persona_intoxicada",
+      "name": "Persona intoxicada",
+      "category": "civiles",
+      "severity": "medium",
+      "units": [
+        "samur",
+        "policia"
+      ],
+      "durationSec": 75,
+      "xp": 50,
+      "file": "events/tiles/civiles/persona_intoxicada.png",
+      "w": 138,
+      "h": 96,
+      "row": 3,
+      "col": 7,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "intento_de_suicidio",
+      "name": "Intento de suicidio",
+      "category": "civiles",
+      "severity": "critical",
+      "units": [
+        "policia",
+        "samur"
+      ],
+      "durationSec": 180,
+      "xp": 200,
+      "file": "events/tiles/civiles/intento_de_suicidio.png",
+      "w": 138,
+      "h": 96,
+      "row": 3,
+      "col": 8,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "manifestacion",
+      "name": "Manifestación",
+      "category": "civiles",
+      "severity": "medium",
+      "units": [
+        "policia",
+        "upr"
+      ],
+      "durationSec": 180,
+      "xp": 50,
+      "file": "events/tiles/civiles/manifestacion.png",
+      "w": 138,
+      "h": 96,
+      "row": 3,
+      "col": 9,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "reunion_sospechosa",
+      "name": "Reunión sospechosa",
+      "category": "organizado",
+      "severity": "medium",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 120,
+      "xp": 50,
+      "file": "events/tiles/organizado/reunion_sospechosa.png",
+      "w": 137,
+      "h": 94,
+      "row": 4,
+      "col": 0,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "laboratorio_ilegal",
+      "name": "Laboratorio ilegal",
+      "category": "organizado",
+      "severity": "critical",
+      "units": [
+        "policia",
+        "swat"
+      ],
+      "durationSec": 300,
+      "xp": 200,
+      "file": "events/tiles/organizado/laboratorio_ilegal.png",
+      "w": 138,
+      "h": 94,
+      "row": 4,
+      "col": 1,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "transporte_de_armas",
+      "name": "Transporte de armas",
+      "category": "organizado",
+      "severity": "critical",
+      "units": [
+        "policia",
+        "swat"
+      ],
+      "durationSec": 240,
+      "xp": 200,
+      "file": "events/tiles/organizado/transporte_de_armas.png",
+      "w": 138,
+      "h": 94,
+      "row": 4,
+      "col": 2,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "redada",
+      "name": "Redada",
+      "category": "organizado",
+      "severity": "critical",
+      "units": [
+        "swat",
+        "policia"
+      ],
+      "durationSec": 240,
+      "xp": 200,
+      "file": "events/tiles/organizado/redada.png",
+      "w": 137,
+      "h": 94,
+      "row": 4,
+      "col": 3,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "seguimiento",
+      "name": "Seguimiento",
+      "category": "organizado",
+      "severity": "medium",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 180,
+      "xp": 50,
+      "file": "events/tiles/organizado/seguimiento.png",
+      "w": 138,
+      "h": 94,
+      "row": 4,
+      "col": 4,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "casa_segura",
+      "name": "Casa segura",
+      "category": "organizado",
+      "severity": "high",
+      "units": [
+        "policia",
+        "swat"
+      ],
+      "durationSec": 200,
+      "xp": 100,
+      "file": "events/tiles/organizado/casa_segura.png",
+      "w": 138,
+      "h": 94,
+      "row": 4,
+      "col": 5,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "contrabando",
+      "name": "Contrabando",
+      "category": "organizado",
+      "severity": "high",
+      "units": [
+        "policia",
+        "trafico"
+      ],
+      "durationSec": 180,
+      "xp": 100,
+      "file": "events/tiles/organizado/contrabando.png",
+      "w": 137,
+      "h": 94,
+      "row": 4,
+      "col": 6,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "ciberdelito",
+      "name": "Ciberdelito",
+      "category": "organizado",
+      "severity": "medium",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 150,
+      "xp": 50,
+      "file": "events/tiles/organizado/ciberdelito.png",
+      "w": 138,
+      "h": 94,
+      "row": 4,
+      "col": 7,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "corrupcion",
+      "name": "Corrupción",
+      "category": "organizado",
+      "severity": "high",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 240,
+      "xp": 100,
+      "file": "events/tiles/organizado/corrupcion.png",
+      "w": 138,
+      "h": 94,
+      "row": 4,
+      "col": 8,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "trata_de_personas",
+      "name": "Trata de personas",
+      "category": "organizado",
+      "severity": "critical",
+      "units": [
+        "policia",
+        "swat"
+      ],
+      "durationSec": 360,
+      "xp": 200,
+      "file": "events/tiles/organizado/trata_de_personas.png",
+      "w": 138,
+      "h": 94,
+      "row": 4,
+      "col": 9,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "dia_soleado",
+      "name": "Día soleado",
+      "category": "clima",
+      "severity": "low",
+      "units": [],
+      "durationSec": 0,
+      "xp": 25,
+      "file": "events/tiles/clima/dia_soleado.png",
+      "w": 137,
+      "h": 72,
+      "row": 5,
+      "col": 0,
+      "dispatchable": false,
+      "weather": true
+    },
+    {
+      "id": "lluvia",
+      "name": "Lluvia",
+      "category": "clima",
+      "severity": "low",
+      "units": [
+        "trafico"
+      ],
+      "durationSec": 0,
+      "xp": 25,
+      "file": "events/tiles/clima/lluvia.png",
+      "w": 138,
+      "h": 72,
+      "row": 5,
+      "col": 1,
+      "dispatchable": false,
+      "weather": true
+    },
+    {
+      "id": "tormenta_electrica",
+      "name": "Tormenta eléctrica",
+      "category": "clima",
+      "severity": "medium",
+      "units": [
+        "bomberos",
+        "trafico"
+      ],
+      "durationSec": 0,
+      "xp": 50,
+      "file": "events/tiles/clima/tormenta_electrica.png",
+      "w": 138,
+      "h": 72,
+      "row": 5,
+      "col": 2,
+      "dispatchable": false,
+      "weather": true
+    },
+    {
+      "id": "niebla",
+      "name": "Niebla",
+      "category": "clima",
+      "severity": "medium",
+      "units": [
+        "trafico"
+      ],
+      "durationSec": 0,
+      "xp": 50,
+      "file": "events/tiles/clima/niebla.png",
+      "w": 137,
+      "h": 72,
+      "row": 5,
+      "col": 3,
+      "dispatchable": false,
+      "weather": true
+    },
+    {
+      "id": "nieve",
+      "name": "Nieve",
+      "category": "clima",
+      "severity": "medium",
+      "units": [
+        "trafico"
+      ],
+      "durationSec": 0,
+      "xp": 50,
+      "file": "events/tiles/clima/nieve.png",
+      "w": 138,
+      "h": 72,
+      "row": 5,
+      "col": 4,
+      "dispatchable": false,
+      "weather": true
+    },
+    {
+      "id": "viento_fuerte",
+      "name": "Viento fuerte",
+      "category": "clima",
+      "severity": "medium",
+      "units": [
+        "bomberos",
+        "trafico"
+      ],
+      "durationSec": 0,
+      "xp": 50,
+      "file": "events/tiles/clima/viento_fuerte.png",
+      "w": 138,
+      "h": 72,
+      "row": 5,
+      "col": 5,
+      "dispatchable": false,
+      "weather": true
+    },
+    {
+      "id": "ola_de_calor",
+      "name": "Ola de calor",
+      "category": "clima",
+      "severity": "medium",
+      "units": [
+        "samur"
+      ],
+      "durationSec": 0,
+      "xp": 50,
+      "file": "events/tiles/clima/ola_de_calor.png",
+      "w": 137,
+      "h": 72,
+      "row": 5,
+      "col": 6,
+      "dispatchable": false,
+      "weather": true
+    },
+    {
+      "id": "tormenta_tropical",
+      "name": "Tormenta tropical",
+      "category": "clima",
+      "severity": "high",
+      "units": [
+        "bomberos",
+        "policia",
+        "trafico"
+      ],
+      "durationSec": 0,
+      "xp": 100,
+      "file": "events/tiles/clima/tormenta_tropical.png",
+      "w": 138,
+      "h": 72,
+      "row": 5,
+      "col": 7,
+      "dispatchable": false,
+      "weather": true
+    },
+    {
+      "id": "granizo",
+      "name": "Granizo",
+      "category": "clima",
+      "severity": "medium",
+      "units": [
+        "trafico"
+      ],
+      "durationSec": 0,
+      "xp": 50,
+      "file": "events/tiles/clima/granizo.png",
+      "w": 138,
+      "h": 72,
+      "row": 5,
+      "col": 8,
+      "dispatchable": false,
+      "weather": true
+    },
+    {
+      "id": "inundaciones",
+      "name": "Inundaciones",
+      "category": "clima",
+      "severity": "high",
+      "units": [
+        "bomberos",
+        "policia"
+      ],
+      "durationSec": 0,
+      "xp": 100,
+      "file": "events/tiles/clima/inundaciones.png",
+      "w": 138,
+      "h": 72,
+      "row": 5,
+      "col": 9,
+      "dispatchable": false,
+      "weather": true
+    },
+    {
+      "id": "concierto",
+      "name": "Concierto",
+      "category": "especiales",
+      "severity": "medium",
+      "units": [
+        "policia",
+        "upr"
+      ],
+      "durationSec": 240,
+      "xp": 50,
+      "file": "events/tiles/especiales/concierto.png",
+      "w": 137,
+      "h": 92,
+      "row": 6,
+      "col": 0,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "evento_deportivo",
+      "name": "Evento deportivo",
+      "category": "especiales",
+      "severity": "medium",
+      "units": [
+        "policia",
+        "upr",
+        "samur"
+      ],
+      "durationSec": 240,
+      "xp": 50,
+      "file": "events/tiles/especiales/evento_deportivo.png",
+      "w": 138,
+      "h": 92,
+      "row": 6,
+      "col": 1,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "feria",
+      "name": "Feria",
+      "category": "especiales",
+      "severity": "low",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 180,
+      "xp": 25,
+      "file": "events/tiles/especiales/feria.png",
+      "w": 138,
+      "h": 92,
+      "row": 6,
+      "col": 2,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "desfile",
+      "name": "Desfile",
+      "category": "especiales",
+      "severity": "medium",
+      "units": [
+        "policia",
+        "upr",
+        "trafico"
+      ],
+      "durationSec": 180,
+      "xp": 50,
+      "file": "events/tiles/especiales/desfile.png",
+      "w": 137,
+      "h": 92,
+      "row": 6,
+      "col": 3,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "visita_oficial",
+      "name": "Visita oficial",
+      "category": "especiales",
+      "severity": "high",
+      "units": [
+        "policia",
+        "swat",
+        "upr"
+      ],
+      "durationSec": 300,
+      "xp": 100,
+      "file": "events/tiles/especiales/visita_oficial.png",
+      "w": 138,
+      "h": 92,
+      "row": 6,
+      "col": 4,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "protesta",
+      "name": "Protesta",
+      "category": "especiales",
+      "severity": "high",
+      "units": [
+        "policia",
+        "upr"
+      ],
+      "durationSec": 200,
+      "xp": 100,
+      "file": "events/tiles/especiales/protesta.png",
+      "w": 138,
+      "h": 92,
+      "row": 6,
+      "col": 5,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "obras",
+      "name": "Obras",
+      "category": "especiales",
+      "severity": "low",
+      "units": [
+        "trafico"
+      ],
+      "durationSec": 120,
+      "xp": 25,
+      "file": "events/tiles/especiales/obras.png",
+      "w": 137,
+      "h": 92,
+      "row": 6,
+      "col": 6,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "festivo",
+      "name": "Festivo",
+      "category": "especiales",
+      "severity": "low",
+      "units": [
+        "policia"
+      ],
+      "durationSec": 180,
+      "xp": 25,
+      "file": "events/tiles/especiales/festivo.png",
+      "w": 138,
+      "h": 92,
+      "row": 6,
+      "col": 7,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "accidente_portuario",
+      "name": "Accidente portuario",
+      "category": "especiales",
+      "severity": "critical",
+      "units": [
+        "bomberos",
+        "samur",
+        "policia"
+      ],
+      "durationSec": 300,
+      "xp": 200,
+      "file": "events/tiles/especiales/accidente_portuario.png",
+      "w": 138,
+      "h": 92,
+      "row": 6,
+      "col": 8,
+      "dispatchable": true,
+      "weather": false
+    },
+    {
+      "id": "operacion_especial",
+      "name": "Operación especial",
+      "category": "especiales",
+      "severity": "critical",
+      "units": [
+        "swat",
+        "policia"
+      ],
+      "durationSec": 360,
+      "xp": 200,
+      "file": "events/tiles/especiales/operacion_especial.png",
+      "w": 138,
+      "h": 92,
+      "row": 6,
+      "col": 9,
+      "dispatchable": true,
+      "weather": false
+    }
+  ]
+}
