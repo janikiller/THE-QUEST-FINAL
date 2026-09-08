@@ -10,6 +10,8 @@ signal request_back_to_map
 @onready var mission_screen: Control = $MissionScreen
 @onready var inventory_screen: Control = $InventoryScreen
 
+var _opening_mission: bool = false
+
 
 func _ready() -> void:
 	show_map()
@@ -40,9 +42,13 @@ func show_missions() -> void:
 
 
 func show_mission(mission_id: String = "") -> void:
+	if _opening_mission:
+		return
+	_opening_mission = true
 	if mission_id != "":
 		GameState.select_mission(mission_id)
 	if GameState.get_selected_mission().is_empty():
+		_opening_mission = false
 		show_missions()
 		return
 	map_hud.visible = false
@@ -53,6 +59,7 @@ func show_mission(mission_id: String = "") -> void:
 	if world:
 		world.modulate = Color(0.15, 0.18, 0.25, 1)
 	request_open_mission.emit(GameState.selected_mission_id)
+	_opening_mission = false
 
 
 func show_inventory(patrol_id: String = "") -> void:
@@ -68,6 +75,8 @@ func show_inventory(patrol_id: String = "") -> void:
 
 
 func _on_selection(mission_id: String) -> void:
-	# Opening from map marker while on map
-	if mission_id != "" and map_hud.visible:
+	# Abrir ficha solo al seleccionar desde el mapa (evita reentrada con show_mission).
+	if _opening_mission:
+		return
+	if mission_id != "" and map_hud.visible and not mission_screen.visible:
 		show_mission(mission_id)

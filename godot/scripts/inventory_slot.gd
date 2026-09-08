@@ -69,9 +69,11 @@ func _refresh() -> void:
 	else:
 		icon.texture = null
 	qty_label.text = ("x%d" % quantity) if quantity > 1 else ""
-	var nombre := str(def.get("name", item_id))
-	var desc := str(def.get("description", ""))
-	tooltip_text = "%s\n%s" % [nombre, desc]
+	# Tooltip nativo desactivado: la pantalla de inventario muestra uno propio.
+	tooltip_text = ""
+	# Datos para panel custom
+	set_meta("item_name", str(def.get("name", item_id)))
+	set_meta("item_desc", str(def.get("description", "")))
 
 
 func _get_drag_data(_at: Vector2) -> Variant:

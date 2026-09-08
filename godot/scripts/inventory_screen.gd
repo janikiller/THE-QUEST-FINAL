@@ -70,11 +70,13 @@ func _unhandled_input(event: InputEvent) -> void:
 func _build_filters() -> void:
 	for c in filter_row.get_children():
 		c.queue_free()
+	var group := ButtonGroup.new()
 	for cat in ItemDB.categories:
 		var id := str(cat.get("id", "todos"))
 		var b := Button.new()
 		b.text = str(cat.get("label", id.to_upper()))
 		b.toggle_mode = true
+		b.button_group = group
 		b.button_pressed = id == filter_cat
 		b.pressed.connect(_on_filter.bind(id))
 		filter_row.add_child(b)

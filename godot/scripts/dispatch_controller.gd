@@ -90,6 +90,11 @@ func _resolve_scene(patrol: Dictionary, delta: float) -> void:
 	if _scene_timers[pid] < need:
 		return
 
+	# Evitar reentrada mientras esperamos limpiar el marcador
+	if patrol.get("_resolving_lock", false):
+		return
+	patrol["_resolving_lock"] = true
+
 	var success := _roll_success(patrol, mission)
 	var report := _make_report(success, mission)
 	mission["status"] = "resolved" if success else "failed"
@@ -104,15 +109,17 @@ func _resolve_scene(patrol: Dictionary, delta: float) -> void:
 		if str(patrol.get("specialty", "")) == str(mission.get("category", "")):
 			bonus = 2
 		GameState.add_prestige(bonus + int(mission.get("xp", 50) / 100))
-	else:
-		GameState.add_prestige(0)
 
 	patrol["status"] = "returning"
 	patrol["report"] = report
+	patrol.erase("_resolving_lock")
 	GameState.set_patrol(patrol)
 	_scene_timers.erase(pid)
 
-	# Clear marker after a short beat
+	_clear_mission_later(mission_id)
+
+
+func _clear_mission_later(mission_id: String) -> void:
 	await get_tree().create_timer(2.2).timeout
 	if GameState.active_missions.has(mission_id):
 		GameState.remove_mission(mission_id)

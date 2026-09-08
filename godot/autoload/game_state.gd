@@ -106,6 +106,8 @@ func add_prestige(delta: int) -> void:
 
 
 func select_mission(mission_id: String) -> void:
+	if selected_mission_id == mission_id:
+		return
 	selected_mission_id = mission_id
 	selection_changed.emit(mission_id)
 

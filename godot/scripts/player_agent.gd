@@ -8,6 +8,7 @@ extends CharacterBody2D
 @onready var shadow: ColorRect = $Shadow
 
 var facing: Vector2 = Vector2.DOWN
+var can_move: bool = true
 
 
 func _ready() -> void:
@@ -19,17 +20,25 @@ func _ready() -> void:
 
 
 func _physics_process(_delta: float) -> void:
+	if not can_move:
+		velocity = Vector2.ZERO
+		return
 	var dir := Vector2(
-		Input.get_axis("ui_left", "ui_right"),
-		Input.get_axis("ui_up", "ui_down")
+		Input.get_axis("move_left", "move_right"),
+		Input.get_axis("move_up", "move_down")
 	)
+	# Fallback a flechas del UI por si el proyecto se abre sin el input map nuevo
+	if dir.length() < 0.1:
+		dir = Vector2(
+			Input.get_axis("ui_left", "ui_right"),
+			Input.get_axis("ui_up", "ui_down")
+		)
 	if dir.length() > 0.1:
 		facing = dir.normalized()
 		velocity = facing * speed
 	else:
 		velocity = Vector2.ZERO
 	move_and_slide()
-	# Keep inside map
 	var size: Array = GameState.station.get("map_size", [1536, 1024])
 	global_position.x = clampf(global_position.x, 40.0, float(size[0]) - 40.0)
 	global_position.y = clampf(global_position.y, 40.0, float(size[1]) - 40.0)

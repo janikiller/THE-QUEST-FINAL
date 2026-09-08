@@ -14,7 +14,7 @@ const PatrolUnitScene := preload("res://scenes/patrol_unit.tscn")
 
 var _markers: Dictionary = {}
 var _patrol_nodes: Dictionary = {}
-var show_district_overlays: bool = true
+var show_district_overlays: bool = false
 
 
 func _ready() -> void:
@@ -27,6 +27,10 @@ func _ready() -> void:
 	GameState.mission_removed.connect(_on_mission_removed)
 	GameState.patrol_updated.connect(_on_patrol_updated)
 	GameState.selection_changed.connect(_on_selection_changed)
+
+
+func refresh_district_overlays() -> void:
+	_draw_district_overlays()
 
 
 func _setup_map_texture() -> void:
@@ -116,8 +120,9 @@ func _on_selection_changed(mission_id: String) -> void:
 
 
 func _on_marker_pressed(mission_id: String) -> void:
-	GameState.select_mission(mission_id)
+	# Solo emitimos; GameState + UIRouter abren la ficha sin doble select.
 	mission_clicked.emit(mission_id)
+	GameState.select_mission(mission_id)
 
 
 func random_point_in_district(district: Dictionary) -> Vector2:

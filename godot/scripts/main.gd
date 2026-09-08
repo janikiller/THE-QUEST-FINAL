@@ -21,16 +21,20 @@ func _ready() -> void:
 		call_deferred("_smoke")
 	if OS.get_environment("TQ_INV") == "1":
 		call_deferred("_inv_check")
+	if OS.get_environment("TQ_PLAYTEST") == "1":
+		call_deferred("_playtest")
 
 
 func _process(_delta: float) -> void:
-	# Camera follows player on map (game feel)
-	if is_instance_valid(player) and $UI/UIRouter/MapHud.visible:
-		camera.global_position = camera.global_position.lerp(player.global_position, 0.15)
+	var on_map: bool = $UI/UIRouter/MapHud.visible
+	if is_instance_valid(player):
+		player.can_move = on_map
+		if on_map:
+			camera.global_position = camera.global_position.lerp(player.global_position, 0.15)
 
 
 func _on_mission_clicked(mission_id: String) -> void:
-	GameState.select_mission(mission_id)
+	# ui_router abre la ficha al cambiar selección; evitamos doble select.
 	$UI/UIRouter.show_mission(mission_id)
 
 
@@ -88,4 +92,98 @@ func _inv_check() -> void:
 		get_tree().quit(0)
 	else:
 		print("INV_ERRORS ", errors)
+		get_tree().quit(1)
+
+
+func _playtest() -> void:
+	## Prueba integral headless: spillover, misiones, despacho, inventario, sin crash.
+	var errors: Array = []
+	await get_tree().create_timer(0.6).timeout
+	print("PLAYTEST start")
+
+	# 1) No stack overflow al seleccionar misión
+	await get_tree().create_timer(0.8).timeout
+	if GameState.active_missions.is_empty():
+		errors.append("no missions spawned")
+	else:
+		var mid0: String = String(GameState.active_missions.keys()[0])
+		print("PLAYTEST open mission ", mid0)
+		$UI/UIRouter.show_mission(mid0)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		if not $UI/UIRouter/MissionScreen.visible:
+			errors.append("mission screen not visible")
+		# Re-select same id must not recurse
+		GameState.select_mission(mid0)
+		GameState.select_mission(mid0)
+		await get_tree().process_frame
+		print("PLAYTEST selection ok (no overflow)")
+
+	# 2) Volver al mapa
+	$UI/UIRouter.show_map()
+	await get_tree().process_frame
+	if not $UI/UIRouter/MapHud.visible:
+		errors.append("map hud not visible")
+
+	# 3) Lista de misiones
+	$UI/UIRouter.show_missions()
+	await get_tree().process_frame
+	if not $UI/UIRouter/MissionsMenu.visible:
+		errors.append("missions menu not visible")
+	$UI/UIRouter.show_map()
+
+	# 4) Inventario + drag state
+	$UI/UIRouter.show_inventory("alpha")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var inv = $UI/UIRouter/InventoryScreen
+	if not inv.visible:
+		errors.append("inventory not visible")
+	var a := GameState.get_slot_item("alpha", "shared", 1)
+	var b := GameState.get_slot_item("alpha", "agents/0/principal", 0)
+	GameState.swap_inventory_slots("alpha", "shared", 1, "agents/0/principal", 0)
+	var a2 := GameState.get_slot_item("alpha", "shared", 1)
+	var b2 := GameState.get_slot_item("alpha", "agents/0/principal", 0)
+	print("PLAYTEST equip swap ", a, "<->", b, " => ", a2, "/", b2)
+	if b2 != a:
+		errors.append("equip swap failed")
+	inv.close()
+	await get_tree().process_frame
+
+	# 5) Despacho completo
+	if not GameState.active_missions.is_empty() and not GameState.available_patrols().is_empty():
+		var mid: String = ""
+		for m in GameState.active_missions.values():
+			if m.get("status", "") == "open":
+				mid = str(m["id"])
+				break
+		var pid: String = String(GameState.available_patrols()[0]["id"])
+		if mid != "":
+			var dispatch = get_tree().get_first_node_in_group("dispatch")
+			var ok: bool = dispatch.dispatch(mid, pid)
+			print("PLAYTEST dispatch ", ok, " ", mid, "->", pid)
+			if not ok:
+				errors.append("dispatch failed")
+			else:
+				await get_tree().create_timer(1.0).timeout
+				var st := str(GameState.patrols[pid].get("status", ""))
+				print("PLAYTEST patrol status ", st)
+				if st == "available":
+					errors.append("patrol did not leave base")
+
+	# 6) Movimiento jugador
+	var p0: Vector2 = player.global_position
+	player.can_move = true
+	player.velocity = Vector2(200, 0)
+	player.move_and_slide()
+	player.global_position += Vector2(40, 0)
+	if player.global_position.distance_to(p0) < 1.0:
+		errors.append("player did not move")
+	print("PLAYTEST player moved ", p0, "->", player.global_position)
+
+	if errors.is_empty():
+		print("PLAYTEST_OK")
+		get_tree().quit(0)
+	else:
+		print("PLAYTEST_FAIL ", errors)
 		get_tree().quit(1)
