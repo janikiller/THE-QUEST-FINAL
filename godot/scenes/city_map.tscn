@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://bqcitymap0001"]
 
 [ext_resource type="Script" path="res://scripts/city_map.gd" id="1_script"]
-[ext_resource type="Texture2D" path="res://assets/map/city_map.jpg" id="2_map"]
+[ext_resource type="Texture2D" uid="uid://cuftdoty302mn" path="res://assets/map/city_map.jpg" id="2_map"]
 
 [node name="CityMap" type="Node2D"]
 script = ExtResource("1_script")

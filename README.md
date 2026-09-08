@@ -4,7 +4,7 @@ RPG / simulación policial. Hay dos superficies:
 
 ## 1) Godot — Comisaría (juego principal 2D)
 
-Carpeta [`godot/`](godot/): gestiona una comisaría con **mapa de ciudad**, misiones que aparecen, revisión en centralita y **despacho de patrullas por radio**.
+Carpeta [`godot/`](godot/): gestiona una comisaría sobre el **mapa real de la ciudad**, con pestañas **Mapa / Misiones / Patrullas**, misiones por distrito y despacho por radio.
 
 ```bash
 # Abre Godot 4.3+ → Import → selecciona la carpeta godot/
@@ -12,6 +12,8 @@ Carpeta [`godot/`](godot/): gestiona una comisaría con **mapa de ciudad**, misi
 ```
 
 **No tienes que crear nodos.** Escenas, scripts y autoloads ya están en el proyecto.
+
+Imágenes incluidas: mapa de ciudad + mockups de UI en `godot/assets/`.
 
 Detalle: [`godot/README.md`](godot/README.md)
 
