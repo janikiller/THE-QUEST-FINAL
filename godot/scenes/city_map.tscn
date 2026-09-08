@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://bqcitymap0001"]
+[gd_scene load_steps=4 format=3 uid="uid://bqcitymap0001"]
 
 [ext_resource type="Script" path="res://scripts/city_map.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://cuftdoty302mn" path="res://assets/map/city_map.jpg" id="2_map"]
+[ext_resource type="PackedScene" path="res://scenes/weather_layer.tscn" id="3_weather"]
 
 [node name="CityMap" type="Node2D"]
 script = ExtResource("1_script")
@@ -55,3 +56,5 @@ theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 12
 text = "COMISARÍA"
 horizontal_alignment = 1
+
+[node name="WeatherLayer" parent="." instance=ExtResource("3_weather")]

@@ -257,10 +257,14 @@ func _playtest() -> void:
 			errors.append("tactical mission screen not visible")
 		else:
 			print("PLAYTEST tactical screen ok")
-	if not ResourceLoader.exists("res://assets/missions/cards/atraco_tienda.jpg"):
-		errors.append("atraco card missing")
-	if not ResourceLoader.exists("res://assets/ui/police_badge_logo.png"):
-		errors.append("police badge missing")
+	if not ResourceLoader.exists("res://assets/audio/music/comisaria_theme_loop.ogg"):
+		errors.append("music missing")
+	if not ResourceLoader.exists("res://assets/audio/ambience/rain_medium_loop.ogg"):
+		errors.append("rain ambience missing")
+	GameState.set_weather("storm")
+	if GameState.weather != "storm":
+		errors.append("weather not storm")
+	print("PLAYTEST weather=", GameState.weather, " music=", AudioDirector.music_on)
 
 	if errors.is_empty():
 		print("PLAYTEST_OK")

@@ -16,6 +16,7 @@ GameState="*res://autoload/game_state.gd"
 RadioBus="*res://autoload/radio_bus.gd"
 ItemDB="*res://autoload/item_db.gd"
 RoadNav="*res://autoload/road_nav.gd"
+AudioDirector="*res://autoload/audio_director.gd"
 
 [display]
 

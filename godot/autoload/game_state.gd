@@ -8,6 +8,9 @@ signal mission_updated(mission: Dictionary)
 signal mission_removed(mission_id: String)
 signal patrol_updated(patrol: Dictionary)
 signal selection_changed(mission_id: String)
+signal weather_changed(weather: String)
+signal lightning_flash
+signal time_speed_changed(speed: float)
 
 var station: Dictionary = {}
 var events_catalog: Array = []
@@ -19,8 +22,10 @@ var prestige: int = 0
 var selected_mission_id: String = ""
 ## Multiplicador de velocidad de partida (1, 4, 16, 60). Afecta el reloj del día/noche.
 var time_speed: float = 1.0
-signal time_speed_changed(speed: float)
+## Clima actual: clear | drizzle | rain | storm
+var weather: String = "clear"
 var _last_resolved: Dictionary = {}
+var _weather_check_minute: int = -1
 
 ## mission_id -> mission dict
 var active_missions: Dictionary = {}
@@ -43,6 +48,13 @@ func _ready() -> void:
 	_init_inventories()
 	emit_time()
 	prestige_changed.emit(prestige)
+	# Arranque con algo de atmósfera
+	if time_of_day() == "night":
+		set_weather("rain")
+	elif time_of_day() == "dusk":
+		set_weather("drizzle")
+	else:
+		set_weather("clear")
 
 
 func _load_data() -> void:
@@ -124,6 +136,72 @@ func tick_minutes(amount: int = 1) -> void:
 		minute -= 60
 		hour = (hour + 1) % 24
 	emit_time()
+	_maybe_update_weather()
+
+
+func set_weather(w: String) -> void:
+	if w == weather:
+		return
+	weather = w
+	weather_changed.emit(weather)
+
+
+func cycle_weather() -> void:
+	match weather:
+		"clear":
+			set_weather("drizzle")
+		"drizzle":
+			set_weather("rain")
+		"rain":
+			set_weather("storm")
+		_:
+			set_weather("clear")
+
+
+func weather_label() -> String:
+	match weather:
+		"drizzle":
+			return "LLOVIZNA"
+		"rain":
+			return "LLUVIA"
+		"storm":
+			return "TORMENTA"
+		_:
+			return "DESPEJADO"
+
+
+func request_lightning_flash() -> void:
+	lightning_flash.emit()
+
+
+func _maybe_update_weather() -> void:
+	# Reevaluar clima cada ~20 minutos de juego
+	if minute == _weather_check_minute:
+		return
+	if minute % 20 != 0:
+		return
+	_weather_check_minute = minute
+	var tod := time_of_day()
+	var roll := _rng.randf()
+	var next := "clear"
+	if tod == "night":
+		if roll < 0.25:
+			next = "storm"
+		elif roll < 0.55:
+			next = "rain"
+		elif roll < 0.75:
+			next = "drizzle"
+	elif tod == "dusk":
+		if roll < 0.2:
+			next = "rain"
+		elif roll < 0.45:
+			next = "drizzle"
+	else:
+		if roll < 0.12:
+			next = "rain"
+		elif roll < 0.28:
+			next = "drizzle"
+	set_weather(next)
 
 
 func set_time_speed(speed: float) -> void:
