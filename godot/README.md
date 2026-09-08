@@ -9,14 +9,17 @@ Gestiona una comisaría sobre el **mapa real de la ciudad**: misiones en distrit
 
 ## Abrir
 
-1. Instala / abre **Godot 4.7.2**
-2. **Importar** → carpeta `godot/` de este repo
-3. Selecciona `project.godot` → **Importar y editar**
-4. **F5**
+1. Godot **4.6 / 4.7.2**
+2. Importar carpeta `godot/` → `project.godot`
+3. **F5** (ventana grande 1920×1080)
 
-**No hace falta crear nodos.**
+### Controles
+- **WASD / flechas**: mover tu agente en el mapa
+- **Click** en un marcador: abre la **pantalla de misión**
+- **M** o botón MISIONES: lista de misiones
+- Rueda: zoom del mapa
 
-Si Godot avisa de conversión de versión, acepta. Los assets se reimportan solos la primera vez.
+El mapa es solo para moverte. Las misiones se gestionan en pantallas aparte.
 
 ## Imágenes usadas
 

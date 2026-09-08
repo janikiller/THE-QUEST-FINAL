@@ -1,0 +1,18 @@
+[gd_scene load_steps=5 format=3 uid="uid://bquirouter001"]
+
+[ext_resource type="Script" path="res://scripts/ui_router.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/map_hud.tscn" id="2_maphud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/missions_menu.tscn" id="3_missions"]
+[ext_resource type="PackedScene" path="res://scenes/ui/mission_screen.tscn" id="4_mission"]
+
+[node name="UIRouter" type="CanvasLayer"]
+layer = 20
+script = ExtResource("1_script")
+
+[node name="MapHud" parent="." instance=ExtResource("2_maphud")]
+
+[node name="MissionsMenu" parent="." instance=ExtResource("3_missions")]
+visible = false
+
+[node name="MissionScreen" parent="." instance=ExtResource("4_mission")]
+visible = false

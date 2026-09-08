@@ -1,40 +1,44 @@
 extends Node
-## Escena principal: mapa real + HUD con pestañas.
+## Mapa jugable a pantalla grande + pantallas de misión aparte.
 
 @onready var city_map: Node2D = $World/CityMap
 @onready var camera: Camera2D = $World/Camera2D
 @onready var world: Node2D = $World
+@onready var player: CharacterBody2D = $World/PlayerAgent
+
+const ZOOM_MIN := Vector2(0.85, 0.85)
+const ZOOM_MAX := Vector2(1.8, 1.8)
 
 
 func _ready() -> void:
 	world.add_to_group("world_root")
+	city_map.show_district_overlays = false
 	city_map.mission_clicked.connect(_on_mission_clicked)
-	_frame_camera()
+	camera.zoom = Vector2(1.25, 1.25)
+	camera.position = player.global_position
 	print("COMISARIA_READY missions=", GameState.active_missions.size(), " patrols=", GameState.patrols.size())
 	if OS.get_environment("TQ_SMOKE") == "1":
 		call_deferred("_smoke")
 
 
-func _frame_camera() -> void:
-	var size: Vector2 = city_map.map_size()
-	camera.position = size * 0.5
-	# Leave room for the right dock (~420px) on 1600-wide window
-	camera.zoom = Vector2(0.72, 0.72)
+func _process(_delta: float) -> void:
+	# Camera follows player on map (game feel)
+	if is_instance_valid(player) and $UI/UIRouter/MapHud.visible:
+		camera.global_position = camera.global_position.lerp(player.global_position, 0.15)
 
 
-func _on_mission_clicked(_mission_id: String) -> void:
-	pass
+func _on_mission_clicked(mission_id: String) -> void:
+	GameState.select_mission(mission_id)
+	$UI/UIRouter.show_mission(mission_id)
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not $UI/UIRouter/MapHud.visible:
+		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
-		camera.zoom = (camera.zoom * 1.08).clamp(Vector2(0.45, 0.45), Vector2(1.6, 1.6))
+		camera.zoom = (camera.zoom * 1.08).clamp(ZOOM_MIN, ZOOM_MAX)
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-		camera.zoom = (camera.zoom / 1.08).clamp(Vector2(0.45, 0.45), Vector2(1.6, 1.6))
-	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
-		camera.position -= event.relative / camera.zoom
-	elif event.is_action_pressed("focus_map"):
-		GameState.select_mission("")
+		camera.zoom = (camera.zoom / 1.08).clamp(ZOOM_MIN, ZOOM_MAX)
 
 
 func _smoke() -> void:
@@ -48,9 +52,7 @@ func _smoke() -> void:
 	var pid: String = String(GameState.available_patrols()[0]["id"])
 	var dispatch = get_tree().get_first_node_in_group("dispatch")
 	var ok: bool = dispatch.dispatch(mid, pid)
-	print("COMISARIA_SMOKE dispatch=", ok, " mission=", mid, " patrol=", pid)
-	await get_tree().create_timer(2.5).timeout
-	var st: String = String(GameState.patrols[pid]["status"])
-	print("COMISARIA_SMOKE patrol_status=", st)
+	print("COMISARIA_SMOKE dispatch=", ok)
+	await get_tree().create_timer(1.5).timeout
 	print("COMISARIA_SMOKE_OK")
 	get_tree().quit(0 if ok else 5)

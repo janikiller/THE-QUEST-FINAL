@@ -1,0 +1,241 @@
+[gd_scene load_steps=2 format=3 uid="uid://bqmissionscreen"]
+
+[ext_resource type="Script" path="res://scripts/mission_screen.gd" id="1_script"]
+
+[node name="MissionScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.02, 0.04, 0.08, 0.96)
+
+[node name="Root" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 18
+
+[node name="VBox" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Top" type="HBoxContainer" parent="Root/VBox"]
+layout_mode = 2
+
+[node name="Brand" type="Label" parent="Root/VBox/Top"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 26
+text = "MISIÓN   ·   INTERVENIR · EVALUAR · DECIDIR · RESOLVER"
+
+[node name="TimerLabel" type="Label" parent="Root/VBox/Top"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "00:00"
+
+[node name="Body" type="HBoxContainer" parent="Root/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="LeftNav" type="VBoxContainer" parent="Root/VBox/Body"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="Root/VBox/Body/LeftNav"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "← VOLVER A MISIONES"
+
+[node name="StepLabel" type="Label" parent="Root/VBox/Body/LeftNav"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.78, 0.95, 1)
+theme_override_font_sizes/font_size = 13
+text = "INFORME INICIAL"
+autowrap_mode = 3
+
+[node name="NavHint" type="Label" parent="Root/VBox/Body/LeftNav"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.62, 0.72, 1)
+theme_override_font_sizes/font_size = 12
+text = "1 Informe
+2 Inteligencia
+3 Escenarios
+4 Decisión"
+autowrap_mode = 3
+
+[node name="Center" type="VBoxContainer" parent="Root/VBox/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="TitleRow" type="HBoxContainer" parent="Root/VBox/Body/Center"]
+layout_mode = 2
+
+[node name="MissionTitle" type="Label" parent="Root/VBox/Body/Center/TitleRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "MISIÓN"
+autowrap_mode = 3
+
+[node name="UrgencyBadge" type="Label" parent="Root/VBox/Body/Center/TitleRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.35, 0.4, 1)
+theme_override_font_sizes/font_size = 16
+text = "URGENTE"
+
+[node name="MissionMeta" type="Label" parent="Root/VBox/Body/Center"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+text = ""
+
+[node name="MissionArt" type="TextureRect" parent="Root/VBox/Body/Center"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 280)
+layout_mode = 2
+size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MissionBlurb" type="RichTextLabel" parent="Root/VBox/Body/Center"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 90)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+
+[node name="Right" type="VBoxContainer" parent="Root/VBox/Body"]
+custom_minimum_size = Vector2(340, 0)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="LocTitle" type="Label" parent="Root/VBox/Body/Right"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "UBICACIÓN"
+
+[node name="LocationLabel" type="Label" parent="Root/VBox/Body/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "—"
+autowrap_mode = 3
+
+[node name="RiskLabel" type="Label" parent="Root/VBox/Body/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.45, 0.45, 1)
+theme_override_font_sizes/font_size = 16
+text = "Riesgo"
+
+[node name="ObjTitle" type="Label" parent="Root/VBox/Body/Right"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "OBJETIVOS"
+
+[node name="Objectives" type="RichTextLabel" parent="Root/VBox/Body/Right"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+
+[node name="PatTitle" type="Label" parent="Root/VBox/Body/Right"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "ASIGNAR PATRULLA"
+
+[node name="PatrolList" type="ItemList" parent="Root/VBox/Body/Right"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ActionsTitle" type="Label" parent="Root/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "OPCIONES DE ACTUACIÓN"
+
+[node name="Actions" type="HBoxContainer" parent="Root/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ActionCautious" type="Button" parent="Root/VBox/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "Acercamiento cauteloso
+MENOR RIESGO"
+
+[node name="ActionEntry" type="Button" parent="Root/VBox/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "Entrada inmediata
+MAYOR RIESGO"
+
+[node name="ActionNegotiate" type="Button" parent="Root/VBox/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "Negociar
+UNIDAD ESPECIAL"
+
+[node name="ActionBlock" type="Button" parent="Root/VBox/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "Bloquear fuga
+RESTRINGE MOVIMIENTO"
+
+[node name="Footer" type="HBoxContainer" parent="Root/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="SupportCheck" type="CheckBox" parent="Root/VBox/Footer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 15
+text = "Solicitar apoyo extra"
+
+[node name="ConfirmActions" type="Button" parent="Root/VBox/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "▶  CONFIRMAR ACCIONES"
