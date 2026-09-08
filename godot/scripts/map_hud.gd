@@ -5,7 +5,7 @@ extends Control
 @onready var prestige_label: Label = %PrestigeLabel
 @onready var radio_toast: Label = %RadioToast
 @onready var btn_missions: Button = %BtnMissions
-@onready var btn_inventory: Button = %BtnInventory
+@onready var btn_deck: Button = %BtnInventory
 @onready var btn_weather: Button = %BtnWeather
 @onready var btn_music: Button = %BtnMusic
 @onready var hint: Label = %Hint
@@ -33,7 +33,7 @@ func _ready() -> void:
 	GameState.mission_updated.connect(func(_m): _update_mission_badge())
 	RadioBus.radio_message.connect(_on_radio)
 	btn_missions.pressed.connect(_open_missions)
-	btn_inventory.pressed.connect(_open_inventory)
+	btn_deck.pressed.connect(_open_deck)
 	btn_weather.pressed.connect(func(): GameState.cycle_weather())
 	btn_music.pressed.connect(func(): AudioDirector.toggle_music())
 	AudioDirector.music_toggled.connect(func(on): btn_music.text = "MÚSICA" if on else "MUTE")
@@ -45,7 +45,7 @@ func _ready() -> void:
 	btn_speed_16.pressed.connect(func(): GameState.set_time_speed(16.0))
 	btn_speed_60.pressed.connect(func(): GameState.set_time_speed(60.0))
 	time_label.text = "%02d:%02d" % [GameState.hour, GameState.minute]
-	hint.text = "WASD mover · M misiones · I mazo · C clima · N música · 1-4 velocidad · rueda zoom"
+	hint.text = "WASD mover · clic misión = COMBATE · M lista · I mazo · C clima · N música · 1-4 velocidad"
 	_build_bottom_bar()
 	_update_tod_hint()
 	_sync_speed_buttons()
@@ -110,15 +110,15 @@ func _build_bottom_bar() -> void:
 	var nav_row := HBoxContainer.new()
 	nav_row.add_theme_constant_override("separation", 6)
 	nav.add_child(nav_row)
-	_add_nav_btn(nav_row, "MAZO", _open_inventory)
+	_add_nav_btn(nav_row, "MAZO", _open_deck)
 	_add_nav_btn(nav_row, "MISIONES", _open_missions)
 	_add_nav_btn(nav_row, "MAPA", func(): pass)
 
 	var nav_row2 := HBoxContainer.new()
 	nav_row2.add_theme_constant_override("separation", 6)
 	nav.add_child(nav_row2)
-	_add_nav_btn(nav_row2, "DESPACHO", _open_missions)
-	_add_nav_btn(nav_row2, "DATOS", _open_inventory)
+	_add_nav_btn(nav_row2, "INTERVENIR", _open_missions)
+	_add_nav_btn(nav_row2, "GARCÍA", _open_deck)
 
 	_alerts_btn = Button.new()
 	_alerts_btn.custom_minimum_size = Vector2(0, 40)
@@ -294,7 +294,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_missions") or (event is InputEventKey and event.pressed and event.keycode == KEY_M):
 		_open_missions()
 	elif event.is_action_pressed("toggle_inventory") or (event is InputEventKey and event.pressed and event.keycode == KEY_I):
-		_open_inventory()
+		_open_deck()
 	elif event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_1:
@@ -319,12 +319,10 @@ func _open_missions() -> void:
 		router.show_missions()
 
 
-func _open_inventory() -> void:
+func _open_deck() -> void:
 	var router := get_parent()
 	if router and router.has_method("show_deck"):
-		router.show_deck(_selected_patrol_id)
-	elif router and router.has_method("show_inventory"):
-		router.show_inventory(_selected_patrol_id)
+		router.show_deck("alpha")
 
 
 func _on_radio(text: String, kind: String) -> void:

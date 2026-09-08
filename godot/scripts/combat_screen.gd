@@ -125,6 +125,14 @@ func _refresh() -> void:
 	discard_count.text = "DESCARTES\n%d" % int(snap.get("discard_count", 0))
 	player_hp_bar.max_value = float(p.get("max_hp", 50))
 	player_hp_bar.value = float(p.get("hp", 0))
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = Color(0.85, 0.2, 0.25)
+	fill.set_corner_radius_all(3)
+	player_hp_bar.add_theme_stylebox_override("fill", fill)
+	var bgb := StyleBoxFlat.new()
+	bgb.bg_color = Color(0.1, 0.12, 0.16)
+	bgb.set_corner_radius_all(3)
+	player_hp_bar.add_theme_stylebox_override("background", bgb)
 	player_hp_text.text = "%d/%d" % [int(p.get("hp", 0)), int(p.get("max_hp", 50))]
 	player_marker.visible = snap.get("phase", 0) == CombatState.Phase.PLAYER
 

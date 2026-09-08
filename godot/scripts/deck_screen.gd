@@ -62,39 +62,50 @@ func _refresh_header() -> void:
 func _rebuild_patrols() -> void:
 	for c in patrol_list.get_children():
 		c.queue_free()
-	for p in GameState.patrols.values():
-		var pid := str(p.get("id", ""))
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(0, 72)
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.text = "  %s\n  %s\n  %d cartas" % [
-			p.get("name", ""),
-			p.get("callsign", ""),
-			GameState.get_patrol_deck(pid).size(),
-		]
-		var icon_path := str(p.get("map_icon", ""))
-		if ResourceLoader.exists(icon_path):
-			btn.icon = load(icon_path)
-			btn.expand_icon = true
-			btn.add_theme_constant_override("icon_max_width", 48)
-		var sb := StyleBoxFlat.new()
-		var selected := pid == selected_patrol_id
-		sb.bg_color = Color(0.07, 0.14, 0.22) if selected else Color(0.05, 0.08, 0.14)
-		sb.border_color = Color(0.25, 0.85, 1.0) if selected else Color(0.2, 0.32, 0.45)
-		sb.set_border_width_all(2 if selected else 1)
-		sb.set_corner_radius_all(6)
-		sb.content_margin_left = 8
-		sb.content_margin_right = 8
-		sb.content_margin_top = 8
-		sb.content_margin_bottom = 8
-		btn.add_theme_stylebox_override("normal", sb)
-		btn.add_theme_stylebox_override("hover", sb)
-		btn.add_theme_stylebox_override("pressed", sb)
-		btn.pressed.connect(func():
-			selected_patrol_id = pid
-			_rebuild_all()
-		)
-		patrol_list.add_child(btn)
+	# Una sola unidad protagonista
+	var p: Dictionary = GameState.patrols.get(selected_patrol_id, {})
+	if p.is_empty() and not GameState.patrols.is_empty():
+		selected_patrol_id = str(GameState.patrols.keys()[0])
+		p = GameState.patrols[selected_patrol_id]
+	var panel := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.07, 0.14, 0.22)
+	sb.border_color = Color(0.25, 0.85, 1.0)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	panel.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	panel.add_child(v)
+	var portrait := TextureRect.new()
+	portrait.custom_minimum_size = Vector2(0, 120)
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var face := str(p.get("portrait", ""))
+	if face == "" or not ResourceLoader.exists(face):
+		face = "res://assets/character/police/police_00.png"
+	if ResourceLoader.exists(face):
+		portrait.texture = load(face)
+	v.add_child(portrait)
+	var name_l := Label.new()
+	name_l.text = "%s\n%s\n%d cartas" % [
+		p.get("name", "García"),
+		p.get("callsign", "U.P.R. 091"),
+		GameState.get_patrol_deck(selected_patrol_id).size(),
+	]
+	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_l.add_theme_font_size_override("font_size", 13)
+	v.add_child(name_l)
+	var tip := Label.new()
+	tip.text = "Protagonista único\nClic misión = combate"
+	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tip.add_theme_font_size_override("font_size", 11)
+	tip.add_theme_color_override("font_color", Color(0.6, 0.78, 0.95))
+	v.add_child(tip)
+	patrol_list.add_child(panel)
 
 
 func _rebuild_filters() -> void:

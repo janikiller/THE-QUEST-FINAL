@@ -144,19 +144,28 @@ func _playtest() -> void:
 	await get_tree().create_timer(0.6).timeout
 	print("PLAYTEST start")
 
-	# 1) No stack overflow al seleccionar misión
+	# 1) Entrar a misión abre COMBATE (no ficha vieja / inventario)
 	await get_tree().create_timer(0.8).timeout
 	if GameState.active_missions.is_empty():
 		errors.append("no missions spawned")
 	else:
 		var mid0: String = String(GameState.active_missions.keys()[0])
 		print("PLAYTEST open mission ", mid0)
-		$UI/UIRouter.show_mission(mid0)
+		# Asegurar García libre
+		var p0: Dictionary = GameState.patrols.get("alpha", {})
+		p0["status"] = "available"
+		p0.erase("_awaiting_combat")
+		GameState.set_patrol(p0)
+		$UI/UIRouter.begin_intervention(mid0)
 		await get_tree().process_frame
 		await get_tree().process_frame
-		if not $UI/UIRouter/MissionScreen.visible:
-			errors.append("mission screen not visible")
-		# Re-select same id must not recurse
+		if not $UI/UIRouter/CombatScreen.visible:
+			errors.append("combat not visible on mission enter")
+		elif not CombatState.is_active():
+			errors.append("combat not active on mission enter")
+		else:
+			print("PLAYTEST combat on enter OK turn=", CombatState.turn)
+		# Re-select same id must not recurse / crash
 		GameState.select_mission(mid0)
 		GameState.select_mission(mid0)
 		await get_tree().process_frame
@@ -175,7 +184,7 @@ func _playtest() -> void:
 		errors.append("missions menu not visible")
 	$UI/UIRouter.show_map()
 
-	# 4) Mazo de cartas
+	# 4) Mazo de cartas (no inventario)
 	$UI/UIRouter.show_deck("alpha")
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -191,6 +200,14 @@ func _playtest() -> void:
 		errors.append("add card failed")
 	deck_ui.close()
 	await get_tree().process_frame
+	# Liberar patrulla tras combate de prueba
+	var p_reset: Dictionary = GameState.patrols.get("alpha", {})
+	p_reset["status"] = "available"
+	p_reset.erase("_awaiting_combat")
+	p_reset.erase("_pending_result_id")
+	GameState.set_patrol(p_reset)
+	CombatState.active = false
+	CombatState.phase = CombatState.Phase.ENDED
 
 	# 5) Despacho completo + path por carretera
 	if not GameState.active_missions.is_empty() and not GameState.available_patrols().is_empty():
@@ -292,15 +309,38 @@ func _playtest() -> void:
 		print("PLAYTEST art=", artp)
 		if not ResourceLoader.exists(artp):
 			errors.append("mission art missing")
-		$UI/UIRouter.show_mission(str(sample["id"]))
+		# Liberar García y abrir misión → debe ir a combate
+		var pr: Dictionary = GameState.patrols.get("alpha", {})
+		pr["status"] = "available"
+		pr.erase("_awaiting_combat")
+		GameState.set_patrol(pr)
+		# Si la misión ya no está open, coger otra open
+		var open_id := ""
+		for m2 in GameState.active_missions.values():
+			if str(m2.get("status", "")) == "open":
+				open_id = str(m2["id"])
+				break
+		if open_id == "":
+			# Forzar open en sample
+			sample["status"] = "open"
+			GameState.update_mission(sample)
+			open_id = str(sample["id"])
+		$UI/UIRouter.begin_intervention(open_id)
 		await get_tree().process_frame
 		await get_tree().process_frame
-		if not $UI/UIRouter/MissionScreen.visible:
-			errors.append("tactical mission screen not visible")
+		if not $UI/UIRouter/CombatScreen.visible or not CombatState.is_active():
+			errors.append("mission enter did not start combat")
 		else:
-			print("PLAYTEST tactical screen ok")
+			print("PLAYTEST mission→combat ok")
+		$UI/UIRouter.show_map()
+		pr = GameState.patrols.get("alpha", {})
+		pr["status"] = "available"
+		pr.erase("_awaiting_combat")
+		GameState.set_patrol(pr)
+		CombatState.active = false
+		CombatState.phase = CombatState.Phase.ENDED
 
-	# Combate de cartas (roguelike)
+	# Combate de cartas (roguelike) — partida directa
 	var combat_mid := ""
 	for m in GameState.active_missions.values():
 		if str(m.get("status", "")) in ["open", "dispatched", "resolving"]:

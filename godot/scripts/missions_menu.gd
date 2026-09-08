@@ -202,7 +202,9 @@ func _category_label(m: Dictionary) -> String:
 
 func _open_mission(mid: String) -> void:
 	var router := get_parent()
-	if router and router.has_method("show_mission"):
+	if router and router.has_method("begin_intervention"):
+		router.begin_intervention(mid)
+	elif router and router.has_method("show_mission"):
 		router.show_mission(mid)
 
 

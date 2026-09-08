@@ -1,34 +1,19 @@
 # THE QUEST FINAL
 
-RPG / simulación policial. Hay dos superficies:
+Roguelike policial de cartas en Godot 4.7.2. **Una patrulla (García)** interviene en misiones del mapa.
 
-## 1) Godot — Comisaría (juego principal 2D)
-
-Carpeta [`godot/`](godot/): gestiona una comisaría sobre el **mapa real de la ciudad**, con pestañas **Mapa / Misiones / Patrullas**, misiones por distrito y despacho por radio.
+## Jugar (Godot)
 
 ```bash
-# Abre Godot 4.7.2 → Import → selecciona la carpeta godot/
-# Luego F5
-# Descarga: https://godotengine.org/download/archive/4.7.2-stable/
+# Godot 4.7.2 → Import → carpeta godot/ → F5
+# https://godotengine.org/download/archive/4.7.2-stable/
 ```
 
-**No tienes que crear nodos.** Escenas, scripts y autoloads ya están en el proyecto.
-
-Requiere **Godot 4.7.2**.
+- **Clic en una misión** → empieza el combate de cartas
+- **I** → mazo · **M** → lista de misiones · WASD mapa
 
 Detalle: [`godot/README.md`](godot/README.md)
 
-## 2) Web preview (narrativa Portal 3)
+## Importante si usas el ZIP de GitHub
 
-La carpeta `public/` tiene un prototipo HTML del caso narrativo / inventario (servidor local):
-
-```bash
-python3 -m http.server 8080
-# http://localhost:8080/public/
-```
-
-## Assets
-
-- `assets/character/` — personaje policial modular  
-- `assets/events/` — tiles de incidentes urbanos  
-- `godot/assets/` — copia usada por el juego Godot  
+Abre siempre la carpeta `godot/` (no la raíz). Si aún ves inventario antiguo, estás en una descarga vieja de `main`: usa el PR/rama de combate de cartas o actualiza `main` tras el merge.
