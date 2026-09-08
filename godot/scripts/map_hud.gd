@@ -45,7 +45,7 @@ func _ready() -> void:
 	btn_speed_16.pressed.connect(func(): GameState.set_time_speed(16.0))
 	btn_speed_60.pressed.connect(func(): GameState.set_time_speed(60.0))
 	time_label.text = "%02d:%02d" % [GameState.hour, GameState.minute]
-	hint.text = "WASD mover · clic misión = COMBATE · M lista · I mazo · C clima · N música · 1-4 velocidad"
+	hint.text = "WASD mover · M misiones (Luchar / Hablar) · I mazo · C clima · N música · 1-4 velocidad"
 	_build_bottom_bar()
 	_update_tod_hint()
 	_sync_speed_buttons()
@@ -117,19 +117,9 @@ func _build_bottom_bar() -> void:
 	var nav_row2 := HBoxContainer.new()
 	nav_row2.add_theme_constant_override("separation", 6)
 	nav.add_child(nav_row2)
-	_add_nav_btn(nav_row2, "INTERVENIR", _open_missions)
 	_add_nav_btn(nav_row2, "GARCÍA", _open_deck)
 
-	_alerts_btn = Button.new()
-	_alerts_btn.custom_minimum_size = Vector2(0, 40)
-	_alerts_btn.text = "ALERTAS  0"
-	_alerts_btn.add_theme_color_override("font_color", Color(1, 0.85, 0.85))
-	var asb := StyleBoxFlat.new()
-	asb.bg_color = Color(0.45, 0.12, 0.14, 0.95)
-	asb.set_corner_radius_all(6)
-	_alerts_btn.add_theme_stylebox_override("normal", asb)
-	_alerts_btn.pressed.connect(_open_missions)
-	nav.add_child(_alerts_btn)
+	_alerts_btn = null
 
 	# Lift toast/hint above the new bar
 	radio_toast.offset_top = -250

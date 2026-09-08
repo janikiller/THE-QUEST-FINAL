@@ -144,9 +144,10 @@ func _on_arrive(patrol: Dictionary, next_status: String) -> void:
 				"Unidad evalúa riesgos y aplica táctica: %s." % _tactic_label(mid),
 				"desarrollo"
 			)
-			patrol["_awaiting_combat"] = true
-			GameState.set_patrol(patrol)
-			_start_combat_for(mid, str(patrol["id"]))
+			# Combate solo si el jugador eligió LUCHAR (flag _awaiting_combat).
+			if bool(patrol.get("_awaiting_combat", false)):
+				GameState.set_patrol(patrol)
+				_start_combat_for(mid, str(patrol["id"]))
 	elif next_status == "available":
 		patrol["mission_id"] = ""
 		patrol["target"] = Vector2.ZERO

@@ -46,7 +46,8 @@ func _try_spawn() -> void:
 		return
 	var pos: Vector2 = city_map.random_point_in_district(district)
 	var mission := GameState.create_mission_from_event(event, district, pos)
-	RadioBus.push("Nueva señal: %s en %s." % [mission["title"], mission["district_name"]], "alert")
+	# Sin spam de alertas en mapa; la lista (M) las recoge.
+	pass
 
 
 func _pick_event_for_district(district: Dictionary) -> Dictionary:

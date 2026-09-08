@@ -37,31 +37,63 @@ var _elapsed: float = 0.0
 func _ready() -> void:
 	visibility_changed.connect(_on_vis)
 	back_btn.pressed.connect(_back)
-	confirm_btn.pressed.connect(_confirm)
-	action_cautious.pressed.connect(func(): _set_action("cautious"))
-	action_entry.pressed.connect(func(): _set_action("entry"))
-	action_negotiate.pressed.connect(func(): _set_action("negotiate"))
-	action_block.pressed.connect(func(): _set_action("block"))
-	_style_confirm()
-	_set_action("cautious")
+	# Dos opciones claras: Luchar o Salir hablando.
+	confirm_btn.text = "LUCHAR"
+	confirm_btn.pressed.connect(_on_fight)
+	support_check.visible = false
+	action_cautious.visible = false
+	action_entry.visible = false
+	action_block.visible = false
+	action_negotiate.text = "SALIR HABLANDO"
+	action_negotiate.visible = true
+	action_negotiate.pressed.connect(_on_talk)
+	_style_choice_buttons()
 	_load_minimap()
+	if patrol_list:
+		patrol_list.visible = false
+
+
+func _style_choice_buttons() -> void:
+	_paint_big(confirm_btn, Color(0.85, 0.22, 0.28), Color(1.0, 0.35, 0.4))
+	_paint_big(action_negotiate, Color(0.18, 0.55, 0.85), Color(0.3, 0.7, 1.0))
+
+
+func _paint_big(btn: Button, col: Color, hover: Color) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = col
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 18
+	sb.content_margin_right = 18
+	sb.content_margin_top = 14
+	sb.content_margin_bottom = 14
+	btn.add_theme_stylebox_override("normal", sb)
+	var h := sb.duplicate()
+	h.bg_color = hover
+	btn.add_theme_stylebox_override("hover", h)
+	btn.add_theme_font_size_override("font_size", 18)
+	btn.custom_minimum_size = Vector2(220, 52)
 
 
 func _style_confirm() -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.22, 0.78, 0.42)
-	sb.set_corner_radius_all(6)
-	sb.content_margin_left = 16
-	sb.content_margin_right = 16
-	sb.content_margin_top = 10
-	sb.content_margin_bottom = 10
-	confirm_btn.add_theme_stylebox_override("normal", sb)
-	var sb_h := sb.duplicate()
-	sb_h.bg_color = Color(0.3, 0.88, 0.5)
-	confirm_btn.add_theme_stylebox_override("hover", sb_h)
-	var sb_d := sb.duplicate()
-	sb_d.bg_color = Color(0.18, 0.35, 0.25)
-	confirm_btn.add_theme_stylebox_override("disabled", sb_d)
+	_style_choice_buttons()
+
+
+func _on_fight() -> void:
+	var m := GameState.get_selected_mission()
+	if m.is_empty() or m.get("status", "") != "open":
+		return
+	var router := get_parent()
+	if router and router.has_method("begin_fight"):
+		router.begin_fight(str(m.get("id", "")))
+
+
+func _on_talk() -> void:
+	var m := GameState.get_selected_mission()
+	if m.is_empty() or m.get("status", "") != "open":
+		return
+	var router := get_parent()
+	if router and router.has_method("resolve_talk"):
+		router.resolve_talk(str(m.get("id", "")))
 
 
 func _load_minimap() -> void:
@@ -351,36 +383,7 @@ func _paint(btn: Button, on: bool, col: Color) -> void:
 
 
 func _confirm() -> void:
-	var m := GameState.get_selected_mission()
-	if m.is_empty() or m.get("status", "") != "open":
-		return
-	if not patrol_list.is_anything_selected():
-		RadioBus.push("Elige una patrulla disponible.", "alert")
-		return
-	var idx: int = patrol_list.get_selected_items()[0]
-	var pid: String = String(_patrol_ids[idx])
-	# Guardar táctica elegida en la misión
-	m["tactic"] = _action
-	GameState.update_mission(m)
-	var dispatch = get_tree().get_first_node_in_group("dispatch")
-	var ok: bool = dispatch.dispatch(m["id"], pid)
-	if ok:
-		var extra := " + apoyo extra" if support_check.button_pressed else ""
-		RadioBus.push("Táctica: %s%s — García interviene." % [_action_name(_action), extra], "dispatch")
-		# Roguelike: toda confirmación abre el combate de cartas (García).
-		var router := get_parent()
-		if router and router.has_method("show_combat"):
-			var patrol: Dictionary = GameState.patrols.get(pid, {})
-			patrol["status"] = "on_scene"
-			patrol["_awaiting_combat"] = true
-			GameState.set_patrol(patrol)
-			if not CombatState.combat_ended.is_connected(dispatch._on_combat_ended):
-				CombatState.combat_ended.connect(dispatch._on_combat_ended)
-			router.show_combat(str(m["id"]), pid)
-			return
-		_back_to_map()
-	else:
-		RadioBus.push("No se pudo confirmar el despacho.", "alert")
+	_on_fight()
 
 
 func _action_name(a: String) -> String:

@@ -137,11 +137,8 @@ func _spawn_patrol_nodes() -> void:
 
 
 func _on_mission_added(mission: Dictionary) -> void:
-	var marker: Node2D = MissionMarkerScene.instantiate()
-	markers_layer.add_child(marker)
-	marker.setup(mission)
-	marker.pressed.connect(_on_marker_pressed)
-	_markers[mission["id"]] = marker
+	# Sin alertas en el mapa: las misiones se abren desde el menú (M).
+	pass
 
 
 func _on_mission_updated(mission: Dictionary) -> void:
