@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Cambia entre Mapa / Lista de misiones / Pantalla de misión.
+## Cambia entre Mapa / Lista de misiones / Pantalla de misión / Inventario.
 
 signal request_open_missions
 signal request_open_mission(mission_id: String)
@@ -8,6 +8,7 @@ signal request_back_to_map
 @onready var map_hud: Control = $MapHud
 @onready var missions_menu: Control = $MissionsMenu
 @onready var mission_screen: Control = $MissionScreen
+@onready var inventory_screen: Control = $InventoryScreen
 
 
 func _ready() -> void:
@@ -19,6 +20,7 @@ func show_map() -> void:
 	map_hud.visible = true
 	missions_menu.visible = false
 	mission_screen.visible = false
+	inventory_screen.visible = false
 	get_tree().paused = false
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
@@ -30,6 +32,7 @@ func show_missions() -> void:
 	map_hud.visible = false
 	missions_menu.visible = true
 	mission_screen.visible = false
+	inventory_screen.visible = false
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
 		world.modulate = Color(0.25, 0.3, 0.38, 1)
@@ -45,10 +48,23 @@ func show_mission(mission_id: String = "") -> void:
 	map_hud.visible = false
 	missions_menu.visible = false
 	mission_screen.visible = true
+	inventory_screen.visible = false
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
 		world.modulate = Color(0.15, 0.18, 0.25, 1)
 	request_open_mission.emit(GameState.selected_mission_id)
+
+
+func show_inventory(patrol_id: String = "") -> void:
+	map_hud.visible = false
+	missions_menu.visible = false
+	mission_screen.visible = false
+	inventory_screen.visible = true
+	var world := get_tree().get_first_node_in_group("world_root")
+	if world:
+		world.modulate = Color(0.18, 0.22, 0.3, 1)
+	if inventory_screen.has_method("open"):
+		inventory_screen.open(patrol_id)
 
 
 func _on_selection(mission_id: String) -> void:

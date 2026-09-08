@@ -22,6 +22,11 @@ var selected_mission_id: String = ""
 var active_missions: Dictionary = {}
 ## patrol_id -> patrol runtime dict
 var patrols: Dictionary = {}
+## patrol_id -> inventory layout (shared / trunk / agents)
+var patrol_inventories: Dictionary = {}
+
+const SHARED_SIZE := 30
+const TRUNK_SIZE := 20
 
 var _mission_seq: int = 0
 var _rng := RandomNumberGenerator.new()
@@ -31,6 +36,7 @@ func _ready() -> void:
 	_rng.randomize()
 	_load_data()
 	_init_patrols()
+	_init_inventories()
 	emit_time()
 	prestige_changed.emit(prestige)
 
@@ -202,3 +208,150 @@ func texture_path_for_event_file(file_path: String) -> String:
 	if clean.begins_with("events/"):
 		return "res://assets/%s" % clean
 	return "res://assets/events/tiles/delitos/pelea_en_la_calle.png"
+
+
+func _init_inventories() -> void:
+	patrol_inventories.clear()
+	for pid in patrols.keys():
+		ensure_patrol_inventory(str(pid))
+
+
+func ensure_patrol_inventory(patrol_id: String) -> void:
+	if patrol_inventories.has(patrol_id):
+		return
+	var p: Dictionary = patrols.get(patrol_id, {})
+	var agent_count: int = max(1, p.get("agents", []).size())
+	var agents: Array = []
+	for i in range(agent_count):
+		agents.append({
+			"casco": "",
+			"chaleco": "gear_2" if i == 0 else "gear_4",
+			"principal": "pistol_1" if i == 0 else "pistol_3",
+			"secundaria": "special_4" if i == 0 else "nonlethal_5",
+			"cinturon": ["misc_2", "optic_6", "misc_1", "misc_7", ""],
+			"bolsillos": ["misc_16", "misc_15", "", "", ""],
+		})
+	var shared: Array = _default_shared_for(str(p.get("specialty", "general")))
+	while shared.size() < SHARED_SIZE:
+		shared.append("")
+	var trunk: Array = [
+		"misc_5", "misc_8", "misc_10", "melee_5", "gear_5",
+		"misc_4", "grenade_3", "misc_9", "", "",
+		"", "", "", "", "",
+		"", "", "", "", "",
+	]
+	while trunk.size() < TRUNK_SIZE:
+		trunk.append("")
+	patrol_inventories[patrol_id] = {
+		"shared": shared,
+		"trunk": trunk,
+		"agents": agents,
+	}
+
+
+func _default_shared_for(specialty: String) -> Array:
+	## Armas y equipo utilizable — sin munición.
+	var base: Array = [
+		"pistol_2", "pistol_4", "pistol_5", "pistol_6",
+		"smg_1", "smg_2", "smg_3", "smg_4",
+		"shotgun_1", "shotgun_2", "shotgun_3",
+		"rifle_1", "rifle_2", "rifle_3", "rifle_4",
+		"sniper_1", "sniper_2",
+		"lmg_1", "special_1", "special_4",
+		"nonlethal_1", "nonlethal_2", "melee_1", "melee_2",
+		"grenade_1", "grenade_2", "misc_3", "misc_7",
+		"optic_1", "gear_1",
+	]
+	match specialty:
+		"organizado":
+			base[0] = "rifle_4"
+			base[1] = "smg_1"
+			base[2] = "special_2"
+			base[3] = "grenade_2"
+		"trafico":
+			base[0] = "pistol_1"
+			base[1] = "nonlethal_1"
+			base[2] = "misc_2"
+			base[3] = "optic_6"
+		"delitos":
+			base[0] = "shotgun_3"
+			base[1] = "misc_13"
+			base[2] = "misc_11"
+			base[3] = "grenade_3"
+	return base
+
+
+func get_slot_item(patrol_id: String, path: String, index: int) -> String:
+	ensure_patrol_inventory(patrol_id)
+	var inv: Dictionary = patrol_inventories[patrol_id]
+	if path == "shared":
+		var arr: Array = inv["shared"]
+		return str(arr[index]) if index >= 0 and index < arr.size() else ""
+	if path == "trunk":
+		var arr2: Array = inv["trunk"]
+		return str(arr2[index]) if index >= 0 and index < arr2.size() else ""
+	if path.begins_with("agents/"):
+		var parts := path.split("/")
+		if parts.size() < 3:
+			return ""
+		var ai := int(parts[1])
+		var kind := parts[2]
+		var agents: Array = inv["agents"]
+		if ai < 0 or ai >= agents.size():
+			return ""
+		var agent: Dictionary = agents[ai]
+		if kind in ["cinturon", "bolsillos"]:
+			var list: Array = agent.get(kind, [])
+			return str(list[index]) if index >= 0 and index < list.size() else ""
+		return str(agent.get(kind, ""))
+	return ""
+
+
+func set_slot_item(patrol_id: String, path: String, index: int, item_id: String) -> void:
+	ensure_patrol_inventory(patrol_id)
+	var inv: Dictionary = patrol_inventories[patrol_id]
+	if path == "shared":
+		var arr: Array = inv["shared"]
+		if index >= 0 and index < arr.size():
+			arr[index] = item_id
+		return
+	if path == "trunk":
+		var arr2: Array = inv["trunk"]
+		if index >= 0 and index < arr2.size():
+			arr2[index] = item_id
+		return
+	if path.begins_with("agents/"):
+		var parts := path.split("/")
+		if parts.size() < 3:
+			return
+		var ai := int(parts[1])
+		var kind := parts[2]
+		var agents: Array = inv["agents"]
+		if ai < 0 or ai >= agents.size():
+			return
+		var agent: Dictionary = agents[ai]
+		if kind in ["cinturon", "bolsillos"]:
+			var list: Array = agent.get(kind, [])
+			while list.size() <= index:
+				list.append("")
+			list[index] = item_id
+			agent[kind] = list
+		else:
+			agent[kind] = item_id
+		agents[ai] = agent
+
+
+func swap_inventory_slots(patrol_id: String, from_path: String, from_index: int, to_path: String, to_index: int) -> void:
+	var a := get_slot_item(patrol_id, from_path, from_index)
+	var b := get_slot_item(patrol_id, to_path, to_index)
+	set_slot_item(patrol_id, from_path, from_index, b)
+	set_slot_item(patrol_id, to_path, to_index, a)
+
+
+func clear_shared_inventory(patrol_id: String) -> void:
+	ensure_patrol_inventory(patrol_id)
+	var inv: Dictionary = patrol_inventories[patrol_id]
+	var shared: Array = []
+	for i in range(SHARED_SIZE):
+		shared.append("")
+	inv["shared"] = shared

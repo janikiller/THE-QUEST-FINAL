@@ -5,6 +5,7 @@ extends Control
 @onready var prestige_label: Label = %PrestigeLabel
 @onready var radio_toast: Label = %RadioToast
 @onready var btn_missions: Button = %BtnMissions
+@onready var btn_inventory: Button = %BtnInventory
 @onready var hint: Label = %Hint
 
 
@@ -13,9 +14,10 @@ func _ready() -> void:
 	GameState.prestige_changed.connect(func(v): prestige_label.text = "Prestigio %d" % v)
 	RadioBus.radio_message.connect(_on_radio)
 	btn_missions.pressed.connect(_open_missions)
+	btn_inventory.pressed.connect(_open_inventory)
 	time_label.text = "%02d:%02d" % [GameState.hour, GameState.minute]
 	prestige_label.text = "Prestigio %d" % GameState.prestige
-	hint.text = "WASD / flechas mover · Click misión para abrir · M lista de misiones"
+	hint.text = "WASD mover · Click misión · M misiones · I inventario de patrulla"
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -23,12 +25,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("toggle_missions") or (event is InputEventKey and event.pressed and event.keycode == KEY_M):
 		_open_missions()
+	elif event.is_action_pressed("toggle_inventory") or (event is InputEventKey and event.pressed and event.keycode == KEY_I):
+		_open_inventory()
 
 
 func _open_missions() -> void:
 	var router := get_parent()
 	if router and router.has_method("show_missions"):
 		router.show_missions()
+
+
+func _open_inventory() -> void:
+	var router := get_parent()
+	if router and router.has_method("show_inventory"):
+		router.show_inventory()
 
 
 func _on_radio(text: String, kind: String) -> void:

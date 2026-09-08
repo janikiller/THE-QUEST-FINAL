@@ -19,6 +19,8 @@ func _ready() -> void:
 	print("COMISARIA_READY missions=", GameState.active_missions.size(), " patrols=", GameState.patrols.size())
 	if OS.get_environment("TQ_SMOKE") == "1":
 		call_deferred("_smoke")
+	if OS.get_environment("TQ_INV") == "1":
+		call_deferred("_inv_check")
 
 
 func _process(_delta: float) -> void:
@@ -56,3 +58,34 @@ func _smoke() -> void:
 	await get_tree().create_timer(1.5).timeout
 	print("COMISARIA_SMOKE_OK")
 	get_tree().quit(0 if ok else 5)
+
+
+func _inv_check() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var errors: Array = []
+	print("INV items=", ItemDB.items.size())
+	if ItemDB.items.is_empty():
+		errors.append("empty ItemDB")
+	GameState.ensure_patrol_inventory("alpha")
+	var before := GameState.get_slot_item("alpha", "shared", 0)
+	GameState.swap_inventory_slots("alpha", "shared", 0, "trunk", 0)
+	var after := GameState.get_slot_item("alpha", "trunk", 0)
+	print("INV swap=", before, "->", after)
+	if after != before:
+		errors.append("swap failed")
+	$UI/UIRouter.show_inventory("alpha")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var screen = $UI/UIRouter/InventoryScreen
+	print("INV slots shared=", screen._shared_slots.size(), " trunk=", screen._trunk_slots.size(), " agents=", screen._agent_slots.size())
+	if screen._shared_slots.size() != GameState.SHARED_SIZE:
+		errors.append("shared size")
+	if screen._trunk_slots.size() != GameState.TRUNK_SIZE:
+		errors.append("trunk size")
+	if errors.is_empty():
+		print("OK_INVENTORY")
+		get_tree().quit(0)
+	else:
+		print("INV_ERRORS ", errors)
+		get_tree().quit(1)

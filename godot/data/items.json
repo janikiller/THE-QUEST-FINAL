@@ -1,0 +1,98 @@
+{
+  "categories": [
+    {"id": "todos", "label": "TODOS"},
+    {"id": "armas", "label": "ARMAS"},
+    {"id": "equipamiento", "label": "EQUIPAMIENTO"},
+    {"id": "herramientas", "label": "HERRAMIENTAS"},
+    {"id": "medico", "label": "MÉDICO"},
+    {"id": "varios", "label": "VARIOS"}
+  ],
+  "items": [
+    {"id": "pistol_1", "name": "Pistola de servicio", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/pistol_1.png", "description": "Arma corta reglamentaria. Úsala para enfrentamientos a corta distancia con control de fuego."},
+    {"id": "pistol_2", "name": "Pistola compacta", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/pistol_2.png", "description": "Pistola ligera y fácil de ocultar. Ideal para patrulla urbana y respuesta rápida."},
+    {"id": "pistol_3", "name": "Pistola táctica", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/pistol_3.png", "description": "Pistola reforzada con buen agarre. Aumenta la precisión en tiroteos cortos."},
+    {"id": "pistol_4", "name": "Pistola de intervención", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/pistol_4.png", "description": "Modelo de intervención. Buena cadencia y fiabilidad en situaciones de alto riesgo."},
+    {"id": "pistol_5", "name": "Pistola bicolor", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/pistol_5.png", "description": "Arma corta moderna. Equípala como arma principal del agente en patrulla."},
+    {"id": "pistol_6", "name": "Pistola tan", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/pistol_6.png", "description": "Pistola de acabado táctico. Equilibrio entre potencia y control del retroceso."},
+
+    {"id": "smg_1", "name": "Subfusil MP", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/smg_1.png", "description": "Subfusil compacto de alta cadencia. Útil en interiores y asaltos cercanos."},
+    {"id": "smg_2", "name": "Subfusil táctico", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/smg_2.png", "description": "SMG modular. Buena movilidad para unidades de reacción."},
+    {"id": "smg_3", "name": "Subfusil corto", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/smg_3.png", "description": "Versión corta para espacios reducidos. Ideal en edificios y vehículos."},
+    {"id": "smg_4", "name": "Subfusil de asalto", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/smg_4.png", "description": "Subfusil potenciado. Suprime amenazas rápidas en enfrentamientos medios."},
+
+    {"id": "shotgun_1", "name": "Escopeta de corredera", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/shotgun_1.png", "description": "Escopeta clásica. Gran poder de parada a corta distancia."},
+    {"id": "shotgun_2", "name": "Escopeta recortada", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/shotgun_2.png", "description": "Escopeta corta y agresiva. Entradas rápidas y control de perímetro."},
+    {"id": "shotgun_3", "name": "Escopeta táctica", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/shotgun_3.png", "description": "Escopeta semiautomática táctica. Ideal para breaching y apoyo cercano."},
+
+    {"id": "rifle_1", "name": "Fusil M4", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/rifle_1.png", "description": "Fusil de asalto estándar. Precisión y cadencia para misiones de alto riesgo."},
+    {"id": "rifle_2", "name": "Fusil AK", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/rifle_2.png", "description": "Fusil robusto y fiable. Buen rendimiento en condiciones duras."},
+    {"id": "rifle_3", "name": "Fusil bullpup", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/rifle_3.png", "description": "Diseño compacto bullpup. Alcance de fusil con maniobrabilidad de SMG."},
+    {"id": "rifle_4", "name": "Fusil SCAR", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/rifle_4.png", "description": "Fusil moderno de intervención. Excelente para unidades especiales."},
+
+    {"id": "sniper_1", "name": "Fusil de precisión", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/sniper_1.png", "description": "Fusil de precisión con mira. Observación y disparos a larga distancia."},
+    {"id": "sniper_2", "name": "Francotirador táctico", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/sniper_2.png", "description": "Rifle de francotirador con bípode. Controla zonas abiertas desde lejos."},
+
+    {"id": "lmg_1", "name": "Ametralladora ligera", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/lmg_1.png", "description": "Ametralladora de apoyo. Supresión de fuego sostenido en asaltos."},
+    {"id": "lmg_2", "name": "Ametralladora de apoyo", "category": "armas", "slot": "principal", "usable": true, "icon": "res://assets/inventory/icons/lmg_2.png", "description": "Arma pesada de escuadra. Domina el combate a media distancia."},
+
+    {"id": "special_1", "name": "Lanzagranadas", "category": "armas", "slot": "secundaria", "usable": true, "icon": "res://assets/inventory/icons/special_1.png", "description": "Lanzagranadas individual. Úsalo para abrir brechas o saturar una zona."},
+    {"id": "special_2", "name": "Lanzagranadas rotativo", "category": "armas", "slot": "secundaria", "usable": true, "icon": "res://assets/inventory/icons/special_2.png", "description": "Lanzador múltiple. Varias granadas antes de recargar."},
+    {"id": "special_3", "name": "Lanzacohetes", "category": "armas", "slot": "secundaria", "usable": true, "icon": "res://assets/inventory/icons/special_3.png", "description": "Arma antiblindaje. Contra vehículos o barreras reforzadas."},
+    {"id": "special_4", "name": "Táser", "category": "armas", "slot": "secundaria", "usable": true, "icon": "res://assets/inventory/icons/special_4.png", "description": "Descarga eléctrica no letal. Inmoviliza a un sospechoso sin disparar."},
+
+    {"id": "nonlethal_1", "name": "Gas pimienta", "category": "equipamiento", "slot": "secundaria", "usable": true, "icon": "res://assets/inventory/icons/nonlethal_1.png", "description": "Spray de defensa. Disuade y controla sin armas de fuego."},
+    {"id": "nonlethal_2", "name": "Spray antidisturbios", "category": "equipamiento", "slot": "secundaria", "usable": true, "icon": "res://assets/inventory/icons/nonlethal_2.png", "description": "Bote de gas. Reduce agresividad en altercados cercanos."},
+    {"id": "nonlethal_3", "name": "Granada de gas", "category": "equipamiento", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/nonlethal_3.png", "description": "Bote de gas lacrimógeno. Dispersa grupos en disturbios."},
+    {"id": "nonlethal_4", "name": "Lanzador no letal", "category": "equipamiento", "slot": "secundaria", "usable": true, "icon": "res://assets/inventory/icons/nonlethal_4.png", "description": "Lanza proyectiles no letales. Control de distancias medias."},
+    {"id": "nonlethal_5", "name": "Porra extensible", "category": "herramientas", "slot": "secundaria", "usable": true, "icon": "res://assets/inventory/icons/nonlethal_5.png", "description": "Porra telescópica. Defensa personal y control de detenidos."},
+
+    {"id": "melee_1", "name": "Porra policial", "category": "herramientas", "slot": "secundaria", "usable": true, "icon": "res://assets/inventory/icons/melee_1.png", "description": "Porra reglamentaria. Control físico a corta distancia."},
+    {"id": "melee_2", "name": "Cuchillo táctico", "category": "herramientas", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/melee_2.png", "description": "Cuchillo de combate. Corte de obstáculos y defensa extrema."},
+    {"id": "melee_3", "name": "Cuchillo de utilidad", "category": "herramientas", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/melee_3.png", "description": "Cuchillo multiusos. Abre cierres, cintas y materiales ligeros."},
+    {"id": "melee_4", "name": "Navaja táctica", "category": "herramientas", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/melee_4.png", "description": "Navaja plegable. Herramienta rápida para el día a día."},
+    {"id": "melee_5", "name": "Hacha de bomberos", "category": "herramientas", "slot": "maletero", "usable": true, "icon": "res://assets/inventory/icons/melee_5.png", "description": "Hacha de rescate. Abre puertas y despeja obstáculos."},
+
+    {"id": "grenade_1", "name": "Granada de fragmentación", "category": "varios", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/grenade_1.png", "description": "Granada ofensiva. Zona de daño amplia — solo en amenazas extremas."},
+    {"id": "grenade_2", "name": "Aturdidora", "category": "varios", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/grenade_2.png", "description": "Flashbang. Ciega y desorienta antes de entrar a una habitación."},
+    {"id": "grenade_3", "name": "Granada de humo", "category": "varios", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/grenade_3.png", "description": "Crea una cortina de humo para cubrir movimientos o evacuaciones."},
+    {"id": "grenade_4", "name": "Granada de gas", "category": "varios", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/grenade_4.png", "description": "Gas lacrimógeno. Dispersa multitudes o fuerza salidas."},
+    {"id": "grenade_5", "name": "Carga explosiva", "category": "varios", "slot": "maletero", "usable": true, "icon": "res://assets/inventory/icons/grenade_5.png", "description": "C4 con detonador. Abre barreras reforzadas en asaltos."},
+    {"id": "grenade_6", "name": "Mina antipersonal", "category": "varios", "slot": "maletero", "usable": true, "icon": "res://assets/inventory/icons/grenade_6.png", "description": "Mina de perímetro. Alerta y detiene accesos no autorizados."},
+    {"id": "grenade_7", "name": "Cóctel molotov", "category": "varios", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/grenade_7.png", "description": "Botella incendiaria. Úsala solo en escenarios extremos de amenaza."},
+
+    {"id": "optic_1", "name": "Mira holographic", "category": "equipamiento", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/optic_1.png", "description": "Mira holográfica. Mejora la adquisición rápida de blancos."},
+    {"id": "optic_2", "name": "Punto rojo", "category": "equipamiento", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/optic_2.png", "description": "Mira de punto rojo. Apunta más rápido a corta y media distancia."},
+    {"id": "optic_3", "name": "Mira ACOG", "category": "equipamiento", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/optic_3.png", "description": "Mira ampliada. Mejora el tiro a media distancia."},
+    {"id": "optic_4", "name": "Visor de precisión", "category": "equipamiento", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/optic_4.png", "description": "Visor de largo alcance. Esencial para francotirador."},
+    {"id": "optic_5", "name": "Visión nocturna", "category": "equipamiento", "slot": "casco", "usable": true, "icon": "res://assets/inventory/icons/optic_5.png", "description": "Gafas de visión nocturna. Operaciones en baja luminosidad."},
+    {"id": "optic_6", "name": "Linterna táctica", "category": "herramientas", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/optic_6.png", "description": "Linterna potente. Ilumina registros y entradas oscuras."},
+    {"id": "optic_7", "name": "Láser de puntería", "category": "equipamiento", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/optic_7.png", "description": "Módulo láser. Marca el punto de impacto al apuntar."},
+    {"id": "optic_8", "name": "Silenciador", "category": "equipamiento", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/optic_8.png", "description": "Supresor de sonido. Reduce el ruido del disparo en intervenciones discretas."},
+    {"id": "optic_9", "name": "Silenciador largo", "category": "equipamiento", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/optic_9.png", "description": "Supresor extendido. Máximo silencio en operaciones encubiertas."},
+    {"id": "optic_10", "name": "Empuñadura táctica", "category": "equipamiento", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/optic_10.png", "description": "Empuñadura vertical. Mejora el control del arma en ráfaga."},
+
+    {"id": "gear_1", "name": "Casco táctico", "category": "equipamiento", "slot": "casco", "usable": true, "icon": "res://assets/inventory/icons/gear_1.png", "description": "Casco balístico. Protege la cabeza en enfrentamientos y asaltos."},
+    {"id": "gear_2", "name": "Chaleco POLICÍA", "category": "equipamiento", "slot": "chaleco", "usable": true, "icon": "res://assets/inventory/icons/gear_2.png", "description": "Chaleco antibalas identificado. Protección y presencia policial."},
+    {"id": "gear_3", "name": "Portaplacas", "category": "equipamiento", "slot": "chaleco", "usable": true, "icon": "res://assets/inventory/icons/gear_3.png", "description": "Chaleco con placas. Mayor resistencia ante disparos."},
+    {"id": "gear_4", "name": "Chaleco ligero", "category": "equipamiento", "slot": "chaleco", "usable": true, "icon": "res://assets/inventory/icons/gear_4.png", "description": "Chaleco ligero de patrulla. Protección sin perder movilidad."},
+    {"id": "gear_5", "name": "Mochila táctica", "category": "equipamiento", "slot": "maletero", "usable": true, "icon": "res://assets/inventory/icons/gear_5.png", "description": "Mochila de asalto. Transporta equipo extra a la escena."},
+    {"id": "gear_6", "name": "Cinturón táctico", "category": "equipamiento", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/gear_6.png", "description": "Cinturón con fundas. Organiza herramientas al alcance de la mano."},
+
+    {"id": "misc_1", "name": "Radio portátil", "category": "varios", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/misc_1.png", "description": "Walkie-talkie. Mantén contacto con central y otras patrullas."},
+    {"id": "misc_2", "name": "Esposas", "category": "herramientas", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/misc_2.png", "description": "Esposas metálicas. Inmoviliza y asegura a un detenido."},
+    {"id": "misc_3", "name": "Bridas", "category": "herramientas", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/misc_3.png", "description": "Bridas plásticas. Restricción rápida de varios sospechosos."},
+    {"id": "misc_4", "name": "Cuerda", "category": "herramientas", "slot": "maletero", "usable": true, "icon": "res://assets/inventory/icons/misc_4.png", "description": "Cuerda resistente. Rescate, acordonamiento o sujeción."},
+    {"id": "misc_5", "name": "Escudo antidisturbios", "category": "equipamiento", "slot": "maletero", "usable": true, "icon": "res://assets/inventory/icons/misc_5.png", "description": "Escudo balístico POLICÍA. Protección frontal en disturbios."},
+    {"id": "misc_6", "name": "Escudo táctico", "category": "equipamiento", "slot": "maletero", "usable": true, "icon": "res://assets/inventory/icons/misc_6.png", "description": "Escudo de entrada. Cubre al equipo al forzar un acceso."},
+    {"id": "misc_7", "name": "Botiquín", "category": "medico", "slot": "cinturon", "usable": true, "icon": "res://assets/inventory/icons/misc_7.png", "description": "Botiquín de primeros auxilios. Estabiliza heridas en el lugar."},
+    {"id": "misc_8", "name": "Kit médico", "category": "medico", "slot": "maletero", "usable": true, "icon": "res://assets/inventory/icons/misc_8.png", "description": "Kit trauma ampliado. Atención médica más completa en patrulla."},
+    {"id": "misc_9", "name": "Bolsa de equipo", "category": "varios", "slot": "maletero", "usable": true, "icon": "res://assets/inventory/icons/misc_9.png", "description": "Bolsa táctica. Guarda material adicional de la unidad."},
+    {"id": "misc_10", "name": "Cortapernos", "category": "herramientas", "slot": "maletero", "usable": true, "icon": "res://assets/inventory/icons/misc_10.png", "description": "Cortapernos. Abre cadenas, candados y rejas ligeras."},
+    {"id": "misc_11", "name": "Cámara", "category": "varios", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/misc_11.png", "description": "Cámara fotográfica. Documenta la escena y pruebas."},
+    {"id": "misc_12", "name": "Prismáticos", "category": "herramientas", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/misc_12.png", "description": "Prismáticos. Vigilancia a distancia sin exponerse."},
+    {"id": "misc_13", "name": "Dron de vigilancia", "category": "varios", "slot": "maletero", "usable": true, "icon": "res://assets/inventory/icons/misc_13.png", "description": "Mini-dron. Reconocimiento aéreo de tejados y patios."},
+    {"id": "misc_14", "name": "Portátil", "category": "varios", "slot": "maletero", "usable": true, "icon": "res://assets/inventory/icons/misc_14.png", "description": "Portátil de campo. Consulta ficheros y datos de central."},
+    {"id": "misc_15", "name": "Smartphone", "category": "varios", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/misc_15.png", "description": "Teléfono operativo. Fotos, llamadas y apps de comisaría."},
+    {"id": "misc_16", "name": "Bloc de notas", "category": "varios", "slot": "bolsillos", "usable": true, "icon": "res://assets/inventory/icons/misc_16.png", "description": "Bloc y bolígrafo. Anota declaraciones y datos de la intervención."}
+  ]
+}

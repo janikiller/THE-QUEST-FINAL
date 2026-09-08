@@ -1,0 +1,306 @@
+[gd_scene load_steps=2 format=3 uid="uid://binvscreen001"]
+
+[ext_resource type="Script" path="res://scripts/inventory_screen.gd" id="1_script"]
+
+[node name="InventoryScreen" type="Control"]
+process_mode = 3
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.06, 0.1, 0.96)
+mouse_filter = 0
+
+[node name="Root" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 12
+
+[node name="Cols" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Left" type="PanelContainer" parent="Root/Cols"]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LM" type="MarginContainer" parent="Root/Cols/Left"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="LV" type="VBoxContainer" parent="Root/Cols/Left/LM"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PatrolTitle" type="Label" parent="Root/Cols/Left/LM/LV"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "PATRULLAS"
+
+[node name="Scroll" type="ScrollContainer" parent="Root/Cols/Left/LM/LV"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PatrolList" type="VBoxContainer" parent="Root/Cols/Left/LM/LV/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Main" type="VBoxContainer" parent="Root/Cols"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="Header" type="HBoxContainer" parent="Root/Cols/Main"]
+layout_mode = 2
+
+[node name="HeaderCol" type="VBoxContainer" parent="Root/Cols/Main/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HeaderTitle" type="Label" parent="Root/Cols/Main/Header/HeaderCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "PATRULLA"
+
+[node name="HeaderSub" type="Label" parent="Root/Cols/Main/Header/HeaderCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.78, 0.88, 1)
+theme_override_font_sizes/font_size = 14
+text = "Unidad"
+
+[node name="StatusPill" type="Label" parent="Root/Cols/Main/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.35, 0.95, 0.55, 1)
+theme_override_font_sizes/font_size = 16
+text = "EN SERVICIO"
+vertical_alignment = 1
+
+[node name="BtnClose" type="Button" parent="Root/Cols/Main/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "X"
+
+[node name="Mid" type="HBoxContainer" parent="Root/Cols/Main"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="AgentsRow" type="HBoxContainer" parent="Root/Cols/Main/Mid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="RightCol" type="VBoxContainer" parent="Root/Cols/Main/Mid"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="VehiclePanel" type="PanelContainer" parent="Root/Cols/Main/Mid/RightCol"]
+layout_mode = 2
+
+[node name="VM" type="MarginContainer" parent="Root/Cols/Main/Mid/RightCol/VehiclePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="VV" type="VBoxContainer" parent="Root/Cols/Main/Mid/RightCol/VehiclePanel/VM"]
+layout_mode = 2
+
+[node name="VLabel" type="Label" parent="Root/Cols/Main/Mid/RightCol/VehiclePanel/VM/VV"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "VEHÍCULO ASIGNADO"
+
+[node name="VehicleTex" type="TextureRect" parent="Root/Cols/Main/Mid/RightCol/VehiclePanel/VM/VV"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="VehicleName" type="Label" parent="Root/Cols/Main/Mid/RightCol/VehiclePanel/VM/VV"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Unidad"
+
+[node name="TrunkPanel" type="PanelContainer" parent="Root/Cols/Main/Mid/RightCol"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TM" type="MarginContainer" parent="Root/Cols/Main/Mid/RightCol/TrunkPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="TV" type="VBoxContainer" parent="Root/Cols/Main/Mid/RightCol/TrunkPanel/TM"]
+layout_mode = 2
+
+[node name="TH" type="HBoxContainer" parent="Root/Cols/Main/Mid/RightCol/TrunkPanel/TM/TV"]
+layout_mode = 2
+
+[node name="TLabel" type="Label" parent="Root/Cols/Main/Mid/RightCol/TrunkPanel/TM/TV/TH"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "MALETERO"
+
+[node name="TrunkCap" type="Label" parent="Root/Cols/Main/Mid/RightCol/TrunkPanel/TM/TV/TH"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "0 / 20"
+
+[node name="TrunkGrid" type="GridContainer" parent="Root/Cols/Main/Mid/RightCol/TrunkPanel/TM/TV"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 5
+
+[node name="SharedPanel" type="PanelContainer" parent="Root/Cols/Main"]
+custom_minimum_size = Vector2(0, 280)
+layout_mode = 2
+
+[node name="SM" type="MarginContainer" parent="Root/Cols/Main/SharedPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="SV" type="VBoxContainer" parent="Root/Cols/Main/SharedPanel/SM"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SH" type="HBoxContainer" parent="Root/Cols/Main/SharedPanel/SM/SV"]
+layout_mode = 2
+
+[node name="SLabel" type="Label" parent="Root/Cols/Main/SharedPanel/SM/SV/SH"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "INVENTARIO COMPARTIDO DE LA PATRULLA"
+
+[node name="SharedCap" type="Label" parent="Root/Cols/Main/SharedPanel/SM/SV/SH"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0 / 30"
+
+[node name="FilterRow" type="HBoxContainer" parent="Root/Cols/Main/SharedPanel/SM/SV"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BottomRow" type="HBoxContainer" parent="Root/Cols/Main/SharedPanel/SM/SV"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="SharedScroll" type="ScrollContainer" parent="Root/Cols/Main/SharedPanel/SM/SV/BottomRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SharedGrid" type="GridContainer" parent="Root/Cols/Main/SharedPanel/SM/SV/BottomRow/SharedScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 10
+
+[node name="Actions" type="VBoxContainer" parent="Root/Cols/Main/SharedPanel/SM/SV/BottomRow"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BtnSave" type="Button" parent="Root/Cols/Main/SharedPanel/SM/SV/BottomRow/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "GUARDAR CONFIGURACIÓN"
+
+[node name="BtnClear" type="Button" parent="Root/Cols/Main/SharedPanel/SM/SV/BottomRow/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "VACIAR TODO"
+
+[node name="Hint" type="Label" parent="Root/Cols/Main/SharedPanel/SM/SV/BottomRow/Actions"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.72, 0.82, 1)
+theme_override_font_sizes/font_size = 12
+text = "Arrastra objetos entre ranuras. Deja el cursor encima para ver qué hace cada uno."
+autowrap_mode = 3
+
+[node name="TooltipPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 20
+layout_mode = 0
+offset_right = 300.0
+offset_bottom = 100.0
+mouse_filter = 2
+
+[node name="TM2" type="MarginContainer" parent="TooltipPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+mouse_filter = 2
+
+[node name="TV2" type="VBoxContainer" parent="TooltipPanel/TM2"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TooltipTitle" type="Label" parent="TooltipPanel/TM2/TV2"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Objeto"
+mouse_filter = 2
+
+[node name="TooltipBody" type="Label" parent="TooltipPanel/TM2/TV2"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.84, 0.92, 1)
+theme_override_font_sizes/font_size = 13
+text = "Descripción"
+autowrap_mode = 3
+mouse_filter = 2
