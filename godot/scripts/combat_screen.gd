@@ -1,9 +1,9 @@
 extends Control
-## Combate visual: assets vectoriales del pack (héroe / delincuentes / UI).
+## Combate visual: sprites custom ilustrados (héroe / delincuentes / cartas).
 
-const PACK_HERO := "res://assets/combat/pack/combat/hero/"
-const PACK_FOE := "res://assets/combat/pack/combat/foes/"
-const PACK_UI := "res://assets/combat/pack/combat/ui/"
+const PACK_HERO := "res://assets/combat/custom/hero/"
+const PACK_FOE := "res://assets/combat/custom/foes/"
+const PACK_UI := "res://assets/combat/custom/cards/"
 
 @onready var bg: TextureRect = %ArenaBg
 @onready var title_label: Label = %TitleLabel
@@ -51,20 +51,14 @@ func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
 	match pose:
 		"shoot":
 			tex = _hero_tex("shoot")
-			if tex == null:
-				tex = _hero_tex("combat_idle")
 		"hurt":
-			tex = _hero_tex("hurt_body")
-			if tex == null:
-				tex = _hero_tex("hurt")
+			tex = _hero_tex("hurt")
 		"aim":
-			tex = _hero_tex("aim")
+			tex = _hero_tex("shoot")
 		_:
-			tex = _hero_tex("combat_idle")
-			if tex == null:
-				tex = _hero_tex("idle_side")
-			if tex == null:
-				tex = _hero_tex("idle_front")
+			tex = _hero_tex("idle")
+	if tex == null:
+		tex = _hero_tex("idle")
 	if tex:
 		player_sprite.texture = tex
 
