@@ -152,7 +152,7 @@ func _refresh() -> void:
 		_hit_actor(player_sprite, _prev_player_hp - php, false)
 	_prev_player_hp = php
 
-	var hero := "res://assets/combat/arena/chars/hero.png"
+	var hero := "res://assets/combat/from_mockup/chars/hero.png"
 	if ResourceLoader.exists(hero):
 		player_sprite.texture = load(hero)
 	elif ResourceLoader.exists(str(p.get("sprite", ""))):
@@ -183,7 +183,7 @@ func _style_player_bar(p: Dictionary) -> void:
 
 
 func _load_bg() -> void:
-	var path := "res://assets/combat/arena/arena_bg.jpg"
+	var path := "res://assets/combat/from_mockup/bg.jpg"
 	if ResourceLoader.exists(path):
 		bg.texture = load(path)
 		return
@@ -267,9 +267,9 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sp := "res://assets/combat/arena/chars/enemy_%d.png" % (index % 6)
+	var sp := "res://assets/combat/from_mockup/chars/enemy%d.png" % (index % 3)
 	if not ResourceLoader.exists(sp):
-		sp = str(e.get("sprite", "res://assets/character/delinquents/delinq_00.png"))
+		sp = "res://assets/combat/from_mockup/chars/enemy0.png"
 	if ResourceLoader.exists(sp):
 		tex.texture = load(sp)
 	btn.add_child(tex)
@@ -325,33 +325,24 @@ func _rebuild_hand(snap: Dictionary) -> void:
 func _make_card(card_id: String, playable: bool) -> Control:
 	var def := CardDB.get_card(card_id)
 	var rarity := str(def.get("rarity", "common"))
-	var wrap := Control.new()
-	wrap.custom_minimum_size = Vector2(148, 210)
-
-	var frame := TextureRect.new()
-	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	frame.stretch_mode = TextureRect.STRETCH_SCALE
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var frame_path := "res://assets/combat/arena/cards/frame_%s.png" % rarity
-	if not ResourceLoader.exists(frame_path):
-		frame_path = "res://assets/combat/arena/cards/frame_common.png"
-	if ResourceLoader.exists(frame_path):
-		frame.texture = load(frame_path)
-	wrap.add_child(frame)
-
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wrap.add_child(margin)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(148, 210)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.09, 0.15, 0.96)
+	sb.border_color = CardDB.rarity_color(rarity)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(12)
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	panel.add_theme_stylebox_override("panel", sb)
+	if not playable:
+		panel.modulate = Color(0.55, 0.55, 0.6, 0.85)
 
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 3)
-	margin.add_child(v)
+	v.add_theme_constant_override("separation", 4)
+	panel.add_child(v)
 
 	var cost := Label.new()
 	cost.text = str(int(def.get("cost", 0)))
@@ -390,15 +381,12 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	tag.add_theme_color_override("font_color", CardDB.rarity_color(rarity))
 	v.add_child(tag)
 
-	if not playable:
-		wrap.modulate = Color(0.55, 0.55, 0.6, 0.85)
-
 	var btn := Button.new()
 	btn.flat = true
 	btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	btn.pressed.connect(func(): _try_play_card(card_id, wrap))
-	wrap.add_child(btn)
-	return wrap
+	btn.pressed.connect(func(): _try_play_card(card_id, panel))
+	panel.add_child(btn)
+	return panel
 
 
 func _try_play_card(card_id: String, panel: Control) -> void:
@@ -479,11 +467,12 @@ func _rebuild_energy(snap: Dictionary) -> void:
 	var cur := int(p.get("energy", 0))
 	var mx := int(p.get("energy_max", 3))
 	for i in range(mx):
-		var tex := TextureRect.new()
-		tex.custom_minimum_size = Vector2(26, 26)
-		tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		var path := "res://assets/combat/arena/ui/energy_on.png" if i < cur else "res://assets/combat/arena/ui/energy_off.png"
-		if ResourceLoader.exists(path):
-			tex.texture = load(path)
-		energy_row.add_child(tex)
+		var pip := Panel.new()
+		pip.custom_minimum_size = Vector2(24, 24)
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.25, 0.8, 1.0) if i < cur else Color(0.12, 0.18, 0.28)
+		sb.set_corner_radius_all(12)
+		sb.border_color = Color(0.55, 0.9, 1.0) if i < cur else Color(0.2, 0.28, 0.38)
+		sb.set_border_width_all(2)
+		pip.add_theme_stylebox_override("panel", sb)
+		energy_row.add_child(pip)
