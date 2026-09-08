@@ -1,15 +1,23 @@
 extends Control
-## Pantalla de misión a pantalla completa (estilo informe táctico).
+## Pantalla de misión — central táctica (mockup operativo).
 
 @onready var title: Label = %MissionTitle
 @onready var meta: Label = %MissionMeta
 @onready var urgency: Label = %UrgencyBadge
 @onready var timer_label: Label = %TimerLabel
+@onready var clock_label: Label = %ClockLabel
 @onready var art: TextureRect = %MissionArt
+@onready var mini_map: TextureRect = %MiniMap
 @onready var blurb: RichTextLabel = %MissionBlurb
-@onready var objectives: RichTextLabel = %Objectives
 @onready var location_label: Label = %LocationLabel
 @onready var risk_label: Label = %RiskLabel
+@onready var crime_type: Label = %CrimeTypeLabel
+@onready var units_label: Label = %UnitsLabel
+@onready var distance_label: Label = %DistanceLabel
+@onready var witnesses: Label = %WitnessesLabel
+@onready var suspects_row: HBoxContainer = %SuspectsRow
+@onready var step_active: Label = %StepActiveTitle
+@onready var step_address: Label = %StepAddress
 @onready var patrol_list: ItemList = %PatrolList
 @onready var back_btn: Button = %BackButton
 @onready var confirm_btn: Button = %ConfirmActions
@@ -33,7 +41,37 @@ func _ready() -> void:
 	action_entry.pressed.connect(func(): _set_action("entry"))
 	action_negotiate.pressed.connect(func(): _set_action("negotiate"))
 	action_block.pressed.connect(func(): _set_action("block"))
+	_style_confirm()
 	_set_action("cautious")
+	_load_minimap()
+
+
+func _style_confirm() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.22, 0.78, 0.42)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 16
+	sb.content_margin_right = 16
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	confirm_btn.add_theme_stylebox_override("normal", sb)
+	var sb_h := sb.duplicate()
+	sb_h.bg_color = Color(0.3, 0.88, 0.5)
+	confirm_btn.add_theme_stylebox_override("hover", sb_h)
+	var sb_d := sb.duplicate()
+	sb_d.bg_color = Color(0.18, 0.35, 0.25)
+	confirm_btn.add_theme_stylebox_override("disabled", sb_d)
+
+
+func _load_minimap() -> void:
+	var tod := GameState.time_of_day()
+	var path := "res://assets/map/tod/day.jpg"
+	if tod == "night":
+		path = "res://assets/map/tod/night.jpg"
+	elif tod == "dusk":
+		path = "res://assets/map/tod/dusk.jpg"
+	if ResourceLoader.exists(path):
+		mini_map.texture = load(path)
 
 
 func _process(delta: float) -> void:
@@ -42,6 +80,14 @@ func _process(delta: float) -> void:
 	_elapsed += delta
 	var m := int(_elapsed)
 	timer_label.text = "%02d:%02d" % [m / 60, m % 60]
+	clock_label.text = "%s  |  %02d:%02d" % [_weekday(), GameState.hour, GameState.minute]
+
+
+func _weekday() -> String:
+	# Día sintético a partir de la hora de juego (ciclo continuo).
+	var names := ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+	var idx := int((GameState.hour + GameState.minute / 60.0) / 3.4) % 7
+	return names[idx]
 
 
 func _on_vis() -> void:
@@ -54,22 +100,123 @@ func _refresh() -> void:
 	var m := GameState.get_selected_mission()
 	if m.is_empty():
 		return
-	title.text = str(m["title"]).to_upper()
-	meta.text = "%s · %s" % [str(m["category"]).to_upper(), m["district_name"]]
-	location_label.text = "%s" % m["district_name"]
-	blurb.text = "[b]DESCRIPCIÓN DE LA SITUACIÓN[/b]\n\n%s" % m["blurb"]
+	var t := str(m["title"]).to_upper()
+	title.text = t
+	meta.text = _category_label(m)
+	location_label.text = "%s — %s" % [m.get("district_name", ""), _fake_address(m)]
+	step_active.text = "!  %s" % t
+	step_address.text = location_label.text
+	blurb.text = "[b]DESCRIPCIÓN DE LA SITUACIÓN[/b]\n\n%s\n\nCentral solicita unidad visible y evaluación táctica inmediata." % m["blurb"]
 	urgency.visible = str(m.get("severity", "")) in ["high", "critical"]
+	urgency.text = "  URGENTE  "
 	var rank := _risk(m)
 	risk_label.text = "RIESGO  " + "●".repeat(rank) + "○".repeat(maxi(0, 5 - rank))
-	objectives.text = "• Asegurar la zona\n• Neutralizar la amenaza\n• Proteger a civiles\n• Preservar evidencia"
-	step_label.text = "INFORME INICIAL → EVIDENCIA → ESCENARIOS → DECISIÓN"
+	crime_type.text = "TIPO DE DELITO: %s" % _crime_type(m)
+	units_label.text = "UNIDADES EN CAMINO: %s" % _units_text(m)
+	distance_label.text = "DISTANCIA: %s" % _distance_text(m)
+	witnesses.text = "%d testigos en la zona (esperando a la policía)" % (2 + rank % 3)
+	step_label.text = "●  Informe Inicial\n○  Inteligencia\n○  Posibles Escenarios\n○  Tomar Decisión"
 	var path := GameState.mission_art_path(m)
 	art.texture = load(path) if ResourceLoader.exists(path) else null
+	_load_minimap()
+	_rebuild_suspects(m)
 	_refresh_patrols()
 	confirm_btn.disabled = m.get("status", "") != "open" or GameState.available_patrols().is_empty()
-	# Night UI accent when operating at night
-	var night := GameState.time_of_day() == "night"
-	modulate = Color(0.92, 0.95, 1.0) if night else Color.WHITE
+
+
+func _category_label(m: Dictionary) -> String:
+	match str(m.get("category", "")):
+		"delitos":
+			return "DELITOS CONTRA LA PROPIEDAD"
+		"trafico":
+			return "SEGURIDAD VIAL"
+		"civiles":
+			return "ASISTENCIA A CIVILES"
+		"organizado":
+			return "CRIMEN ORGANIZADO"
+		"especiales":
+			return "OPERACIONES ESPECIALES"
+		"emergencias":
+			return "EMERGENCIAS"
+		_:
+			return str(m.get("category", "")).to_upper()
+
+
+func _crime_type(m: Dictionary) -> String:
+	var title := str(m.get("title", "")).to_lower()
+	if "atraco" in title or "robo" in title:
+		return "Robo a mano armada"
+	if "secuestr" in title:
+		return "Secuestro / retención"
+	if "pelea" in title or "riña" in title:
+		return "Altercado público"
+	if "accidente" in title:
+		return "Accidente de tráfico"
+	if "contraband" in title:
+		return "Tráfico ilícito"
+	return str(m.get("category", "Incidente")).capitalize()
+
+
+func _units_text(m: Dictionary) -> String:
+	var assigned := str(m.get("assigned_patrol", ""))
+	if assigned != "" and GameState.patrols.has(assigned):
+		var p: Dictionary = GameState.patrols[assigned]
+		return "%s — %s" % [p.get("name", ""), p.get("callsign", "")]
+	return "Sin despachar · elegir abajo"
+
+
+func _distance_text(m: Dictionary) -> String:
+	var pos: Vector2 = m.get("world_pos", Vector2(640, 360))
+	var km := clampf(pos.distance_to(Vector2(640, 360)) / 180.0, 0.8, 8.0)
+	var mins := int(round(km * 2.0))
+	return "%.1f km (~%d min)" % [km, mins]
+
+
+func _fake_address(m: Dictionary) -> String:
+	var district := str(m.get("district_name", "Centro"))
+	var n := 80 + (abs(hash(str(m.get("id", "")))) % 140)
+	return "Av. %s %d" % [district, n]
+
+
+func _rebuild_suspects(m: Dictionary) -> void:
+	for c in suspects_row.get_children():
+		c.queue_free()
+	var labels := ["SOSPECHOSO 1", "SOSPECHOSO 2", "POSIBLE 3º"]
+	var colors := [
+		Color(0.15, 0.2, 0.28),
+		Color(0.18, 0.16, 0.22),
+		Color(0.12, 0.18, 0.24),
+	]
+	for i in range(3):
+		var col := VBoxContainer.new()
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var face := ColorRect.new()
+		face.custom_minimum_size = Vector2(0, 58)
+		face.color = colors[i]
+		col.add_child(face)
+		var sil := Label.new()
+		sil.text = "ID"
+		sil.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		sil.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		sil.add_theme_font_size_override("font_size", 16)
+		sil.add_theme_color_override("font_color", Color(0.55, 0.65, 0.78))
+		face.add_child(sil)
+		sil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		var name_l := Label.new()
+		name_l.text = labels[i]
+		name_l.add_theme_font_size_override("font_size", 10)
+		name_l.add_theme_color_override("font_color", Color(0.75, 0.82, 0.9))
+		col.add_child(name_l)
+		var desc := Label.new()
+		desc.text = "Sin ID confirmada"
+		desc.add_theme_font_size_override("font_size", 9)
+		desc.add_theme_color_override("font_color", Color(0.55, 0.62, 0.72))
+		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		col.add_child(desc)
+		suspects_row.add_child(col)
+	# keep reference for severity flavour
+	if str(m.get("severity", "")) == "critical":
+		witnesses.modulate = Color(1.0, 0.75, 0.75)
 
 
 func _risk(m: Dictionary) -> int:
@@ -117,14 +264,26 @@ func _status(st: String) -> String:
 
 func _set_action(action: String) -> void:
 	_action = action
-	_paint(action_cautious, action == "cautious", Color(0.35, 0.6, 1.0))
+	_paint(action_cautious, action == "cautious", Color(0.35, 0.62, 1.0))
 	_paint(action_entry, action == "entry", Color(1.0, 0.35, 0.35))
 	_paint(action_negotiate, action == "negotiate", Color(1.0, 0.82, 0.3))
-	_paint(action_block, action == "block", Color(0.35, 0.5, 0.85))
+	_paint(action_block, action == "block", Color(0.4, 0.55, 0.9))
 
 
 func _paint(btn: Button, on: bool, col: Color) -> void:
-	btn.modulate = col if on else Color(0.7, 0.75, 0.82)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(col.r * 0.22, col.g * 0.22, col.b * 0.28, 1.0) if on else Color(0.08, 0.12, 0.18)
+	sb.border_color = col if on else Color(0.25, 0.35, 0.48)
+	sb.set_border_width_all(2 if on else 1)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	btn.add_theme_stylebox_override("normal", sb)
+	btn.add_theme_stylebox_override("hover", sb)
+	btn.add_theme_stylebox_override("pressed", sb)
+	btn.add_theme_color_override("font_color", Color(0.95, 0.97, 1.0) if on else Color(0.7, 0.76, 0.85))
 
 
 func _confirm() -> void:

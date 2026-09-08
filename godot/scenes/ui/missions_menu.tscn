@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://bqmissionsmenu"]
+[gd_scene load_steps=3 format=3 uid="uid://bqmissionsmenu"]
 
 [ext_resource type="Script" path="res://scripts/missions_menu.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/ui/police_badge_logo.png" id="2_badge"]
 
 [node name="MissionsMenu" type="Control"]
 layout_mode = 3
@@ -18,47 +19,64 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.02, 0.03, 0.06, 0.94)
+color = Color(0.04, 0.08, 0.14, 0.97)
 
 [node name="Root" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 28.0
-offset_top = 22.0
-offset_right = -28.0
-offset_bottom = -22.0
+offset_left = 24.0
+offset_top = 16.0
+offset_right = -24.0
+offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="VBox" type="VBoxContainer" parent="Root"]
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 12
 
 [node name="Header" type="HBoxContainer" parent="Root/VBox"]
 layout_mode = 2
+theme_override_constants/separation = 12
 
-[node name="BtnBack" type="Button" parent="Root/VBox/Header"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(200, 40)
+[node name="Badge" type="TextureRect" parent="Root/VBox/Header"]
+custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
-theme_override_font_sizes/font_size = 15
-text = "← VOLVER AL MAPA"
+texture = ExtResource("2_badge")
+expand_mode = 1
+stretch_mode = 5
 
-[node name="Title" type="Label" parent="Root/VBox/Header"]
+[node name="TitleCol" type="VBoxContainer" parent="Root/VBox/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 30
+
+[node name="Title" type="Label" parent="Root/VBox/Header/TitleCol"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
 text = "CENTRAL DE MISIONES"
-horizontal_alignment = 1
+
+[node name="Sub" type="Label" parent="Root/VBox/Header/TitleCol"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.72, 0.9, 1)
+theme_override_font_sizes/font_size = 12
+text = "INTERVENIR  ·  EVALUAR  ·  DECIDIR  ·  RESOLVER"
 
 [node name="CountLabel" type="Label" parent="Root/VBox/Header"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.8, 0.92, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.7, 0.82, 0.95, 1)
+theme_override_font_sizes/font_size = 15
 text = "0 activas"
+vertical_alignment = 1
+
+[node name="BtnBack" type="Button" parent="Root/VBox/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "←  VOLVER AL MAPA"
 
 [node name="FilterRow" type="HBoxContainer" parent="Root/VBox"]
 unique_name_in_owner = true
@@ -71,7 +89,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 16
 
 [node name="ListScroll" type="ScrollContainer" parent="Root/VBox/Body"]
-custom_minimum_size = Vector2(520, 0)
+custom_minimum_size = Vector2(480, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_scroll_mode = 0
@@ -83,16 +101,16 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
 [node name="Detail" type="PanelContainer" parent="Root/VBox/Body"]
-custom_minimum_size = Vector2(620, 0)
+custom_minimum_size = Vector2(640, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="DM" type="MarginContainer" parent="Root/VBox/Body/Detail"]
 layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 14
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
 
 [node name="DV" type="VBoxContainer" parent="Root/VBox/Body/Detail/DM"]
 layout_mode = 2
@@ -105,27 +123,27 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 26
 text = "—"
 autowrap_mode = 3
 
 [node name="Urgency" type="Label" parent="Root/VBox/Body/Detail/DM/DV/Head"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.32, 0.36, 1)
-theme_override_font_sizes/font_size = 15
-text = "URGENTE"
+theme_override_colors/font_color = Color(1, 0.92, 0.92, 1)
+theme_override_font_sizes/font_size = 13
+text = "  URGENTE  "
 
 [node name="DetailMeta" type="Label" parent="Root/VBox/Body/Detail/DM/DV"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.75, 0.88, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.62, 0.74, 0.88, 1)
+theme_override_font_sizes/font_size = 13
 text = ""
 
 [node name="DetailArt" type="TextureRect" parent="Root/VBox/Body/Detail/DM/DV"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 280)
+custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
 size_flags_vertical = 3
 expand_mode = 1
@@ -133,7 +151,7 @@ stretch_mode = 6
 
 [node name="DetailBlurb" type="RichTextLabel" parent="Root/VBox/Body/Detail/DM/DV"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 80)
+custom_minimum_size = Vector2(0, 70)
 layout_mode = 2
 bbcode_enabled = true
 fit_content = true
@@ -142,5 +160,6 @@ fit_content = true
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.05, 0.12, 0.08, 1)
+theme_override_font_sizes/font_size = 17
 text = "▶  ABRIR INFORME TÁCTICO"

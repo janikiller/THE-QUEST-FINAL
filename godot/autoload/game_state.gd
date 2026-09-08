@@ -262,7 +262,7 @@ func _generated_art_for(key: String) -> String:
 		return base + "mission_pelea.png"
 	if "contraband" in key or "narco" in key:
 		return base + "mission_contrabando.png"
-	if "atraco" in key or "banco" in key or "robo" in key:
+	if "atraco" in key or "banco" in key or "robo" in key or "tienda" in key:
 		return base + "mission_atraco.png"
 	if "medic" in key or "auxilio" in key or "ambulancia" in key or "herid" in key:
 		return base + "mission_medico.png"

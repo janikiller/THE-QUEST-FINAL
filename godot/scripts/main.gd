@@ -226,6 +226,17 @@ func _playtest() -> void:
 		print("PLAYTEST art=", artp)
 		if not ResourceLoader.exists(artp):
 			errors.append("mission art missing")
+		$UI/UIRouter.show_mission(str(sample["id"]))
+		await get_tree().process_frame
+		await get_tree().process_frame
+		if not $UI/UIRouter/MissionScreen.visible:
+			errors.append("tactical mission screen not visible")
+		else:
+			print("PLAYTEST tactical screen ok")
+	if not ResourceLoader.exists("res://assets/missions/generated/mission_atraco.png"):
+		errors.append("atraco mission photo missing")
+	if not ResourceLoader.exists("res://assets/ui/police_badge_logo.png"):
+		errors.append("police badge missing")
 
 	if errors.is_empty():
 		print("PLAYTEST_OK")

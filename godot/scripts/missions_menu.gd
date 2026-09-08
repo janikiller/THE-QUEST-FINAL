@@ -24,7 +24,21 @@ func _ready() -> void:
 	GameState.mission_added.connect(func(_m): if visible: _refresh())
 	GameState.mission_removed.connect(func(_id): if visible: _refresh())
 	GameState.mission_updated.connect(func(_m): if visible: _refresh())
+	_style_open_btn()
 	_build_filters()
+
+
+func _style_open_btn() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.22, 0.78, 0.42)
+	sb.set_corner_radius_all(6)
+	btn_open.add_theme_stylebox_override("normal", sb)
+	var sb_h := sb.duplicate()
+	sb_h.bg_color = Color(0.3, 0.88, 0.5)
+	btn_open.add_theme_stylebox_override("hover", sb_h)
+	var sb_d := sb.duplicate()
+	sb_d.bg_color = Color(0.18, 0.35, 0.25)
+	btn_open.add_theme_stylebox_override("disabled", sb_d)
 
 
 func _on_vis() -> void:
