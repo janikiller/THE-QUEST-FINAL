@@ -1,9 +1,9 @@
 extends Control
-## Combate visual: sprites custom ilustrados (héroe / delincuentes / cartas).
+## Combate visual: sprites custom + idle, sombras, lunges y VFX de ataque.
 
 const PACK_HERO := "res://assets/combat/custom/hero/"
 const PACK_FOE := "res://assets/combat/custom/foes/"
-const PACK_UI := "res://assets/combat/custom/cards/"
+const FX_DIR := "res://assets/combat/custom/fx/"
 
 @onready var bg: TextureRect = %ArenaBg
 @onready var title_label: Label = %TitleLabel
@@ -34,10 +34,22 @@ var _busy: bool = false
 var _closing: bool = false
 var _hero_pose: String = "idle"
 var _hero_pose_until: float = 0.0
+var _bob_t: float = 0.0
+var _player_shadow: TextureRect
+var _player_actor: Control
+var _player_base_pos: Vector2 = Vector2.ZERO
+var _skip_enemy_rebuild: bool = false
 
 
 func _hero_tex(name: String) -> Texture2D:
 	var path := PACK_HERO + name + ".png"
+	if ResourceLoader.exists(path):
+		return load(path) as Texture2D
+	return null
+
+
+func _fx_tex(name: String) -> Texture2D:
+	var path := FX_DIR + name + ".png"
 	if ResourceLoader.exists(path):
 		return load(path) as Texture2D
 	return null
@@ -49,12 +61,10 @@ func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
 		_hero_pose_until = Time.get_ticks_msec() / 1000.0 + hold_sec
 	var tex: Texture2D = null
 	match pose:
-		"shoot":
+		"shoot", "aim":
 			tex = _hero_tex("shoot")
 		"hurt":
 			tex = _hero_tex("hurt")
-		"aim":
-			tex = _hero_tex("shoot")
 		_:
 			tex = _hero_tex("idle")
 	if tex == null:
@@ -86,6 +96,92 @@ func _ready() -> void:
 	_fx_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fx_layer.z_index = 80
 	add_child(_fx_layer)
+	_setup_player_actor()
+	set_process(true)
+
+
+func _setup_player_actor() -> void:
+	## Envuelve el sprite del héroe con sombra movible.
+	if player_sprite.get_parent() == null:
+		return
+	if player_sprite.get_parent().name == "PlayerActor":
+		_player_actor = player_sprite.get_parent()
+		_player_shadow = _player_actor.get_node_or_null("Shadow")
+		return
+	var parent := player_sprite.get_parent()
+	var idx := player_sprite.get_index()
+	_player_actor = Control.new()
+	_player_actor.name = "PlayerActor"
+	_player_actor.custom_minimum_size = player_sprite.custom_minimum_size
+	_player_actor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(_player_actor)
+	parent.move_child(_player_actor, idx)
+	parent.remove_child(player_sprite)
+	_player_actor.add_child(player_sprite)
+	player_sprite.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	player_sprite.offset_bottom = -18
+	_player_shadow = TextureRect.new()
+	_player_shadow.name = "Shadow"
+	_player_shadow.texture = _fx_tex("shadow")
+	_player_shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_player_shadow.stretch_mode = TextureRect.STRETCH_SCALE
+	_player_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_player_shadow.modulate = Color(1, 1, 1, 0.55)
+	_player_actor.add_child(_player_shadow)
+	_player_actor.move_child(_player_shadow, 0)
+	_layout_player_shadow()
+	_player_base_pos = _player_actor.position
+
+
+func _layout_player_shadow() -> void:
+	if _player_shadow == null or _player_actor == null:
+		return
+	var w := maxf(120.0, _player_actor.size.x * 0.72)
+	var h := 28.0
+	_player_shadow.size = Vector2(w, h)
+	_player_shadow.position = Vector2((_player_actor.size.x - w) * 0.5, _player_actor.size.y - h - 2.0)
+
+
+func _process(delta: float) -> void:
+	if not visible or _busy:
+		return
+	_bob_t += delta
+	_tick_hero_pose()
+	_idle_bob_player(delta)
+	_idle_bob_enemies()
+
+
+func _idle_bob_player(_delta: float) -> void:
+	if _player_actor == null or not is_instance_valid(_player_actor):
+		return
+	var bob := sin(_bob_t * 2.4) * 3.5
+	var sway := sin(_bob_t * 1.7) * 1.5
+	_player_actor.position = _player_base_pos + Vector2(sway, bob)
+	if _player_shadow:
+		_layout_player_shadow()
+		var squash := 1.0 + sin(_bob_t * 2.4) * 0.06
+		_player_shadow.scale = Vector2(squash, 1.0 / maxf(0.85, squash))
+		_player_shadow.modulate.a = 0.45 + absf(sin(_bob_t * 2.4)) * 0.12
+
+
+func _idle_bob_enemies() -> void:
+	var i := 0
+	for wrap in enemies_row.get_children():
+		if not is_instance_valid(wrap):
+			continue
+		var actor: Control = wrap.get_node_or_null("ActorSlot")
+		if actor == null:
+			continue
+		var phase := _bob_t * 2.1 + float(i) * 0.9
+		var bob := sin(phase) * 3.0
+		var sway := cos(phase * 0.85) * 1.2
+		actor.position = Vector2(sway, bob)
+		var shadow: TextureRect = actor.get_node_or_null("Shadow")
+		if shadow:
+			var squash := 1.0 + sin(phase) * 0.05
+			shadow.scale = Vector2(squash, 1.0)
+			shadow.modulate.a = 0.4 + absf(sin(phase)) * 0.1
+		i += 1
 
 
 func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
@@ -97,6 +193,7 @@ func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
 	_busy = false
 	_hero_pose = "idle"
 	_hero_pose_until = 0.0
+	_bob_t = 0.0
 	result_panel.visible = false
 	_prev_enemy_hp.clear()
 	_prev_player_hp = -1
@@ -104,6 +201,10 @@ func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
 	CombatState.start_combat(cfg)
 	_apply_hero_pose("idle")
 	_refresh()
+	await get_tree().process_frame
+	if _player_actor:
+		_player_base_pos = _player_actor.position
+		_layout_player_shadow()
 
 
 func close() -> void:
@@ -150,7 +251,12 @@ func _on_log(text: String) -> void:
 func _on_end_turn() -> void:
 	if _busy or CombatState.phase != CombatState.Phase.PLAYER:
 		return
+	_busy = true
+	end_turn_btn.disabled = true
+	await _play_enemy_attack_sequence()
 	CombatState.end_player_turn()
+	_busy = false
+	_refresh()
 
 
 func _on_combat_ended(victory: bool) -> void:
@@ -191,9 +297,10 @@ func _refresh() -> void:
 	player_marker.visible = int(snap.get("phase", 0)) == CombatState.Phase.PLAYER
 
 	var php := int(p.get("hp", 0))
-	if _prev_player_hp >= 0 and php < _prev_player_hp:
+	if _prev_player_hp >= 0 and php < _prev_player_hp and not _busy:
 		_apply_hero_pose("hurt", 0.55)
 		_hit_actor(player_sprite, _prev_player_hp - php, false)
+		_spawn_fx_at(player_sprite, "blood", Vector2(40, 80), 0.45)
 	_prev_player_hp = php
 
 	_tick_hero_pose()
@@ -201,7 +308,8 @@ func _refresh() -> void:
 		_apply_hero_pose(_hero_pose)
 
 	_load_bg()
-	_rebuild_enemies(snap)
+	if not _skip_enemy_rebuild:
+		_rebuild_enemies(snap)
 	_rebuild_hand(snap)
 	_rebuild_energy(snap)
 
@@ -247,7 +355,7 @@ func _rebuild_enemies(snap: Dictionary) -> void:
 		var prev := int(_prev_enemy_hp.get(i, hp_now))
 		var panel := _make_enemy_panel(e, i, i == selected)
 		enemies_row.add_child(panel)
-		if prev > hp_now:
+		if prev > hp_now and not _busy:
 			call_deferred("_animate_enemy_hit", panel, prev - hp_now)
 		_prev_enemy_hp[i] = hp_now
 
@@ -258,6 +366,8 @@ func _animate_enemy_hit(panel: Control, dmg: int) -> void:
 	var spr := panel.find_child("EnemySprite", true, false)
 	if spr:
 		_hit_actor(spr, dmg, true)
+		_spawn_fx_at(spr, "impact", Vector2(40, 70), 0.35)
+		_spawn_fx_at(spr, "blood", Vector2(50, 90), 0.4)
 
 
 func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
@@ -265,6 +375,7 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	wrap.custom_minimum_size = Vector2(180, 360)
 	wrap.alignment = BoxContainer.ALIGNMENT_END
 	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wrap.set_meta("enemy_index", index)
 
 	var intent := Label.new()
 	var intent_id := int(e.get("intent", 0))
@@ -301,13 +412,31 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	name_l.add_theme_font_size_override("font_size", 13)
 	wrap.add_child(name_l)
 
+	var actor := Control.new()
+	actor.name = "ActorSlot"
+	actor.custom_minimum_size = Vector2(160, 250)
+	actor.clip_contents = false
+
+	var shadow := TextureRect.new()
+	shadow.name = "Shadow"
+	shadow.texture = _fx_tex("shadow")
+	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shadow.stretch_mode = TextureRect.STRETCH_SCALE
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shadow.modulate = Color(1, 1, 1, 0.5)
+	shadow.position = Vector2(20, 220)
+	shadow.size = Vector2(120, 26)
+	actor.add_child(shadow)
+
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(160, 250)
+	btn.name = "SelectBtn"
+	btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	btn.flat = true
-	btn.clip_contents = true
+	btn.clip_contents = false
 	var tex := TextureRect.new()
 	tex.name = "EnemySprite"
 	tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tex.offset_bottom = -16
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -321,12 +450,13 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	btn.add_child(tex)
 	if selected:
 		var border := ColorRect.new()
-		border.color = Color(0.25, 0.85, 1.0, 0.2)
+		border.color = Color(0.25, 0.85, 1.0, 0.18)
 		border.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		border.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		btn.add_child(border)
 	btn.pressed.connect(func(): CombatState.select_enemy(index))
-	wrap.add_child(btn)
+	actor.add_child(btn)
+	wrap.add_child(actor)
 
 	var bar := ProgressBar.new()
 	bar.custom_minimum_size = Vector2(140, 16)
@@ -440,6 +570,7 @@ func _try_play_card(card_id: String, panel: Control) -> void:
 		return
 	_busy = true
 	await _play_card_fx(panel, card_id)
+	_skip_enemy_rebuild = false
 	CombatState.play_card(card_id)
 	_busy = false
 	_refresh()
@@ -451,10 +582,10 @@ func _play_card_fx(panel: Control, card_id: String) -> void:
 		return
 	var def := CardDB.get_card(card_id)
 	var card_type := str(def.get("type", ""))
-	if card_type == "ataque" or int(def.get("damage", 0)) > 0:
-		_apply_hero_pose("shoot", 0.45)
-	elif card_type == "defensa" or int(def.get("block", 0)) > 0:
-		_apply_hero_pose("aim", 0.35)
+	var is_attack := card_type == "ataque" or int(def.get("damage", 0)) > 0
+	var is_block := card_type == "defensa" or int(def.get("block", 0)) > 0
+
+	# Carta vuela al centro
 	var ghost := panel.duplicate()
 	ghost.modulate = Color(1, 1, 1, 1)
 	_fx_layer.add_child(ghost)
@@ -462,23 +593,198 @@ func _play_card_fx(panel: Control, card_id: String) -> void:
 	var target := get_viewport_rect().size * Vector2(0.5, 0.42) - Vector2(74, 105)
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(ghost, "global_position", target, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(ghost, "scale", Vector2(1.35, 1.35), 0.32)
+	tw.tween_property(ghost, "global_position", target, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(ghost, "scale", Vector2(1.3, 1.3), 0.28)
 	await tw.finished
-	var flash := ColorRect.new()
-	flash.color = Color(0.45, 0.9, 1.0, 0.4)
-	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_fx_layer.add_child(flash)
+
+	if is_attack:
+		await _hero_attack_sequence(def)
+	elif is_block:
+		_apply_hero_pose("aim", 0.4)
+		await _hero_guard_pulse()
+	else:
+		_apply_hero_pose("aim", 0.3)
+		await _screen_pulse(Color(0.4, 0.85, 1.0, 0.28))
+
 	var tw2 := create_tween()
-	tw2.tween_property(flash, "modulate:a", 0.0, 0.25)
-	tw2.parallel().tween_property(ghost, "modulate:a", 0.0, 0.25)
+	tw2.tween_property(ghost, "modulate:a", 0.0, 0.18)
 	await tw2.finished
 	if is_instance_valid(ghost):
 		ghost.queue_free()
+	log_label.text = "Activada: %s" % str(def.get("name", card_id))
+
+
+func _hero_guard_pulse() -> void:
+	if _player_actor == null:
+		await get_tree().create_timer(0.2).timeout
+		return
+	var base := _player_base_pos
+	var tw := create_tween()
+	tw.tween_property(_player_actor, "position", base + Vector2(-18, 0), 0.12)
+	tw.tween_property(_player_actor, "modulate", Color(0.55, 0.85, 1.0), 0.08)
+	_spawn_fx_at(player_sprite, "impact", Vector2(60, 100), 0.3, Color(0.5, 0.85, 1.0))
+	tw.tween_property(_player_actor, "position", base, 0.18)
+	tw.parallel().tween_property(_player_actor, "modulate", Color.WHITE, 0.18)
+	await tw.finished
+
+
+func _hero_attack_sequence(def: Dictionary) -> void:
+	_apply_hero_pose("shoot", 0.7)
+	if _player_actor == null:
+		await get_tree().create_timer(0.25).timeout
+		return
+	var base := _player_base_pos
+	var lunge := base + Vector2(70, -8)
+	var tw := create_tween()
+	tw.tween_property(_player_actor, "position", lunge, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if _player_shadow:
+		tw.parallel().tween_property(_player_shadow, "scale", Vector2(1.25, 0.85), 0.14)
+	await tw.finished
+
+	# Boca de cañón + proyectil hacia enemigo seleccionado
+	var muzzle_pos := player_sprite.global_position + Vector2(140, 110)
+	_spawn_fx_world(muzzle_pos, "muzzle", 0.22, Vector2(1.2, 1.2))
+	await _screen_pulse(Color(1.0, 0.85, 0.35, 0.22))
+
+	var enemy_node := _selected_enemy_sprite()
+	var hit_pos := get_viewport_rect().size * Vector2(0.72, 0.42)
+	if enemy_node and is_instance_valid(enemy_node):
+		hit_pos = enemy_node.global_position + Vector2(60, 90)
+	await _fly_tracer(muzzle_pos, hit_pos)
+
+	_spawn_fx_world(hit_pos, "impact", 0.3, Vector2(1.4, 1.4))
+	_spawn_fx_world(hit_pos + Vector2(10, 8), "blood", 0.4, Vector2(1.1, 1.1))
+	if enemy_node and is_instance_valid(enemy_node):
+		_hit_actor(enemy_node, maxi(1, int(def.get("damage", 8))), true)
+
+	var tw2 := create_tween()
+	tw2.tween_property(_player_actor, "position", base, 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if _player_shadow:
+		tw2.parallel().tween_property(_player_shadow, "scale", Vector2.ONE, 0.2)
+	await tw2.finished
+
+
+func _play_enemy_attack_sequence() -> void:
+	var snap := CombatState.get_snapshot()
+	var enemies: Array = snap.get("enemies", [])
+	for i in range(enemies.size()):
+		var e: Dictionary = enemies[i]
+		if int(e.get("hp", 0)) <= 0 or bool(e.get("detained", false)) or bool(e.get("fled", false)):
+			continue
+		if int(e.get("intent", 0)) != CombatState.Intent.ATTACK:
+			continue
+		await _enemy_lunge_attack(i)
+	# Pequeña pausa antes de resolver daño real
+	await get_tree().create_timer(0.08).timeout
+
+
+func _enemy_lunge_attack(index: int) -> void:
+	var wrap := _enemy_wrap(index)
+	if wrap == null:
+		return
+	var actor: Control = wrap.get_node_or_null("ActorSlot")
+	var spr: TextureRect = wrap.find_child("EnemySprite", true, false)
+	if actor == null or spr == null:
+		return
+	var base := actor.position
+	var tw := create_tween()
+	tw.tween_property(actor, "position", base + Vector2(-55, -6), 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var shadow: TextureRect = actor.get_node_or_null("Shadow")
+	if shadow:
+		tw.parallel().tween_property(shadow, "scale", Vector2(1.2, 0.85), 0.14)
+	await tw.finished
+
+	var muzzle := spr.global_position + Vector2(20, 100)
+	_spawn_fx_world(muzzle, "muzzle", 0.2, Vector2(1.0, 1.0))
+	var target := player_sprite.global_position + Vector2(90, 100)
+	await _fly_tracer(muzzle, target)
+	_spawn_fx_world(target, "impact", 0.28, Vector2(1.2, 1.2))
+
+	var tw2 := create_tween()
+	tw2.tween_property(actor, "position", base, 0.18)
+	if shadow:
+		tw2.parallel().tween_property(shadow, "scale", Vector2.ONE, 0.18)
+	await tw2.finished
+
+
+func _enemy_wrap(index: int) -> Control:
+	for c in enemies_row.get_children():
+		if int(c.get_meta("enemy_index", -1)) == index:
+			return c
+	if index >= 0 and index < enemies_row.get_child_count():
+		return enemies_row.get_child(index)
+	return null
+
+
+func _selected_enemy_sprite() -> TextureRect:
+	var snap := CombatState.get_snapshot()
+	var idx := int(snap.get("selected_enemy", 0))
+	var wrap := _enemy_wrap(idx)
+	if wrap == null:
+		return null
+	return wrap.find_child("EnemySprite", true, false)
+
+
+func _fly_tracer(from: Vector2, to: Vector2) -> void:
+	var tracer := TextureRect.new()
+	tracer.texture = _fx_tex("tracer")
+	tracer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tracer.stretch_mode = TextureRect.STRETCH_SCALE
+	tracer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tracer.z_index = 95
+	_fx_layer.add_child(tracer)
+	var dist := from.distance_to(to)
+	tracer.size = Vector2(maxi(24, int(dist * 0.35)), 10)
+	tracer.pivot_offset = Vector2(0, 5)
+	tracer.global_position = from
+	tracer.rotation = from.angle_to_point(to)
+	var tw := create_tween()
+	tw.tween_property(tracer, "global_position", to - Vector2(8, 5), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(tracer, "modulate:a", 0.0, 0.12)
+	await tw.finished
+	if is_instance_valid(tracer):
+		tracer.queue_free()
+
+
+func _spawn_fx_at(node: CanvasItem, fx_name: String, offset: Vector2, life: float, tint: Color = Color.WHITE) -> void:
+	if not is_instance_valid(node):
+		return
+	_spawn_fx_world(node.global_position + offset, fx_name, life, Vector2.ONE, tint)
+
+
+func _spawn_fx_world(pos: Vector2, fx_name: String, life: float, sc: Vector2 = Vector2.ONE, tint: Color = Color.WHITE) -> void:
+	var tex := _fx_tex(fx_name)
+	if tex == null:
+		return
+	var fx := TextureRect.new()
+	fx.texture = tex
+	fx.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fx.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fx.z_index = 96
+	fx.modulate = tint
+	fx.size = Vector2(72, 72) * sc
+	fx.pivot_offset = fx.size * 0.5
+	_fx_layer.add_child(fx)
+	fx.global_position = pos - fx.size * 0.5
+	var tw := create_tween()
+	tw.tween_property(fx, "scale", sc * 1.45, life * 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(fx, "modulate:a", 0.0, life * 0.55)
+	tw.tween_callback(fx.queue_free)
+
+
+func _screen_pulse(color: Color) -> void:
+	var flash := ColorRect.new()
+	flash.color = color
+	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.z_index = 70
+	_fx_layer.add_child(flash)
+	var tw := create_tween()
+	tw.tween_property(flash, "modulate:a", 0.0, 0.18)
+	await tw.finished
 	if is_instance_valid(flash):
 		flash.queue_free()
-	log_label.text = "Activada: %s" % str(def.get("name", card_id))
 
 
 func _hit_actor(node: CanvasItem, dmg: int, knock_right: bool) -> void:
