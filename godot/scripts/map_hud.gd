@@ -52,7 +52,7 @@ func _update_tod_hint() -> void:
 			label = "ATARDECER"
 		"night":
 			label = "NOCHE"
-	prestige_label.text = "Prestigio %d   ·   %s   ·   %s   ·   %dx" % [
+	prestige_label.text = "★%d  %s  %s  %dx" % [
 		GameState.prestige, label, GameState.weather_label(), int(round(GameState.time_speed))
 	]
 	btn_weather.text = GameState.weather_label()
