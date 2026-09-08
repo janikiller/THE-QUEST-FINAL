@@ -144,11 +144,82 @@ func _on_arrive(patrol: Dictionary, next_status: String) -> void:
 				"Unidad evalúa riesgos y aplica táctica: %s." % _tactic_label(mid),
 				"desarrollo"
 			)
+			patrol["_awaiting_combat"] = true
+			GameState.set_patrol(patrol)
+			_start_combat_for(mid, str(patrol["id"]))
 	elif next_status == "available":
 		patrol["mission_id"] = ""
 		patrol["target"] = Vector2.ZERO
 		var hq := Vector2(float(GameState.station["hq_pos"][0]), float(GameState.station["hq_pos"][1]))
 		patrol["pos"] = RoadNav.nearest_road(hq)
+
+
+func _start_combat_for(mission_id: String, patrol_id: String) -> void:
+	var router = get_tree().get_first_node_in_group("ui_router")
+	if router == null:
+		router = get_tree().root.find_child("UIRouter", true, false)
+	if router and router.has_method("show_combat"):
+		router.show_combat(mission_id, patrol_id)
+	if not CombatState.combat_ended.is_connected(_on_combat_ended):
+		CombatState.combat_ended.connect(_on_combat_ended)
+
+
+func _on_combat_ended(victory: bool) -> void:
+	var mid := CombatState.mission_id
+	if mid == "" or not GameState.active_missions.has(mid):
+		return
+	var mission: Dictionary = GameState.active_missions[mid]
+	var pid := str(mission.get("assigned_patrol", "alpha"))
+	if not GameState.patrols.has(pid):
+		return
+	var patrol: Dictionary = GameState.patrols[pid]
+	if not bool(patrol.get("_awaiting_combat", false)):
+		return
+
+	var report := _make_report(victory, mission)
+	mission["status"] = "resolved" if victory else "failed"
+	mission["outcome"] = "success" if victory else "fail"
+	mission["outcome_report"] = report
+	mission["radio_log"].append(report)
+	GameState.update_mission(mission)
+	GameState.set_mission_phase(mid, "final")
+	GameState.add_mission_beat(
+		mid,
+		"CIERRE OPERATIVO" if victory else "UNIDAD CAÍDA",
+		report,
+		"final"
+	)
+	var snapshot: Dictionary = GameState.active_missions[mid].duplicate(true)
+	GameState.store_resolved_mission(snapshot)
+
+	RadioBus.announce_resolve(patrol["callsign"], victory, report)
+	RadioBus.dispatch_resolved.emit(mid, victory, report)
+
+	if victory:
+		var bonus := 1
+		if str(patrol.get("specialty", "")) == str(mission.get("category", "")):
+			bonus = 2
+		GameState.add_prestige(bonus + int(mission.get("xp", 50) / 100))
+
+	patrol["status"] = "returning"
+	patrol["report"] = report
+	patrol.erase("_awaiting_combat")
+	patrol.erase("_resolving_lock")
+	patrol["_pending_result_id"] = mid
+	_paths.erase(pid)
+	GameState.set_patrol(patrol)
+	_scene_timers.erase(pid)
+	# La UI de resultado se muestra al cerrar la pantalla de combate.
+
+
+func show_pending_combat_result(patrol_id: String = "alpha") -> void:
+	var patrol: Dictionary = GameState.patrols.get(patrol_id, {})
+	var mid := str(patrol.get("_pending_result_id", CombatState.mission_id))
+	if mid == "":
+		return
+	patrol.erase("_pending_result_id")
+	GameState.set_patrol(patrol)
+	_show_result_then_clear(mid)
 
 
 func _tactic_label(mission_id: String) -> String:
@@ -165,6 +236,9 @@ func _tactic_label(mission_id: String) -> String:
 
 
 func _resolve_scene(patrol: Dictionary, delta: float) -> void:
+	# Combate de cartas sustituye el cierre aleatorio mientras espera intervención.
+	if bool(patrol.get("_awaiting_combat", false)) or CombatState.is_active():
+		return
 	var pid: String = patrol["id"]
 	_scene_timers[pid] = float(_scene_timers.get(pid, 0.0)) + delta * maxf(1.0, GameState.time_speed)
 	var mission_id: String = patrol["mission_id"]

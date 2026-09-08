@@ -366,7 +366,19 @@ func _confirm() -> void:
 	var ok: bool = dispatch.dispatch(m["id"], pid)
 	if ok:
 		var extra := " + apoyo extra" if support_check.button_pressed else ""
-		RadioBus.push("Táctica: %s%s" % [_action_name(_action), extra], "dispatch")
+		RadioBus.push("Táctica: %s%s — García en ruta." % [_action_name(_action), extra], "dispatch")
+		# Entrada inmediata: combate al confirmar (sin esperar al trayecto).
+		if _action == "entry":
+			var router := get_parent()
+			if router and router.has_method("show_combat"):
+				var patrol: Dictionary = GameState.patrols.get(pid, {})
+				patrol["status"] = "on_scene"
+				patrol["_awaiting_combat"] = true
+				GameState.set_patrol(patrol)
+				if not CombatState.combat_ended.is_connected(dispatch._on_combat_ended):
+					CombatState.combat_ended.connect(dispatch._on_combat_ended)
+				router.show_combat(str(m["id"]), pid)
+				return
 		_back_to_map()
 	else:
 		RadioBus.push("No se pudo confirmar el despacho.", "alert")

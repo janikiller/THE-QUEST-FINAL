@@ -544,6 +544,74 @@ func get_patrol_deck(patrol_id: String) -> Array:
 	return patrol_decks.get(patrol_id, [])
 
 
+## Config para CombatState a partir de misión + patrulla protagonista.
+func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dictionary:
+	var mission: Dictionary = active_missions.get(mission_id, {})
+	if mission.is_empty():
+		var last := last_resolved_mission()
+		if str(last.get("id", "")) == mission_id:
+			mission = last
+	if mission.is_empty():
+		return {}
+
+	var patrol: Dictionary = patrols.get(patrol_id, {})
+	if patrol.is_empty() and not patrols.is_empty():
+		patrol = patrols.values()[0]
+		patrol_id = str(patrol.get("id", "alpha"))
+
+	ensure_patrol_deck(patrol_id)
+	var deck: Array = get_patrol_deck(patrol_id).duplicate()
+
+	var hero_name := str(patrol.get("protagonist", "García"))
+	var hero := CharacterDB.police_by_name(hero_name)
+	var sprite := str(hero.get("full", patrol.get("portrait", "res://assets/character/police/police_00.png")))
+	var portrait := str(hero.get("thumb", ""))
+
+	var enemies: Array = []
+	var suspects: Array = mission.get("suspects", [])
+	if suspects.is_empty():
+		suspects = CharacterDB.delinquent_thumbs_for_mission(mission_id, 3)
+	var base_hp := 26
+	match str(mission.get("severity", "medium")):
+		"low":
+			base_hp = 22
+		"high":
+			base_hp = 32
+		"critical":
+			base_hp = 38
+	for i in range(mini(3, suspects.size())):
+		var s: Dictionary = suspects[i]
+		enemies.append({
+			"id": str(s.get("id", "e%d" % i)),
+			"name": str(s.get("alias", s.get("name", "Sospechoso"))),
+			"hp": base_hp + i * 3,
+			"portrait": str(s.get("thumb", "")),
+			"sprite": str(s.get("full", "res://assets/character/delinquents/delinq_00.png")),
+		})
+	if enemies.is_empty():
+		for i in range(3):
+			enemies.append({
+				"id": "e%d" % i,
+				"name": "Sospechoso %d" % (i + 1),
+				"hp": base_hp + i * 3,
+				"sprite": "res://assets/character/delinquents/delinq_%02d.png" % i,
+			})
+
+	return {
+		"mission_id": mission_id,
+		"location": str(mission.get("title", mission.get("district_name", "Intervención"))),
+		"objective": "Detener a los sospechosos",
+		"hero_name": hero_name,
+		"max_hp": int(patrol.get("max_hp", 50)),
+		"energy_max": int(patrol.get("energy_max", 3)),
+		"portrait": portrait,
+		"sprite": sprite,
+		"deck": deck,
+		"enemies": enemies,
+		"patrol_id": patrol_id,
+	}
+
+
 func add_card_to_deck(patrol_id: String, card_id: String) -> void:
 	ensure_patrol_deck(patrol_id)
 	if CardDB.get_card(card_id).is_empty():

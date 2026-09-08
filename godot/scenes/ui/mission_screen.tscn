@@ -430,7 +430,7 @@ custom_minimum_size = Vector2(300, 52)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.05, 0.12, 0.08, 1)
 theme_override_font_sizes/font_size = 17
-text = "▶  CONFIRMAR ACCIONES"
+text = "▶  DESPACHAR  ·  INTERVENIR"
 
 [node name="BrandFooter" type="HBoxContainer" parent="Root/VBox"]
 layout_mode = 2

@@ -209,8 +209,8 @@ func _playtest() -> void:
 	print("PLAYTEST tod night=", GameState.time_of_day())
 	if GameState.time_of_day() != "night":
 		errors.append("night tod failed")
-	if GameState.patrols.size() != 3:
-		errors.append("expected 3 patrols, got %d" % GameState.patrols.size())
+	if GameState.patrols.size() != 1:
+		errors.append("expected 1 patrol (García), got %d" % GameState.patrols.size())
 	GameState.set_time_speed(16.0)
 	if abs(GameState.time_speed - 16.0) > 0.01:
 		errors.append("time speed not set")
@@ -251,6 +251,63 @@ func _playtest() -> void:
 			errors.append("tactical mission screen not visible")
 		else:
 			print("PLAYTEST tactical screen ok")
+
+	# Combate de cartas (roguelike)
+	var combat_mid := ""
+	for m in GameState.active_missions.values():
+		if str(m.get("status", "")) in ["open", "dispatched", "resolving"]:
+			combat_mid = str(m["id"])
+			break
+	if combat_mid == "" and not GameState.active_missions.is_empty():
+		combat_mid = str(GameState.active_missions.keys()[0])
+	if combat_mid != "":
+		var cfg := GameState.build_combat_config(combat_mid, "alpha")
+		print("PLAYTEST combat cfg enemies=", cfg.get("enemies", []).size(), " deck=", cfg.get("deck", []).size())
+		if cfg.is_empty() or cfg.get("deck", []).is_empty():
+			errors.append("combat config empty")
+		else:
+			$UI/UIRouter.show_combat(combat_mid, "alpha")
+			await get_tree().process_frame
+			await get_tree().process_frame
+			if not $UI/UIRouter/CombatScreen.visible:
+				errors.append("combat screen not visible")
+			elif not CombatState.is_active():
+				errors.append("combat not active")
+			else:
+				print("PLAYTEST combat active turn=", CombatState.turn, " hand=", CombatState.hand.size())
+				# Jugar hasta 3 cartas asequibles
+				var played := 0
+				for _i in range(8):
+					if CombatState.phase != CombatState.Phase.PLAYER:
+						break
+					var hand_copy: Array = CombatState.hand.duplicate()
+					var did := false
+					for cid in hand_copy:
+						if CombatState.can_play_card(str(cid)):
+							CombatState.play_card(str(cid))
+							played += 1
+							did = true
+							break
+					if not did:
+						break
+				print("PLAYTEST cards played=", played)
+				if CombatState.is_active() and CombatState.phase == CombatState.Phase.PLAYER:
+					CombatState.end_player_turn()
+					await get_tree().process_frame
+					print("PLAYTEST after end turn phase=", CombatState.phase, " turn=", CombatState.turn)
+				# Forzar victoria para no colgar el playtest
+				if CombatState.is_active():
+					for i in range(CombatState.enemies.size()):
+						var e: Dictionary = CombatState.enemies[i]
+						e["hp"] = 0
+						CombatState.enemies[i] = e
+					CombatState._check_end_conditions()
+					await get_tree().process_frame
+				print("PLAYTEST combat ended active=", CombatState.is_active())
+			$UI/UIRouter.show_map()
+	else:
+		errors.append("no mission for combat test")
+
 	if not ResourceLoader.exists("res://assets/audio/music/comisaria_theme_loop.ogg"):
 		errors.append("music missing")
 	if not ResourceLoader.exists("res://assets/audio/ambience/rain_medium_loop.ogg"):

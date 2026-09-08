@@ -18,6 +18,7 @@ CardDB="*res://autoload/card_db.gd"
 ItemDB="*res://autoload/item_db.gd"
 AudioDirector="*res://autoload/audio_director.gd"
 GameState="*res://autoload/game_state.gd"
+CombatState="*res://autoload/combat_state.gd"
 RadioBus="*res://autoload/radio_bus.gd"
 RoadNav="*res://autoload/road_nav.gd"
 
