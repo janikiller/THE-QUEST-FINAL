@@ -127,6 +127,16 @@ func _on_marker_pressed(mission_id: String) -> void:
 
 func random_point_in_district(district: Dictionary) -> Vector2:
 	var r: Array = district["rect"]
-	var x: float = float(r[0]) + 28.0 + GameState._rng.randf() * max(8.0, float(r[2]) - 56.0)
-	var y: float = float(r[1]) + 28.0 + GameState._rng.randf() * max(8.0, float(r[3]) - 56.0)
-	return Vector2(x, y)
+	var best := Vector2(
+		float(r[0]) + float(r[2]) * 0.5,
+		float(r[1]) + float(r[3]) * 0.5
+	)
+	# Prefer a road cell inside the district
+	for _i in 18:
+		var x: float = float(r[0]) + 28.0 + GameState._rng.randf() * max(8.0, float(r[2]) - 56.0)
+		var y: float = float(r[1]) + 28.0 + GameState._rng.randf() * max(8.0, float(r[3]) - 56.0)
+		var p := Vector2(x, y)
+		if RoadNav.is_road_world(p):
+			return p
+		best = p
+	return RoadNav.nearest_road(best)

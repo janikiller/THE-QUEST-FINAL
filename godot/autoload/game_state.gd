@@ -59,6 +59,7 @@ func _load_data() -> void:
 func _init_patrols() -> void:
 	patrols.clear()
 	for p in station.get("patrols", []):
+		var hq := Vector2(float(station["hq_pos"][0]), float(station["hq_pos"][1]))
 		var runtime := {
 			"id": p["id"],
 			"callsign": p["callsign"],
@@ -69,12 +70,24 @@ func _init_patrols() -> void:
 			"agents": p.get("agents", []),
 			"status": "available", # available | en_route | on_scene | returning
 			"mission_id": "",
-			"pos": Vector2(float(station["hq_pos"][0]), float(station["hq_pos"][1])),
+			"pos": hq,
 			"target": Vector2.ZERO,
 			"progress": 0.0,
 			"report": "",
 		}
 		patrols[runtime["id"]] = runtime
+	# Snap HQ patrols onto roads once RoadNav is ready (deferred)
+	call_deferred("_snap_patrols_to_roads")
+
+
+func _snap_patrols_to_roads() -> void:
+	if not is_instance_valid(RoadNav):
+		return
+	for pid in patrols.keys():
+		var p: Dictionary = patrols[pid]
+		p["pos"] = RoadNav.nearest_road(p["pos"])
+		patrols[pid] = p
+		patrol_updated.emit(p)
 
 
 func _read_json(path: String) -> Dictionary:

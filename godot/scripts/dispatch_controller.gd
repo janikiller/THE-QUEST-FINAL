@@ -1,5 +1,11 @@
 extends Node
-## Mueve patrullas, resuelve misiones y genera informes de radio.
+## Mueve patrullas por carreteras, resuelve misiones y genera informes de radio.
+
+var _clock_accum: float = 0.0
+var _scene_timers: Dictionary = {}
+## patrol_id -> {points: Array[Vector2], index: int}
+var _paths: Dictionary = {}
+
 
 func dispatch(mission_id: String, patrol_id: String) -> bool:
 	if not GameState.active_missions.has(mission_id):
@@ -13,6 +19,8 @@ func dispatch(mission_id: String, patrol_id: String) -> bool:
 	if patrol["status"] != "available":
 		return false
 
+	var dest: Vector2 = RoadNav.nearest_road(mission["pos"])
+	mission["pos"] = dest
 	mission["status"] = "dispatched"
 	mission["assigned_patrol"] = patrol_id
 	mission["radio_log"].append("Despacho a %s" % patrol["callsign"])
@@ -20,9 +28,14 @@ func dispatch(mission_id: String, patrol_id: String) -> bool:
 
 	patrol["status"] = "en_route"
 	patrol["mission_id"] = mission_id
-	patrol["target"] = mission["pos"]
+	patrol["target"] = dest
 	patrol["progress"] = 0.0
 	patrol["report"] = ""
+	patrol["pos"] = RoadNav.nearest_road(patrol["pos"])
+	_paths[patrol_id] = {
+		"points": RoadNav.find_path(patrol["pos"], dest),
+		"index": 0,
+	}
 	GameState.set_patrol(patrol)
 
 	RadioBus.announce_dispatch(patrol["callsign"], mission["title"], mission["district_name"])
@@ -31,7 +44,6 @@ func dispatch(mission_id: String, patrol_id: String) -> bool:
 
 
 func _process(delta: float) -> void:
-	# Advance clock slowly while playing
 	_clock_accum += delta
 	if _clock_accum >= 4.0:
 		_clock_accum = 0.0
@@ -41,36 +53,72 @@ func _process(delta: float) -> void:
 		var patrol: Dictionary = GameState.patrols[pid]
 		match str(patrol["status"]):
 			"en_route":
-				_move_toward(patrol, patrol["target"], delta, "on_scene")
+				_follow_path(patrol, delta, "on_scene")
 			"on_scene":
 				_resolve_scene(patrol, delta)
 			"returning":
-				var hq := Vector2(float(GameState.station["hq_pos"][0]), float(GameState.station["hq_pos"][1]))
-				_move_toward(patrol, hq, delta, "available")
+				_ensure_return_path(patrol)
+				_follow_path(patrol, delta, "available")
 
 
-var _clock_accum: float = 0.0
-var _scene_timers: Dictionary = {}
+func _ensure_return_path(patrol: Dictionary) -> void:
+	var pid: String = patrol["id"]
+	if _paths.has(pid) and not _paths[pid]["points"].is_empty():
+		return
+	var hq := Vector2(float(GameState.station["hq_pos"][0]), float(GameState.station["hq_pos"][1]))
+	hq = RoadNav.nearest_road(hq)
+	patrol["target"] = hq
+	patrol["pos"] = RoadNav.nearest_road(patrol["pos"])
+	_paths[pid] = {
+		"points": RoadNav.find_path(patrol["pos"], hq),
+		"index": 0,
+	}
 
 
-func _move_toward(patrol: Dictionary, target: Vector2, delta: float, next_status: String) -> void:
-	var speed: float = float(patrol.get("speed", 90.0))
+func _follow_path(patrol: Dictionary, delta: float, next_status: String) -> void:
+	var pid: String = patrol["id"]
+	var speed: float = float(patrol.get("speed", 90.0)) * 1.15
+	if not _paths.has(pid):
+		_paths[pid] = {"points": [patrol.get("target", patrol["pos"])], "index": 0}
+
+	var path: Dictionary = _paths[pid]
+	var points: Array = path["points"]
+	var idx: int = int(path["index"])
+	if points.is_empty():
+		patrol["status"] = next_status
+		_on_arrive(patrol, next_status)
+		GameState.set_patrol(patrol)
+		return
+
+	var target: Vector2 = points[mini(idx, points.size() - 1)]
 	var pos: Vector2 = patrol["pos"]
 	var dir := target - pos
 	var dist := dir.length()
-	if dist <= 4.0:
+	var step := speed * delta
+
+	if dist <= step + 1.5:
 		patrol["pos"] = target
-		patrol["status"] = next_status
-		if next_status == "on_scene":
-			RadioBus.announce_on_scene(patrol["callsign"])
-			_scene_timers[patrol["id"]] = 0.0
-		elif next_status == "available":
-			patrol["mission_id"] = ""
-			patrol["target"] = Vector2.ZERO
+		path["index"] = idx + 1
+		if path["index"] >= points.size():
+			patrol["status"] = next_status
+			_paths.erase(pid)
+			_on_arrive(patrol, next_status)
 		GameState.set_patrol(patrol)
 		return
-	patrol["pos"] = pos + dir.normalized() * speed * delta
+
+	patrol["pos"] = pos + dir.normalized() * step
 	GameState.set_patrol(patrol)
+
+
+func _on_arrive(patrol: Dictionary, next_status: String) -> void:
+	if next_status == "on_scene":
+		RadioBus.announce_on_scene(patrol["callsign"])
+		_scene_timers[patrol["id"]] = 0.0
+	elif next_status == "available":
+		patrol["mission_id"] = ""
+		patrol["target"] = Vector2.ZERO
+		var hq := Vector2(float(GameState.station["hq_pos"][0]), float(GameState.station["hq_pos"][1]))
+		patrol["pos"] = RoadNav.nearest_road(hq)
 
 
 func _resolve_scene(patrol: Dictionary, delta: float) -> void:
@@ -82,7 +130,6 @@ func _resolve_scene(patrol: Dictionary, delta: float) -> void:
 		GameState.set_patrol(patrol)
 		return
 	var mission: Dictionary = GameState.active_missions[mission_id]
-	# Resolve faster than real duration for playability
 	var need := clampf(float(mission.get("duration_sec", 90.0)) * 0.08, 4.0, 14.0)
 	if mission["status"] != "resolving":
 		mission["status"] = "resolving"
@@ -90,7 +137,6 @@ func _resolve_scene(patrol: Dictionary, delta: float) -> void:
 	if _scene_timers[pid] < need:
 		return
 
-	# Evitar reentrada mientras esperamos limpiar el marcador
 	if patrol.get("_resolving_lock", false):
 		return
 	patrol["_resolving_lock"] = true
@@ -113,9 +159,9 @@ func _resolve_scene(patrol: Dictionary, delta: float) -> void:
 	patrol["status"] = "returning"
 	patrol["report"] = report
 	patrol.erase("_resolving_lock")
+	_paths.erase(pid)
 	GameState.set_patrol(patrol)
 	_scene_timers.erase(pid)
-
 	_clear_mission_later(mission_id)
 
 

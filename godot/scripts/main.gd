@@ -150,7 +150,7 @@ func _playtest() -> void:
 	inv.close()
 	await get_tree().process_frame
 
-	# 5) Despacho completo
+	# 5) Despacho completo + path por carretera
 	if not GameState.active_missions.is_empty() and not GameState.available_patrols().is_empty():
 		var mid: String = ""
 		for m in GameState.active_missions.values():
@@ -160,16 +160,32 @@ func _playtest() -> void:
 		var pid: String = String(GameState.available_patrols()[0]["id"])
 		if mid != "":
 			var dispatch = get_tree().get_first_node_in_group("dispatch")
+			var start_pos: Vector2 = GameState.patrols[pid]["pos"]
 			var ok: bool = dispatch.dispatch(mid, pid)
 			print("PLAYTEST dispatch ", ok, " ", mid, "->", pid)
 			if not ok:
 				errors.append("dispatch failed")
 			else:
-				await get_tree().create_timer(1.0).timeout
+				var path_pts: Array = dispatch._paths.get(pid, {}).get("points", [])
+				print("PLAYTEST path points=", path_pts.size())
+				if path_pts.size() < 2:
+					errors.append("path too short")
+				await get_tree().create_timer(1.2).timeout
 				var st := str(GameState.patrols[pid].get("status", ""))
-				print("PLAYTEST patrol status ", st)
+				var pos2: Vector2 = GameState.patrols[pid]["pos"]
+				print("PLAYTEST patrol status ", st, " moved ", start_pos.distance_to(pos2))
 				if st == "available":
 					errors.append("patrol did not leave base")
+				if start_pos.distance_to(pos2) < 5.0:
+					errors.append("patrol barely moved")
+				# Most of the path should stay near roads
+				var off := 0
+				for p in path_pts:
+					if not RoadNav.is_road_world(p) and RoadNav.nearest_road(p).distance_to(p) > 24.0:
+						off += 1
+				print("PLAYTEST offroad waypoints=", off)
+				if off > path_pts.size() / 3:
+					errors.append("too many offroad waypoints")
 
 	# 6) Movimiento jugador
 	var p0: Vector2 = player.global_position
@@ -180,6 +196,10 @@ func _playtest() -> void:
 	if player.global_position.distance_to(p0) < 1.0:
 		errors.append("player did not move")
 	print("PLAYTEST player moved ", p0, "->", player.global_position)
+
+	# 7) Mission markers exist and use new script
+	var markers = get_tree().get_nodes_in_group("mission_marker")
+	print("PLAYTEST markers group=", markers.size())
 
 	if errors.is_empty():
 		print("PLAYTEST_OK")
