@@ -137,7 +137,7 @@ func _refresh() -> void:
 	_rebuild_hand(snap)
 	_rebuild_energy(snap)
 
-	var can_act := snap.get("phase", 0) == CombatState.Phase.PLAYER and bool(snap.get("active", false))
+	var can_act: bool = int(snap.get("phase", 0)) == CombatState.Phase.PLAYER and bool(snap.get("active", false))
 	end_turn_btn.disabled = not can_act
 	end_turn_btn.text = "FINALIZAR TURNO" if can_act else "..."
 
@@ -263,7 +263,7 @@ func _rebuild_hand(snap: Dictionary) -> void:
 	for c in hand_row.get_children():
 		c.queue_free()
 	var hand: Array = snap.get("hand", [])
-	var can_act := snap.get("phase", 0) == CombatState.Phase.PLAYER and bool(snap.get("active", false))
+	var can_act: bool = int(snap.get("phase", 0)) == CombatState.Phase.PLAYER and bool(snap.get("active", false))
 	for card_id in hand:
 		var cid := str(card_id)
 		hand_row.add_child(_make_card(cid, can_act and CombatState.can_play_card(cid)))

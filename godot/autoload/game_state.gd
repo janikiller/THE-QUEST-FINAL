@@ -569,7 +569,7 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 
 	var enemies: Array = []
 	var suspects: Array = mission.get("suspects", [])
-	if suspects.is_empty():
+	if suspects.size() < 3:
 		suspects = CharacterDB.delinquent_thumbs_for_mission(mission_id, 3)
 	var base_hp := 26
 	match str(mission.get("severity", "medium")):
