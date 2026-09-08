@@ -13,6 +13,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 CharacterDB="*res://autoload/character_db.gd"
+LocationDB="*res://autoload/location_db.gd"
 ItemDB="*res://autoload/item_db.gd"
 AudioDirector="*res://autoload/audio_director.gd"
 GameState="*res://autoload/game_state.gd"

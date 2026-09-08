@@ -219,6 +219,9 @@ func _make_agent_panel(agent_index: int, agent_name: String, data: Dictionary) -
 	title.add_theme_font_size_override("font_size", 16)
 	v.add_child(title)
 
+	var stats_box := _make_stats_block(agent_index)
+	v.add_child(stats_box)
+
 	var portraits: Array = GameState.patrols.get(selected_patrol_id, {}).get("agent_portraits", [])
 	var agent_full := ""
 	var char_info: Dictionary = CharacterDB.police_by_name(agent_name)
@@ -316,6 +319,48 @@ func _make_agent_panel(agent_index: int, agent_name: String, data: Dictionary) -
 	slots_map["bolsillos"] = pocket_slots
 
 	_agent_slots.append(slots_map)
+	return box
+
+
+func _make_stats_block(agent_index: int) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	var stats: Dictionary = {}
+	var all_stats: Array = GameState.patrols.get(selected_patrol_id, {}).get("agent_stats", [])
+	if agent_index < all_stats.size():
+		stats = all_stats[agent_index]
+	var rows := [
+		["FUERZA", "fuerza", Color(0.9, 0.25, 0.3)],
+		["RESISTENCIA", "resistencia", Color(0.95, 0.55, 0.2)],
+		["DESTREZA", "destreza", Color(0.95, 0.85, 0.25)],
+		["INVESTIGACIÓN", "investigacion", Color(0.3, 0.65, 1.0)],
+		["CONDUCCIÓN", "conduccion", Color(0.35, 0.85, 0.95)],
+	]
+	for row in rows:
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 6)
+		var lab := Label.new()
+		lab.text = str(row[0])
+		lab.custom_minimum_size = Vector2(110, 0)
+		lab.add_theme_font_size_override("font_size", 10)
+		lab.add_theme_color_override("font_color", Color(0.75, 0.82, 0.9))
+		line.add_child(lab)
+		var bar := ProgressBar.new()
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar.custom_minimum_size = Vector2(0, 12)
+		bar.max_value = 1.0
+		bar.value = float(stats.get(row[1], 0.5))
+		bar.show_percentage = false
+		var fill := StyleBoxFlat.new()
+		fill.bg_color = row[2]
+		fill.set_corner_radius_all(3)
+		bar.add_theme_stylebox_override("fill", fill)
+		var bg := StyleBoxFlat.new()
+		bg.bg_color = Color(0.12, 0.16, 0.22)
+		bg.set_corner_radius_all(3)
+		bar.add_theme_stylebox_override("background", bg)
+		line.add_child(bar)
+		box.add_child(line)
 	return box
 
 

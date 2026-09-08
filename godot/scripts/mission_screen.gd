@@ -8,6 +8,7 @@ extends Control
 @onready var clock_label: Label = %ClockLabel
 @onready var art: TextureRect = %MissionArt
 @onready var mini_map: TextureRect = %MiniMap
+@onready var location_arch: TextureRect = %LocationArch
 @onready var blurb: RichTextLabel = %MissionBlurb
 @onready var location_label: Label = %LocationLabel
 @onready var risk_label: Label = %RiskLabel
@@ -122,9 +123,24 @@ func _refresh() -> void:
 	var path := GameState.mission_art_path(m)
 	art.texture = load(path) if ResourceLoader.exists(path) else null
 	_load_minimap()
+	_load_location_arch(m)
 	_rebuild_suspects(m)
 	_refresh_patrols()
 	confirm_btn.disabled = m.get("status", "") != "open" or GameState.available_patrols().is_empty()
+
+
+func _load_location_arch(m: Dictionary) -> void:
+	var loc_path := str(m.get("location_art", ""))
+	if loc_path == "":
+		loc_path = LocationDB.house_path_for_mission(str(m.get("id", "")))
+	if location_arch and ResourceLoader.exists(loc_path):
+		location_arch.texture = load(loc_path)
+		location_arch.visible = true
+	elif location_arch:
+		location_arch.visible = false
+	var loc_name := str(m.get("location_name", ""))
+	if loc_name != "":
+		location_label.text = "%s — %s · %s" % [m.get("district_name", ""), _fake_address(m), loc_name]
 
 
 func _phase_steps(m: Dictionary) -> String:
@@ -202,36 +218,67 @@ func _rebuild_suspects(m: Dictionary) -> void:
 	var suspects: Array = m.get("suspects", [])
 	if suspects.is_empty() and is_instance_valid(CharacterDB):
 		suspects = CharacterDB.delinquent_thumbs_for_mission(str(m.get("id", "")), 3)
-	var fallback := ["SOSPECHOSO 1", "SOSPECHOSO 2", "POSIBLE 3º"]
-	for i in range(3):
+	var charges := ["Resistencia", "Hurto", "Amenazas", "Daños", "Tráfico"]
+	for i in range(mini(3, maxi(1, suspects.size()))):
+		var card := PanelContainer.new()
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.06, 0.08, 0.12, 0.95)
+		sb.border_color = Color(0.75, 0.22, 0.25, 0.9)
+		sb.set_border_width_all(1)
+		sb.set_corner_radius_all(4)
+		sb.content_margin_left = 6
+		sb.content_margin_right = 6
+		sb.content_margin_top = 6
+		sb.content_margin_bottom = 6
+		card.add_theme_stylebox_override("panel", sb)
+
 		var col := VBoxContainer.new()
-		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_theme_constant_override("separation", 4)
+		card.add_child(col)
+
+		var header := Label.new()
+		header.text = "FICHA #%03d" % (100 + i + absi(hash(str(m.get("id", "")))) % 80)
+		header.add_theme_font_size_override("font_size", 10)
+		header.add_theme_color_override("font_color", Color(0.95, 0.75, 0.35))
+		col.add_child(header)
+
 		var face := TextureRect.new()
-		face.custom_minimum_size = Vector2(0, 96)
+		face.custom_minimum_size = Vector2(0, 100)
 		face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		var label_txt: String = fallback[i]
-		var alias_txt: String = "Sin ID confirmada"
+		var label_txt: String = "DESCONOCIDO"
+		var alias_txt: String = "Sin alias"
+		var charge_txt: String = charges[(absi(hash(str(m.get("id", "")) + str(i))) % charges.size())]
 		if i < suspects.size():
 			var s: Dictionary = suspects[i]
-			var path := str(s.get("thumb", ""))
-			if ResourceLoader.exists(path):
-				face.texture = load(path)
-			label_txt = str(s.get("name", fallback[i]))
+			var spath := str(s.get("thumb", s.get("full", "")))
+			if ResourceLoader.exists(spath):
+				face.texture = load(spath)
+			label_txt = str(s.get("name", label_txt))
 			alias_txt = "Alias: %s" % str(s.get("alias", "—"))
 		col.add_child(face)
+
 		var name_l := Label.new()
-		name_l.text = label_txt
+		name_l.text = label_txt.to_upper()
 		name_l.add_theme_font_size_override("font_size", 11)
-		name_l.add_theme_color_override("font_color", Color(0.92, 0.78, 0.78))
+		name_l.add_theme_color_override("font_color", Color(0.95, 0.9, 0.9))
+		name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		col.add_child(name_l)
-		var desc := Label.new()
-		desc.text = alias_txt
-		desc.add_theme_font_size_override("font_size", 9)
-		desc.add_theme_color_override("font_color", Color(0.55, 0.62, 0.72))
-		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		col.add_child(desc)
-		suspects_row.add_child(col)
+
+		var alias_l := Label.new()
+		alias_l.text = alias_txt
+		alias_l.add_theme_font_size_override("font_size", 9)
+		alias_l.add_theme_color_override("font_color", Color(0.65, 0.7, 0.78))
+		col.add_child(alias_l)
+
+		var charge_l := Label.new()
+		charge_l.text = "Cargo: %s" % charge_txt
+		charge_l.add_theme_font_size_override("font_size", 9)
+		charge_l.add_theme_color_override("font_color", Color(0.95, 0.55, 0.5))
+		col.add_child(charge_l)
+
+		suspects_row.add_child(card)
 	if str(m.get("severity", "")) == "critical":
 		witnesses.modulate = Color(1.0, 0.75, 0.75)
 

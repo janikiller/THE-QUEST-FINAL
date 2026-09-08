@@ -110,6 +110,12 @@ func _on_weather(weather: String) -> void:
 			_swap_rain(RAIN_MED, -8.0)
 		"storm":
 			_swap_rain(RAIN_HEAVY, -4.0)
+		"sandstorm":
+			# Sin lluvia: ambiente nocturno más alto como viento seco
+			_rain.stop()
+			if _ambience.stream and not _ambience.playing:
+				_ambience.play()
+			_ambience.volume_db = -14.0
 		_:
 			_rain.stop()
 

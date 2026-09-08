@@ -86,6 +86,7 @@ func _init_patrols() -> void:
 			"speed": float(p.get("speed", 90.0)),
 			"agents": p.get("agents", []),
 			"agent_portraits": p.get("agent_portraits", []),
+			"agent_stats": _stats_for_agents(p.get("agents", []), str(p.get("specialty", "general"))),
 			"status": "available", # available | en_route | on_scene | returning
 			"mission_id": "",
 			"pos": hq,
@@ -96,6 +97,39 @@ func _init_patrols() -> void:
 		patrols[runtime["id"]] = runtime
 	# Snap HQ patrols onto roads once RoadNav is ready (deferred)
 	call_deferred("_snap_patrols_to_roads")
+
+
+func _stats_for_agents(agents: Array, specialty: String) -> Array:
+	var out: Array = []
+	var base := {
+		"fuerza": 0.55,
+		"resistencia": 0.55,
+		"destreza": 0.55,
+		"investigacion": 0.55,
+		"conduccion": 0.55,
+	}
+	match specialty:
+		"trafico":
+			base["conduccion"] = 0.82
+			base["destreza"] = 0.62
+		"organizado":
+			base["fuerza"] = 0.78
+			base["resistencia"] = 0.72
+			base["investigacion"] = 0.48
+		"delitos":
+			base["investigacion"] = 0.75
+			base["destreza"] = 0.65
+	for i in range(agents.size()):
+		var name := str(agents[i])
+		var h := absi(hash(name))
+		var s := base.duplicate()
+		s["fuerza"] = clampf(float(s["fuerza"]) + float((h % 17) - 8) * 0.01, 0.25, 0.95)
+		s["resistencia"] = clampf(float(s["resistencia"]) + float(((h >> 3) % 17) - 8) * 0.01, 0.25, 0.95)
+		s["destreza"] = clampf(float(s["destreza"]) + float(((h >> 6) % 17) - 8) * 0.01, 0.25, 0.95)
+		s["investigacion"] = clampf(float(s["investigacion"]) + float(((h >> 9) % 17) - 8) * 0.01, 0.25, 0.95)
+		s["conduccion"] = clampf(float(s["conduccion"]) + float(((h >> 12) % 17) - 8) * 0.01, 0.25, 0.95)
+		out.append(s)
+	return out
 
 
 func _snap_patrols_to_roads() -> void:
@@ -156,6 +190,8 @@ func cycle_weather() -> void:
 			set_weather("rain")
 		"rain":
 			set_weather("storm")
+		"storm":
+			set_weather("sandstorm")
 		_:
 			set_weather("clear")
 
@@ -168,6 +204,8 @@ func weather_label() -> String:
 			return "LLUVIA"
 		"storm":
 			return "TORMENTA"
+		"sandstorm":
+			return "ARENA"
 		_:
 			return "DESPEJADO"
 
@@ -177,7 +215,7 @@ func request_lightning_flash() -> void:
 
 
 func _maybe_update_weather() -> void:
-	# Reevaluar clima cada ~20 minutos de juego
+	# Reevaluar clima cada ~20 minutos de juego. Lluvia rara; arena ocasional.
 	if minute == _weather_check_minute:
 		return
 	if minute % 20 != 0:
@@ -187,22 +225,30 @@ func _maybe_update_weather() -> void:
 	var roll := _rng.randf()
 	var next := "clear"
 	if tod == "night":
-		if roll < 0.25:
+		# Noche: casi siempre despejado; lluvia poco frecuente
+		if roll < 0.04:
 			next = "storm"
-		elif roll < 0.55:
+		elif roll < 0.10:
 			next = "rain"
-		elif roll < 0.75:
+		elif roll < 0.18:
 			next = "drizzle"
+		elif roll < 0.22:
+			next = "sandstorm"
 	elif tod == "dusk":
-		if roll < 0.2:
+		if roll < 0.06:
 			next = "rain"
-		elif roll < 0.45:
+		elif roll < 0.14:
 			next = "drizzle"
+		elif roll < 0.22:
+			next = "sandstorm"
 	else:
-		if roll < 0.12:
+		# Día: arena más probable que lluvia
+		if roll < 0.04:
 			next = "rain"
-		elif roll < 0.28:
+		elif roll < 0.10:
 			next = "drizzle"
+		elif roll < 0.20:
+			next = "sandstorm"
 	set_weather(next)
 
 
@@ -307,6 +353,9 @@ func _attach_suspects(mission_id: String) -> void:
 		count = 3
 	m["suspects"] = CharacterDB.delinquent_thumbs_for_mission(mission_id, count)
 	m["suspect_icon"] = CharacterDB.delinquent_icon_for_mission(mission_id)
+	var loc: Dictionary = LocationDB.house_for_mission(mission_id)
+	m["location_art"] = str(loc.get("path", ""))
+	m["location_name"] = str(loc.get("name", "Inmueble"))
 	active_missions[mission_id] = m
 
 
