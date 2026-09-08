@@ -45,7 +45,7 @@ func _ready() -> void:
 	btn_speed_16.pressed.connect(func(): GameState.set_time_speed(16.0))
 	btn_speed_60.pressed.connect(func(): GameState.set_time_speed(60.0))
 	time_label.text = "%02d:%02d" % [GameState.hour, GameState.minute]
-	hint.text = "WASD mover · M misiones · I equipo · C clima · N música · 1-4 velocidad · rueda zoom"
+	hint.text = "WASD mover · M misiones · I mazo · C clima · N música · 1-4 velocidad · rueda zoom"
 	_build_bottom_bar()
 	_update_tod_hint()
 	_sync_speed_buttons()
@@ -110,7 +110,7 @@ func _build_bottom_bar() -> void:
 	var nav_row := HBoxContainer.new()
 	nav_row.add_theme_constant_override("separation", 6)
 	nav.add_child(nav_row)
-	_add_nav_btn(nav_row, "EQUIPO", _open_inventory)
+	_add_nav_btn(nav_row, "MAZO", _open_inventory)
 	_add_nav_btn(nav_row, "MISIONES", _open_missions)
 	_add_nav_btn(nav_row, "MAPA", func(): pass)
 
@@ -321,7 +321,9 @@ func _open_missions() -> void:
 
 func _open_inventory() -> void:
 	var router := get_parent()
-	if router and router.has_method("show_inventory"):
+	if router and router.has_method("show_deck"):
+		router.show_deck(_selected_patrol_id)
+	elif router and router.has_method("show_inventory"):
 		router.show_inventory(_selected_patrol_id)
 
 

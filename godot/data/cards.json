@@ -1,0 +1,183 @@
+{
+  "types": [
+    {"id": "todos", "label": "TODAS"},
+    {"id": "ataque", "label": "ATAQUE"},
+    {"id": "defensa", "label": "DEFENSA"},
+    {"id": "tactica", "label": "TÁCTICA"},
+    {"id": "especial", "label": "ESPECIAL"}
+  ],
+  "cards": [
+    {
+      "id": "strike",
+      "name": "Disparo de servicio",
+      "type": "ataque",
+      "cost": 1,
+      "rarity": "common",
+      "art": "res://assets/inventory/icons/pistol_1.png",
+      "icon": "res://assets/inventory/icons/pistol_1.png",
+      "effect": "Inflige 8 de daño.",
+      "description": "Disparo reglamentario a corta distancia."
+    },
+    {
+      "id": "burst",
+      "name": "Ráfaga táctica",
+      "type": "ataque",
+      "cost": 2,
+      "rarity": "uncommon",
+      "art": "res://assets/inventory/icons/smg_1.png",
+      "icon": "res://assets/inventory/icons/smg_1.png",
+      "effect": "Inflige 5 de daño 2 veces.",
+      "description": "Ráfaga corta para saturar la amenaza."
+    },
+    {
+      "id": "shield",
+      "name": "Escudo balístico",
+      "type": "defensa",
+      "cost": 1,
+      "rarity": "common",
+      "art": "res://assets/inventory/icons/gear_2.png",
+      "icon": "res://assets/inventory/icons/gear_2.png",
+      "effect": "Gana 7 de bloqueo.",
+      "description": "Cubre al equipo detrás del chaleco."
+    },
+    {
+      "id": "cover",
+      "name": "Buscar cobertura",
+      "type": "defensa",
+      "cost": 0,
+      "rarity": "common",
+      "art": "res://assets/inventory/icons/gear_1.png",
+      "icon": "res://assets/inventory/icons/gear_1.png",
+      "effect": "Gana 4 de bloqueo. Roba 1 carta.",
+      "description": "Te pegas a un muro y reorganizas."
+    },
+    {
+      "id": "frag",
+      "name": "Fragmentación M67",
+      "type": "especial",
+      "cost": 2,
+      "rarity": "rare",
+      "art": "res://assets/cards/grenades/frag.png",
+      "icon": "res://assets/cards/icons/frag.png",
+      "effect": "Inflige 14 de daño en zona.",
+      "description": "Granada ofensiva. Solo amenazas extremas."
+    },
+    {
+      "id": "flash",
+      "name": "Aturdidora",
+      "type": "tactica",
+      "cost": 1,
+      "rarity": "uncommon",
+      "art": "res://assets/cards/grenades/flash.png",
+      "icon": "res://assets/cards/icons/flash.png",
+      "effect": "Aturde a todos los enemigos 1 turno.",
+      "description": "Flashbang: ciega antes de entrar."
+    },
+    {
+      "id": "smoke",
+      "name": "Humo M18",
+      "type": "tactica",
+      "cost": 1,
+      "rarity": "common",
+      "art": "res://assets/cards/grenades/smoke.png",
+      "icon": "res://assets/cards/icons/smoke.png",
+      "effect": "Gana 5 de evasión. Cubre la retirada.",
+      "description": "Cortina de humo para moverse a salvo."
+    },
+    {
+      "id": "incendiary",
+      "name": "Incendiaria",
+      "type": "especial",
+      "cost": 2,
+      "rarity": "rare",
+      "art": "res://assets/cards/grenades/incendiary.png",
+      "icon": "res://assets/cards/icons/incendiary.png",
+      "effect": "Inflige 4 + 4 quemadura durante 2 turnos.",
+      "description": "Thermite: zona de fuego persistente."
+    },
+    {
+      "id": "tear",
+      "name": "Gas lacrimógeno",
+      "type": "tactica",
+      "cost": 1,
+      "rarity": "uncommon",
+      "art": "res://assets/cards/grenades/tear.png",
+      "icon": "res://assets/cards/icons/tear.png",
+      "effect": "Enemigos: -2 daño este turno.",
+      "description": "CN Tear Gas: dispersa y debilita."
+    },
+    {
+      "id": "impact",
+      "name": "Granada de impacto",
+      "type": "ataque",
+      "cost": 1,
+      "rarity": "uncommon",
+      "art": "res://assets/cards/grenades/impact.png",
+      "icon": "res://assets/cards/icons/impact.png",
+      "effect": "Inflige 10 de daño al instante.",
+      "description": "Estalla al contacto. Sin rebote."
+    },
+    {
+      "id": "sticky",
+      "name": "Adhesiva",
+      "type": "especial",
+      "cost": 2,
+      "rarity": "epic",
+      "art": "res://assets/cards/grenades/sticky.png",
+      "icon": "res://assets/cards/icons/sticky.png",
+      "effect": "Marca un objetivo: 16 de daño al final del turno.",
+      "description": "Se pega al objetivo. Detonación retardada."
+    },
+    {
+      "id": "decoy",
+      "name": "Señuelo",
+      "type": "tactica",
+      "cost": 0,
+      "rarity": "common",
+      "art": "res://assets/cards/grenades/decoy.png",
+      "icon": "res://assets/cards/icons/frag.png",
+      "effect": "El siguiente ataque enemigo te ignora.",
+      "description": "Distrae y redirige la atención."
+    },
+    {
+      "id": "negotiate",
+      "name": "Negociar",
+      "type": "tactica",
+      "cost": 1,
+      "rarity": "uncommon",
+      "art": "res://assets/inventory/icons/misc_1.png",
+      "icon": "res://assets/inventory/icons/misc_1.png",
+      "effect": "Roba 2 cartas. Descarta 1.",
+      "description": "Ganas tiempo y opciones."
+    },
+    {
+      "id": "breach",
+      "name": "Entrada forzada",
+      "type": "ataque",
+      "cost": 2,
+      "rarity": "rare",
+      "art": "res://assets/inventory/icons/shotgun_3.png",
+      "icon": "res://assets/inventory/icons/shotgun_3.png",
+      "effect": "Inflige 12. Si el enemigo está aturdido, +6.",
+      "description": "Breaching: abre y neutraliza."
+    },
+    {
+      "id": "medkit",
+      "name": "Botiquín de campo",
+      "type": "defensa",
+      "cost": 1,
+      "rarity": "common",
+      "art": "res://assets/inventory/icons/filtro_medico.png",
+      "icon": "res://assets/inventory/icons/filtro_medico.png",
+      "effect": "Cura 6 PV.",
+      "description": "Estabiliza heridas leves en escena."
+    }
+  ],
+  "starter_deck": [
+    "strike", "strike", "strike", "strike",
+    "shield", "shield", "shield",
+    "cover", "cover",
+    "flash", "smoke", "decoy",
+    "negotiate", "medkit", "impact"
+  ]
+}

@@ -68,35 +68,30 @@ func _inv_check() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var errors: Array = []
-	print("INV items=", ItemDB.items.size())
-	if ItemDB.items.is_empty():
-		errors.append("empty ItemDB")
-	GameState.ensure_patrol_inventory("alpha")
-	var before := GameState.get_slot_item("alpha", "shared", 0)
-	GameState.swap_inventory_slots("alpha", "shared", 0, "trunk", 0)
-	var after := GameState.get_slot_item("alpha", "trunk", 0)
-	print("INV swap=", before, "->", after)
-	if after != before:
-		errors.append("swap failed")
-	$UI/UIRouter.show_inventory("alpha")
+	print("DECK cards=", CardDB.cards.size())
+	if CardDB.cards.is_empty():
+		errors.append("empty CardDB")
+	GameState.ensure_patrol_deck("alpha")
+	var deck: Array = GameState.get_patrol_deck("alpha")
+	print("DECK size=", deck.size())
+	if deck.size() < 10:
+		errors.append("starter deck too small")
+	$UI/UIRouter.show_deck("alpha")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var screen = $UI/UIRouter/InventoryScreen
-	print("INV slots shared=", screen._shared_slots.size(), " trunk=", screen._trunk_slots.size(), " agents=", screen._agent_slots.size())
-	if screen._shared_slots.size() != GameState.SHARED_SIZE:
-		errors.append("shared size")
-	if screen._trunk_slots.size() != GameState.TRUNK_SIZE:
-		errors.append("trunk size")
+	var screen = $UI/UIRouter/DeckScreen
+	if not screen.visible:
+		errors.append("deck not visible")
 	if errors.is_empty():
-		print("OK_INVENTORY")
+		print("OK_DECK")
 		get_tree().quit(0)
 	else:
-		print("INV_ERRORS ", errors)
+		print("DECK_ERRORS ", errors)
 		get_tree().quit(1)
 
 
 func _playtest() -> void:
-	## Prueba integral headless: spillover, misiones, despacho, inventario, sin crash.
+	## Prueba integral headless: misiones, despacho, mazo, sin crash.
 	var errors: Array = []
 	await get_tree().create_timer(0.6).timeout
 	print("PLAYTEST start")
@@ -132,22 +127,21 @@ func _playtest() -> void:
 		errors.append("missions menu not visible")
 	$UI/UIRouter.show_map()
 
-	# 4) Inventario + drag state
-	$UI/UIRouter.show_inventory("alpha")
+	# 4) Mazo de cartas
+	$UI/UIRouter.show_deck("alpha")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var inv = $UI/UIRouter/InventoryScreen
-	if not inv.visible:
-		errors.append("inventory not visible")
-	var a := GameState.get_slot_item("alpha", "shared", 1)
-	var b := GameState.get_slot_item("alpha", "agents/0/principal", 0)
-	GameState.swap_inventory_slots("alpha", "shared", 1, "agents/0/principal", 0)
-	var a2 := GameState.get_slot_item("alpha", "shared", 1)
-	var b2 := GameState.get_slot_item("alpha", "agents/0/principal", 0)
-	print("PLAYTEST equip swap ", a, "<->", b, " => ", a2, "/", b2)
-	if b2 != a:
-		errors.append("equip swap failed")
-	inv.close()
+	var deck_ui = $UI/UIRouter/DeckScreen
+	if not deck_ui.visible:
+		errors.append("deck not visible")
+	var deck_size: int = GameState.get_patrol_deck("alpha").size()
+	print("PLAYTEST deck size=", deck_size, " catalog=", CardDB.cards.size())
+	if deck_size < 10:
+		errors.append("deck too small")
+	GameState.add_card_to_deck("alpha", "frag")
+	if GameState.get_patrol_deck("alpha").size() != deck_size + 1:
+		errors.append("add card failed")
+	deck_ui.close()
 	await get_tree().process_frame
 
 	# 5) Despacho completo + path por carretera

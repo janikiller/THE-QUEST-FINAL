@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/map_hud.tscn" id="2_maphud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/missions_menu.tscn" id="3_missions"]
 [ext_resource type="PackedScene" path="res://scenes/ui/mission_screen.tscn" id="4_mission"]
-[ext_resource type="PackedScene" path="res://scenes/ui/inventory_screen.tscn" id="5_inv"]
+[ext_resource type="PackedScene" path="res://scenes/ui/deck_screen.tscn" id="5_deck"]
 [ext_resource type="PackedScene" path="res://scenes/ui/mission_result.tscn" id="6_result"]
 
 [node name="UIRouter" type="CanvasLayer"]
@@ -22,5 +22,5 @@ visible = false
 [node name="MissionResult" parent="." instance=ExtResource("6_result")]
 visible = false
 
-[node name="InventoryScreen" parent="." instance=ExtResource("5_inv")]
+[node name="DeckScreen" parent="." instance=ExtResource("5_deck")]
 visible = false

@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Cambia entre Mapa / Lista / Misión / Resultado / Inventario.
+## Cambia entre Mapa / Lista / Misión / Resultado / Mazo.
 
 signal request_open_missions
 signal request_open_mission(mission_id: String)
@@ -9,7 +9,7 @@ signal request_back_to_map
 @onready var missions_menu: Control = $MissionsMenu
 @onready var mission_screen: Control = $MissionScreen
 @onready var mission_result: Control = $MissionResult
-@onready var inventory_screen: Control = $InventoryScreen
+@onready var deck_screen: Control = $DeckScreen
 
 var _opening_mission: bool = false
 
@@ -25,7 +25,7 @@ func show_map() -> void:
 	missions_menu.visible = false
 	mission_screen.visible = false
 	mission_result.visible = false
-	inventory_screen.visible = false
+	deck_screen.visible = false
 	get_tree().paused = false
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
@@ -38,7 +38,7 @@ func show_missions() -> void:
 	missions_menu.visible = true
 	mission_screen.visible = false
 	mission_result.visible = false
-	inventory_screen.visible = false
+	deck_screen.visible = false
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
 		world.modulate = Color(0.25, 0.3, 0.38, 1)
@@ -59,7 +59,7 @@ func show_mission(mission_id: String = "") -> void:
 	missions_menu.visible = false
 	mission_screen.visible = true
 	mission_result.visible = false
-	inventory_screen.visible = false
+	deck_screen.visible = false
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
 		world.modulate = Color(0.15, 0.18, 0.25, 1)
@@ -72,7 +72,7 @@ func show_mission_result(mission_id: String = "") -> void:
 	missions_menu.visible = false
 	mission_screen.visible = false
 	mission_result.visible = true
-	inventory_screen.visible = false
+	deck_screen.visible = false
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
 		world.modulate = Color(0.12, 0.14, 0.2, 1)
@@ -80,17 +80,22 @@ func show_mission_result(mission_id: String = "") -> void:
 		mission_result.open_for(mission_id)
 
 
-func show_inventory(patrol_id: String = "") -> void:
+func show_deck(patrol_id: String = "") -> void:
 	map_hud.visible = false
 	missions_menu.visible = false
 	mission_screen.visible = false
 	mission_result.visible = false
-	inventory_screen.visible = true
+	deck_screen.visible = true
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
-		world.modulate = Color(0.18, 0.22, 0.3, 1)
-	if inventory_screen.has_method("open"):
-		inventory_screen.open(patrol_id)
+		world.modulate = Color(0.14, 0.18, 0.28, 1)
+	if deck_screen.has_method("open"):
+		deck_screen.open(patrol_id)
+
+
+## Compat: antigua API de inventario → mazo
+func show_inventory(patrol_id: String = "") -> void:
+	show_deck(patrol_id)
 
 
 func _on_selection(mission_id: String) -> void:
