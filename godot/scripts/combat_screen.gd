@@ -1,5 +1,9 @@
 extends Control
-## Combate visual renovado: arena, sprites con sombra, cartas con marco y FX.
+## Combate visual: assets vectoriales del pack (héroe / delincuentes / UI).
+
+const PACK_HERO := "res://assets/combat/pack/combat/hero/"
+const PACK_FOE := "res://assets/combat/pack/combat/foes/"
+const PACK_UI := "res://assets/combat/pack/combat/ui/"
 
 @onready var bg: TextureRect = %ArenaBg
 @onready var title_label: Label = %TitleLabel
@@ -28,6 +32,48 @@ var _prev_enemy_hp: Dictionary = {}
 var _prev_player_hp: int = -1
 var _busy: bool = false
 var _closing: bool = false
+var _hero_pose: String = "idle"
+var _hero_pose_until: float = 0.0
+
+
+func _hero_tex(name: String) -> Texture2D:
+	var path := PACK_HERO + name + ".png"
+	if ResourceLoader.exists(path):
+		return load(path) as Texture2D
+	return null
+
+
+func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
+	_hero_pose = pose
+	if hold_sec > 0.0:
+		_hero_pose_until = Time.get_ticks_msec() / 1000.0 + hold_sec
+	var tex: Texture2D = null
+	match pose:
+		"shoot":
+			tex = _hero_tex("shoot")
+			if tex == null:
+				tex = _hero_tex("combat_idle")
+		"hurt":
+			tex = _hero_tex("hurt_body")
+			if tex == null:
+				tex = _hero_tex("hurt")
+		"aim":
+			tex = _hero_tex("aim")
+		_:
+			tex = _hero_tex("combat_idle")
+			if tex == null:
+				tex = _hero_tex("idle_side")
+			if tex == null:
+				tex = _hero_tex("idle_front")
+	if tex:
+		player_sprite.texture = tex
+
+
+func _tick_hero_pose() -> void:
+	if _hero_pose == "idle":
+		return
+	if Time.get_ticks_msec() / 1000.0 >= _hero_pose_until:
+		_apply_hero_pose("idle")
 
 
 func _ready() -> void:
@@ -55,11 +101,14 @@ func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
 		return
 	_closing = false
 	_busy = false
+	_hero_pose = "idle"
+	_hero_pose_until = 0.0
 	result_panel.visible = false
 	_prev_enemy_hp.clear()
 	_prev_player_hp = -1
 	visible = true
 	CombatState.start_combat(cfg)
+	_apply_hero_pose("idle")
 	_refresh()
 
 
@@ -149,14 +198,13 @@ func _refresh() -> void:
 
 	var php := int(p.get("hp", 0))
 	if _prev_player_hp >= 0 and php < _prev_player_hp:
+		_apply_hero_pose("hurt", 0.55)
 		_hit_actor(player_sprite, _prev_player_hp - php, false)
 	_prev_player_hp = php
 
-	var hero := "res://assets/combat/from_mockup/chars/hero.png"
-	if ResourceLoader.exists(hero):
-		player_sprite.texture = load(hero)
-	elif ResourceLoader.exists(str(p.get("sprite", ""))):
-		player_sprite.texture = load(str(p.get("sprite", "")))
+	_tick_hero_pose()
+	if player_sprite.texture == null:
+		_apply_hero_pose(_hero_pose)
 
 	_load_bg()
 	_rebuild_enemies(snap)
@@ -183,13 +231,15 @@ func _style_player_bar(p: Dictionary) -> void:
 
 
 func _load_bg() -> void:
-	var path := "res://assets/combat/from_mockup/bg.jpg"
-	if ResourceLoader.exists(path):
-		bg.texture = load(path)
-		return
-	path = "res://assets/combat/bg/alley_night.jpg"
-	if ResourceLoader.exists(path):
-		bg.texture = load(path)
+	var candidates := [
+		"res://assets/combat/bg/alley_night.jpg",
+		"res://assets/combat/bg/alley_night2.jpg",
+		"res://assets/combat/bg/combat_arena.jpg",
+	]
+	for path in candidates:
+		if ResourceLoader.exists(path):
+			bg.texture = load(path)
+			return
 
 
 func _rebuild_enemies(snap: Dictionary) -> void:
@@ -267,11 +317,13 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sp := "res://assets/combat/from_mockup/chars/enemy%d.png" % (index % 3)
+	var sp := PACK_FOE + "enemy_%d.png" % (index % 7)
 	if not ResourceLoader.exists(sp):
-		sp = "res://assets/combat/from_mockup/chars/enemy0.png"
+		sp = PACK_FOE + "enemy_0.png"
 	if ResourceLoader.exists(sp):
 		tex.texture = load(sp)
+	elif ResourceLoader.exists(str(e.get("sprite", ""))):
+		tex.texture = load(str(e.get("sprite", "")))
 	btn.add_child(tex)
 	if selected:
 		var border := ColorRect.new()
@@ -404,6 +456,11 @@ func _play_card_fx(panel: Control, card_id: String) -> void:
 		await get_tree().process_frame
 		return
 	var def := CardDB.get_card(card_id)
+	var card_type := str(def.get("type", ""))
+	if card_type == "ataque" or int(def.get("damage", 0)) > 0:
+		_apply_hero_pose("shoot", 0.45)
+	elif card_type == "defensa" or int(def.get("block", 0)) > 0:
+		_apply_hero_pose("aim", 0.35)
 	var ghost := panel.duplicate()
 	ghost.modulate = Color(1, 1, 1, 1)
 	_fx_layer.add_child(ghost)
