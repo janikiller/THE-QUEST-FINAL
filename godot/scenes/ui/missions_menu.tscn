@@ -18,130 +18,129 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.03, 0.05, 0.09, 0.92)
+color = Color(0.02, 0.03, 0.06, 0.94)
 
-[node name="Panel" type="PanelContainer" parent="."]
+[node name="Root" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 40.0
-offset_top = 36.0
-offset_right = -40.0
-offset_bottom = -36.0
+offset_left = 28.0
+offset_top = 22.0
+offset_right = -28.0
+offset_bottom = -22.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Margin" type="MarginContainer" parent="Panel"]
+[node name="VBox" type="VBoxContainer" parent="Root"]
 layout_mode = 2
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 16
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 16
+theme_override_constants/separation = 14
 
-[node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="Header" type="HBoxContainer" parent="Panel/Margin/VBox"]
+[node name="Header" type="HBoxContainer" parent="Root/VBox"]
 layout_mode = 2
 
-[node name="BtnBack" type="Button" parent="Panel/Margin/VBox/Header"]
+[node name="BtnBack" type="Button" parent="Root/VBox/Header"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 40)
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
 text = "← VOLVER AL MAPA"
 
-[node name="Title" type="Label" parent="Panel/Margin/VBox/Header"]
+[node name="Title" type="Label" parent="Root/VBox/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 28
-text = "MISIONES"
+theme_override_font_sizes/font_size = 30
+text = "CENTRAL DE MISIONES"
 horizontal_alignment = 1
 
-[node name="CountLabel" type="Label" parent="Panel/Margin/VBox/Header"]
+[node name="CountLabel" type="Label" parent="Root/VBox/Header"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.8, 0.92, 1)
 theme_override_font_sizes/font_size = 16
-text = "0 misiones"
+text = "0 activas"
 
-[node name="Cols" type="HBoxContainer" parent="Panel/Margin/VBox"]
+[node name="FilterRow" type="HBoxContainer" parent="Root/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Body" type="HBoxContainer" parent="Root/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 16
 
-[node name="Filters" type="VBoxContainer" parent="Panel/Margin/VBox/Cols"]
-custom_minimum_size = Vector2(200, 0)
-layout_mode = 2
-
-[node name="FLabel" type="Label" parent="Panel/Margin/VBox/Cols/Filters"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "CATEGORÍAS"
-
-[node name="FilterList" type="ItemList" parent="Panel/Margin/VBox/Cols/Filters"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="ListCol" type="VBoxContainer" parent="Panel/Margin/VBox/Cols"]
+[node name="ListScroll" type="ScrollContainer" parent="Root/VBox/Body"]
+custom_minimum_size = Vector2(520, 0)
 layout_mode = 2
 size_flags_horizontal = 3
+horizontal_scroll_mode = 0
 
-[node name="LLabel" type="Label" parent="Panel/Margin/VBox/Cols/ListCol"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "LISTA DE MISIONES"
-
-[node name="MissionList" type="ItemList" parent="Panel/Margin/VBox/Cols/ListCol"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="DetailCol" type="VBoxContainer" parent="Panel/Margin/VBox/Cols"]
-custom_minimum_size = Vector2(420, 0)
-layout_mode = 2
-
-[node name="Head" type="HBoxContainer" parent="Panel/Margin/VBox/Cols/DetailCol"]
-layout_mode = 2
-
-[node name="DetailTitle" type="Label" parent="Panel/Margin/VBox/Cols/DetailCol/Head"]
+[node name="MissionCards" type="VBoxContainer" parent="Root/VBox/Body/ListScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
+theme_override_constants/separation = 10
+
+[node name="Detail" type="PanelContainer" parent="Root/VBox/Body"]
+custom_minimum_size = Vector2(620, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DM" type="MarginContainer" parent="Root/VBox/Body/Detail"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="DV" type="VBoxContainer" parent="Root/VBox/Body/Detail/DM"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Head" type="HBoxContainer" parent="Root/VBox/Body/Detail/DM/DV"]
+layout_mode = 2
+
+[node name="DetailTitle" type="Label" parent="Root/VBox/Body/Detail/DM/DV/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 28
 text = "—"
 autowrap_mode = 3
 
-[node name="Urgency" type="Label" parent="Panel/Margin/VBox/Cols/DetailCol/Head"]
+[node name="Urgency" type="Label" parent="Root/VBox/Body/Detail/DM/DV/Head"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.35, 0.35, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(1, 0.32, 0.36, 1)
+theme_override_font_sizes/font_size = 15
 text = "URGENTE"
 
-[node name="DetailMeta" type="Label" parent="Panel/Margin/VBox/Cols/DetailCol"]
+[node name="DetailMeta" type="Label" parent="Root/VBox/Body/Detail/DM/DV"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.78, 0.88, 1)
+theme_override_colors/font_color = Color(0.65, 0.75, 0.88, 1)
+theme_override_font_sizes/font_size = 14
 text = ""
 
-[node name="DetailArt" type="TextureRect" parent="Panel/Margin/VBox/Cols/DetailCol"]
+[node name="DetailArt" type="TextureRect" parent="Root/VBox/Body/Detail/DM/DV"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 220)
-layout_mode = 2
-expand_mode = 1
-stretch_mode = 5
-
-[node name="DetailBlurb" type="RichTextLabel" parent="Panel/Margin/VBox/Cols/DetailCol"]
-unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 280)
 layout_mode = 2
 size_flags_vertical = 3
-bbcode_enabled = true
+expand_mode = 1
+stretch_mode = 6
 
-[node name="BtnOpen" type="Button" parent="Panel/Margin/VBox/Cols/DetailCol"]
+[node name="DetailBlurb" type="RichTextLabel" parent="Root/VBox/Body/Detail/DM/DV"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+
+[node name="BtnOpen" type="Button" parent="Root/VBox/Body/Detail/DM/DV"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "ABRIR INFORME DE MISIÓN"
+text = "▶  ABRIR INFORME TÁCTICO"

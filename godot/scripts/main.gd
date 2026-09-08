@@ -201,6 +201,32 @@ func _playtest() -> void:
 	var markers = get_tree().get_nodes_in_group("mission_marker")
 	print("PLAYTEST markers group=", markers.size())
 
+	# 8) Day/night + mission art
+	print("PLAYTEST tod=", GameState.time_of_day())
+	GameState.hour = 18
+	GameState.emit_time()
+	await get_tree().process_frame
+	print("PLAYTEST tod dusk=", GameState.time_of_day())
+	if GameState.time_of_day() != "dusk":
+		errors.append("dusk tod failed")
+	GameState.hour = 22
+	GameState.emit_time()
+	await get_tree().process_frame
+	print("PLAYTEST tod night=", GameState.time_of_day())
+	if GameState.time_of_day() != "night":
+		errors.append("night tod failed")
+	$UI/UIRouter.show_missions()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not $UI/UIRouter/MissionsMenu.visible:
+		errors.append("missions menu not visible after redesign")
+	var sample = GameState.active_missions.values()[0] if not GameState.active_missions.is_empty() else {}
+	if not sample.is_empty():
+		var artp := GameState.mission_art_path(sample)
+		print("PLAYTEST art=", artp)
+		if not ResourceLoader.exists(artp):
+			errors.append("mission art missing")
+
 	if errors.is_empty():
 		print("PLAYTEST_OK")
 		get_tree().quit(0)

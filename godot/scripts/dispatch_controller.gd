@@ -45,7 +45,7 @@ func dispatch(mission_id: String, patrol_id: String) -> bool:
 
 func _process(delta: float) -> void:
 	_clock_accum += delta
-	if _clock_accum >= 4.0:
+	if _clock_accum >= 2.2:
 		_clock_accum = 0.0
 		GameState.tick_minutes(1)
 

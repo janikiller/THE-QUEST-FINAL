@@ -55,18 +55,21 @@ func _refresh() -> void:
 	if m.is_empty():
 		return
 	title.text = str(m["title"]).to_upper()
-	meta.text = "DELITOS / %s · %s" % [str(m["category"]).to_upper(), m["district_name"]]
+	meta.text = "%s · %s" % [str(m["category"]).to_upper(), m["district_name"]]
 	location_label.text = "%s" % m["district_name"]
 	blurb.text = "[b]DESCRIPCIÓN DE LA SITUACIÓN[/b]\n\n%s" % m["blurb"]
 	urgency.visible = str(m.get("severity", "")) in ["high", "critical"]
 	var rank := _risk(m)
-	risk_label.text = "Riesgo  " + "●".repeat(rank) + "○".repeat(maxi(0, 5 - rank))
+	risk_label.text = "RIESGO  " + "●".repeat(rank) + "○".repeat(maxi(0, 5 - rank))
 	objectives.text = "• Asegurar la zona\n• Neutralizar la amenaza\n• Proteger a civiles\n• Preservar evidencia"
-	step_label.text = "INFORME INICIAL → INTELIGENCIA → DECISIÓN"
-	var path := GameState.texture_path_for_event_file(str(m.get("file", "")))
+	step_label.text = "INFORME INICIAL → EVIDENCIA → ESCENARIOS → DECISIÓN"
+	var path := GameState.mission_art_path(m)
 	art.texture = load(path) if ResourceLoader.exists(path) else null
 	_refresh_patrols()
 	confirm_btn.disabled = m.get("status", "") != "open" or GameState.available_patrols().is_empty()
+	# Night UI accent when operating at night
+	var night := GameState.time_of_day() == "night"
+	modulate = Color(0.92, 0.95, 1.0) if night else Color.WHITE
 
 
 func _risk(m: Dictionary) -> int:

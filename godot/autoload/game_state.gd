@@ -105,6 +105,15 @@ func emit_time() -> void:
 	time_changed.emit("%02d:%02d" % [hour, minute])
 
 
+func time_of_day() -> String:
+	## day 7-16, dusk 17-19, night 20-6
+	if hour >= 7 and hour <= 16:
+		return "day"
+	if hour >= 17 and hour <= 19:
+		return "dusk"
+	return "night"
+
+
 func tick_minutes(amount: int = 1) -> void:
 	minute += amount
 	while minute >= 60:
@@ -218,11 +227,56 @@ func set_patrol(patrol: Dictionary) -> void:
 
 
 func texture_path_for_event_file(file_path: String) -> String:
-	# events.json uses "events/tiles/..."
 	var clean := file_path.replace("assets/", "")
+	var generated := _generated_art_for(clean.to_lower())
+	if generated != "" and ResourceLoader.exists(generated):
+		return generated
 	if clean.begins_with("events/"):
-		return "res://assets/%s" % clean
-	return "res://assets/events/tiles/delitos/pelea_en_la_calle.png"
+		var p := "res://assets/%s" % clean
+		if ResourceLoader.exists(p):
+			return p
+	return "res://assets/missions/generated/mission_pelea.png"
+
+
+func mission_art_path(mission: Dictionary) -> String:
+	var key := "%s %s %s" % [
+		str(mission.get("title", "")),
+		str(mission.get("category", "")),
+		str(mission.get("file", "")),
+	]
+	var path := _generated_art_for(key.to_lower())
+	if ResourceLoader.exists(path):
+		return path
+	return texture_path_for_event_file(str(mission.get("file", "")))
+
+
+func _generated_art_for(key: String) -> String:
+	var base := "res://assets/missions/generated/"
+	if "secuestr" in key or "rehen" in key or "rehén" in key:
+		return base + "mission_secuestro.png"
+	if "inunda" in key or "riada" in key:
+		return base + "mission_inundacion.png"
+	if "accidente" in key or "trafico" in key or "tráfico" in key or "vehiculo" in key or "vehículo" in key:
+		return base + "mission_accidente.png"
+	if "pelea" in key or "riña" in key or "rina" in key:
+		return base + "mission_pelea.png"
+	if "contraband" in key or "narco" in key:
+		return base + "mission_contrabando.png"
+	if "atraco" in key or "banco" in key or "robo" in key:
+		return base + "mission_atraco.png"
+	if "medic" in key or "auxilio" in key or "ambulancia" in key or "herid" in key:
+		return base + "mission_medico.png"
+	if "organizado" in key:
+		return base + "mission_contrabando.png"
+	if "emergencia" in key:
+		return base + "mission_inundacion.png"
+	if "delito" in key:
+		return base + "mission_atraco.png"
+	if "civil" in key:
+		return base + "mission_medico.png"
+	if "especial" in key:
+		return base + "mission_secuestro.png"
+	return base + "mission_pelea.png"
 
 
 func _init_inventories() -> void:

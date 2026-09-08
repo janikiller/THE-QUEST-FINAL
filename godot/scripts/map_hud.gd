@@ -10,14 +10,28 @@ extends Control
 
 
 func _ready() -> void:
-	GameState.time_changed.connect(func(t): time_label.text = t)
-	GameState.prestige_changed.connect(func(v): prestige_label.text = "Prestigio %d" % v)
+	GameState.time_changed.connect(func(t):
+		time_label.text = t
+		_update_tod_hint()
+	)
+	GameState.prestige_changed.connect(func(_v): _update_tod_hint())
 	RadioBus.radio_message.connect(_on_radio)
 	btn_missions.pressed.connect(_open_missions)
 	btn_inventory.pressed.connect(_open_inventory)
 	time_label.text = "%02d:%02d" % [GameState.hour, GameState.minute]
-	prestige_label.text = "Prestigio %d" % GameState.prestige
 	hint.text = "WASD / flechas mover · Click misión · M misiones · I inventario · rueda zoom"
+	_update_tod_hint()
+
+
+func _update_tod_hint() -> void:
+	var tod := GameState.time_of_day()
+	var label := "DÍA"
+	match tod:
+		"dusk":
+			label = "ATARDECER"
+		"night":
+			label = "NOCHE"
+	prestige_label.text = "Prestigio %d   ·   %s" % [GameState.prestige, label]
 
 
 func _unhandled_input(event: InputEvent) -> void:
