@@ -103,9 +103,15 @@ func _rebuild_patrol_list() -> void:
 	for p in GameState.patrols.values():
 		var pid := str(p.get("id", ""))
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(0, 100)
+		btn.custom_minimum_size = Vector2(0, 108)
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.clip_text = true
+		var icon_path := str(p.get("map_icon", p.get("portrait", "")))
+		if ResourceLoader.exists(icon_path):
+			btn.icon = load(icon_path)
+			btn.expand_icon = true
+			btn.add_theme_constant_override("icon_max_width", 56)
 		var st := str(p.get("status", "available"))
 		var st_label := "EN BASE"
 		var st_color := Color(0.55, 0.62, 0.72)
@@ -119,7 +125,7 @@ func _rebuild_patrol_list() -> void:
 			"returning":
 				st_label = "REGRESO"
 				st_color = Color(1.0, 0.82, 0.35)
-		btn.text = "%s\n%s\n● %s" % [p.get("name", ""), p.get("callsign", ""), st_label]
+		btn.text = "  %s\n  %s\n  ● %s" % [p.get("name", ""), p.get("callsign", ""), st_label]
 		btn.add_theme_color_override("font_color", Color(0.92, 0.95, 1.0))
 		var sb := StyleBoxFlat.new()
 		var selected := pid == selected_patrol_id
@@ -127,10 +133,10 @@ func _rebuild_patrol_list() -> void:
 		sb.border_color = Color(0.2, 0.85, 1.0) if selected else Color(0.2, 0.32, 0.45)
 		sb.set_border_width_all(2 if selected else 1)
 		sb.set_corner_radius_all(6)
-		sb.content_margin_left = 12
+		sb.content_margin_left = 10
 		sb.content_margin_right = 12
-		sb.content_margin_top = 10
-		sb.content_margin_bottom = 10
+		sb.content_margin_top = 8
+		sb.content_margin_bottom = 8
 		if selected:
 			sb.shadow_color = Color(0.15, 0.7, 1.0, 0.35)
 			sb.shadow_size = 6
@@ -139,7 +145,6 @@ func _rebuild_patrol_list() -> void:
 		btn.add_theme_stylebox_override("pressed", sb)
 		btn.pressed.connect(select_patrol.bind(pid))
 		patrol_list.add_child(btn)
-		# tint status line via modulate of whole button slightly
 		if not selected:
 			btn.modulate = Color(0.92, 0.94, 0.98)
 		else:
@@ -215,11 +220,15 @@ func _make_agent_panel(agent_index: int, agent_name: String, data: Dictionary) -
 	v.add_child(title)
 
 	var portraits: Array = GameState.patrols.get(selected_patrol_id, {}).get("agent_portraits", [])
+	var agent_full := ""
+	var char_info: Dictionary = CharacterDB.police_by_name(agent_name)
+	if not char_info.is_empty():
+		agent_full = str(char_info.get("full", ""))
 	if agent_index < portraits.size() and ResourceLoader.exists(str(portraits[agent_index])):
 		var face := TextureRect.new()
-		face.custom_minimum_size = Vector2(0, 96)
+		face.custom_minimum_size = Vector2(0, 120)
 		face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		face.texture = load(str(portraits[agent_index]))
 		v.add_child(face)
 
@@ -252,12 +261,16 @@ func _make_agent_panel(agent_index: int, agent_name: String, data: Dictionary) -
 	mid.add_child(left_col)
 
 	var portrait := TextureRect.new()
-	portrait.custom_minimum_size = Vector2(96, 120)
+	portrait.custom_minimum_size = Vector2(110, 160)
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	var patrol: Dictionary = GameState.patrols[selected_patrol_id]
-	if ResourceLoader.exists(str(patrol.get("portrait", ""))):
-		portrait.texture = load(str(patrol.get("portrait", "")))
+	var body_path := agent_full
+	if body_path == "" and agent_index < portraits.size():
+		body_path = str(portraits[agent_index])
+	if body_path == "":
+		body_path = str(GameState.patrols[selected_patrol_id].get("portrait", ""))
+	if ResourceLoader.exists(body_path):
+		portrait.texture = load(body_path)
 	mid.add_child(portrait)
 
 	var right_col := VBoxContainer.new()
