@@ -1,42 +1,36 @@
 # THE QUEST FINAL — Comisaría (Godot 4.3)
 
-Gestiona una comisaría en 2D: mapa de ciudad, misiones que aparecen solas, revisión en centralita y **despacho de patrullas por radio**.
+Gestiona una comisaría sobre el **mapa real de la ciudad**: misiones en distritos, centralita, despacho por radio y pestañas Mapa / Misiones / Patrullas (estilo de los mockups).
 
-## Abrir el proyecto
+## Abrir
 
-1. Instala **Godot 4.3+** (Standard, no hace falta Mono).
-2. En Godot: **Import** → carpeta `godot/` de este repo.
-3. Pulsa **F5** (o Play).
+1. Godot **4.3+**
+2. Import → carpeta `godot/`
+3. **F5**
 
-No tienes que crear nodos: escenas, scripts y autoloads ya están cableados.
+**No hace falta crear nodos.**
 
-## Cómo se juega
+## Imágenes usadas
 
-1. En el mapa aparecen marcadores de misión (Barrio Norte: Centro, Puerto, Residencial, Industrial, Avenida Lumen).
-2. Click en un marcador (o en la lista de la derecha) para **revisar** la misión (imagen + briefing).
-3. Elige una patrulla **disponible**.
-4. Pulsa **Transmitir por radio · Enviar patrulla**.
-5. La unidad va al punto, reporta por radio y vuelve a la comisaría.
-6. Ganas **prestigio** si la intervención sale bien (bonus si la especialidad de la unidad coincide con la categoría).
+| Archivo | Uso |
+|---|---|
+| `assets/map/city_map.jpg` | Mapa jugable |
+| `assets/ui/mockups/missions_list.jpg` | Referencia UI Misiones |
+| `assets/ui/mockups/mission_detail.jpg` | Referencia UI detalle táctico |
+| `assets/ui/mockups/patrols_inventory.jpg` | Referencia UI Patrullas |
 
-## Controles
+## Cómo jugar
 
-- Click: seleccionar misión / UI
-- **Esc**: limpiar selección
+1. **MAPA** — ciudad completa; marcadores de misión; panel derecho + radio  
+2. Click marcador o lista → briefing  
+3. Elige patrulla → **Transmitir por radio**  
+4. **MISIONES** — filtros (urgentes, delitos, tráfico…) y lista  
+5. Informe táctico: opciones (cauteloso / entrada / negociar / bloquear) + confirmar  
+6. **PATRULLAS** — unidades, agentes y estado  
 
-## Estructura
+Rueda del ratón = zoom · botón central = pan · Esc = limpiar selección
 
-```
-godot/
-  project.godot
-  autoload/          GameState + RadioBus
-  scenes/            main, city_map, markers, patrols, UI
-  scripts/           lógica de mapa, spawner, despacho, HUD
-  data/              station.json + catálogo de eventos
-  assets/            tiles de misión + retratos de unidades
-```
+## Controles de cámara
 
-## Notas
-
-- El catálogo de eventos reutiliza los tiles de `assets/events`.
-- Si Godot pide reimportar texturas al abrir, acepta: es normal la primera vez.
+- Rueda: zoom  
+- Clic medio + arrastrar: mover mapa  

@@ -1,17 +1,40 @@
 extends Node
-## Escena principal: conecta mapa, spawner, despacho y HUD.
+## Escena principal: mapa real + HUD con pestañas.
 
 @onready var city_map: Node2D = $World/CityMap
-@onready var hud: Control = $UI/HQHud
 @onready var camera: Camera2D = $World/Camera2D
+@onready var world: Node2D = $World
 
 
 func _ready() -> void:
+	world.add_to_group("world_root")
 	city_map.mission_clicked.connect(_on_mission_clicked)
-	camera.position = Vector2(420, 340)
+	_frame_camera()
 	print("COMISARIA_READY missions=", GameState.active_missions.size(), " patrols=", GameState.patrols.size())
 	if OS.get_environment("TQ_SMOKE") == "1":
 		call_deferred("_smoke")
+
+
+func _frame_camera() -> void:
+	var size: Vector2 = city_map.map_size()
+	camera.position = size * 0.5
+	# Leave room for the right dock (~420px) on 1600-wide window
+	camera.zoom = Vector2(0.72, 0.72)
+
+
+func _on_mission_clicked(_mission_id: String) -> void:
+	pass
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
+		camera.zoom = (camera.zoom * 1.08).clamp(Vector2(0.45, 0.45), Vector2(1.6, 1.6))
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		camera.zoom = (camera.zoom / 1.08).clamp(Vector2(0.45, 0.45), Vector2(1.6, 1.6))
+	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
+		camera.position -= event.relative / camera.zoom
+	elif event.is_action_pressed("focus_map"):
+		GameState.select_mission("")
 
 
 func _smoke() -> void:
@@ -31,13 +54,3 @@ func _smoke() -> void:
 	print("COMISARIA_SMOKE patrol_status=", st)
 	print("COMISARIA_SMOKE_OK")
 	get_tree().quit(0 if ok else 5)
-
-
-func _on_mission_clicked(_mission_id: String) -> void:
-	# HUD listens via GameState.selection_changed
-	pass
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("focus_map"):
-		GameState.select_mission("")

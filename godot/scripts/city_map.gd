@@ -1,10 +1,10 @@
 extends Node2D
-## Mapa 2D de la ciudad: distritos, calles y marcadores de misión.
+## Mapa 2D con la ciudad real + marcadores y patrullas.
 
 signal mission_clicked(mission_id: String)
 
+@onready var map_sprite: Sprite2D = $MapSprite
 @onready var districts_layer: Node2D = $Districts
-@onready var roads_layer: Node2D = $Roads
 @onready var markers_layer: Node2D = $Markers
 @onready var patrols_layer: Node2D = $Patrols
 @onready var hq_marker: Node2D = $HQ
@@ -12,12 +12,14 @@ signal mission_clicked(mission_id: String)
 const MissionMarkerScene := preload("res://scenes/mission_marker.tscn")
 const PatrolUnitScene := preload("res://scenes/patrol_unit.tscn")
 
-var _markers: Dictionary = {} # mission_id -> marker
-var _patrol_nodes: Dictionary = {} # patrol_id -> node
+var _markers: Dictionary = {}
+var _patrol_nodes: Dictionary = {}
+var show_district_overlays: bool = true
 
 
 func _ready() -> void:
-	_draw_city()
+	_setup_map_texture()
+	_draw_district_overlays()
 	_place_hq()
 	_spawn_patrol_nodes()
 	GameState.mission_added.connect(_on_mission_added)
@@ -27,70 +29,50 @@ func _ready() -> void:
 	GameState.selection_changed.connect(_on_selection_changed)
 
 
-func _draw_city() -> void:
+func _setup_map_texture() -> void:
+	var path := str(GameState.station.get("map_texture", "res://assets/map/city_map.jpg"))
+	if ResourceLoader.exists(path):
+		map_sprite.texture = load(path)
+	map_sprite.centered = false
+	map_sprite.position = Vector2.ZERO
+
+
+func map_size() -> Vector2:
+	var s: Array = GameState.station.get("map_size", [1536, 1024])
+	return Vector2(float(s[0]), float(s[1]))
+
+
+func _draw_district_overlays() -> void:
 	for child in districts_layer.get_children():
 		child.queue_free()
-	for child in roads_layer.get_children():
-		child.queue_free()
-
-	# Soft night backdrop
-	var bg := ColorRect.new()
-	bg.color = Color(0.05, 0.08, 0.12, 1)
-	bg.position = Vector2(40, 40)
-	bg.size = Vector2(720, 560)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	districts_layer.add_child(bg)
-
+	if not show_district_overlays:
+		return
 	for d in GameState.station.get("districts", []):
 		var r: Array = d["rect"]
 		var rect := ColorRect.new()
 		rect.position = Vector2(float(r[0]), float(r[1]))
 		rect.size = Vector2(float(r[2]), float(r[3]))
-		rect.color = Color(d.get("color", "#2a3a55"))
+		rect.color = Color(d.get("color", "#2a6bff22"))
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		districts_layer.add_child(rect)
-
-		var border := Line2D.new()
-		border.width = 2.0
-		border.default_color = Color(0.88, 0.7, 0.35, 0.35)
-		border.add_point(rect.position)
-		border.add_point(rect.position + Vector2(rect.size.x, 0))
-		border.add_point(rect.position + rect.size)
-		border.add_point(rect.position + Vector2(0, rect.size.y))
-		border.add_point(rect.position)
-		roads_layer.add_child(border)
 
 		var label := Label.new()
 		label.text = str(d["name"]).to_upper()
 		label.position = rect.position + Vector2(10, 8)
-		label.add_theme_font_size_override("font_size", 14)
-		label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0, 0.7))
+		label.add_theme_font_size_override("font_size", 13)
+		label.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0, 0.85))
+		label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+		label.add_theme_constant_override("outline_size", 4)
 		districts_layer.add_child(label)
-
-	# Main avenues
-	_add_road(Vector2(60, 300), Vector2(740, 300), 14)
-	_add_road(Vector2(360, 50), Vector2(360, 620), 12)
-	_add_road(Vector2(100, 500), Vector2(700, 180), 8)
-
-
-func _add_road(a: Vector2, b: Vector2, width: float) -> void:
-	var road := Line2D.new()
-	road.width = width
-	road.default_color = Color(0.12, 0.14, 0.18, 1)
-	road.add_point(a)
-	road.add_point(b)
-	roads_layer.add_child(road)
-	var lane := Line2D.new()
-	lane.width = 1.5
-	lane.default_color = Color(0.9, 0.75, 0.35, 0.25)
-	lane.add_point(a)
-	lane.add_point(b)
-	roads_layer.add_child(lane)
 
 
 func _place_hq() -> void:
-	var hq: Array = GameState.station.get("hq_pos", [180, 160])
+	var hq: Array = GameState.station.get("hq_pos", [748, 470])
 	hq_marker.position = Vector2(float(hq[0]), float(hq[1]))
+	var pulse: ColorRect = hq_marker.get_node("HQPulse")
+	var tw := create_tween().set_loops()
+	tw.tween_property(pulse, "modulate:a", 0.25, 1.1).from(0.85)
+	tw.parallel().tween_property(pulse, "scale", Vector2(1.35, 1.35), 1.1).from(Vector2.ONE)
 
 
 func _spawn_patrol_nodes() -> void:
@@ -140,6 +122,6 @@ func _on_marker_pressed(mission_id: String) -> void:
 
 func random_point_in_district(district: Dictionary) -> Vector2:
 	var r: Array = district["rect"]
-	var x: float = float(r[0]) + 24.0 + GameState._rng.randf() * max(8.0, float(r[2]) - 48.0)
+	var x: float = float(r[0]) + 28.0 + GameState._rng.randf() * max(8.0, float(r[2]) - 56.0)
 	var y: float = float(r[1]) + 28.0 + GameState._rng.randf() * max(8.0, float(r[3]) - 56.0)
 	return Vector2(x, y)

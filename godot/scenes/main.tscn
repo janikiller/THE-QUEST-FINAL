@@ -14,7 +14,8 @@ script = ExtResource("1_main")
 [node name="CityMap" parent="World" instance=ExtResource("2_map")]
 
 [node name="Camera2D" type="Camera2D" parent="World"]
-position = Vector2(420, 340)
+position = Vector2(768, 512)
+zoom = Vector2(0.72, 0.72)
 
 [node name="Systems" type="Node" parent="."]
 

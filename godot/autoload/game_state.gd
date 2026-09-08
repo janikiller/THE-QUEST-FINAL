@@ -60,6 +60,7 @@ func _init_patrols() -> void:
 			"portrait": p["portrait"],
 			"specialty": p.get("specialty", "general"),
 			"speed": float(p.get("speed", 90.0)),
+			"agents": p.get("agents", []),
 			"status": "available", # available | en_route | on_scene | returning
 			"mission_id": "",
 			"pos": Vector2(float(station["hq_pos"][0]), float(station["hq_pos"][1])),

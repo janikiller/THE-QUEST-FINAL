@@ -1,21 +1,94 @@
 {
-  "station_name": "Comisaría Barrio Norte",
-  "start_hour": 21,
-  "start_minute": 0,
-  "spawn_interval_sec": 18.0,
-  "max_active_missions": 6,
+  "station_name": "Comisaría Central",
+  "motto": "Servir · Proteger · Investigar",
+  "city_name": "Una ciudad más segura",
+  "map_texture": "res://assets/map/city_map.jpg",
+  "map_size": [1536, 1024],
+  "start_hour": 10,
+  "start_minute": 24,
+  "spawn_interval_sec": 16.0,
+  "max_active_missions": 8,
+  "hq_pos": [748, 470],
   "districts": [
-    { "id": "centro", "name": "Centro", "rect": [80, 80, 280, 220], "color": "#2a3a55" },
-    { "id": "puerto", "name": "Puerto", "rect": [400, 60, 320, 200], "color": "#1f3348" },
-    { "id": "residencial", "name": "Residencial", "rect": [80, 340, 300, 240], "color": "#243348" },
-    { "id": "industrial", "name": "Industrial", "rect": [420, 300, 300, 260], "color": "#2b2838" },
-    { "id": "lumen", "name": "Avenida Lumen", "rect": [320, 220, 180, 120], "color": "#3a2f28" }
+    {
+      "id": "centro",
+      "name": "Centro",
+      "rect": [560, 340, 360, 260],
+      "color": "#2a6bff33",
+      "categories": ["delitos", "civiles", "especiales"]
+    },
+    {
+      "id": "puerto",
+      "name": "Puerto",
+      "rect": [480, 700, 460, 250],
+      "color": "#1f90c833",
+      "categories": ["organizado", "emergencias", "especiales"]
+    },
+    {
+      "id": "industrial",
+      "name": "Industrial",
+      "rect": [40, 620, 400, 300],
+      "color": "#8a5a2833",
+      "categories": ["emergencias", "organizado", "delitos"]
+    },
+    {
+      "id": "residencial",
+      "name": "Residencial",
+      "rect": [900, 60, 500, 340],
+      "color": "#3a8a4a33",
+      "categories": ["civiles", "delitos", "trafico"]
+    },
+    {
+      "id": "casco_viejo",
+      "name": "Casco Viejo",
+      "rect": [980, 620, 420, 280],
+      "color": "#c07a3033",
+      "categories": ["civiles", "delitos", "trafico"]
+    },
+    {
+      "id": "parque",
+      "name": "Parque Norte",
+      "rect": [40, 40, 420, 300],
+      "color": "#2f6b4033",
+      "categories": ["civiles", "especiales"]
+    }
   ],
   "patrols": [
-    { "id": "alpha", "callsign": "Alpha-1", "name": "Patrulla Alpha", "portrait": "res://assets/character/patrol.png", "specialty": "general", "speed": 90.0 },
-    { "id": "bravo", "callsign": "Bravo-2", "name": "Patrulla Bravo", "portrait": "res://assets/character/traffic.png", "specialty": "trafico", "speed": 100.0 },
-    { "id": "charlie", "callsign": "Charlie-3", "name": "Unidad Charlie", "portrait": "res://assets/character/swat.png", "specialty": "organizado", "speed": 80.0 },
-    { "id": "delta", "callsign": "Delta-K9", "name": "Unidad K9", "portrait": "res://assets/character/k9.png", "specialty": "delitos", "speed": 95.0 }
-  ],
-  "hq_pos": [180, 160]
+    {
+      "id": "alpha",
+      "callsign": "U.P.R. 091",
+      "name": "Patrulla 1",
+      "portrait": "res://assets/character/patrol.png",
+      "specialty": "general",
+      "speed": 110.0,
+      "agents": ["García", "Torres"]
+    },
+    {
+      "id": "bravo",
+      "callsign": "Tráfico 12",
+      "name": "Patrulla 2",
+      "portrait": "res://assets/character/traffic.png",
+      "specialty": "trafico",
+      "speed": 125.0,
+      "agents": ["Ruiz", "Molina"]
+    },
+    {
+      "id": "charlie",
+      "callsign": "GOE 3",
+      "name": "Patrulla 3",
+      "portrait": "res://assets/character/swat.png",
+      "specialty": "organizado",
+      "speed": 100.0,
+      "agents": ["Vega", "Sanz"]
+    },
+    {
+      "id": "delta",
+      "callsign": "K9 Delta",
+      "name": "Patrulla 4",
+      "portrait": "res://assets/character/k9.png",
+      "specialty": "delitos",
+      "speed": 115.0,
+      "agents": ["Nieto", "K9 Leo"]
+    }
+  ]
 }

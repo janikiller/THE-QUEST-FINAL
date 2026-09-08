@@ -16,7 +16,7 @@ script = ExtResource("1_script")
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 52.0
+offset_bottom = 56.0
 grow_horizontal = 2
 
 [node name="Margin" type="MarginContainer" parent="TopBar"]
@@ -28,144 +28,416 @@ theme_override_constants/margin_bottom = 8
 
 [node name="Row" type="HBoxContainer" parent="TopBar/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 18
 
-[node name="StationLabel" type="Label" parent="TopBar/Margin/Row"]
+[node name="MottoLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "Servir · Proteger · Investigar"
+
+[node name="Tabs" type="HBoxContainer" parent="TopBar/Margin/Row"]
+layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 18
-text = "Comisaría Barrio Norte"
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="TabMap" type="Button" parent="TopBar/Margin/Row/Tabs"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "MAPA"
+
+[node name="TabMissions" type="Button" parent="TopBar/Margin/Row/Tabs"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "MISIONES"
+
+[node name="TabPatrols" type="Button" parent="TopBar/Margin/Row/Tabs"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "PATRULLAS"
 
 [node name="TimeLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "21:00"
+theme_override_font_sizes/font_size = 16
+text = "10:24"
 
 [node name="PrestigeLabel" type="Label" parent="TopBar/Margin/Row"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 14
 text = "Prestigio 0"
 
-[node name="RightDock" type="PanelContainer" parent="."]
+[node name="MapPanel" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 60.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="RightDock" type="PanelContainer" parent="MapPanel"]
 layout_mode = 1
 anchors_preset = 11
 anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -420.0
-offset_top = 60.0
-offset_bottom = -12.0
+offset_top = 0.0
+offset_right = -10.0
+offset_bottom = -10.0
 grow_horizontal = 0
 grow_vertical = 2
 
-[node name="Margin" type="MarginContainer" parent="RightDock"]
+[node name="Margin" type="MarginContainer" parent="MapPanel/RightDock"]
 layout_mode = 2
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 10
 
-[node name="VBox" type="VBoxContainer" parent="RightDock/Margin"]
+[node name="VBox" type="VBoxContainer" parent="MapPanel/RightDock/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="MissionsHeader" type="Label" parent="RightDock/Margin/VBox"]
+[node name="H1" type="Label" parent="MapPanel/RightDock/Margin/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
-text = "CENTRALITA · MISIONES"
+text = "CENTRALITA · EN VIVO"
 
-[node name="MissionList" type="ItemList" parent="RightDock/Margin/VBox"]
+[node name="MapMissionList" type="ItemList" parent="MapPanel/RightDock/Margin/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 140)
+custom_minimum_size = Vector2(0, 130)
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="DetailHeader" type="Label" parent="RightDock/Margin/VBox"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "REVISAR MISIÓN"
-
-[node name="MissionArt" type="TextureRect" parent="RightDock/Margin/VBox"]
+[node name="SelectedArt" type="TextureRect" parent="MapPanel/RightDock/Margin/VBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 90)
 layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="MissionTitle" type="Label" parent="RightDock/Margin/VBox"]
+[node name="SelectedTitle" type="Label" parent="MapPanel/RightDock/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "Sin misión seleccionada"
+theme_override_font_sizes/font_size = 16
+text = "Selecciona una misión"
 autowrap_mode = 3
 
-[node name="MissionMeta" type="Label" parent="RightDock/Margin/VBox"]
+[node name="SelectedBlurb" type="RichTextLabel" parent="MapPanel/RightDock/Margin/VBox"]
 unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.75, 0.82, 1)
-theme_override_font_sizes/font_size = 12
-text = "Pulsa un marcador en el mapa o elige en la lista."
-autowrap_mode = 3
-
-[node name="MissionBlurb" type="RichTextLabel" parent="RightDock/Margin/VBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 56)
+custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 bbcode_enabled = true
 fit_content = true
 scroll_active = false
 
-[node name="EmptyHint" type="Label" parent="RightDock/Margin/VBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.75, 0.82, 1)
-theme_override_font_sizes/font_size = 12
-text = "Las misiones aparecen solas en el mapa. Selecciónalas y envía una patrulla por radio."
-autowrap_mode = 3
-
-[node name="PatrolHeader" type="Label" parent="RightDock/Margin/VBox"]
+[node name="H2" type="Label" parent="MapPanel/RightDock/Margin/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "PATRULLAS"
 
-[node name="PatrolList" type="ItemList" parent="RightDock/Margin/VBox"]
+[node name="MapPatrolList" type="ItemList" parent="MapPanel/RightDock/Margin/VBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 
-[node name="DispatchButton" type="Button" parent="RightDock/Margin/VBox"]
+[node name="MapDispatchButton" type="Button" parent="MapPanel/RightDock/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
 disabled = true
-text = "Transmitir por radio · Enviar patrulla"
+text = "Transmitir por radio · Enviar"
 
-[node name="RadioHeader" type="Label" parent="RightDock/Margin/VBox"]
+[node name="H3" type="Label" parent="MapPanel/RightDock/Margin/VBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "CANAL DE RADIO"
 
-[node name="RadioLog" type="RichTextLabel" parent="RightDock/Margin/VBox"]
+[node name="RadioLog" type="RichTextLabel" parent="MapPanel/RightDock/Margin/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 120)
+custom_minimum_size = Vector2(0, 110)
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
 scroll_following = true
 
-[node name="Help" type="Label" parent="."]
+[node name="MissionsPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
 layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
+anchors_preset = 15
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = -36.0
-offset_right = 520.0
+offset_left = 12.0
+offset_top = 64.0
+offset_right = -12.0
 offset_bottom = -12.0
-grow_vertical = 0
-theme_override_colors/font_color = Color(0.65, 0.7, 0.78, 1)
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="MissionsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Cols" type="HBoxContainer" parent="MissionsPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Filters" type="VBoxContainer" parent="MissionsPanel/Margin/Cols"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+
+[node name="FLabel" type="Label" parent="MissionsPanel/Margin/Cols/Filters"]
+layout_mode = 2
+text = "CATEGORÍAS"
+
+[node name="FilterList" type="ItemList" parent="MissionsPanel/Margin/Cols/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ListCol" type="VBoxContainer" parent="MissionsPanel/Margin/Cols"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LLabel" type="Label" parent="MissionsPanel/Margin/Cols/ListCol"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "LISTA DE MISIONES"
+
+[node name="MissionList" type="ItemList" parent="MissionsPanel/Margin/Cols/ListCol"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Hint" type="Label" parent="MissionsPanel/Margin/Cols/ListCol"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.78, 0.88, 1)
 theme_override_font_sizes/font_size = 12
-text = "Click en marcadores del mapa · Esc limpia selección · Despacha con el botón de radio"
+text = "Haz doble click conceptual: selecciona una misión para abrir el informe táctico."
+
+[node name="PatrolsPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 64.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="PatrolsPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Cols" type="HBoxContainer" parent="PatrolsPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Left" type="VBoxContainer" parent="PatrolsPanel/Margin/Cols"]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+
+[node name="PLabel" type="Label" parent="PatrolsPanel/Margin/Cols/Left"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "PATRULLAS"
+
+[node name="PatrolCards" type="VBoxContainer" parent="PatrolsPanel/Margin/Cols/Left"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="Right" type="VBoxContainer" parent="PatrolsPanel/Margin/Cols"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PatrolPreview" type="TextureRect" parent="PatrolsPanel/Margin/Cols/Right"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 280)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PatrolInfo" type="RichTextLabel" parent="PatrolsPanel/Margin/Cols/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+
+[node name="DetailPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 64.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="DetailPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="DetailPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BackButton" type="Button" parent="DetailPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+text = "← Volver a misiones"
+
+[node name="HeadRow" type="HBoxContainer" parent="DetailPanel/Margin/VBox"]
+layout_mode = 2
+
+[node name="MissionTitle" type="Label" parent="DetailPanel/Margin/VBox/HeadRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "MISIÓN"
+
+[node name="UrgencyBadge" type="Label" parent="DetailPanel/Margin/VBox/HeadRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.35, 0.35, 1)
+theme_override_font_sizes/font_size = 14
+text = "URGENTE"
+
+[node name="MissionMeta" type="Label" parent="DetailPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.78, 0.88, 1)
+text = "meta"
+
+[node name="Body" type="HBoxContainer" parent="DetailPanel/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="Left" type="VBoxContainer" parent="DetailPanel/Margin/VBox/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MissionArt" type="TextureRect" parent="DetailPanel/Margin/VBox/Body/Left"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MissionBlurb" type="RichTextLabel" parent="DetailPanel/Margin/VBox/Body/Left"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+
+[node name="Right" type="VBoxContainer" parent="DetailPanel/Margin/VBox/Body"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+
+[node name="ObjLabel" type="Label" parent="DetailPanel/Margin/VBox/Body/Right"]
+layout_mode = 2
+text = "OBJETIVOS"
+
+[node name="Objectives" type="RichTextLabel" parent="DetailPanel/Margin/VBox/Body/Right"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 90)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+
+[node name="OutLabel" type="Label" parent="DetailPanel/Margin/VBox/Body/Right"]
+layout_mode = 2
+text = "POSIBLES RESULTADOS"
+
+[node name="Outcomes" type="RichTextLabel" parent="DetailPanel/Margin/VBox/Body/Right"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+
+[node name="PatrolLabel" type="Label" parent="DetailPanel/Margin/VBox/Body/Right"]
+layout_mode = 2
+text = "ASIGNAR PATRULLA"
+
+[node name="PatrolList" type="ItemList" parent="DetailPanel/Margin/VBox/Body/Right"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 110)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="DispatchButton" type="Button" parent="DetailPanel/Margin/VBox/Body/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Iniciar misión / Enviar"
+
+[node name="ActionsLabel" type="Label" parent="DetailPanel/Margin/VBox"]
+layout_mode = 2
+text = "OPCIONES DE ACTUACIÓN"
+
+[node name="Actions" type="HBoxContainer" parent="DetailPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ActionCautious" type="Button" parent="DetailPanel/Margin/VBox/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Acercamiento cauteloso
+MENOR RIESGO"
+
+[node name="ActionEntry" type="Button" parent="DetailPanel/Margin/VBox/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Entrada inmediata
+MAYOR RIESGO"
+
+[node name="ActionNegotiate" type="Button" parent="DetailPanel/Margin/VBox/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Negociar
+UNIDAD ESPECIAL"
+
+[node name="ActionBlock" type="Button" parent="DetailPanel/Margin/VBox/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Bloquear fuga
+RESTRINGE MOVIMIENTO"
+
+[node name="ConfirmActions" type="Button" parent="DetailPanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "▶  CONFIRMAR ACCIONES"
