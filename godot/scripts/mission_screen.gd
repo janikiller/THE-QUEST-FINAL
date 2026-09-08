@@ -174,7 +174,7 @@ func _distance_text(m: Dictionary) -> String:
 
 func _fake_address(m: Dictionary) -> String:
 	var district := str(m.get("district_name", "Centro"))
-	var n := 80 + (abs(hash(str(m.get("id", "")))) % 140)
+	var n: int = 80 + (absi(hash(str(m.get("id", "")))) % 140)
 	return "Av. %s %d" % [district, n]
 
 
