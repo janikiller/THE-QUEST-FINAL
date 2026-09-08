@@ -81,9 +81,11 @@ func _init_patrols() -> void:
 			"callsign": p["callsign"],
 			"name": p["name"],
 			"portrait": p["portrait"],
+			"map_icon": p.get("map_icon", p["portrait"]),
 			"specialty": p.get("specialty", "general"),
 			"speed": float(p.get("speed", 90.0)),
 			"agents": p.get("agents", []),
+			"agent_portraits": p.get("agent_portraits", []),
 			"status": "available", # available | en_route | on_scene | returning
 			"mission_id": "",
 			"pos": hq,
@@ -284,14 +286,28 @@ func create_mission_from_event(event: Dictionary, district: Dictionary, map_pos:
 		"outcome_report": "",
 		"tactic": "",
 		"assigned_patrol": "",
+		"suspects": [],
 		"created_at": "%02d:%02d" % [hour, minute],
 		"blurb": _blurb_for(event, district),
 		"radio_log": [],
 	}
 	_seed_inicio_beat(mission)
 	active_missions[mid] = mission
+	_attach_suspects(mid)
 	mission_added.emit(mission)
 	return mission
+
+
+func _attach_suspects(mission_id: String) -> void:
+	if not active_missions.has(mission_id):
+		return
+	var m: Dictionary = active_missions[mission_id]
+	var count := 2
+	if str(m.get("severity", "")) in ["high", "critical"]:
+		count = 3
+	m["suspects"] = CharacterDB.delinquent_thumbs_for_mission(mission_id, count)
+	m["suspect_icon"] = CharacterDB.delinquent_icon_for_mission(mission_id)
+	active_missions[mission_id] = m
 
 
 func _seed_inicio_beat(mission: Dictionary) -> void:

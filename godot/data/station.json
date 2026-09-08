@@ -58,28 +58,43 @@
       "id": "alpha",
       "callsign": "U.P.R. 091",
       "name": "Patrulla 1",
-      "portrait": "res://assets/character/patrol.png",
+      "portrait": "res://assets/character/police/police_00.png",
+      "map_icon": "res://assets/character/map_icons/police_00.png",
       "specialty": "general",
       "speed": 110.0,
-      "agents": ["García", "Torres"]
+      "agents": ["García", "Torres"],
+      "agent_portraits": [
+        "res://assets/character/portraits/police_00_thumb.png",
+        "res://assets/character/portraits/police_01_thumb.png"
+      ]
     },
     {
       "id": "bravo",
       "callsign": "Tráfico 12",
       "name": "Patrulla 2",
-      "portrait": "res://assets/character/traffic.png",
+      "portrait": "res://assets/character/police/police_15.png",
+      "map_icon": "res://assets/character/map_icons/police_15.png",
       "specialty": "trafico",
       "speed": 125.0,
-      "agents": ["Ruiz", "Molina"]
+      "agents": ["Ruiz", "Molina"],
+      "agent_portraits": [
+        "res://assets/character/portraits/police_15_thumb.png",
+        "res://assets/character/portraits/police_16_thumb.png"
+      ]
     },
     {
       "id": "charlie",
       "callsign": "GOE 3",
       "name": "Patrulla 3",
-      "portrait": "res://assets/character/swat.png",
+      "portrait": "res://assets/character/police/police_05.png",
+      "map_icon": "res://assets/character/map_icons/police_05.png",
       "specialty": "organizado",
       "speed": 100.0,
-      "agents": ["Vega", "Sanz"]
+      "agents": ["Vega", "Sanz"],
+      "agent_portraits": [
+        "res://assets/character/portraits/police_05_thumb.png",
+        "res://assets/character/portraits/police_06_thumb.png"
+      ]
     }
   ]
 }

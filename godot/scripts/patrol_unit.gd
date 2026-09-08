@@ -1,12 +1,14 @@
 extends Node2D
-## Patrulla como luces de policía azul/roja.
+## Patrulla: personaje policía + luces azul/roja.
 
 var patrol_id: String = ""
 var _status: String = "available"
 var _flash: float = 0.0
 var _callsign: String = ""
+var _icon_path: String = ""
 
 @onready var label: Label = $Label
+@onready var portrait: Sprite2D = $Portrait
 
 
 func setup(patrol: Dictionary) -> void:
@@ -18,7 +20,16 @@ func refresh(patrol: Dictionary) -> void:
 	position = patrol["pos"]
 	_callsign = str(patrol.get("callsign", "?"))
 	_status = str(patrol.get("status", "available"))
-	label.text = _callsign if _status != "available" else ""
+	label.text = _callsign
+	_icon_path = str(patrol.get("map_icon", patrol.get("portrait", "")))
+	if portrait and ResourceLoader.exists(_icon_path):
+		portrait.texture = load(_icon_path)
+		portrait.visible = true
+		# Iconos circulares ~72px: tamaño legible en el mapa
+		portrait.scale = Vector2(1.05, 1.05)
+		portrait.position = Vector2(0, -26)
+	elif portrait:
+		portrait.visible = false
 	queue_redraw()
 
 
@@ -35,26 +46,22 @@ func _draw() -> void:
 	var blue := Color(0.15, 0.45, 1.0, 1.0)
 	var dim := Color(0.15, 0.18, 0.25, 0.55)
 
-	# Body / cruiser silhouette
-	draw_rect(Rect2(-7, -4, 14, 8), Color(0.08, 0.1, 0.14, 0.9), true)
-	draw_rect(Rect2(-7, -4, 14, 8), Color(0.4, 0.45, 0.55, 0.7), false, 1.0)
+	# Soft ground shadow under character
+	draw_circle(Vector2(0, 8), 12.0, Color(0, 0, 0, 0.28))
 
-	# Light bar
+	# Light bar near feet / cruiser cue
 	var left_col := blue if blue_on else dim
 	var right_col := red if not blue_on else dim
 	if not active:
-		left_col = Color(0.2, 0.55, 0.95, 0.55)
-		right_col = Color(0.95, 0.25, 0.3, 0.55)
+		left_col = Color(0.2, 0.55, 0.95, 0.45)
+		right_col = Color(0.95, 0.25, 0.3, 0.45)
 
-	draw_rect(Rect2(-6, -7, 5, 4), left_col, true)
-	draw_rect(Rect2(1, -7, 5, 4), right_col, true)
+	draw_rect(Rect2(-8, 4, 6, 4), left_col, true)
+	draw_rect(Rect2(2, 4, 6, 4), right_col, true)
 
-	# Glow blooms
-	var glow_a := 0.35 if active else 0.12
-	draw_circle(Vector2(-3.5, -5), 7.0, Color(left_col.r, left_col.g, left_col.b, glow_a))
-	draw_circle(Vector2(3.5, -5), 7.0, Color(right_col.r, right_col.g, right_col.b, glow_a))
+	var glow_a := 0.4 if active else 0.14
+	draw_circle(Vector2(-5, 6), 8.0, Color(left_col.r, left_col.g, left_col.b, glow_a))
+	draw_circle(Vector2(5, 6), 8.0, Color(right_col.r, right_col.g, right_col.b, glow_a))
 
-	# Ground light wash when moving
 	if active:
-		draw_circle(Vector2(0, 6), 10.0, Color(left_col.r, left_col.g, left_col.b, 0.12))
-		draw_circle(Vector2(0, 6), 10.0, Color(right_col.r, right_col.g, right_col.b, 0.08))
+		draw_circle(Vector2(0, 10), 14.0, Color(left_col.r, left_col.g, left_col.b, 0.1))

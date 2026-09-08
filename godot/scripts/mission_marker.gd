@@ -1,5 +1,5 @@
 extends Node2D
-## Marcador de misión: rombo rojo con ! y anillo discontinuo.
+## Marcador de misión: pin + delincuente en escena.
 
 signal pressed(mission_id: String)
 
@@ -12,6 +12,7 @@ var _title: String = ""
 
 @onready var hit: Button = $Hit
 @onready var title: Label = $Title
+@onready var suspect: Sprite2D = $Suspect
 
 
 func _ready() -> void:
@@ -30,6 +31,17 @@ func refresh(mission: Dictionary) -> void:
 	_title = str(mission.get("title", ""))
 	title.text = _title
 	_status = str(mission.get("status", "open"))
+	var icon := str(mission.get("suspect_icon", ""))
+	if icon == "" and is_instance_valid(CharacterDB):
+		icon = CharacterDB.delinquent_icon_for_mission(mission_id)
+	if suspect:
+		if ResourceLoader.exists(icon):
+			suspect.texture = load(icon)
+			suspect.visible = _status in ["open", "dispatched", "resolving"]
+			suspect.position = Vector2(28, -6)
+			suspect.scale = Vector2(0.95, 0.95)
+		else:
+			suspect.visible = false
 	set_selected(_selected)
 	queue_redraw()
 
@@ -58,10 +70,8 @@ func _draw() -> void:
 	var bob_y := sin(_bob) * 2.0
 	var center := Vector2(0, -18 + bob_y)
 
-	# Soft ground glow
 	draw_circle(Vector2(0, 4), 26.0 if _selected else 18.0, Color(accent.r, accent.g, accent.b, 0.22))
 
-	# Dashed ring
 	var radius := 38.0 if _selected else 32.0
 	var dashes := 20
 	for i in range(dashes):
@@ -71,7 +81,6 @@ func _draw() -> void:
 		var a1 := a0 + TAU / float(dashes) * 0.65
 		_draw_arc_segment(Vector2.ZERO, radius, a0, a1, Color(accent.r, accent.g, accent.b, 0.95), 3.5)
 
-	# Diamond body
 	var R := 18.0
 	var diamond := PackedVector2Array([
 		center + Vector2(0, -R),
@@ -90,12 +99,10 @@ func _draw() -> void:
 	])
 	draw_colored_polygon(inner, accent.darkened(0.32))
 
-	# Exclamation mark
 	var white := Color(1, 1, 1, 1)
 	draw_rect(Rect2(center + Vector2(-3, -10), Vector2(6, 12)), white)
 	draw_circle(center + Vector2(0, 8), 2.8, white)
 
-	# Pin triangle
 	var pin_top := center.y + R - 1.0
 	var pin := PackedVector2Array([
 		Vector2(-8, pin_top),

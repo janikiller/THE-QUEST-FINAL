@@ -199,40 +199,39 @@ func _fake_address(m: Dictionary) -> String:
 func _rebuild_suspects(m: Dictionary) -> void:
 	for c in suspects_row.get_children():
 		c.queue_free()
-	var labels := ["SOSPECHOSO 1", "SOSPECHOSO 2", "POSIBLE 3º"]
-	var colors := [
-		Color(0.15, 0.2, 0.28),
-		Color(0.18, 0.16, 0.22),
-		Color(0.12, 0.18, 0.24),
-	]
+	var suspects: Array = m.get("suspects", [])
+	if suspects.is_empty() and is_instance_valid(CharacterDB):
+		suspects = CharacterDB.delinquent_thumbs_for_mission(str(m.get("id", "")), 3)
+	var fallback := ["SOSPECHOSO 1", "SOSPECHOSO 2", "POSIBLE 3º"]
 	for i in range(3):
 		var col := VBoxContainer.new()
 		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var face := ColorRect.new()
-		face.custom_minimum_size = Vector2(0, 58)
-		face.color = colors[i]
+		var face := TextureRect.new()
+		face.custom_minimum_size = Vector2(0, 96)
+		face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		var label_txt: String = fallback[i]
+		var alias_txt: String = "Sin ID confirmada"
+		if i < suspects.size():
+			var s: Dictionary = suspects[i]
+			var path := str(s.get("thumb", ""))
+			if ResourceLoader.exists(path):
+				face.texture = load(path)
+			label_txt = str(s.get("name", fallback[i]))
+			alias_txt = "Alias: %s" % str(s.get("alias", "—"))
 		col.add_child(face)
-		var sil := Label.new()
-		sil.text = "ID"
-		sil.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		sil.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		sil.add_theme_font_size_override("font_size", 16)
-		sil.add_theme_color_override("font_color", Color(0.55, 0.65, 0.78))
-		face.add_child(sil)
-		sil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		var name_l := Label.new()
-		name_l.text = labels[i]
-		name_l.add_theme_font_size_override("font_size", 10)
-		name_l.add_theme_color_override("font_color", Color(0.75, 0.82, 0.9))
+		name_l.text = label_txt
+		name_l.add_theme_font_size_override("font_size", 11)
+		name_l.add_theme_color_override("font_color", Color(0.92, 0.78, 0.78))
 		col.add_child(name_l)
 		var desc := Label.new()
-		desc.text = "Sin ID confirmada"
+		desc.text = alias_txt
 		desc.add_theme_font_size_override("font_size", 9)
 		desc.add_theme_color_override("font_color", Color(0.55, 0.62, 0.72))
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		col.add_child(desc)
 		suspects_row.add_child(col)
-	# keep reference for severity flavour
 	if str(m.get("severity", "")) == "critical":
 		witnesses.modulate = Color(1.0, 0.75, 0.75)
 

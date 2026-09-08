@@ -214,6 +214,15 @@ func _make_agent_panel(agent_index: int, agent_name: String, data: Dictionary) -
 	title.add_theme_font_size_override("font_size", 16)
 	v.add_child(title)
 
+	var portraits: Array = GameState.patrols.get(selected_patrol_id, {}).get("agent_portraits", [])
+	if agent_index < portraits.size() and ResourceLoader.exists(str(portraits[agent_index])):
+		var face := TextureRect.new()
+		face.custom_minimum_size = Vector2(0, 96)
+		face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		face.texture = load(str(portraits[agent_index]))
+		v.add_child(face)
+
 	var slots_map := {}
 	var top := HBoxContainer.new()
 	top.alignment = BoxContainer.ALIGNMENT_CENTER

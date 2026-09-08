@@ -6,6 +6,10 @@
 z_index = 20
 script = ExtResource("1_script")
 
+[node name="Suspect" type="Sprite2D" parent="."]
+position = Vector2(22, -8)
+centered = true
+
 [node name="Hit" type="Button" parent="."]
 offset_left = -22.0
 offset_top = -44.0
