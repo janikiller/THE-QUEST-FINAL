@@ -101,29 +101,71 @@ func _rebuild_patrol_list() -> void:
 	for c in patrol_list.get_children():
 		c.queue_free()
 	for p in GameState.patrols.values():
+		var pid := str(p.get("id", ""))
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(0, 92)
+		btn.custom_minimum_size = Vector2(0, 100)
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		var agents: Array = p.get("agents", [])
-		var agent_txt := ", ".join(PackedStringArray(agents))
 		var st := str(p.get("status", "available"))
-		var st_label := "EN SERVICIO" if st == "available" else st.to_upper()
-		btn.text = "%s  %s\n%s\n● %s" % [p.get("name", ""), p.get("callsign", ""), agent_txt, st_label]
-		btn.pressed.connect(select_patrol.bind(str(p.get("id", ""))))
+		var st_label := "EN BASE"
+		var st_color := Color(0.55, 0.62, 0.72)
+		match st:
+			"available":
+				st_label = "EN BASE"
+				st_color = Color(0.45, 0.85, 0.55)
+			"en_route", "on_scene":
+				st_label = "EN SERVICIO"
+				st_color = Color(0.35, 0.85, 1.0)
+			"returning":
+				st_label = "REGRESO"
+				st_color = Color(1.0, 0.82, 0.35)
+		btn.text = "%s\n%s\n● %s" % [p.get("name", ""), p.get("callsign", ""), st_label]
+		btn.add_theme_color_override("font_color", Color(0.92, 0.95, 1.0))
+		var sb := StyleBoxFlat.new()
+		var selected := pid == selected_patrol_id
+		sb.bg_color = Color(0.06, 0.12, 0.2) if selected else Color(0.05, 0.08, 0.14)
+		sb.border_color = Color(0.2, 0.85, 1.0) if selected else Color(0.2, 0.32, 0.45)
+		sb.set_border_width_all(2 if selected else 1)
+		sb.set_corner_radius_all(6)
+		sb.content_margin_left = 12
+		sb.content_margin_right = 12
+		sb.content_margin_top = 10
+		sb.content_margin_bottom = 10
+		if selected:
+			sb.shadow_color = Color(0.15, 0.7, 1.0, 0.35)
+			sb.shadow_size = 6
+		btn.add_theme_stylebox_override("normal", sb)
+		btn.add_theme_stylebox_override("hover", sb)
+		btn.add_theme_stylebox_override("pressed", sb)
+		btn.pressed.connect(select_patrol.bind(pid))
 		patrol_list.add_child(btn)
+		# tint status line via modulate of whole button slightly
+		if not selected:
+			btn.modulate = Color(0.92, 0.94, 0.98)
+		else:
+			btn.modulate = Color(1, 1, 1)
+		btn.set_meta("status_color", st_color)
 
 
 func select_patrol(patrol_id: String) -> void:
 	if not GameState.patrols.has(patrol_id):
 		return
 	selected_patrol_id = patrol_id
+	_rebuild_patrol_list()
 	GameState.ensure_patrol_inventory(patrol_id)
 	var p: Dictionary = GameState.patrols[patrol_id]
 	header_title.text = "%s | %s" % [p.get("name", ""), p.get("callsign", "")]
 	header_sub.text = "Unidad de patrulla · inventario compartido"
 	var st := str(p.get("status", "available"))
-	status_pill.text = "EN SERVICIO" if st == "available" else st.to_upper()
+	match st:
+		"available":
+			status_pill.text = "EN BASE"
+		"en_route", "on_scene":
+			status_pill.text = "EN SERVICIO"
+		"returning":
+			status_pill.text = "REGRESO"
+		_:
+			status_pill.text = st.to_upper()
 	vehicle_name.text = str(p.get("callsign", "Vehículo"))
 	if ResourceLoader.exists(str(p.get("portrait", ""))):
 		vehicle_tex.texture = load(str(p.get("portrait", "")))

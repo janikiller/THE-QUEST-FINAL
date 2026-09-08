@@ -7,7 +7,7 @@
   "start_hour": 10,
   "start_minute": 24,
   "spawn_interval_sec": 16.0,
-  "max_active_missions": 8,
+  "max_active_missions": 9,
   "hq_pos": [748, 470],
   "districts": [
     {
@@ -80,15 +80,6 @@
       "specialty": "organizado",
       "speed": 100.0,
       "agents": ["Vega", "Sanz"]
-    },
-    {
-      "id": "delta",
-      "callsign": "K9 Delta",
-      "name": "Patrulla 4",
-      "portrait": "res://assets/character/k9.png",
-      "specialty": "delitos",
-      "speed": 115.0,
-      "agents": ["Nieto", "K9 Leo"]
     }
   ]
 }

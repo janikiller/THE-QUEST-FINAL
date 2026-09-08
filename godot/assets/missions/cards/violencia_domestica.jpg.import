@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://qollef5otuib"
-path="res://.godot/imported/missions_list.jpg-682420711df64a427d57572edd22daec.ctex"
+uid="uid://teada3nsht23"
+path="res://.godot/imported/violencia_domestica.jpg-b23659101920ee278b494026937c4359.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/mockups/missions_list.jpg"
-dest_files=["res://.godot/imported/missions_list.jpg-682420711df64a427d57572edd22daec.ctex"]
+source_file="res://assets/missions/cards/violencia_domestica.jpg"
+dest_files=["res://.godot/imported/violencia_domestica.jpg-b23659101920ee278b494026937c4359.ctex"]
 
 [params]
 

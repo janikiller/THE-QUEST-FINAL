@@ -1,5 +1,5 @@
 extends Control
-## HUD mínimo del mapa: solo info + acceso a misiones. El mapa es para moverse.
+## HUD mínimo del mapa: info + misiones + velocidad de partida.
 
 @onready var time_label: Label = %TimeLabel
 @onready var prestige_label: Label = %PrestigeLabel
@@ -7,6 +7,12 @@ extends Control
 @onready var btn_missions: Button = %BtnMissions
 @onready var btn_inventory: Button = %BtnInventory
 @onready var hint: Label = %Hint
+@onready var btn_speed_1: Button = %BtnSpeed1
+@onready var btn_speed_4: Button = %BtnSpeed4
+@onready var btn_speed_16: Button = %BtnSpeed16
+@onready var btn_speed_60: Button = %BtnSpeed60
+
+var _speed_group: ButtonGroup
 
 
 func _ready() -> void:
@@ -15,12 +21,21 @@ func _ready() -> void:
 		_update_tod_hint()
 	)
 	GameState.prestige_changed.connect(func(_v): _update_tod_hint())
+	GameState.time_speed_changed.connect(func(_s): _sync_speed_buttons())
 	RadioBus.radio_message.connect(_on_radio)
 	btn_missions.pressed.connect(_open_missions)
 	btn_inventory.pressed.connect(_open_inventory)
+	_speed_group = ButtonGroup.new()
+	for b in [btn_speed_1, btn_speed_4, btn_speed_16, btn_speed_60]:
+		b.button_group = _speed_group
+	btn_speed_1.pressed.connect(func(): GameState.set_time_speed(1.0))
+	btn_speed_4.pressed.connect(func(): GameState.set_time_speed(4.0))
+	btn_speed_16.pressed.connect(func(): GameState.set_time_speed(16.0))
+	btn_speed_60.pressed.connect(func(): GameState.set_time_speed(60.0))
 	time_label.text = "%02d:%02d" % [GameState.hour, GameState.minute]
-	hint.text = "WASD / flechas mover · Click misión · M misiones · I inventario · rueda zoom"
+	hint.text = "WASD mover · Click misión · M misiones · I inventario · 1x/4x/16x/60x velocidad · rueda zoom"
 	_update_tod_hint()
+	_sync_speed_buttons()
 
 
 func _update_tod_hint() -> void:
@@ -31,7 +46,15 @@ func _update_tod_hint() -> void:
 			label = "ATARDECER"
 		"night":
 			label = "NOCHE"
-	prestige_label.text = "Prestigio %d   ·   %s" % [GameState.prestige, label]
+	prestige_label.text = "Prestigio %d   ·   %s   ·   %dx" % [GameState.prestige, label, int(round(GameState.time_speed))]
+
+
+func _sync_speed_buttons() -> void:
+	var s := int(round(GameState.time_speed))
+	btn_speed_1.button_pressed = s == 1
+	btn_speed_4.button_pressed = s == 4
+	btn_speed_16.button_pressed = s == 16
+	btn_speed_60.button_pressed = s == 60
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -41,6 +64,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		_open_missions()
 	elif event.is_action_pressed("toggle_inventory") or (event is InputEventKey and event.pressed and event.keycode == KEY_I):
 		_open_inventory()
+	elif event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_1:
+				GameState.set_time_speed(1.0)
+			KEY_2:
+				GameState.set_time_speed(4.0)
+			KEY_3:
+				GameState.set_time_speed(16.0)
+			KEY_4:
+				GameState.set_time_speed(60.0)
+			KEY_PERIOD, KEY_EQUAL:
+				GameState.cycle_time_speed()
 
 
 func _open_missions() -> void:
@@ -59,11 +94,11 @@ func _on_radio(text: String, kind: String) -> void:
 	var prefix := ""
 	match kind:
 		"alert":
-			prefix = "⚠ "
+			prefix = "! "
 		"dispatch":
-			prefix = "📡 "
+			prefix = "> "
 		"resolve":
-			prefix = "✓ "
+			prefix = "OK "
 	radio_toast.text = prefix + text
 	radio_toast.modulate.a = 1.0
 	var tw := create_tween()

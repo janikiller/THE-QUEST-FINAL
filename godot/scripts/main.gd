@@ -215,11 +215,24 @@ func _playtest() -> void:
 	print("PLAYTEST tod night=", GameState.time_of_day())
 	if GameState.time_of_day() != "night":
 		errors.append("night tod failed")
+	if GameState.patrols.size() != 3:
+		errors.append("expected 3 patrols, got %d" % GameState.patrols.size())
+	GameState.set_time_speed(16.0)
+	if abs(GameState.time_speed - 16.0) > 0.01:
+		errors.append("time speed not set")
+	print("PLAYTEST time_speed=", GameState.time_speed)
+	GameState.set_time_speed(1.0)
 	$UI/UIRouter.show_missions()
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if not $UI/UIRouter/MissionsMenu.visible:
 		errors.append("missions menu not visible after redesign")
+	# GridContainer expected
+	var grid = $UI/UIRouter/MissionsMenu.find_child("MissionCards", true, false)
+	if grid == null or not (grid is GridContainer):
+		errors.append("mission cards grid missing")
+	else:
+		print("PLAYTEST mission grid cols=", grid.columns, " children=", grid.get_child_count())
 	var sample = GameState.active_missions.values()[0] if not GameState.active_missions.is_empty() else {}
 	if not sample.is_empty():
 		var artp := GameState.mission_art_path(sample)
@@ -233,8 +246,8 @@ func _playtest() -> void:
 			errors.append("tactical mission screen not visible")
 		else:
 			print("PLAYTEST tactical screen ok")
-	if not ResourceLoader.exists("res://assets/missions/generated/mission_atraco.png"):
-		errors.append("atraco mission photo missing")
+	if not ResourceLoader.exists("res://assets/missions/cards/atraco_tienda.jpg"):
+		errors.append("atraco card missing")
 	if not ResourceLoader.exists("res://assets/ui/police_badge_logo.png"):
 		errors.append("police badge missing")
 

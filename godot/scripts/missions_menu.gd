@@ -1,44 +1,22 @@
 extends Control
-## Central de misiones: tarjetas con arte + panel táctico.
+## Central de misiones: rejilla cinematográfica 3 columnas (mockup).
 
 @onready var filter_row: HBoxContainer = %FilterRow
-@onready var cards: VBoxContainer = %MissionCards
-@onready var detail_title: Label = %DetailTitle
-@onready var detail_meta: Label = %DetailMeta
-@onready var detail_blurb: RichTextLabel = %DetailBlurb
-@onready var detail_art: TextureRect = %DetailArt
-@onready var urgency: Label = %Urgency
-@onready var btn_open: Button = %BtnOpen
-@onready var btn_back: Button = %BtnBack
+@onready var cards: GridContainer = %MissionCards
 @onready var count_label: Label = %CountLabel
+@onready var btn_back: Button = %BtnBack
+@onready var empty_label: Label = %EmptyLabel
 
-var _ids: Array = []
 var _filter: String = "todas"
-var _selected_id: String = ""
 
 
 func _ready() -> void:
 	visibility_changed.connect(_on_vis)
-	btn_open.pressed.connect(_open_selected)
 	btn_back.pressed.connect(_back)
 	GameState.mission_added.connect(func(_m): if visible: _refresh())
 	GameState.mission_removed.connect(func(_id): if visible: _refresh())
 	GameState.mission_updated.connect(func(_m): if visible: _refresh())
-	_style_open_btn()
 	_build_filters()
-
-
-func _style_open_btn() -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.22, 0.78, 0.42)
-	sb.set_corner_radius_all(6)
-	btn_open.add_theme_stylebox_override("normal", sb)
-	var sb_h := sb.duplicate()
-	sb_h.bg_color = Color(0.3, 0.88, 0.5)
-	btn_open.add_theme_stylebox_override("hover", sb_h)
-	var sb_d := sb.duplicate()
-	sb_d.bg_color = Color(0.18, 0.35, 0.25)
-	btn_open.add_theme_stylebox_override("disabled", sb_d)
 
 
 func _on_vis() -> void:
@@ -65,7 +43,7 @@ func _build_filters() -> void:
 		b.toggle_mode = true
 		b.button_group = group
 		b.button_pressed = item[0] == _filter
-		b.custom_minimum_size = Vector2(0, 36)
+		b.custom_minimum_size = Vector2(0, 34)
 		b.pressed.connect(_on_filter.bind(item[0]))
 		filter_row.add_child(b)
 
@@ -95,124 +73,129 @@ func _filtered() -> Array:
 func _refresh() -> void:
 	for c in cards.get_children():
 		c.queue_free()
-	_ids.clear()
 	var items := _filtered()
 	count_label.text = "%d activas" % items.size()
+	empty_label.visible = items.is_empty()
 	for m in items:
-		_ids.append(m["id"])
 		cards.add_child(_make_card(m))
-	if _ids.is_empty():
-		_clear_detail()
-		return
-	if _selected_id == "" or not _ids.has(_selected_id):
-		_selected_id = str(_ids[0])
-	_show_detail(_selected_id)
-	_highlight_cards()
 
 
 func _make_card(m: Dictionary) -> Control:
-	var urgent: bool = str(m.get("severity", "")) in ["high", "critical"]
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, 108)
+	panel.custom_minimum_size = Vector2(360, 220)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.gui_input.connect(func(ev: InputEvent):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			_selected_id = str(m["id"])
-			_show_detail(_selected_id)
-			_highlight_cards()
-		if ev is InputEventMouseButton and ev.double_click:
-			_selected_id = str(m["id"])
-			_open_selected()
+			_open_mission(str(m["id"]))
 	)
-	panel.set_meta("mission_id", m["id"])
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	panel.add_child(margin)
+	var root := Control.new()
+	root.custom_minimum_size = Vector2(360, 220)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(root)
+
+	var art := TextureRect.new()
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var path := GameState.mission_art_path(m)
+	if ResourceLoader.exists(path):
+		art.texture = load(path)
+	root.add_child(art)
+
+	var shade := ColorRect.new()
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.color = Color(0.02, 0.04, 0.08, 0.28)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(shade)
+
+	var text_wrap := MarginContainer.new()
+	text_wrap.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	text_wrap.add_theme_constant_override("margin_left", 14)
+	text_wrap.add_theme_constant_override("margin_top", 12)
+	text_wrap.add_theme_constant_override("margin_right", 12)
+	text_wrap.add_theme_constant_override("margin_bottom", 12)
+	text_wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(text_wrap)
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	margin.add_child(row)
+	row.add_theme_constant_override("separation", 8)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	text_wrap.add_child(row)
 
-	var thumb := TextureRect.new()
-	thumb.custom_minimum_size = Vector2(140, 84)
-	thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	var art := GameState.mission_art_path(m)
-	if ResourceLoader.exists(art):
-		thumb.texture = load(art)
-	row.add_child(thumb)
+	var bar := ColorRect.new()
+	bar.custom_minimum_size = Vector2(4, 64)
+	bar.color = Color(0.92, 0.15, 0.2)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(bar)
 
 	var col := VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(col)
+
+	var tag := Label.new()
+	tag.text = "MISIÓN"
+	tag.add_theme_font_size_override("font_size", 11)
+	tag.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
+	tag.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	tag.add_theme_constant_override("outline_size", 4)
+	col.add_child(tag)
 
 	var title := Label.new()
 	title.text = str(m.get("title", "")).to_upper()
-	title.add_theme_font_size_override("font_size", 18)
-	if urgent:
-		title.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", Color(1, 1, 1))
+	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	title.add_theme_constant_override("outline_size", 6)
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(title)
 
 	var meta := Label.new()
-	var tag := "URGENTE" if urgent else str(m.get("category", "")).to_upper()
-	meta.text = "%s  ·  %s  ·  %s" % [m.get("district_name", ""), tag, m.get("created_at", "")]
-	meta.add_theme_font_size_override("font_size", 13)
-	meta.add_theme_color_override("font_color", Color(0.65, 0.74, 0.86))
+	meta.text = _category_label(m)
+	meta.add_theme_font_size_override("font_size", 12)
+	meta.add_theme_color_override("font_color", Color(0.92, 0.95, 1.0))
+	meta.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	meta.add_theme_constant_override("outline_size", 4)
+	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(meta)
 
-	var blurb := Label.new()
-	blurb.text = str(m.get("blurb", ""))
-	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	blurb.max_lines_visible = 2
-	blurb.add_theme_font_size_override("font_size", 12)
-	blurb.add_theme_color_override("font_color", Color(0.78, 0.84, 0.92))
-	col.add_child(blurb)
+	if str(m.get("severity", "")) in ["high", "critical"]:
+		var urg := Label.new()
+		urg.text = "URGENTE"
+		urg.add_theme_font_size_override("font_size", 12)
+		urg.add_theme_color_override("font_color", Color(1.0, 0.35, 0.38))
+		urg.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		urg.add_theme_constant_override("outline_size", 4)
+		col.add_child(urg)
 
 	return panel
 
 
-func _highlight_cards() -> void:
-	for c in cards.get_children():
-		var mid := str(c.get_meta("mission_id", ""))
-		c.modulate = Color(0.55, 0.85, 1.0) if mid == _selected_id else Color.WHITE
+func _category_label(m: Dictionary) -> String:
+	match str(m.get("category", "")):
+		"delitos":
+			return "DELITOS CONTRA LA PROPIEDAD"
+		"trafico":
+			return "DELITOS CONTRA LA SEGURIDAD VIAL"
+		"civiles":
+			return "ASISTENCIA A CIVILES"
+		"organizado":
+			return "DELITOS CONTRA LA SALUD PÚBLICA"
+		"especiales":
+			return "REQUISITORIA JUDICIAL"
+		"emergencias":
+			return "EMERGENCIAS"
+		_:
+			return str(m.get("category", "")).to_upper()
 
 
-func _show_detail(mid: String) -> void:
-	GameState.select_mission(mid)
-	var m := GameState.get_selected_mission()
-	if m.is_empty():
-		_clear_detail()
-		return
-	_selected_id = mid
-	detail_title.text = str(m["title"]).to_upper()
-	detail_meta.text = "%s · %s · %s" % [m["district_name"], str(m["category"]).to_upper(), m["created_at"]]
-	detail_blurb.text = "[b]SITUACIÓN[/b]\n%s" % m["blurb"]
-	urgency.visible = str(m.get("severity", "")) in ["high", "critical"]
-	var path := GameState.mission_art_path(m)
-	detail_art.texture = load(path) if ResourceLoader.exists(path) else null
-	btn_open.disabled = false
-
-
-func _clear_detail() -> void:
-	detail_title.text = "Sin misiones activas"
-	detail_meta.text = ""
-	detail_blurb.text = "Cuando entren avisos por radio, aparecerán aquí con su informe."
-	detail_art.texture = null
-	urgency.visible = false
-	btn_open.disabled = true
-	_selected_id = ""
-
-
-func _open_selected() -> void:
-	if _selected_id == "":
-		return
+func _open_mission(mid: String) -> void:
 	var router := get_parent()
 	if router and router.has_method("show_mission"):
-		router.show_mission(_selected_id)
+		router.show_mission(mid)
 
 
 func _back() -> void:

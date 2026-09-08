@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cvgaotu1i2ynm"
-path="res://.godot/imported/patrols_inventory.jpg-98281e2d400b25b00cadc0da1fe8cbcb.ctex"
+uid="uid://bj8aan18vrw52"
+path="res://.godot/imported/robo_vivienda.jpg-9a506d60a51005e72b584721da389b06.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/mockups/patrols_inventory.jpg"
-dest_files=["res://.godot/imported/patrols_inventory.jpg-98281e2d400b25b00cadc0da1fe8cbcb.ctex"]
+source_file="res://assets/missions/cards/robo_vivienda.jpg"
+dest_files=["res://.godot/imported/robo_vivienda.jpg-9a506d60a51005e72b584721da389b06.ctex"]
 
 [params]
 

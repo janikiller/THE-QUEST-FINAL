@@ -44,10 +44,14 @@ func dispatch(mission_id: String, patrol_id: String) -> bool:
 
 
 func _process(delta: float) -> void:
-	_clock_accum += delta
-	if _clock_accum >= 2.2:
-		_clock_accum = 0.0
-		GameState.tick_minutes(1)
+	# Velocidad de partida: a 1x ~1 min de juego cada 2.2 s reales.
+	var speed: float = maxf(0.0, GameState.time_speed)
+	if speed > 0.0:
+		_clock_accum += delta * speed
+		var step := 2.2
+		while _clock_accum >= step:
+			_clock_accum -= step
+			GameState.tick_minutes(1)
 
 	for pid in GameState.patrols.keys():
 		var patrol: Dictionary = GameState.patrols[pid]
@@ -77,7 +81,7 @@ func _ensure_return_path(patrol: Dictionary) -> void:
 
 func _follow_path(patrol: Dictionary, delta: float, next_status: String) -> void:
 	var pid: String = patrol["id"]
-	var speed: float = float(patrol.get("speed", 90.0)) * 1.15
+	var speed: float = float(patrol.get("speed", 90.0)) * 1.15 * maxf(1.0, GameState.time_speed)
 	if not _paths.has(pid):
 		_paths[pid] = {"points": [patrol.get("target", patrol["pos"])], "index": 0}
 
@@ -123,7 +127,7 @@ func _on_arrive(patrol: Dictionary, next_status: String) -> void:
 
 func _resolve_scene(patrol: Dictionary, delta: float) -> void:
 	var pid: String = patrol["id"]
-	_scene_timers[pid] = float(_scene_timers.get(pid, 0.0)) + delta
+	_scene_timers[pid] = float(_scene_timers.get(pid, 0.0)) + delta * maxf(1.0, GameState.time_speed)
 	var mission_id: String = patrol["mission_id"]
 	if not GameState.active_missions.has(mission_id):
 		patrol["status"] = "returning"

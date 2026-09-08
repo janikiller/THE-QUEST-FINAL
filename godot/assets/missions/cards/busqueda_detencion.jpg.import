@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ci622jf1y5oso"
-path="res://.godot/imported/mission_detail.jpg-b4f25444ae8d0b0e0ea9e27440870e5c.ctex"
+uid="uid://dliibqvty7ta5"
+path="res://.godot/imported/busqueda_detencion.jpg-916c348a8c52163b62db1ed3cac84753.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/mockups/mission_detail.jpg"
-dest_files=["res://.godot/imported/mission_detail.jpg-b4f25444ae8d0b0e0ea9e27440870e5c.ctex"]
+source_file="res://assets/missions/cards/busqueda_detencion.jpg"
+dest_files=["res://.godot/imported/busqueda_detencion.jpg-916c348a8c52163b62db1ed3cac84753.ctex"]
 
 [params]
 

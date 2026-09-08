@@ -17,6 +17,9 @@ var hour: int = 21
 var minute: int = 0
 var prestige: int = 0
 var selected_mission_id: String = ""
+## Multiplicador de velocidad de partida (1, 4, 16, 60). Afecta el reloj del día/noche.
+var time_speed: float = 1.0
+signal time_speed_changed(speed: float)
 
 ## mission_id -> mission dict
 var active_missions: Dictionary = {}
@@ -120,6 +123,23 @@ func tick_minutes(amount: int = 1) -> void:
 		minute -= 60
 		hour = (hour + 1) % 24
 	emit_time()
+
+
+func set_time_speed(speed: float) -> void:
+	time_speed = clampf(speed, 0.0, 120.0)
+	time_speed_changed.emit(time_speed)
+
+
+func cycle_time_speed() -> void:
+	match int(round(time_speed)):
+		1:
+			set_time_speed(4.0)
+		4:
+			set_time_speed(16.0)
+		16:
+			set_time_speed(60.0)
+		_:
+			set_time_speed(1.0)
 
 
 func add_prestige(delta: int) -> void:
@@ -251,30 +271,37 @@ func mission_art_path(mission: Dictionary) -> String:
 
 
 func _generated_art_for(key: String) -> String:
-	var base := "res://assets/missions/generated/"
-	if "secuestr" in key or "rehen" in key or "rehén" in key:
-		return base + "mission_secuestro.png"
-	if "inunda" in key or "riada" in key:
-		return base + "mission_inundacion.png"
-	if "accidente" in key or "trafico" in key or "tráfico" in key or "vehiculo" in key or "vehículo" in key:
-		return base + "mission_accidente.png"
-	if "pelea" in key or "riña" in key or "rina" in key:
-		return base + "mission_pelea.png"
-	if "contraband" in key or "narco" in key:
-		return base + "mission_contrabando.png"
-	if "atraco" in key or "banco" in key or "tienda" in key or "robo" in key:
-		return base + "mission_atraco.png"
-	if "medic" in key or "auxilio" in key or "ambulancia" in key or "herid" in key:
-		return base + "mission_medico.png"
-	if "organizado" in key or "contraband" in key or "narco" in key:
-		return base + "mission_contrabando.png"
-	if "emergencia" in key or "inunda" in key:
-		return base + "mission_inundacion.png"
-	if "especial" in key or "secuestr" in key:
-		return base + "mission_secuestro.png"
-	if "civil" in key:
-		return base + "mission_medico.png"
-	return base + "mission_pelea.png"
+	var cards := "res://assets/missions/cards/"
+	var generated := "res://assets/missions/generated/"
+	if "atraco" in key or "tienda" in key:
+		return cards + "atraco_tienda.jpg"
+	if "vivienda" in key or ("robo" in key and "vehic" not in key and "vehíc" not in key):
+		return cards + "robo_vivienda.jpg"
+	if "vehic" in key or "vehíc" in key:
+		return cards + "robo_vehiculo.jpg"
+	if "droga" in key or "narco" in key or "contraband" in key or "salud" in key:
+		return cards + "trafico_drogas.jpg"
+	if "agres" in key or "pelea" in key or "riña" in key or "rina" in key or "vandal" in key:
+		return cards + "agresion_via.jpg"
+	if "domesti" in key or "domésti" in key or "violencia" in key:
+		return cards + "violencia_domestica.jpg"
+	if "arma" in key or "posesi" in key:
+		return cards + "posesion_armas.jpg"
+	if "accidente" in key or "fuga" in key or "trafico" in key or "tráfico" in key:
+		return cards + "accidente_fuga.jpg"
+	if "busqued" in key or "búsqued" in key or "deten" in key or "secuestr" in key or "rehen" in key or "rehén" in key:
+		return cards + "busqueda_detencion.jpg"
+	if "medic" in key or "auxilio" in key or "ambulancia" in key or "herid" in key or "civil" in key:
+		return generated + "mission_medico.png"
+	if "inunda" in key or "riada" in key or "emergencia" in key:
+		return generated + "mission_inundacion.png"
+	if "organizado" in key:
+		return cards + "trafico_drogas.jpg"
+	if "especial" in key:
+		return cards + "busqueda_detencion.jpg"
+	if ResourceLoader.exists(cards + "atraco_tienda.jpg"):
+		return cards + "atraco_tienda.jpg"
+	return generated + "mission_pelea.png"
 
 
 func _init_inventories() -> void:

@@ -19,30 +19,30 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.04, 0.08, 0.14, 0.97)
+color = Color(0.03, 0.05, 0.09, 0.97)
 
 [node name="Root" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = 16.0
-offset_right = -24.0
-offset_bottom = -16.0
+offset_left = 20.0
+offset_top = 14.0
+offset_right = -20.0
+offset_bottom = -14.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="VBox" type="VBoxContainer" parent="Root"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
 [node name="Header" type="HBoxContainer" parent="Root/VBox"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
 [node name="Badge" type="TextureRect" parent="Root/VBox/Header"]
-custom_minimum_size = Vector2(48, 48)
+custom_minimum_size = Vector2(46, 46)
 layout_mode = 2
 texture = ExtResource("2_badge")
 expand_mode = 1
@@ -54,14 +54,14 @@ size_flags_horizontal = 3
 
 [node name="Title" type="Label" parent="Root/VBox/Header/TitleCol"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 26
 text = "CENTRAL DE MISIONES"
 
 [node name="Sub" type="Label" parent="Root/VBox/Header/TitleCol"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5, 0.72, 0.9, 1)
 theme_override_font_sizes/font_size = 12
-text = "INTERVENIR  ·  EVALUAR  ·  DECIDIR  ·  RESOLVER"
+text = "MISIÓN  ·  INTERVENIR  ·  EVALUAR  ·  DECIDIR  ·  RESOLVER"
 
 [node name="CountLabel" type="Label" parent="Root/VBox/Header"]
 unique_name_in_owner = true
@@ -73,7 +73,7 @@ vertical_alignment = 1
 
 [node name="BtnBack" type="Button" parent="Root/VBox/Header"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 40)
+custom_minimum_size = Vector2(170, 40)
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "←  VOLVER AL MAPA"
@@ -83,83 +83,24 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Body" type="HBoxContainer" parent="Root/VBox"]
+[node name="Scroll" type="ScrollContainer" parent="Root/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 16
-
-[node name="ListScroll" type="ScrollContainer" parent="Root/VBox/Body"]
-custom_minimum_size = Vector2(480, 0)
-layout_mode = 2
-size_flags_horizontal = 3
 horizontal_scroll_mode = 0
 
-[node name="MissionCards" type="VBoxContainer" parent="Root/VBox/Body/ListScroll"]
+[node name="MissionCards" type="GridContainer" parent="Root/VBox/Scroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 10
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 3
 
-[node name="Detail" type="PanelContainer" parent="Root/VBox/Body"]
-custom_minimum_size = Vector2(640, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="DM" type="MarginContainer" parent="Root/VBox/Body/Detail"]
-layout_mode = 2
-theme_override_constants/margin_left = 14
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 14
-theme_override_constants/margin_bottom = 12
-
-[node name="DV" type="VBoxContainer" parent="Root/VBox/Body/Detail/DM"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="Head" type="HBoxContainer" parent="Root/VBox/Body/Detail/DM/DV"]
-layout_mode = 2
-
-[node name="DetailTitle" type="Label" parent="Root/VBox/Body/Detail/DM/DV/Head"]
+[node name="EmptyLabel" type="Label" parent="Root/VBox"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 26
-text = "—"
-autowrap_mode = 3
-
-[node name="Urgency" type="Label" parent="Root/VBox/Body/Detail/DM/DV/Head"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.92, 0.92, 1)
-theme_override_font_sizes/font_size = 13
-text = "  URGENTE  "
-
-[node name="DetailMeta" type="Label" parent="Root/VBox/Body/Detail/DM/DV"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.62, 0.74, 0.88, 1)
-theme_override_font_sizes/font_size = 13
-text = ""
-
-[node name="DetailArt" type="TextureRect" parent="Root/VBox/Body/Detail/DM/DV"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 300)
-layout_mode = 2
-size_flags_vertical = 3
-expand_mode = 1
-stretch_mode = 6
-
-[node name="DetailBlurb" type="RichTextLabel" parent="Root/VBox/Body/Detail/DM/DV"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 70)
-layout_mode = 2
-bbcode_enabled = true
-fit_content = true
-
-[node name="BtnOpen" type="Button" parent="Root/VBox/Body/Detail/DM/DV"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 52)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.05, 0.12, 0.08, 1)
-theme_override_font_sizes/font_size = 17
-text = "▶  ABRIR INFORME TÁCTICO"
+theme_override_colors/font_color = Color(0.65, 0.74, 0.86, 1)
+theme_override_font_sizes/font_size = 16
+text = "Sin avisos activos. Cuando entre una llamada, aparecerá aquí."
+horizontal_alignment = 1
