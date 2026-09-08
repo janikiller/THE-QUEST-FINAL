@@ -1,0 +1,31 @@
+[gd_scene load_steps=6 format=3 uid="uid://bqmaincomisaria"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="PackedScene" uid="uid://bqcitymap0001" path="res://scenes/city_map.tscn" id="2_map"]
+[ext_resource type="Script" path="res://scripts/mission_spawner.gd" id="3_spawn"]
+[ext_resource type="Script" path="res://scripts/dispatch_controller.gd" id="4_dispatch"]
+[ext_resource type="PackedScene" uid="uid://bqhqhud000001" path="res://scenes/ui/hq_hud.tscn" id="5_hud"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="CityMap" parent="World" instance=ExtResource("2_map")]
+
+[node name="Camera2D" type="Camera2D" parent="World"]
+position = Vector2(420, 340)
+
+[node name="Systems" type="Node" parent="."]
+
+[node name="MissionSpawner" type="Node" parent="Systems"]
+script = ExtResource("3_spawn")
+city_map_path = NodePath("../../World/CityMap")
+
+[node name="DispatchController" type="Node" parent="Systems" groups=["dispatch"]]
+script = ExtResource("4_dispatch")
+
+[node name="UI" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="HQHud" parent="UI" instance=ExtResource("5_hud")]

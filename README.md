@@ -1,46 +1,31 @@
 # THE QUEST FINAL
 
-RPG policial isométrico / narrativa nocturna. Creas a tu agente, repartes **5 habilidades**, llevas un **inventario** con el personaje a la vista y resuelves el caso **Portal 3** con historia ramificada e imágenes.
+RPG / simulación policial. Hay dos superficies:
 
-## Jugar
+## 1) Godot — Comisaría (juego principal 2D)
+
+Carpeta [`godot/`](godot/): gestiona una comisaría con **mapa de ciudad**, misiones que aparecen, revisión en centralita y **despacho de patrullas por radio**.
+
+```bash
+# Abre Godot 4.3+ → Import → selecciona la carpeta godot/
+# Luego F5
+```
+
+**No tienes que crear nodos.** Escenas, scripts y autoloads ya están en el proyecto.
+
+Detalle: [`godot/README.md`](godot/README.md)
+
+## 2) Web preview (narrativa Portal 3)
+
+La carpeta `public/` tiene un prototipo HTML del caso narrativo / inventario (servidor local):
 
 ```bash
 python3 -m http.server 8080
+# http://localhost:8080/public/
 ```
 
-Abre [http://localhost:8080/public/](http://localhost:8080/public/)
+## Assets
 
-1. **Crear agente** — unidad, piezas, nombre y 5 puntos de habilidad  
-2. **Barrio** — caso principal + misiones de centralita  
-3. **Misión** — escenas con imagen, chequeos y ramas  
-4. **Inventario (I)** — evidencia, pistas y cinturón  
-
-Sin menús de coches. El personaje se ve con los sprites paper-doll / presets.
-
-## Habilidades
-
-| Habilidad | Uso |
-|---|---|
-| Persuasión | Hacer hablar, negociar |
-| Intimidación | Imponer autoridad |
-| Observación | Leer detalles y mentiras |
-| Registro | Evidencia y cacheos |
-| Táctica | Decisiones arriesgadas |
-
-Suben al superar chequeos y misiones.
-
-## Historia
-
-**Portal 3** — Una tarjeta del Bar Lumen, un nombre (Iván), un portal que huele a lejía. Tus elecciones y habilidades cambian el desenlace.
-
-## Estructura
-
-- `public/` — juego (UI)
-- `src/` — `GameState`, `StoryEngine`, `CharacterRenderer`, `PoliceCharacter`, `CityEvents`
-- `data/` — personaje, eventos, skills, items, `story.json`
-- `assets/character/` — sprites y piezas
-- `assets/events/` — tiles de misión (sin coches en UI)
-
-## Controles
-
-- **I** inventario · **Esc** cerrar paneles
+- `assets/character/` — personaje policial modular  
+- `assets/events/` — tiles de incidentes urbanos  
+- `godot/assets/` — copia usada por el juego Godot  

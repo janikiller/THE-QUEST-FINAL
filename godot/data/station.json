@@ -1,0 +1,21 @@
+{
+  "station_name": "Comisaría Barrio Norte",
+  "start_hour": 21,
+  "start_minute": 0,
+  "spawn_interval_sec": 18.0,
+  "max_active_missions": 6,
+  "districts": [
+    { "id": "centro", "name": "Centro", "rect": [80, 80, 280, 220], "color": "#2a3a55" },
+    { "id": "puerto", "name": "Puerto", "rect": [400, 60, 320, 200], "color": "#1f3348" },
+    { "id": "residencial", "name": "Residencial", "rect": [80, 340, 300, 240], "color": "#243348" },
+    { "id": "industrial", "name": "Industrial", "rect": [420, 300, 300, 260], "color": "#2b2838" },
+    { "id": "lumen", "name": "Avenida Lumen", "rect": [320, 220, 180, 120], "color": "#3a2f28" }
+  ],
+  "patrols": [
+    { "id": "alpha", "callsign": "Alpha-1", "name": "Patrulla Alpha", "portrait": "res://assets/character/patrol.png", "specialty": "general", "speed": 90.0 },
+    { "id": "bravo", "callsign": "Bravo-2", "name": "Patrulla Bravo", "portrait": "res://assets/character/traffic.png", "specialty": "trafico", "speed": 100.0 },
+    { "id": "charlie", "callsign": "Charlie-3", "name": "Unidad Charlie", "portrait": "res://assets/character/swat.png", "specialty": "organizado", "speed": 80.0 },
+    { "id": "delta", "callsign": "Delta-K9", "name": "Unidad K9", "portrait": "res://assets/character/k9.png", "specialty": "delitos", "speed": 95.0 }
+  ],
+  "hq_pos": [180, 160]
+}

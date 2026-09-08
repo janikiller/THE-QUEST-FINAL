@@ -1,0 +1,140 @@
+extends Node
+## Mueve patrullas, resuelve misiones y genera informes de radio.
+
+func dispatch(mission_id: String, patrol_id: String) -> bool:
+	if not GameState.active_missions.has(mission_id):
+		return false
+	if not GameState.patrols.has(patrol_id):
+		return false
+	var mission: Dictionary = GameState.active_missions[mission_id]
+	var patrol: Dictionary = GameState.patrols[patrol_id]
+	if mission["status"] != "open":
+		return false
+	if patrol["status"] != "available":
+		return false
+
+	mission["status"] = "dispatched"
+	mission["assigned_patrol"] = patrol_id
+	mission["radio_log"].append("Despacho a %s" % patrol["callsign"])
+	GameState.update_mission(mission)
+
+	patrol["status"] = "en_route"
+	patrol["mission_id"] = mission_id
+	patrol["target"] = mission["pos"]
+	patrol["progress"] = 0.0
+	patrol["report"] = ""
+	GameState.set_patrol(patrol)
+
+	RadioBus.announce_dispatch(patrol["callsign"], mission["title"], mission["district_name"])
+	RadioBus.dispatch_started.emit(mission_id, patrol_id)
+	return true
+
+
+func _process(delta: float) -> void:
+	# Advance clock slowly while playing
+	_clock_accum += delta
+	if _clock_accum >= 4.0:
+		_clock_accum = 0.0
+		GameState.tick_minutes(1)
+
+	for pid in GameState.patrols.keys():
+		var patrol: Dictionary = GameState.patrols[pid]
+		match str(patrol["status"]):
+			"en_route":
+				_move_toward(patrol, patrol["target"], delta, "on_scene")
+			"on_scene":
+				_resolve_scene(patrol, delta)
+			"returning":
+				var hq := Vector2(float(GameState.station["hq_pos"][0]), float(GameState.station["hq_pos"][1]))
+				_move_toward(patrol, hq, delta, "available")
+
+
+var _clock_accum: float = 0.0
+var _scene_timers: Dictionary = {}
+
+
+func _move_toward(patrol: Dictionary, target: Vector2, delta: float, next_status: String) -> void:
+	var speed: float = float(patrol.get("speed", 90.0))
+	var pos: Vector2 = patrol["pos"]
+	var dir := target - pos
+	var dist := dir.length()
+	if dist <= 4.0:
+		patrol["pos"] = target
+		patrol["status"] = next_status
+		if next_status == "on_scene":
+			RadioBus.announce_on_scene(patrol["callsign"])
+			_scene_timers[patrol["id"]] = 0.0
+		elif next_status == "available":
+			patrol["mission_id"] = ""
+			patrol["target"] = Vector2.ZERO
+		GameState.set_patrol(patrol)
+		return
+	patrol["pos"] = pos + dir.normalized() * speed * delta
+	GameState.set_patrol(patrol)
+
+
+func _resolve_scene(patrol: Dictionary, delta: float) -> void:
+	var pid: String = patrol["id"]
+	_scene_timers[pid] = float(_scene_timers.get(pid, 0.0)) + delta
+	var mission_id: String = patrol["mission_id"]
+	if not GameState.active_missions.has(mission_id):
+		patrol["status"] = "returning"
+		GameState.set_patrol(patrol)
+		return
+	var mission: Dictionary = GameState.active_missions[mission_id]
+	# Resolve faster than real duration for playability
+	var need := clampf(float(mission.get("duration_sec", 90.0)) * 0.08, 4.0, 14.0)
+	if mission["status"] != "resolving":
+		mission["status"] = "resolving"
+		GameState.update_mission(mission)
+	if _scene_timers[pid] < need:
+		return
+
+	var success := _roll_success(patrol, mission)
+	var report := _make_report(success, mission)
+	mission["status"] = "resolved" if success else "failed"
+	mission["radio_log"].append(report)
+	GameState.update_mission(mission)
+
+	RadioBus.announce_resolve(patrol["callsign"], success, report)
+	RadioBus.dispatch_resolved.emit(mission_id, success, report)
+
+	if success:
+		var bonus := 1
+		if str(patrol.get("specialty", "")) == str(mission.get("category", "")):
+			bonus = 2
+		GameState.add_prestige(bonus + int(mission.get("xp", 50) / 100))
+	else:
+		GameState.add_prestige(0)
+
+	patrol["status"] = "returning"
+	patrol["report"] = report
+	GameState.set_patrol(patrol)
+	_scene_timers.erase(pid)
+
+	# Clear marker after a short beat
+	await get_tree().create_timer(2.2).timeout
+	if GameState.active_missions.has(mission_id):
+		GameState.remove_mission(mission_id)
+
+
+func _roll_success(patrol: Dictionary, mission: Dictionary) -> bool:
+	var base := 0.62
+	match str(mission.get("severity", "medium")):
+		"low":
+			base = 0.8
+		"medium":
+			base = 0.68
+		"high":
+			base = 0.55
+		"critical":
+			base = 0.42
+	if str(patrol.get("specialty", "")) == str(mission.get("category", "")):
+		base += 0.18
+	return GameState._rng.randf() <= clampf(base, 0.15, 0.95)
+
+
+func _make_report(success: bool, mission: Dictionary) -> String:
+	if success:
+		return "Confirmado %s. Zona %s estable." % [mission["title"].to_lower(), mission["district_name"]]
+	return "No se controló %s a tiempo. Quedan restos en %s." % [mission["title"].to_lower(), mission["district_name"]]

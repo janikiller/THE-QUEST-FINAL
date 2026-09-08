@@ -128,3 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 artifacts/
+
+# Godot
+.godot/
+*.translation
+export_presets.cfg
+

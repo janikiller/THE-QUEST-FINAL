@@ -1,0 +1,171 @@
+[gd_scene load_steps=2 format=3 uid="uid://bqhqhud000001"]
+
+[ext_resource type="Script" path="res://scripts/hq_hud.gd" id="1_script"]
+
+[node name="HQHud" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="TopBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 52.0
+grow_horizontal = 2
+
+[node name="Margin" type="MarginContainer" parent="TopBar"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 8
+
+[node name="Row" type="HBoxContainer" parent="TopBar/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="StationLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "Comisaría Barrio Norte"
+
+[node name="TimeLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "21:00"
+
+[node name="PrestigeLabel" type="Label" parent="TopBar/Margin/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Prestigio 0"
+
+[node name="RightDock" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -420.0
+offset_top = 60.0
+offset_bottom = -12.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="RightDock"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="RightDock/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MissionsHeader" type="Label" parent="RightDock/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "CENTRALITA · MISIONES"
+
+[node name="MissionList" type="ItemList" parent="RightDock/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="DetailHeader" type="Label" parent="RightDock/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "REVISAR MISIÓN"
+
+[node name="MissionArt" type="TextureRect" parent="RightDock/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 90)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MissionTitle" type="Label" parent="RightDock/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Sin misión seleccionada"
+autowrap_mode = 3
+
+[node name="MissionMeta" type="Label" parent="RightDock/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.75, 0.82, 1)
+theme_override_font_sizes/font_size = 12
+text = "Pulsa un marcador en el mapa o elige en la lista."
+autowrap_mode = 3
+
+[node name="MissionBlurb" type="RichTextLabel" parent="RightDock/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
+[node name="EmptyHint" type="Label" parent="RightDock/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.75, 0.82, 1)
+theme_override_font_sizes/font_size = 12
+text = "Las misiones aparecen solas en el mapa. Selecciónalas y envía una patrulla por radio."
+autowrap_mode = 3
+
+[node name="PatrolHeader" type="Label" parent="RightDock/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "PATRULLAS"
+
+[node name="PatrolList" type="ItemList" parent="RightDock/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+
+[node name="DispatchButton" type="Button" parent="RightDock/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+disabled = true
+text = "Transmitir por radio · Enviar patrulla"
+
+[node name="RadioHeader" type="Label" parent="RightDock/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "CANAL DE RADIO"
+
+[node name="RadioLog" type="RichTextLabel" parent="RightDock/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_following = true
+
+[node name="Help" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -36.0
+offset_right = 520.0
+offset_bottom = -12.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.65, 0.7, 0.78, 1)
+theme_override_font_sizes/font_size = 12
+text = "Click en marcadores del mapa · Esc limpia selección · Despacha con el botón de radio"
