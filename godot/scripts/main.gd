@@ -30,7 +30,6 @@ func _ready() -> void:
 func _combat_shot() -> void:
 	## Abre combate y guarda capturas para evidencia visual.
 	await get_tree().create_timer(1.2).timeout
-	# Esperar a que haya misiones
 	var tries := 0
 	while GameState.active_missions.is_empty() and tries < 40:
 		await get_tree().create_timer(0.25).timeout
@@ -40,7 +39,6 @@ func _combat_shot() -> void:
 		get_tree().quit(1)
 		return
 	var mid: String = String(GameState.active_missions.keys()[0])
-	# Asegurar patrulla libre
 	var p: Dictionary = GameState.patrols.get("alpha", {})
 	p["status"] = "available"
 	p.erase("_awaiting_combat")
@@ -48,16 +46,23 @@ func _combat_shot() -> void:
 	$UI/UIRouter.show_combat(mid, "alpha")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	await get_tree().create_timer(0.4).timeout
+	await get_tree().create_timer(0.8).timeout
 	await _save_shot("combat_turno1")
-	# Jugar una carta
-	if CombatState.is_active():
+	# Jugar carta de ataque por la UI para ver lunge + VFX
+	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	if combat and CombatState.is_active():
 		for cid in CombatState.hand.duplicate():
 			if CombatState.can_play_card(str(cid)):
-				CombatState.play_card(str(cid))
-				break
+				var def: Dictionary = CardDB.get_card(str(cid))
+				if int(def.get("damage", 0)) > 0 or str(def.get("type", "")) == "ataque":
+					combat._busy = true
+					await combat._hero_attack_sequence(def)
+					CombatState.play_card(str(cid))
+					combat._busy = false
+					combat._refresh()
+					break
 	await get_tree().process_frame
-	await get_tree().create_timer(0.35).timeout
+	await get_tree().create_timer(0.55).timeout
 	await _save_shot("combat_tras_carta")
 	print("COMBAT_SHOT_OK")
 	await get_tree().create_timer(0.2).timeout
