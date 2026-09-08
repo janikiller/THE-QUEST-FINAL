@@ -7,13 +7,14 @@ RPG / simulación policial. Hay dos superficies:
 Carpeta [`godot/`](godot/): gestiona una comisaría sobre el **mapa real de la ciudad**, con pestañas **Mapa / Misiones / Patrullas**, misiones por distrito y despacho por radio.
 
 ```bash
-# Abre Godot 4.3+ → Import → selecciona la carpeta godot/
+# Abre Godot 4.7.2 → Import → selecciona la carpeta godot/
 # Luego F5
+# Descarga: https://godotengine.org/download/archive/4.7.2-stable/
 ```
 
 **No tienes que crear nodos.** Escenas, scripts y autoloads ya están en el proyecto.
 
-Imágenes incluidas: mapa de ciudad + mockups de UI en `godot/assets/`.
+Requiere **Godot 4.7.2**.
 
 Detalle: [`godot/README.md`](godot/README.md)
 

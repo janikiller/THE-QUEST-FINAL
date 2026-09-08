@@ -1,14 +1,22 @@
-# THE QUEST FINAL — Comisaría (Godot 4.3)
+# THE QUEST FINAL — Comisaría (Godot 4.7.2)
 
-Gestiona una comisaría sobre el **mapa real de la ciudad**: misiones en distritos, centralita, despacho por radio y pestañas Mapa / Misiones / Patrullas (estilo de los mockups).
+Gestiona una comisaría sobre el **mapa real de la ciudad**: misiones en distritos, centralita, despacho por radio y pestañas Mapa / Misiones / Patrullas.
+
+## Requisitos
+
+- **Godot 4.7.2** (Standard, no hace falta Mono)  
+  Descarga: https://godotengine.org/download/archive/4.7.2-stable/
 
 ## Abrir
 
-1. Godot **4.3+**
-2. Import → carpeta `godot/`
-3. **F5**
+1. Instala / abre **Godot 4.7.2**
+2. **Importar** → carpeta `godot/` de este repo
+3. Selecciona `project.godot` → **Importar y editar**
+4. **F5**
 
 **No hace falta crear nodos.**
+
+Si Godot avisa de conversión de versión, acepta. Los assets se reimportan solos la primera vez.
 
 ## Imágenes usadas
 
