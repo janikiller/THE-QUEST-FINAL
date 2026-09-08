@@ -17,7 +17,7 @@ func _ready() -> void:
 	btn_inventory.pressed.connect(_open_inventory)
 	time_label.text = "%02d:%02d" % [GameState.hour, GameState.minute]
 	prestige_label.text = "Prestigio %d" % GameState.prestige
-	hint.text = "WASD mover · Click misión · M misiones · I inventario de patrulla"
+	hint.text = "WASD / flechas mover · Click misión · M misiones · I inventario · rueda zoom"
 
 
 func _unhandled_input(event: InputEvent) -> void:

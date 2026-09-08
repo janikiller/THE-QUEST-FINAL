@@ -77,7 +77,7 @@ func _refresh() -> void:
 	for m in items:
 		_ids.append(m["id"])
 		var tag := "URGENTE" if str(m.get("severity", "")) in ["high", "critical"] else str(m.get("category", "")).to_upper()
-		mission_list.add_item("%s\n%s · %s" % [m["title"], m["district_name"], tag])
+		mission_list.add_item("%s  ·  %s  ·  %s" % [m["title"], m["district_name"], tag])
 		var idx: int = mission_list.item_count - 1
 		if str(m.get("severity", "")) in ["high", "critical"]:
 			mission_list.set_item_custom_fg_color(idx, Color(1.0, 0.45, 0.45))
