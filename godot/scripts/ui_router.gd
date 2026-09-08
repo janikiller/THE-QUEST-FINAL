@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Cambia entre Mapa / Lista de misiones / Pantalla de misión / Inventario.
+## Cambia entre Mapa / Lista / Misión / Resultado / Inventario.
 
 signal request_open_missions
 signal request_open_mission(mission_id: String)
@@ -8,12 +8,14 @@ signal request_back_to_map
 @onready var map_hud: Control = $MapHud
 @onready var missions_menu: Control = $MissionsMenu
 @onready var mission_screen: Control = $MissionScreen
+@onready var mission_result: Control = $MissionResult
 @onready var inventory_screen: Control = $InventoryScreen
 
 var _opening_mission: bool = false
 
 
 func _ready() -> void:
+	add_to_group("ui_router")
 	show_map()
 	GameState.selection_changed.connect(_on_selection)
 
@@ -22,6 +24,7 @@ func show_map() -> void:
 	map_hud.visible = true
 	missions_menu.visible = false
 	mission_screen.visible = false
+	mission_result.visible = false
 	inventory_screen.visible = false
 	get_tree().paused = false
 	var world := get_tree().get_first_node_in_group("world_root")
@@ -34,6 +37,7 @@ func show_missions() -> void:
 	map_hud.visible = false
 	missions_menu.visible = true
 	mission_screen.visible = false
+	mission_result.visible = false
 	inventory_screen.visible = false
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
@@ -54,6 +58,7 @@ func show_mission(mission_id: String = "") -> void:
 	map_hud.visible = false
 	missions_menu.visible = false
 	mission_screen.visible = true
+	mission_result.visible = false
 	inventory_screen.visible = false
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
@@ -62,10 +67,24 @@ func show_mission(mission_id: String = "") -> void:
 	_opening_mission = false
 
 
+func show_mission_result(mission_id: String = "") -> void:
+	map_hud.visible = false
+	missions_menu.visible = false
+	mission_screen.visible = false
+	mission_result.visible = true
+	inventory_screen.visible = false
+	var world := get_tree().get_first_node_in_group("world_root")
+	if world:
+		world.modulate = Color(0.12, 0.14, 0.2, 1)
+	if mission_result.has_method("open_for"):
+		mission_result.open_for(mission_id)
+
+
 func show_inventory(patrol_id: String = "") -> void:
 	map_hud.visible = false
 	missions_menu.visible = false
 	mission_screen.visible = false
+	mission_result.visible = false
 	inventory_screen.visible = true
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
@@ -75,7 +94,6 @@ func show_inventory(patrol_id: String = "") -> void:
 
 
 func _on_selection(mission_id: String) -> void:
-	# Abrir ficha solo al seleccionar desde el mapa (evita reentrada con show_mission).
 	if _opening_mission:
 		return
 	if mission_id != "" and map_hud.visible and not mission_screen.visible:

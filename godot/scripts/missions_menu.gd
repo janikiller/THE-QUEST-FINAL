@@ -171,6 +171,14 @@ func _make_card(m: Dictionary) -> Control:
 		urg.add_theme_constant_override("outline_size", 4)
 		col.add_child(urg)
 
+	var phase := Label.new()
+	phase.text = str(m.get("phase_label", "INICIO"))
+	phase.add_theme_font_size_override("font_size", 11)
+	phase.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
+	phase.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	phase.add_theme_constant_override("outline_size", 4)
+	col.add_child(phase)
+
 	return panel
 
 

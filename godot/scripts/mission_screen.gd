@@ -104,9 +104,12 @@ func _refresh() -> void:
 	title.text = t
 	meta.text = _category_label(m)
 	location_label.text = "%s — %s" % [m.get("district_name", ""), _fake_address(m)]
-	step_active.text = "!  %s" % t
+	step_active.text = "!  %s  ·  %s" % [t, str(m.get("phase_label", "INICIO"))]
 	step_address.text = location_label.text
-	blurb.text = "[b]DESCRIPCIÓN DE LA SITUACIÓN[/b]\n\n%s\n\nCentral solicita unidad visible y evaluación táctica inmediata." % m["blurb"]
+	blurb.text = "[b]DESCRIPCIÓN DE LA SITUACIÓN[/b]  ·  [color=#7eb6ff]%s[/color]\n\n%s\n\nCentral solicita unidad visible y evaluación táctica inmediata." % [
+		str(m.get("phase_label", "INICIO")),
+		m["blurb"],
+	]
 	urgency.visible = str(m.get("severity", "")) in ["high", "critical"]
 	urgency.text = "  URGENTE  "
 	var rank := _risk(m)
@@ -115,13 +118,28 @@ func _refresh() -> void:
 	units_label.text = "UNIDADES EN CAMINO: %s" % _units_text(m)
 	distance_label.text = "DISTANCIA: %s" % _distance_text(m)
 	witnesses.text = "%d testigos en la zona (esperando a la policía)" % (2 + rank % 3)
-	step_label.text = "●  Informe Inicial\n○  Inteligencia\n○  Posibles Escenarios\n○  Tomar Decisión"
+	step_label.text = _phase_steps(m)
 	var path := GameState.mission_art_path(m)
 	art.texture = load(path) if ResourceLoader.exists(path) else null
 	_load_minimap()
 	_rebuild_suspects(m)
 	_refresh_patrols()
 	confirm_btn.disabled = m.get("status", "") != "open" or GameState.available_patrols().is_empty()
+
+
+func _phase_steps(m: Dictionary) -> String:
+	var phase := str(m.get("phase", "inicio"))
+	var a := "●" if phase == "inicio" else "○"
+	var b := "●" if phase == "desarrollo" else "○"
+	var c := "●" if phase == "final" else "○"
+	# Subpasos del informe táctico
+	var s1 := "●" if phase in ["inicio", "desarrollo", "final"] else "○"
+	var s2 := "●" if phase in ["desarrollo", "final"] else "○"
+	var s3 := "●" if phase == "final" else "○"
+	var s4 := "●" if phase == "final" else "○"
+	return "%s  Informe Inicial  [%s INICIO]\n%s  Inteligencia\n%s  Posibles Escenarios  [%s DESARROLLO]\n%s  Tomar Decisión / Cierre  [%s FINAL]" % [
+		s1, a, s2, s3, b, s4, c
+	]
 
 
 func _category_label(m: Dictionary) -> String:
@@ -295,6 +313,9 @@ func _confirm() -> void:
 		return
 	var idx: int = patrol_list.get_selected_items()[0]
 	var pid: String = String(_patrol_ids[idx])
+	# Guardar táctica elegida en la misión
+	m["tactic"] = _action
+	GameState.update_mission(m)
 	var dispatch = get_tree().get_first_node_in_group("dispatch")
 	var ok: bool = dispatch.dispatch(m["id"], pid)
 	if ok:

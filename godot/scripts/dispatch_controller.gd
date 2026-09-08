@@ -40,6 +40,17 @@ func dispatch(mission_id: String, patrol_id: String) -> bool:
 
 	RadioBus.announce_dispatch(patrol["callsign"], mission["title"], mission["district_name"])
 	RadioBus.dispatch_started.emit(mission_id, patrol_id)
+	GameState.add_mission_beat(
+		mission_id,
+		"DESPLIEGUE",
+		"%s en ruta hacia %s." % [patrol["callsign"], mission["district_name"]],
+		"inicio"
+	)
+	GameState.set_mission_phase(mission_id, "inicio")
+	# Guardar táctica si la pantalla de misión la dejó en el estado
+	if mission.get("tactic", "") == "":
+		mission["tactic"] = "cautious"
+		GameState.update_mission(mission)
 	return true
 
 
@@ -118,11 +129,39 @@ func _on_arrive(patrol: Dictionary, next_status: String) -> void:
 	if next_status == "on_scene":
 		RadioBus.announce_on_scene(patrol["callsign"])
 		_scene_timers[patrol["id"]] = 0.0
+		var mid: String = str(patrol.get("mission_id", ""))
+		if mid != "":
+			GameState.set_mission_phase(mid, "desarrollo")
+			GameState.add_mission_beat(
+				mid,
+				"LLEGADA AL LUGAR",
+				"%s en escena. Inicia desarrollo operativo." % patrol["callsign"],
+				"desarrollo"
+			)
+			GameState.add_mission_beat(
+				mid,
+				"CONTACTO / EVALUACIÓN",
+				"Unidad evalúa riesgos y aplica táctica: %s." % _tactic_label(mid),
+				"desarrollo"
+			)
 	elif next_status == "available":
 		patrol["mission_id"] = ""
 		patrol["target"] = Vector2.ZERO
 		var hq := Vector2(float(GameState.station["hq_pos"][0]), float(GameState.station["hq_pos"][1]))
 		patrol["pos"] = RoadNav.nearest_road(hq)
+
+
+func _tactic_label(mission_id: String) -> String:
+	var m: Dictionary = GameState.active_missions.get(mission_id, {})
+	match str(m.get("tactic", "cautious")):
+		"entry":
+			return "entrada inmediata"
+		"negotiate":
+			return "negociación"
+		"block":
+			return "bloqueo de fuga"
+		_:
+			return "acercamiento cauteloso"
 
 
 func _resolve_scene(patrol: Dictionary, delta: float) -> void:
@@ -148,8 +187,25 @@ func _resolve_scene(patrol: Dictionary, delta: float) -> void:
 	var success := _roll_success(patrol, mission)
 	var report := _make_report(success, mission)
 	mission["status"] = "resolved" if success else "failed"
+	mission["outcome"] = "success" if success else "fail"
+	mission["outcome_report"] = report
 	mission["radio_log"].append(report)
 	GameState.update_mission(mission)
+	GameState.set_mission_phase(mission_id, "final")
+	GameState.add_mission_beat(
+		mission_id,
+		"CIERRE OPERATIVO" if success else "SOSPECHOSO ESCAPA",
+		report,
+		"final"
+	)
+	GameState.add_mission_beat(
+		mission_id,
+		"EVIDENCIA / BALANCE",
+		"Zona %s. Prestigio actualizado. Informe archivado." % mission["district_name"],
+		"final"
+	)
+	var snapshot: Dictionary = GameState.active_missions[mission_id].duplicate(true)
+	GameState.store_resolved_mission(snapshot)
 
 	RadioBus.announce_resolve(patrol["callsign"], success, report)
 	RadioBus.dispatch_resolved.emit(mission_id, success, report)
@@ -166,7 +222,21 @@ func _resolve_scene(patrol: Dictionary, delta: float) -> void:
 	_paths.erase(pid)
 	GameState.set_patrol(patrol)
 	_scene_timers.erase(pid)
-	_clear_mission_later(mission_id)
+	_show_result_then_clear(mission_id)
+
+
+func _show_result_then_clear(mission_id: String) -> void:
+	var router = get_tree().get_first_node_in_group("ui_router")
+	if router == null:
+		router = get_tree().root.find_child("UIRouter", true, false)
+	if router and router.has_method("show_mission_result"):
+		router.show_mission_result(mission_id)
+	await get_tree().create_timer(0.4).timeout
+	# La pantalla de resultado conserva el snapshot; quitamos del mapa activo
+	await get_tree().create_timer(0.2).timeout
+	if GameState.active_missions.has(mission_id):
+		# No borrar aún si el resultado está abierto; se borra al cerrar resultado
+		pass
 
 
 func _clear_mission_later(mission_id: String) -> void:

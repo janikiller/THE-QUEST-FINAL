@@ -20,6 +20,7 @@ var selected_mission_id: String = ""
 ## Multiplicador de velocidad de partida (1, 4, 16, 60). Afecta el reloj del día/noche.
 var time_speed: float = 1.0
 signal time_speed_changed(speed: float)
+var _last_resolved: Dictionary = {}
 
 ## mission_id -> mission dict
 var active_missions: Dictionary = {}
@@ -197,14 +198,73 @@ func create_mission_from_event(event: Dictionary, district: Dictionary, map_pos:
 		"xp": int(event.get("xp", 50)),
 		"duration_sec": float(event.get("durationSec", 90)),
 		"status": "open", # open | dispatched | resolving | resolved | failed
+		## Arco narrativo: inicio → desarrollo → final
+		"phase": "inicio",
+		"phase_label": "INICIO",
+		"beats": [],
+		"outcome": "", # success | fail
+		"outcome_report": "",
+		"tactic": "",
 		"assigned_patrol": "",
 		"created_at": "%02d:%02d" % [hour, minute],
 		"blurb": _blurb_for(event, district),
 		"radio_log": [],
 	}
+	_seed_inicio_beat(mission)
 	active_missions[mid] = mission
 	mission_added.emit(mission)
 	return mission
+
+
+func _seed_inicio_beat(mission: Dictionary) -> void:
+	mission["beats"] = [{
+		"n": 1,
+		"title": "AVISO INICIAL",
+		"time": mission["created_at"],
+		"caption": mission["blurb"],
+		"kind": "inicio",
+	}]
+
+
+func set_mission_phase(mission_id: String, phase: String) -> void:
+	if not active_missions.has(mission_id):
+		return
+	var m: Dictionary = active_missions[mission_id]
+	m["phase"] = phase
+	match phase:
+		"inicio":
+			m["phase_label"] = "INICIO"
+		"desarrollo":
+			m["phase_label"] = "DESARROLLO"
+		"final":
+			m["phase_label"] = "FINAL"
+		_:
+			m["phase_label"] = phase.to_upper()
+	update_mission(m)
+
+
+func add_mission_beat(mission_id: String, title: String, caption: String, kind: String = "desarrollo") -> void:
+	if not active_missions.has(mission_id):
+		return
+	var m: Dictionary = active_missions[mission_id]
+	var beats: Array = m.get("beats", [])
+	beats.append({
+		"n": beats.size() + 1,
+		"title": title,
+		"time": "%02d:%02d" % [hour, minute],
+		"caption": caption,
+		"kind": kind,
+	})
+	m["beats"] = beats
+	update_mission(m)
+
+
+func store_resolved_mission(mission: Dictionary) -> void:
+	_last_resolved = mission.duplicate(true)
+
+
+func last_resolved_mission() -> Dictionary:
+	return _last_resolved.duplicate(true)
 
 
 func _blurb_for(event: Dictionary, district: Dictionary) -> String:
@@ -273,8 +333,10 @@ func mission_art_path(mission: Dictionary) -> String:
 func _generated_art_for(key: String) -> String:
 	var cards := "res://assets/missions/cards/"
 	var generated := "res://assets/missions/generated/"
-	if "atraco" in key or "tienda" in key:
+	if "atraco" in key or "tienda" in key or "banco" in key:
 		return cards + "atraco_tienda.jpg"
+	if "desfile" in key or "manifest" in key or "protesta" in key:
+		return cards + "desfile.jpg"
 	if "vivienda" in key or ("robo" in key and "vehic" not in key and "vehíc" not in key):
 		return cards + "robo_vivienda.jpg"
 	if "vehic" in key or "vehíc" in key:

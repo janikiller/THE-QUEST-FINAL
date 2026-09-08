@@ -1,0 +1,136 @@
+[gd_scene load_steps=2 format=3 uid="uid://bqmissionresult"]
+
+[ext_resource type="Script" path="res://scripts/mission_result.gd" id="1_script"]
+
+[node name="MissionResult" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.05, 0.09, 0.98)
+
+[node name="Root" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 14
+
+[node name="VBox" type="VBoxContainer" parent="Root"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="HBoxContainer" parent="Root/VBox"]
+layout_mode = 2
+
+[node name="LeftHead" type="VBoxContainer" parent="Root/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PhaseBanner" type="Label" parent="Root/VBox/Header/LeftHead"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.75, 0.95, 1)
+theme_override_font_sizes/font_size = 12
+text = "ARCO  ·  INICIO  →  DESARROLLO  →  FINAL"
+
+[node name="ResultTitle" type="Label" parent="Root/VBox/Header/LeftHead"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "MISIÓN"
+
+[node name="ResultMeta" type="Label" parent="Root/VBox/Header/LeftHead"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.75, 0.88, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="VerdictCol" type="VBoxContainer" parent="Root/VBox/Header"]
+layout_mode = 2
+
+[node name="VerdictLabel" type="Label" parent="Root/VBox/Header/VerdictCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "MISIÓN"
+horizontal_alignment = 2
+
+[node name="VerdictSub" type="Label" parent="Root/VBox/Header/VerdictCol"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.85, 0.92, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+horizontal_alignment = 2
+
+[node name="Body" type="HBoxContainer" parent="Root/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="ResultArt" type="TextureRect" parent="Root/VBox/Body"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="RightCol" type="VBoxContainer" parent="Root/VBox/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="BeatsScroll" type="ScrollContainer" parent="Root/VBox/Body/RightCol"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BeatsGrid" type="GridContainer" parent="Root/VBox/Body/RightCol/BeatsScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 3
+
+[node name="SummaryBox" type="RichTextLabel" parent="Root/VBox/Body/RightCol"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+
+[node name="Footer" type="HBoxContainer" parent="Root/VBox"]
+layout_mode = 2
+
+[node name="Brand" type="Label" parent="Root/VBox/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.55, 0.65, 0.78, 1)
+theme_override_font_sizes/font_size = 12
+text = "SERVICIO · COMPROMISO · CIUDADANÍA    ·    UNA SOCIEDAD MÁS SEGURA"
+
+[node name="BtnClose" type="Button" parent="Root/VBox/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "VOLVER AL MAPA"

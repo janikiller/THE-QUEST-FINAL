@@ -222,6 +222,17 @@ func _playtest() -> void:
 		errors.append("time speed not set")
 	print("PLAYTEST time_speed=", GameState.time_speed)
 	GameState.set_time_speed(1.0)
+	# Phase system smoke
+	if not GameState.active_missions.is_empty():
+		var midp: String = String(GameState.active_missions.keys()[0])
+		GameState.set_mission_phase(midp, "desarrollo")
+		GameState.add_mission_beat(midp, "TEST BEAT", "Beat de prueba", "desarrollo")
+		var mp: Dictionary = GameState.active_missions[midp]
+		if str(mp.get("phase", "")) != "desarrollo":
+			errors.append("phase not desarrollo")
+		if mp.get("beats", []).is_empty():
+			errors.append("beats empty")
+		print("PLAYTEST phase=", mp.get("phase"), " beats=", mp.get("beats", []).size())
 	$UI/UIRouter.show_missions()
 	await get_tree().process_frame
 	await get_tree().process_frame
