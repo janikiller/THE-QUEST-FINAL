@@ -143,11 +143,23 @@ func _refresh() -> void:
 
 
 func _load_bg() -> void:
-	var path := "res://assets/combat/bg/combat_arena.jpg"
-	if not ResourceLoader.exists(path):
-		path = "res://assets/combat/bg/alley_night.jpg"
-	if ResourceLoader.exists(path):
-		bg.texture = load(path)
+	var candidates := [
+		"res://assets/combat/bg/combat_arena.jpg",
+		"res://assets/combat/bg/alley_night.jpg",
+		"res://assets/combat/bg/mockup_combat_a.jpg",
+	]
+	for path in candidates:
+		if ResourceLoader.exists(path):
+			bg.texture = load(path)
+			return
+	for path in candidates:
+		var abs_path := ProjectSettings.globalize_path(path)
+		if FileAccess.file_exists(abs_path):
+			var img := Image.new()
+			if img.load(abs_path) == OK:
+				bg.texture = ImageTexture.create_from_image(img)
+				return
+	bg.modulate = Color(0.06, 0.09, 0.14)
 
 
 func _rebuild_enemies(snap: Dictionary) -> void:

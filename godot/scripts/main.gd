@@ -49,7 +49,7 @@ func _combat_shot() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await get_tree().create_timer(0.4).timeout
-	_save_shot("combat_turno1")
+	await _save_shot("combat_turno1")
 	# Jugar una carta
 	if CombatState.is_active():
 		for cid in CombatState.hand.duplicate():
@@ -58,13 +58,14 @@ func _combat_shot() -> void:
 				break
 	await get_tree().process_frame
 	await get_tree().create_timer(0.35).timeout
-	_save_shot("combat_tras_carta")
+	await _save_shot("combat_tras_carta")
 	print("COMBAT_SHOT_OK")
 	await get_tree().create_timer(0.2).timeout
 	get_tree().quit(0)
 
 
 func _save_shot(name: String) -> void:
+	await get_tree().process_frame
 	await get_tree().process_frame
 	var img: Image = get_viewport().get_texture().get_image()
 	if img == null:
