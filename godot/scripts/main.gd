@@ -48,19 +48,44 @@ func _combat_shot() -> void:
 	await get_tree().process_frame
 	await get_tree().create_timer(0.8).timeout
 	await _save_shot("combat_turno1")
-	# Jugar carta de ataque por la UI para ver lunge + VFX
+	# Asegurar una carta de ataque en mano para el demo de VFX
+	if CombatState.is_active() and CombatState.hand.size() > 0:
+		CombatState.hand[0] = "strike"
+		if "strike" in CombatState.draw_pile:
+			CombatState.draw_pile.erase("strike")
 	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	if combat:
+		combat._refresh()
+	await get_tree().process_frame
+	# Preferir ataque; si no hay, cualquier carta jugable
+	combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 	if combat and CombatState.is_active():
+		var chosen := ""
 		for cid in CombatState.hand.duplicate():
 			if CombatState.can_play_card(str(cid)):
-				var def: Dictionary = CardDB.get_card(str(cid))
-				if int(def.get("damage", 0)) > 0 or str(def.get("type", "")) == "ataque":
-					combat._busy = true
-					await combat._hero_attack_sequence(def)
-					CombatState.play_card(str(cid))
-					combat._busy = false
-					combat._refresh()
+				var def0: Dictionary = CardDB.get_card(str(cid))
+				if int(def0.get("damage", 0)) > 0 or str(def0.get("type", "")) == "ataque":
+					chosen = str(cid)
 					break
+		if chosen == "":
+			for cid in CombatState.hand.duplicate():
+				if CombatState.can_play_card(str(cid)):
+					chosen = str(cid)
+					break
+		if chosen != "":
+			var def: Dictionary = CardDB.get_card(chosen)
+			combat._busy = true
+			if int(def.get("damage", 0)) > 0 or str(def.get("type", "")) == "ataque":
+				combat._apply_hero_pose("shoot", 0.9)
+				if combat._player_actor:
+					combat._player_actor.position = combat._player_base_pos + Vector2(70, -8)
+				await get_tree().process_frame
+				await get_tree().create_timer(0.05).timeout
+				await _save_shot("combat_ataque_lunge")
+				await combat._hero_attack_sequence(def)
+			CombatState.play_card(chosen)
+			combat._busy = false
+			combat._refresh()
 	await get_tree().process_frame
 	await get_tree().create_timer(0.55).timeout
 	await _save_shot("combat_tras_carta")

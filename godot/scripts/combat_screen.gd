@@ -126,7 +126,7 @@ func _setup_player_actor() -> void:
 	_player_shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_player_shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	_player_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_player_shadow.modulate = Color(1, 1, 1, 0.55)
+	_player_shadow.modulate = Color(1, 1, 1, 0.85)
 	_player_actor.add_child(_player_shadow)
 	_player_actor.move_child(_player_shadow, 0)
 	_layout_player_shadow()
@@ -136,10 +136,10 @@ func _setup_player_actor() -> void:
 func _layout_player_shadow() -> void:
 	if _player_shadow == null or _player_actor == null:
 		return
-	var w := maxf(120.0, _player_actor.size.x * 0.72)
-	var h := 28.0
+	var w := maxf(150.0, _player_actor.size.x * 0.85)
+	var h := 36.0
 	_player_shadow.size = Vector2(w, h)
-	_player_shadow.position = Vector2((_player_actor.size.x - w) * 0.5, _player_actor.size.y - h - 2.0)
+	_player_shadow.position = Vector2((_player_actor.size.x - w) * 0.5, _player_actor.size.y - h + 4.0)
 
 
 func _process(delta: float) -> void:
@@ -161,7 +161,7 @@ func _idle_bob_player(_delta: float) -> void:
 		_layout_player_shadow()
 		var squash := 1.0 + sin(_bob_t * 2.4) * 0.06
 		_player_shadow.scale = Vector2(squash, 1.0 / maxf(0.85, squash))
-		_player_shadow.modulate.a = 0.45 + absf(sin(_bob_t * 2.4)) * 0.12
+		_player_shadow.modulate.a = 0.7 + absf(sin(_bob_t * 2.4)) * 0.15
 
 
 func _idle_bob_enemies() -> void:
@@ -180,7 +180,7 @@ func _idle_bob_enemies() -> void:
 		if shadow:
 			var squash := 1.0 + sin(phase) * 0.05
 			shadow.scale = Vector2(squash, 1.0)
-			shadow.modulate.a = 0.4 + absf(sin(phase)) * 0.1
+			shadow.modulate.a = 0.65 + absf(sin(phase)) * 0.15
 		i += 1
 
 
@@ -423,9 +423,9 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shadow.modulate = Color(1, 1, 1, 0.5)
-	shadow.position = Vector2(20, 220)
-	shadow.size = Vector2(120, 26)
+	shadow.modulate = Color(1, 1, 1, 0.8)
+	shadow.position = Vector2(10, 214)
+	shadow.size = Vector2(140, 32)
 	actor.add_child(shadow)
 
 	var btn := Button.new()
