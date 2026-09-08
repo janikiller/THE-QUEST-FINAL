@@ -23,9 +23,56 @@ func _ready() -> void:
 		call_deferred("_inv_check")
 	if OS.get_environment("TQ_PLAYTEST") == "1":
 		call_deferred("_playtest")
+	if OS.get_environment("TQ_COMBAT_SHOT") == "1":
+		call_deferred("_combat_shot")
 
 
-func _process(_delta: float) -> void:
+func _combat_shot() -> void:
+	## Abre combate y guarda capturas para evidencia visual.
+	await get_tree().create_timer(1.2).timeout
+	# Esperar a que haya misiones
+	var tries := 0
+	while GameState.active_missions.is_empty() and tries < 40:
+		await get_tree().create_timer(0.25).timeout
+		tries += 1
+	if GameState.active_missions.is_empty():
+		print("COMBAT_SHOT_FAIL no missions")
+		get_tree().quit(1)
+		return
+	var mid: String = String(GameState.active_missions.keys()[0])
+	# Asegurar patrulla libre
+	var p: Dictionary = GameState.patrols.get("alpha", {})
+	p["status"] = "available"
+	p.erase("_awaiting_combat")
+	GameState.set_patrol(p)
+	$UI/UIRouter.show_combat(mid, "alpha")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(0.4).timeout
+	_save_shot("combat_turno1")
+	# Jugar una carta
+	if CombatState.is_active():
+		for cid in CombatState.hand.duplicate():
+			if CombatState.can_play_card(str(cid)):
+				CombatState.play_card(str(cid))
+				break
+	await get_tree().process_frame
+	await get_tree().create_timer(0.35).timeout
+	_save_shot("combat_tras_carta")
+	print("COMBAT_SHOT_OK")
+	await get_tree().create_timer(0.2).timeout
+	get_tree().quit(0)
+
+
+func _save_shot(name: String) -> void:
+	await get_tree().process_frame
+	var img: Image = get_viewport().get_texture().get_image()
+	if img == null:
+		print("COMBAT_SHOT_WARN null image ", name)
+		return
+	var path := "/opt/cursor/artifacts/%s.png" % name
+	var err := img.save_png(path)
+	print("COMBAT_SHOT saved ", path, " err=", err)
 	var on_map: bool = $UI/UIRouter/MapHud.visible
 	if is_instance_valid(player):
 		player.can_move = on_map
