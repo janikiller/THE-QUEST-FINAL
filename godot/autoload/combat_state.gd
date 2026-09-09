@@ -6,6 +6,7 @@ signal combat_started
 signal combat_updated
 signal combat_ended(victory: bool)
 signal log_message(text: String)
+signal enemy_defeated(enemy_index: int, xp_gained: int)
 
 enum Phase { PLAYER, ENEMY, RESOLVING, ENDED }
 enum Intent { ATTACK, BLOCK, FLEE }
@@ -24,6 +25,9 @@ var mission_id: String = ""
 var location_label: String = ""
 var objective: String = "Detener a los sospechosos"
 var last_log: String = ""
+var combat_xp_gained: int = 0
+var combat_kills: int = 0
+var combat_levels_gained: int = 0
 
 const HAND_SIZE := 5
 const INTENT_LABELS := {
@@ -55,6 +59,7 @@ func start_combat(cfg: Dictionary) -> void:
 		"energy": int(cfg.get("energy_max", 3)),
 		"energy_max": int(cfg.get("energy_max", 3)),
 		"vulnerable": 0,
+		"weak": 0,
 		"portrait": str(cfg.get("portrait", "garcia")),
 		"sprite": str(cfg.get("sprite", "patrol_01")),
 	}
@@ -67,6 +72,7 @@ func start_combat(cfg: Dictionary) -> void:
 		enemies.append({
 			"id": str(e.get("id", "e%d" % i)),
 			"name": str(e.get("name", "Sospechoso")),
+			"alias": str(e.get("alias", "")),
 			"hp": ehp,
 			"max_hp": ehp,
 			"block": 0,
@@ -78,6 +84,15 @@ func start_combat(cfg: Dictionary) -> void:
 			"weak": 0,
 			"portrait": str(e.get("portrait", "")),
 			"sprite": str(e.get("sprite", "delinquent_01")),
+			"is_boss": bool(e.get("is_boss", false)),
+			"pose_attack": str(e.get("pose_attack", "")),
+			"pose_hurt": str(e.get("pose_hurt", "")),
+			"role": str(e.get("role", e.get("archetype", "ataque"))),
+			"boss_id": str(e.get("boss_id", e.get("id", ""))),
+			"card_pool": _build_enemy_pool(e),
+			"next_card": "",
+			"next_card_name": "",
+			"next_card_effect": "",
 		})
 	_roll_intents()
 	selected_enemy = _first_living_enemy()
@@ -85,6 +100,9 @@ func start_combat(cfg: Dictionary) -> void:
 	draw_pile.clear()
 	discard_pile.clear()
 	hand.clear()
+	combat_xp_gained = 0
+	combat_kills = 0
+	combat_levels_gained = 0
 	var deck: Array = cfg.get("deck", [])
 	for c in deck:
 		draw_pile.append(str(c))
@@ -111,6 +129,12 @@ func get_snapshot() -> Dictionary:
 		"objective": objective,
 		"mission_id": mission_id,
 		"last_log": last_log,
+		"combat_xp": combat_xp_gained,
+		"combat_kills": combat_kills,
+		"combat_levels": combat_levels_gained,
+		"hero_level": GameState.hero_level,
+		"hero_xp": GameState.hero_xp,
+		"xp_to_next": GameState.xp_to_next_level(),
 	}
 
 
@@ -211,7 +235,7 @@ func _resolve_card(def: Dictionary, target_index: int) -> void:
 				var hit_dmg := dmg
 				if int(e.get("vulnerable", 0)) > 0:
 					hit_dmg = int(ceil(hit_dmg * 1.5))
-				if int(e.get("weak", 0)) > 0:
+				if int(player.get("weak", 0)) > 0:
 					hit_dmg = int(floor(hit_dmg * 0.75))
 				total += _deal_to_enemy(i, hit_dmg)
 			_log("%s → %s: %d daño." % [title, e.get("name", "?"), total])
@@ -237,6 +261,7 @@ func _resolve_card(def: Dictionary, target_index: int) -> void:
 
 func _deal_to_enemy(index: int, amount: int) -> int:
 	var e: Dictionary = enemies[index]
+	var hp_before := int(e.get("hp", 0))
 	var blk := int(e.get("block", 0))
 	var dealt := amount
 	if blk > 0:
@@ -244,11 +269,24 @@ func _deal_to_enemy(index: int, amount: int) -> int:
 		e["block"] = blk - absorb
 		dealt = amount - absorb
 	e["hp"] = maxi(0, int(e.get("hp", 0)) - dealt)
-	if int(e.get("hp", 0)) <= 0 and not bool(e.get("detained", false)):
-		# Downed — can still be cuffed next card / auto-detain if already 0
-		pass
+	if hp_before > 0 and int(e.get("hp", 0)) <= 0 and not bool(e.get("xp_granted", false)):
+		e["xp_granted"] = true
+		var xp := _xp_for_enemy(e)
+		var res: Dictionary = GameState.add_combat_xp(xp)
+		combat_xp_gained += int(res.get("xp", xp))
+		combat_kills += 1
+		combat_levels_gained += int(res.get("levels", 0))
+		_log("%s neutralizado (+%d XP)." % [e.get("name", "?"), xp])
+		enemy_defeated.emit(index, xp)
 	enemies[index] = e
 	return dealt
+
+
+func _xp_for_enemy(e: Dictionary) -> int:
+	var max_hp := maxi(1, int(e.get("max_hp", 28)))
+	if bool(e.get("is_boss", false)):
+		return 90 + max_hp / 4
+	return 10 + max_hp / 3
 
 
 func _deal_to_player(amount: int) -> int:
@@ -260,6 +298,10 @@ func _deal_to_player(amount: int) -> int:
 		dealt = amount - absorb
 	if int(player.get("vulnerable", 0)) > 0:
 		dealt = int(ceil(dealt * 1.5))
+	if int(player.get("weak", 0)) > 0:
+		# Debilitado reduce daño recibido? No — weaken en STS reduce daño SALIENTE.
+		# Aquí weaken al jugador reduce daño que él hace; el daño entrante ya está.
+		pass
 	player["hp"] = maxi(0, int(player.get("hp", 0)) - dealt)
 	return dealt
 
@@ -273,27 +315,10 @@ func _enemy_turn() -> void:
 		if bool(e.get("stunned", false)):
 			_log("%s está aturdido y no actúa." % e.get("name", "?"))
 			e["stunned"] = false
+			enemies[i] = e
 		else:
-			match int(e.get("intent", Intent.ATTACK)):
-				Intent.ATTACK:
-					var dmg := int(e.get("intent_value", 8))
-					if int(e.get("weak", 0)) > 0:
-						dmg = int(floor(dmg * 0.75))
-					var dealt := _deal_to_player(dmg)
-					_log("%s dispara: %d daño." % [e.get("name", "?"), dealt])
-				Intent.BLOCK:
-					var b := int(e.get("intent_value", 6))
-					e["block"] = int(e.get("block", 0)) + b
-					_log("%s se cubre (+%d)." % [e.get("name", "?"), b])
-				Intent.FLEE:
-					if int(e.get("hp", 0)) <= int(e.get("max_hp", 1)) * 0.35:
-						e["fled"] = true
-						e["hp"] = 0
-						_log("%s huye!" % e.get("name", "?"))
-					else:
-						var poke := 4
-						var dealt := _deal_to_player(poke)
-						_log("%s intenta huir y te roza (%d)." % [e.get("name", "?"), dealt])
+			_play_enemy_card(i)
+			e = enemies[i]
 		# Decay statuses
 		e["vulnerable"] = maxi(0, int(e.get("vulnerable", 0)) - 1)
 		e["weak"] = maxi(0, int(e.get("weak", 0)) - 1)
@@ -302,6 +327,7 @@ func _enemy_turn() -> void:
 			break
 
 	player["vulnerable"] = maxi(0, int(player.get("vulnerable", 0)) - 1)
+	player["weak"] = maxi(0, int(player.get("weak", 0)) - 1)
 	player["block"] = 0  # block resets each turn like STS
 
 	if _check_end_conditions():
@@ -317,26 +343,149 @@ func _enemy_turn() -> void:
 	combat_updated.emit()
 
 
+func _build_enemy_pool(e: Dictionary) -> Array:
+	if e.has("card_pool") and e.get("card_pool") is Array and not (e.get("card_pool") as Array).is_empty():
+		return (e.get("card_pool") as Array).duplicate()
+	if bool(e.get("is_boss", false)):
+		var bid := str(e.get("boss_id", e.get("id", "")))
+		return CardDB.enemy_pool_for_boss(bid)
+	return CardDB.enemy_pool_for_role(str(e.get("role", "ataque")))
+
+
+func _play_enemy_card(index: int) -> void:
+	var e: Dictionary = enemies[index]
+	var cid := str(e.get("next_card", ""))
+	var def := CardDB.get_enemy_card(cid)
+	if def.is_empty():
+		var dmg := int(e.get("intent_value", 8))
+		if int(e.get("weak", 0)) > 0:
+			dmg = int(floor(dmg * 0.75))
+		var dealt := _deal_to_player(dmg)
+		_log("%s ataca: %d daño." % [e.get("name", "?"), dealt])
+		return
+	_resolve_enemy_card(def, index)
+
+
+func _resolve_enemy_card(def: Dictionary, enemy_index: int) -> void:
+	var e: Dictionary = enemies[enemy_index]
+	var title := str(def.get("name", "Carta"))
+	var kind := CardDB.enemy_card_intent_kind(def)
+
+	if kind == "flee":
+		var hp_ratio := float(e.get("hp", 1)) / float(maxi(1, int(e.get("max_hp", 1))))
+		if bool(e.get("is_boss", false)):
+			var poke := 6 + turn
+			var dealt_b := _deal_to_player(poke)
+			_log("%s «%s»: %d daño." % [e.get("name", "?"), title, dealt_b])
+		elif hp_ratio <= 0.4:
+			e["fled"] = true
+			e["hp"] = 0
+			if not bool(e.get("xp_granted", false)):
+				e["xp_granted"] = true
+				var flee_xp := maxi(4, _xp_for_enemy(e) / 3)
+				var res: Dictionary = GameState.add_combat_xp(flee_xp)
+				combat_xp_gained += int(res.get("xp", flee_xp))
+				combat_levels_gained += int(res.get("levels", 0))
+			_log("%s juega «%s» y huye! (+%d XP)" % [e.get("name", "?"), title, maxi(4, _xp_for_enemy(e) / 3)])
+		else:
+			var poke2 := 4
+			var dealt2 := _deal_to_player(poke2)
+			_log("%s intenta «%s» y te roza (%d)." % [e.get("name", "?"), title, dealt2])
+		enemies[enemy_index] = e
+		return
+
+	var block := int(def.get("block", 0))
+	if block > 0:
+		e["block"] = int(e.get("block", 0)) + block
+		_log("%s «%s»: +%d defensa." % [e.get("name", "?"), title, block])
+
+	var heal := int(def.get("heal", 0))
+	if heal > 0:
+		e["hp"] = mini(int(e.get("max_hp", e.get("hp", 0))), int(e.get("hp", 0)) + heal)
+		_log("%s «%s»: recupera %d PV." % [e.get("name", "?"), title, heal])
+
+	var dmg := int(def.get("damage", 0))
+	var hits := maxi(1, int(def.get("hits", 1)))
+	if dmg > 0:
+		var total := 0
+		for _h in range(hits):
+			var hit := dmg
+			if int(e.get("weak", 0)) > 0:
+				hit = int(floor(hit * 0.75))
+			total += _deal_to_player(hit)
+		_log("%s «%s»: %d daño." % [e.get("name", "?"), title, total])
+
+	var vul := int(def.get("vulnerable", 0))
+	if vul > 0 or bool(def.get("vulnerable", false)):
+		player["vulnerable"] = int(player.get("vulnerable", 0)) + maxi(1, vul)
+		_log("Quedas vulnerable.")
+
+	var weak_n := int(def.get("weaken", 0))
+	if weak_n > 0 or bool(def.get("weaken", false)):
+		player["weak"] = int(player.get("weak", 0)) + maxi(1, weak_n)
+		_log("Quedas debilitado.")
+
+	if int(def.get("stun", 0)) > 0 or bool(def.get("stun", false)):
+		player["energy"] = maxi(0, int(player.get("energy", 0)) - 1)
+		player["stunned"] = true
+		_log("¡Aturdido! (−1 energía).")
+
+	enemies[enemy_index] = e
+
+
 func _roll_intents() -> void:
 	for i in range(enemies.size()):
 		if not _enemy_alive(i):
 			continue
-		var e: Dictionary = enemies[i]
-		var roll := randi() % 100
-		var hp_ratio := float(e.get("hp", 1)) / float(maxi(1, int(e.get("max_hp", 1))))
-		if hp_ratio < 0.3 and roll < 40:
+		_pick_enemy_card(i)
+
+
+func _pick_enemy_card(index: int) -> void:
+	var e: Dictionary = enemies[index]
+	var pool: Array = e.get("card_pool", [])
+	if pool.is_empty():
+		pool = _build_enemy_pool(e)
+		e["card_pool"] = pool
+	var is_boss := bool(e.get("is_boss", false))
+	var hp_ratio := float(e.get("hp", 1)) / float(maxi(1, int(e.get("max_hp", 1))))
+	var candidates: Array = []
+	for cid in pool:
+		var def := CardDB.get_enemy_card(str(cid))
+		if def.is_empty():
+			continue
+		var kind := CardDB.enemy_card_intent_kind(def)
+		if kind == "flee":
+			if is_boss or hp_ratio > 0.35:
+				continue
+			for _w in range(3):
+				candidates.append(str(cid))
+			continue
+		if kind in ["block", "heal"] and hp_ratio < 0.45:
+			for _w2 in range(2):
+				candidates.append(str(cid))
+		else:
+			candidates.append(str(cid))
+		if str(cid).begins_with("boss_") and hp_ratio < 0.55:
+			candidates.append(str(cid))
+	if candidates.is_empty():
+		candidates = ["foe_shot"]
+	var pick := str(candidates[randi() % candidates.size()])
+	var cdef := CardDB.get_enemy_card(pick)
+	e["next_card"] = pick
+	e["next_card_name"] = str(cdef.get("name", pick))
+	e["next_card_effect"] = CardDB.enemy_effect_line(cdef)
+	var kind2 := CardDB.enemy_card_intent_kind(cdef)
+	match kind2:
+		"flee":
 			e["intent"] = Intent.FLEE
 			e["intent_value"] = 0
-		elif roll < 55:
-			e["intent"] = Intent.ATTACK
-			e["intent_value"] = 7 + (turn / 2) + (i * 2)
-		elif roll < 85:
+		"block", "heal":
 			e["intent"] = Intent.BLOCK
-			e["intent_value"] = 5 + i * 2
-		else:
+			e["intent_value"] = CardDB.enemy_card_preview_value(cdef)
+		_:
 			e["intent"] = Intent.ATTACK
-			e["intent_value"] = 10 + turn
-		enemies[i] = e
+			e["intent_value"] = CardDB.enemy_card_preview_value(cdef)
+	enemies[index] = e
 
 
 func _draw_cards(n: int) -> void:
@@ -417,7 +566,12 @@ func _check_end_conditions() -> bool:
 func _end_combat(victory: bool) -> void:
 	phase = Phase.ENDED
 	active = false
-	last_log = "Intervención exitosa." if victory else "La unidad cae. Abortar."
+	if victory and combat_xp_gained > 0:
+		last_log = "Intervención exitosa. +%d XP." % combat_xp_gained
+		if combat_levels_gained > 0:
+			last_log += " ¡Subes de nivel!"
+	else:
+		last_log = "Intervención exitosa." if victory else "La unidad cae. Abortar."
 	_log(last_log)
 	combat_ended.emit(victory)
 	combat_updated.emit()
