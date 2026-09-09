@@ -98,7 +98,8 @@ func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
 		tex = _hero_tex("idle")
 	if tex:
 		player_sprite.texture = tex
-		player_sprite.flip_h = true
+		# Arte anime mira a la derecha (hacia enemigos)
+		player_sprite.flip_h = false
 
 
 func _tick_hero_pose() -> void:
@@ -128,6 +129,7 @@ func _ready() -> void:
 	_setup_player_actor()
 	_ensure_player_block_bar()
 	_ground_arena_layout()
+	_ensure_floor_plane()
 	set_process(true)
 
 
@@ -155,7 +157,7 @@ func _setup_player_actor() -> void:
 	if player_sprite.get_parent().name == "PlayerActor":
 		_player_actor = player_sprite.get_parent()
 		_player_shadow = _player_actor.get_node_or_null("Shadow")
-		player_sprite.flip_h = true  # Arte mira izq.; García está a la izq. → enfrenta enemigos
+		player_sprite.flip_h = false  # Arte mira a la derecha → enfrenta enemigos
 		return
 	var parent := player_sprite.get_parent()
 	var idx := player_sprite.get_index()
@@ -175,9 +177,10 @@ func _setup_player_actor() -> void:
 	player_sprite.offset_bottom = GROUND_Y + 4.0
 	player_sprite.custom_minimum_size = Vector2(230, GROUND_Y + 4.0)
 	player_sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	player_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# COVERED planta mejor los pies en el borde inferior del rect
+	player_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	player_sprite.position = Vector2(0, 0)
-	player_sprite.flip_h = true  # Mira hacia los enemigos (derecha)
+	player_sprite.flip_h = false  # Mira hacia los enemigos (derecha)
 	_player_shadow = TextureRect.new()
 	_player_shadow.name = "Shadow"
 	_player_shadow.texture = _fx_tex("shadow")
@@ -194,10 +197,71 @@ func _setup_player_actor() -> void:
 func _layout_ground_shadow(shadow: TextureRect, actor: Control, width: float) -> void:
 	if shadow == null or actor == null:
 		return
-	var h := 38.0
-	shadow.size = Vector2(width + 24.0, h)
-	shadow.position = Vector2((actor.size.x - width - 24.0) * 0.5 if actor.size.x > 0.0 else (200.0 - width) * 0.5, GROUND_Y - 6.0)
-	shadow.pivot_offset = Vector2((width + 24.0) * 0.5, h * 0.5)
+	var h := 42.0
+	shadow.size = Vector2(width + 36.0, h)
+	# Sombra pegada al suelo (pies), no al centro del sprite
+	shadow.position = Vector2(
+		(actor.size.x - width - 36.0) * 0.5 if actor.size.x > 0.0 else (200.0 - width) * 0.5,
+		GROUND_Y - 4.0
+	)
+	shadow.pivot_offset = Vector2((width + 36.0) * 0.5, h * 0.55)
+	shadow.modulate = Color(0.02, 0.02, 0.04, 0.88)
+
+
+func _ensure_floor_plane() -> void:
+	## Suelo visible bajo los pies: asfalto + línea de contacto (deja de flotar).
+	var existing := get_node_or_null("FloorPlane") as Control
+	if existing:
+		return
+	var floor := Control.new()
+	floor.name = "FloorPlane"
+	floor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	floor.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	floor.offset_top = -292.0
+	floor.offset_bottom = -248.0
+	floor.z_index = 2
+	add_child(floor)
+	move_child(floor, get_node("Bottom").get_index())
+
+	var asphalt := TextureRect.new()
+	asphalt.name = "Asphalt"
+	asphalt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	asphalt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	asphalt.stretch_mode = TextureRect.STRETCH_SCALE
+	asphalt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	asphalt.texture = _make_asphalt_tex()
+	asphalt.modulate = Color(1, 1, 1, 0.92)
+	floor.add_child(asphalt)
+
+	var rim := ColorRect.new()
+	rim.name = "ContactRim"
+	rim.color = Color(0.55, 0.62, 0.7, 0.35)
+	rim.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	rim.offset_bottom = 3.0
+	rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	floor.add_child(rim)
+
+	var shade := get_node_or_null("GroundShade") as ColorRect
+	if shade:
+		shade.offset_top = -300.0
+		shade.color = Color(0.02, 0.03, 0.05, 0.42)
+		shade.z_index = 1
+
+
+func _make_asphalt_tex() -> Texture2D:
+	var img := Image.create(256, 64, false, Image.FORMAT_RGBA8)
+	for y in range(64):
+		for x in range(256):
+			var n := float((x * 17 + y * 31) % 23) / 23.0
+			var edge := absf(float(y) / 64.0 - 0.55)
+			var v := 0.10 + n * 0.07 - edge * 0.05
+			var a := 0.95 - edge * 0.55
+			img.set_pixel(x, y, Color(v * 0.85, v * 0.88, v * 0.95, clampf(a, 0.15, 0.95)))
+	# Líneas de acera / grietas horizontales
+	for x in range(256):
+		img.set_pixel(x, 18, Color(0.22, 0.24, 0.28, 0.55))
+		img.set_pixel(x, 42, Color(0.08, 0.09, 0.11, 0.7))
+	return ImageTexture.create_from_image(img)
 
 
 func _ensure_player_block_bar() -> void:
@@ -249,18 +313,18 @@ func _idle_bob_player(delta: float = 0.016) -> void:
 		return
 	if bool(player_sprite.get_meta("anim_locked", false)):
 		return
-	# Respiración suave y constante (lerp para evitar saltos)
-	var bob := sin(_bob_t * 1.65) * 2.2
-	var sway := cos(_bob_t * 0.85) * 0.8
+	# Respiración suave sin levantar los pies del suelo
+	var bob := sin(_bob_t * 1.65) * 0.7
+	var sway := cos(_bob_t * 0.85) * 1.2
 	var target := Vector2(sway, bob)
 	player_sprite.position = player_sprite.position.lerp(target, 1.0 - exp(-delta * 7.5))
-	var breath := 1.0 + sin(_bob_t * 1.65) * 0.018
+	var breath := 1.0 + sin(_bob_t * 1.65) * 0.022
 	player_sprite.scale = player_sprite.scale.lerp(Vector2(breath, 2.0 - breath), 1.0 - exp(-delta * 6.0))
 	if _player_shadow:
-		_layout_ground_shadow(_player_shadow, _player_actor, 160.0)
-		var squash := 1.0 + sin(_bob_t * 1.65) * 0.05
+		_layout_ground_shadow(_player_shadow, _player_actor, 168.0)
+		var squash := 1.0 + sin(_bob_t * 1.65) * 0.06
 		_player_shadow.scale = _player_shadow.scale.lerp(Vector2(squash, 1.0), 1.0 - exp(-delta * 6.0))
-		_player_shadow.modulate.a = lerpf(_player_shadow.modulate.a, 0.62 + absf(sin(_bob_t * 1.65)) * 0.1, 1.0 - exp(-delta * 5.0))
+		_player_shadow.modulate.a = lerpf(_player_shadow.modulate.a, 0.82 + absf(sin(_bob_t * 1.65)) * 0.08, 1.0 - exp(-delta * 5.0))
 
 
 func _idle_bob_enemies(delta: float = 0.016) -> void:
@@ -277,8 +341,8 @@ func _idle_bob_enemies(delta: float = 0.016) -> void:
 		if spr == null:
 			continue
 		var is_boss := bool(wrap.get_meta("is_boss", false))
-		var amp := 3.2 if is_boss else 2.0
-		var sway := 1.8 if is_boss else 1.0
+		var amp := 1.4 if is_boss else 0.8
+		var sway := 2.2 if is_boss else 1.4
 		var speed := 1.35 if is_boss else 1.7
 		var phase := _bob_t * speed + float(i) * 0.95
 		var base_pos: Vector2 = wrap.get_meta("sprite_base", Vector2(0, 4.0 if is_boss else 18.0))
@@ -482,7 +546,7 @@ func _refresh() -> void:
 	if _prev_player_hp >= 0 and php < _prev_player_hp and not _busy:
 		_apply_hero_pose("hurt", 0.55)
 		_hit_actor(player_sprite, _prev_player_hp - php, false)
-		_spawn_fx_at(player_sprite, "blood", Vector2(40, 80), 0.45)
+		_spawn_blood_burst(player_sprite.global_position + Vector2(50, 90), 1.1)
 	_prev_player_hp = php
 	_prev_player_block = int(p.get("block", 0))
 
@@ -645,7 +709,7 @@ func _animate_enemy_hit(panel: Control, dmg: int) -> void:
 		_hit_actor_heavy(spr, dmg, true)
 		spr.modulate = Color(2.0, 1.6, 1.6)
 		_spawn_fx_at(spr, "impact", Vector2(48, 100), 0.35)
-		_spawn_fx_at(spr, "blood", Vector2(56, 110), 0.4)
+		_spawn_blood_burst(spr.global_position + Vector2(56, 110), 1.25)
 		await _screen_pulse(Color(1.0, 0.35, 0.2, 0.28))
 		await get_tree().create_timer(0.18).timeout
 		if is_instance_valid(spr):
@@ -656,7 +720,7 @@ func _animate_enemy_hit(panel: Control, dmg: int) -> void:
 	else:
 		_hit_actor(spr, dmg, true)
 		_spawn_fx_at(spr, "impact", Vector2(40, 90), 0.3)
-		_spawn_fx_at(spr, "blood", Vector2(50, 100), 0.35)
+		_spawn_blood_burst(spr.global_position + Vector2(50, 100), 1.15)
 		await get_tree().create_timer(0.2).timeout
 	if is_instance_valid(panel):
 		panel.set_meta("anim_locked", false)
@@ -687,9 +751,9 @@ func _animate_enemy_death(panel: Control, dmg: int) -> void:
 	if spr:
 		_spawn_dmg_number(spr, dmg)
 		_spawn_fx_at(spr, "impact", Vector2(40, 90), 0.3)
-		_spawn_fx_at(spr, "blood", Vector2(40, 100), 0.55)
+		_spawn_blood_burst(spr.global_position + Vector2(40, 100), 1.4)
 		if is_boss:
-			_spawn_fx_at(spr, "blood", Vector2(70, 80), 0.6)
+			_spawn_blood_burst(spr.global_position + Vector2(70, 80), 1.2)
 			_screen_pulse(Color(1.0, 0.2, 0.15, 0.35))
 	if actor == null or spr == null:
 		await get_tree().create_timer(0.35).timeout
@@ -822,10 +886,10 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shadow.modulate = Color(0, 0, 0, 0.78)
-	shadow.position = Vector2(18, ground_y - 4.0)
-	shadow.size = Vector2(actor_w - 36.0, 34 if is_boss else 28)
-	shadow.pivot_offset = Vector2((actor_w - 36.0) * 0.5, 14)
+	shadow.modulate = Color(0.02, 0.02, 0.04, 0.9)
+	shadow.position = Vector2(14, ground_y - 2.0)
+	shadow.size = Vector2(actor_w - 28.0, 40 if is_boss else 34)
+	shadow.pivot_offset = Vector2((actor_w - 28.0) * 0.5, 18)
 	actor.add_child(shadow)
 
 	var btn := Button.new()
@@ -836,13 +900,13 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	btn.clip_contents = false
 	var tex := TextureRect.new()
 	tex.name = "EnemySprite"
-	# Anclar pies cerca del suelo, sprite más grande y limpio
+	# Pies anclados al suelo
 	tex.position = Vector2(0, 0)
-	tex.size = Vector2(actor_w, ground_y - 8.0)
+	tex.size = Vector2(actor_w, ground_y - 4.0)
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tex.pivot_offset = Vector2(actor_w * 0.5, (ground_y - 8.0) * 0.82)
+	tex.pivot_offset = Vector2(actor_w * 0.5, (ground_y - 4.0) * 0.9)
 	# Prioridad: sprite propio del enemigo (boss) → pack por índice
 	var sp := str(e.get("sprite", ""))
 	if sp == "" or not (ResourceLoader.exists(sp) or FileAccess.file_exists(sp)):
@@ -1471,7 +1535,7 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	var type_col := _type_accent(card_type)
 
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(136, 210)
+	panel.custom_minimum_size = Vector2(128, 200)
 	panel.clip_contents = true
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.045, 0.06, 0.09, 0.97)
@@ -1724,51 +1788,56 @@ func _hero_attack_sequence(def: Dictionary) -> void:
 	if _player_actor == null:
 		await get_tree().create_timer(0.25).timeout
 		return
+	player_sprite.set_meta("anim_locked", true)
 	var base := _player_base_pos
+	# Wind-up
 	var tw0 := create_tween()
 	tw0.set_parallel(true)
-	tw0.tween_property(_player_actor, "position", base + Vector2(-18, 3), 0.12).set_trans(Tween.TRANS_CUBIC)
-	tw0.tween_property(player_sprite, "rotation_degrees", -4.0, 0.12)
-	tw0.tween_property(player_sprite, "scale", Vector2(1.08, 0.9), 0.12)
+	tw0.tween_property(_player_actor, "position", base + Vector2(-32, 6), 0.14).set_trans(Tween.TRANS_CUBIC)
+	tw0.tween_property(player_sprite, "rotation_degrees", -8.0, 0.14)
+	tw0.tween_property(player_sprite, "scale", Vector2(1.14, 0.86), 0.14)
 	if _player_shadow:
-		tw0.tween_property(_player_shadow, "scale", Vector2(1.18, 0.85), 0.12)
+		tw0.tween_property(_player_shadow, "scale", Vector2(1.28, 0.78), 0.14)
 	await tw0.finished
+	# Lunge hacia el enemigo
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(_player_actor, "position", base + Vector2(78, -2), 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(player_sprite, "rotation_degrees", 6.0, 0.14)
-	tw.tween_property(player_sprite, "scale", Vector2(0.95, 1.08), 0.14)
+	tw.tween_property(_player_actor, "position", base + Vector2(118, -6), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(player_sprite, "rotation_degrees", 9.0, 0.16)
+	tw.tween_property(player_sprite, "scale", Vector2(0.9, 1.14), 0.16)
 	if _player_shadow:
-		tw.tween_property(_player_shadow, "scale", Vector2(1.35, 0.75), 0.14)
+		tw.tween_property(_player_shadow, "scale", Vector2(1.45, 0.68), 0.16)
 	await tw.finished
-	var muzzle_pos := player_sprite.global_position + Vector2(135, 115)
-	_spawn_fx_world(muzzle_pos, "muzzle", 0.16, Vector2(1.35, 1.35))
-	await get_tree().create_timer(0.04).timeout
-	_spawn_fx_world(muzzle_pos + Vector2(8, -4), "muzzle", 0.14, Vector2(0.9, 0.9))
-	await _screen_pulse(Color(1.0, 0.82, 0.3, 0.26))
+	var muzzle_pos := player_sprite.global_position + Vector2(145, 115)
+	_spawn_fx_world(muzzle_pos, "muzzle", 0.18, Vector2(1.55, 1.55))
+	await get_tree().create_timer(0.03).timeout
+	_spawn_fx_world(muzzle_pos + Vector2(10, -5), "muzzle", 0.14, Vector2(1.05, 1.05))
+	await _screen_pulse(Color(1.0, 0.72, 0.22, 0.3))
 	var enemy_node := _selected_enemy_sprite()
 	var hit_pos := get_viewport_rect().size * Vector2(0.72, 0.48)
 	if enemy_node and is_instance_valid(enemy_node):
-		hit_pos = enemy_node.global_position + Vector2(70, enemy_node.size.y * 0.55)
+		hit_pos = enemy_node.global_position + Vector2(70, enemy_node.size.y * 0.52)
 	await _fly_tracer(muzzle_pos, hit_pos)
-	_spawn_fx_world(hit_pos, "impact", 0.28, Vector2(1.55, 1.55))
-	_spawn_fx_world(hit_pos + Vector2(12, -8), "impact", 0.22, Vector2(0.85, 0.85))
-	_spawn_fx_world(hit_pos + Vector2(6, 10), "blood", 0.4, Vector2(1.25, 1.25))
+	_spawn_fx_world(hit_pos, "impact", 0.3, Vector2(1.7, 1.7))
+	_spawn_blood_burst(hit_pos, 1.35)
 	if enemy_node and is_instance_valid(enemy_node):
 		await _hit_actor_heavy(enemy_node, maxi(1, int(def.get("damage", 8))), true)
+	# Recoil
 	var twr := create_tween()
 	twr.set_parallel(true)
-	twr.tween_property(_player_actor, "position", base + Vector2(40, 0), 0.08)
-	twr.tween_property(player_sprite, "rotation_degrees", -2.0, 0.08)
+	twr.tween_property(_player_actor, "position", base + Vector2(48, 4), 0.1)
+	twr.tween_property(player_sprite, "rotation_degrees", -5.0, 0.1)
+	twr.tween_property(player_sprite, "scale", Vector2(1.06, 0.92), 0.1)
 	await twr.finished
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
-	tw2.tween_property(_player_actor, "position", base, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw2.tween_property(player_sprite, "rotation_degrees", 0.0, 0.24)
-	tw2.tween_property(player_sprite, "scale", Vector2.ONE, 0.24)
+	tw2.tween_property(_player_actor, "position", base, 0.26).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw2.tween_property(player_sprite, "rotation_degrees", 0.0, 0.26)
+	tw2.tween_property(player_sprite, "scale", Vector2.ONE, 0.26)
 	if _player_shadow:
-		tw2.tween_property(_player_shadow, "scale", Vector2.ONE, 0.24)
+		tw2.tween_property(_player_shadow, "scale", Vector2.ONE, 0.26)
 	await tw2.finished
+	player_sprite.set_meta("anim_locked", false)
 
 
 func _play_enemy_attack_sequence() -> void:
@@ -1804,7 +1873,7 @@ func _enemy_lunge_attack(index: int) -> void:
 		if at:
 			spr.texture = at
 	var wind := Vector2(18, 3) if is_boss else Vector2(10, 2)
-	var lunge := Vector2(-110, -8) if is_boss else Vector2(-62, -2)
+	var lunge := Vector2(-150, -8) if is_boss else Vector2(-98, -2)
 	var tw0 := create_tween()
 	tw0.set_parallel(true)
 	tw0.tween_property(spr, "position", base + wind, 0.14 if is_boss else 0.1)
@@ -1835,7 +1904,7 @@ func _enemy_lunge_attack(index: int) -> void:
 	var target := player_sprite.global_position + Vector2(90, player_sprite.size.y * 0.55)
 	await _fly_tracer(muzzle, target)
 	_spawn_fx_world(target, "impact", 0.3 if is_boss else 0.26, Vector2(1.55, 1.55) if is_boss else Vector2(1.35, 1.35))
-	_spawn_fx_world(target + Vector2(8, 6), "blood", 0.35 if is_boss else 0.3)
+	_spawn_blood_burst(target, 1.5 if is_boss else 1.15)
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
 	tw2.tween_property(spr, "position", base, 0.26 if is_boss else 0.2).set_trans(Tween.TRANS_SINE)
@@ -1909,6 +1978,48 @@ func _spawn_fx_at(node: CanvasItem, fx_name: String, offset: Vector2, life: floa
 	if not is_instance_valid(node):
 		return
 	_spawn_fx_world(node.global_position + offset, fx_name, life, Vector2.ONE, tint)
+
+
+
+func _spawn_blood_burst(pos: Vector2, power: float = 1.0) -> void:
+	## Salpicadura visible: varias gotas con caída.
+	var n := clampi(int(3.0 + power * 2.0), 3, 7)
+	for i in range(n):
+		var off := Vector2(randf_range(-22.0, 28.0), randf_range(-18.0, 12.0)) * power
+		var sc := randf_range(0.9, 1.7) * power
+		var life := randf_range(0.42, 0.75)
+		var tint := Color(randf_range(0.85, 1.15), randf_range(0.05, 0.2), randf_range(0.05, 0.15), 1.0)
+		_spawn_blood_drop(pos + off, sc, life, tint)
+	_spawn_fx_world(pos, "impact", 0.2, Vector2(1.2, 1.2) * power, Color(1.0, 0.35, 0.25))
+
+
+func _spawn_blood_drop(pos: Vector2, sc: float, life: float, tint: Color) -> void:
+	var tex := _fx_tex("blood")
+	if tex == null:
+		return
+	var fx := TextureRect.new()
+	fx.texture = tex
+	fx.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fx.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fx.z_index = 97
+	fx.modulate = tint
+	fx.size = Vector2(54, 54) * sc
+	fx.pivot_offset = fx.size * 0.5
+	_fx_layer.add_child(fx)
+	fx.global_position = pos - fx.size * 0.5
+	var rise := pos + Vector2(randf_range(-10, 10), randf_range(-28, -12)) * sc
+	var fall := pos + Vector2(randf_range(-16, 18), randf_range(36, 70)) * sc
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(fx, "global_position", rise - fx.size * 0.5, life * 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(fx, "scale", Vector2.ONE * (1.0 + 0.35 * sc), life * 0.28)
+	tw.chain()
+	tw.set_parallel(true)
+	tw.tween_property(fx, "global_position", fall - fx.size * 0.5, life * 0.72).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(fx, "modulate:a", 0.0, life * 0.72)
+	tw.tween_property(fx, "rotation_degrees", randf_range(-40, 40), life * 0.72)
+	tw.chain().tween_callback(fx.queue_free)
 
 
 func _spawn_fx_world(pos: Vector2, fx_name: String, life: float, sc: Vector2 = Vector2.ONE, tint: Color = Color.WHITE) -> void:

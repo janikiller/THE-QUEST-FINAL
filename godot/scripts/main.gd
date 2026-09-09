@@ -23,6 +23,7 @@ func _ready() -> void:
 		"TQ_SMOKE", "TQ_INV", "TQ_PLAYTEST", "TQ_COMBAT_SHOT", "TQ_MAP_SHOT",
 		"TQ_BOSS_MARKET_SHOT", "TQ_BOSS_FIGHT", "TQ_ROSTER_SHOT", "TQ_ANIME_CARDS_SHOT",
 		"TQ_MARKET_ROULETTE_SHOT", "TQ_XP_PACK_SHOT", "TQ_FIX_SHOT", "TQ_ENEMY_CARDS_SHOT",
+		"TQ_GROUND_SHOT",
 	]:
 		if OS.get_environment(key) == "1":
 			mode = key
@@ -54,8 +55,69 @@ func _ready() -> void:
 			call_deferred("_fix_shot")
 		"TQ_ENEMY_CARDS_SHOT":
 			call_deferred("_enemy_cards_shot")
+		"TQ_GROUND_SHOT":
+			call_deferred("_ground_shot")
 		_:
 			pass
+
+
+func _ground_shot() -> void:
+	## Evidencia: García mirando bien, suelo plantado, sangre al golpear.
+	await get_tree().create_timer(0.7).timeout
+	var tries := 0
+	while GameState.active_missions.is_empty() and tries < 40:
+		await get_tree().create_timer(0.15).timeout
+		tries += 1
+	if GameState.active_missions.is_empty():
+		print("GROUND_SHOT_FAIL no missions")
+		get_tree().quit(1)
+		return
+	var mid := ""
+	for m in GameState.active_missions.values():
+		if str(m.get("status", "")) == "open" and not bool(m.get("is_boss", false)):
+			mid = str(m.get("id", ""))
+			break
+	if mid == "":
+		mid = String(GameState.active_missions.keys()[0])
+	$UI/UIRouter.begin_fight(mid)
+	await get_tree().process_frame
+	await get_tree().create_timer(0.6).timeout
+	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	if combat == null:
+		print("GROUND_SHOT_FAIL no combat")
+		get_tree().quit(1)
+		return
+	var floor_ok := combat.get_node_or_null("FloorPlane") != null
+	var flipped := false
+	if combat.player_sprite:
+		flipped = combat.player_sprite.flip_h
+	print("GROUND_SHOT floor=", floor_ok, " flip_h=", flipped)
+	if not floor_ok:
+		print("GROUND_SHOT_FAIL no floor")
+		get_tree().quit(1)
+		return
+	if flipped:
+		print("GROUND_SHOT_FAIL player still flipped")
+		get_tree().quit(1)
+		return
+	await _save_shot("combate_suelo_facing")
+	# Sangre visible
+	if combat.has_method("_spawn_blood_burst"):
+		combat._spawn_blood_burst(Vector2(900, 360), 1.7)
+		await get_tree().create_timer(0.5).timeout
+		await _save_shot("combate_sangre_impacto")
+	# Ataque con gesto
+	var snap: Dictionary = CombatState.get_snapshot()
+	var hand: Array = snap.get("hand", [])
+	for cid in hand:
+		var id := str(cid)
+		if CombatState.can_play_card(id):
+			CombatState.play_card(id)
+			await get_tree().create_timer(1.0).timeout
+			await _save_shot("combate_gesto_ataque")
+			break
+	print("GROUND_SHOT_OK")
+	get_tree().quit(0)
 
 
 func _enemy_cards_shot() -> void:
