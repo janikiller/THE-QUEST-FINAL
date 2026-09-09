@@ -35,6 +35,44 @@ func _ready() -> void:
 		call_deferred("_roster_shot")
 	if OS.get_environment("TQ_ANIME_CARDS_SHOT") == "1":
 		call_deferred("_anime_cards_shot")
+	if OS.get_environment("TQ_MARKET_ROULETTE_SHOT") == "1":
+		call_deferred("_market_roulette_shot")
+
+
+func _market_roulette_shot() -> void:
+	## Evidencia: mercado rediseñado + ruleta de cartas.
+	await get_tree().create_timer(0.8).timeout
+	GameState.credits = 80
+	GameState.credits_changed.emit(GameState.credits)
+	GameState.boss_defeated = true
+	$UI/UIRouter.show_market("alpha")
+	await get_tree().process_frame
+	await get_tree().create_timer(0.35).timeout
+	var market = $UI/UIRouter.get_node_or_null("MarketScreen")
+	if market == null:
+		print("MARKET_ROULETTE_FAIL no market")
+		get_tree().quit(1)
+		return
+	market._set_mode("shop")
+	market._filter = "todos"
+	market._rebuild()
+	var stock: Array = CardDB.cards_for_market(true)
+	if not stock.is_empty():
+		market._selected_id = str(stock[0].get("id", ""))
+		market._refresh_detail()
+	await get_tree().create_timer(0.4).timeout
+	await _save_shot("mercado_tienda_bonita")
+	market._set_mode("roulette")
+	await get_tree().process_frame
+	await get_tree().create_timer(0.45).timeout
+	await _save_shot("mercado_ruleta_lista")
+	if market.has_method("_spin_roulette"):
+		market._spin_roulette()
+		# Espera animación (~2.6s) + margen
+		await get_tree().create_timer(3.2).timeout
+	await _save_shot("mercado_ruleta_premio")
+	print("MARKET_ROULETTE_SHOT_OK credits=", GameState.credits)
+	get_tree().quit(0)
 
 
 func _anime_cards_shot() -> void:

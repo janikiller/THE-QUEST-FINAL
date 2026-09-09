@@ -176,7 +176,7 @@ func effect_line(def: Dictionary) -> String:
 	if stun > 0 or bool(def.get("stun", false)):
 		bits.append("stun" if stun <= 1 else "stun %d" % stun)
 	if bool(def.get("detain", false)):
-		bits.append("detiene a 0 PV")
+		bits.append("detiene (0 PV)")
 	if bits.is_empty():
 		var fallback := str(def.get("effect", def.get("desc", def.get("description", ""))))
 		return _clip_text(fallback, 36)
