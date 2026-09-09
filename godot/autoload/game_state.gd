@@ -344,7 +344,7 @@ func severity_for_period(base: String, period: String = "") -> String:
 			return order[mini(idx + 1, 3)]
 		"night":
 			# Noche: siempre peligrosa
-			return order[maxi(idx + 1, 2)]
+			return order[clampi(idx + 1, 2, 3)]
 		_:
 			return base
 

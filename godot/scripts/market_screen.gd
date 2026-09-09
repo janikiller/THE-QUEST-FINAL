@@ -65,7 +65,7 @@ func _rebuild_filters() -> void:
 		b.text = t.to_upper()
 		b.toggle_mode = true
 		b.button_pressed = _filter == t
-		var key := t
+		var key: String = str(t)
 		b.pressed.connect(func():
 			_filter = key
 			_rebuild_cards()
