@@ -1,0 +1,414 @@
+{
+	"style": "anime",
+	"enemies": [
+		{
+			"id": "foe_01_hoodie",
+			"name": "Máscara Roja",
+			"alias": "Hoodie pistolero",
+			"role": "ataque",
+			"hp": 26,
+			"sprite": "res://assets/combat/anime/foes/foe_01_hoodie.png",
+			"portrait": "res://assets/combat/anime/foes/foe_01_hoodie.png",
+			"intent_bonus": 1
+		},
+		{
+			"id": "foe_02_knives",
+			"name": "Sombra Violeta",
+			"alias": "Ladrona de cuchillos",
+			"role": "tactica",
+			"hp": 24,
+			"sprite": "res://assets/combat/anime/foes/foe_02_knives.png",
+			"portrait": "res://assets/combat/anime/foes/foe_02_knives.png",
+			"intent_bonus": 0
+		},
+		{
+			"id": "foe_03_bat",
+			"name": "El Mazo",
+			"alias": "Bruto con bate",
+			"role": "ataque",
+			"hp": 34,
+			"sprite": "res://assets/combat/anime/foes/foe_03_bat.png",
+			"portrait": "res://assets/combat/anime/foes/foe_03_bat.png",
+			"intent_bonus": 1
+		},
+		{
+			"id": "foe_04_skate",
+			"name": "Mohawk",
+			"alias": "Punk skater",
+			"role": "tactica",
+			"hp": 22,
+			"sprite": "res://assets/combat/anime/foes/foe_04_skate.png",
+			"portrait": "res://assets/combat/anime/foes/foe_04_skate.png",
+			"intent_bonus": 0
+		},
+		{
+			"id": "foe_05_biker",
+			"name": "Motorista",
+			"alias": "Banda de la carretera",
+			"role": "ataque",
+			"hp": 30,
+			"sprite": "res://assets/combat/anime/foes/foe_05_biker.png",
+			"portrait": "res://assets/combat/anime/foes/foe_05_biker.png",
+			"intent_bonus": 1
+		},
+		{
+			"id": "foe_06_hacker",
+			"name": "Glitch",
+			"alias": "Hacker de calle",
+			"role": "especial",
+			"hp": 20,
+			"sprite": "res://assets/combat/anime/foes/foe_06_hacker.png",
+			"portrait": "res://assets/combat/anime/foes/foe_06_hacker.png",
+			"intent_bonus": 0
+		},
+		{
+			"id": "foe_07_revolver",
+			"name": "Revolvera",
+			"alias": "Tiradora dura",
+			"role": "ataque",
+			"hp": 28,
+			"sprite": "res://assets/combat/anime/foes/foe_07_revolver.png",
+			"portrait": "res://assets/combat/anime/foes/foe_07_revolver.png",
+			"intent_bonus": 1
+		},
+		{
+			"id": "foe_08_pickpocket",
+			"name": "El Capote",
+			"alias": "Carterista veterano",
+			"role": "tactica",
+			"hp": 18,
+			"sprite": "res://assets/combat/anime/foes/foe_08_pickpocket.png",
+			"portrait": "res://assets/combat/anime/foes/foe_08_pickpocket.png",
+			"intent_bonus": 0
+		},
+		{
+			"id": "foe_09_hooligan",
+			"name": "Ultra",
+			"alias": "Hooligan",
+			"role": "ataque",
+			"hp": 32,
+			"sprite": "res://assets/combat/anime/foes/foe_09_hooligan.png",
+			"portrait": "res://assets/combat/anime/foes/foe_09_hooligan.png",
+			"intent_bonus": 1
+		},
+		{
+			"id": "foe_10_crowbar",
+			"name": "Casco",
+			"alias": "Obrero criminal",
+			"role": "ataque",
+			"hp": 30,
+			"sprite": "res://assets/combat/anime/foes/foe_10_crowbar.png",
+			"portrait": "res://assets/combat/anime/foes/foe_10_crowbar.png",
+			"intent_bonus": 1
+		},
+		{
+			"id": "foe_11_dealer",
+			"name": "Traje Oro",
+			"alias": "Traficante pijo",
+			"role": "especial",
+			"hp": 26,
+			"sprite": "res://assets/combat/anime/foes/foe_11_dealer.png",
+			"portrait": "res://assets/combat/anime/foes/foe_11_dealer.png",
+			"intent_bonus": 0
+		},
+		{
+			"id": "foe_12_sniper",
+			"name": "Francotirador",
+			"alias": "Rifle de precisión",
+			"role": "ataque",
+			"hp": 24,
+			"sprite": "res://assets/combat/anime/foes/foe_12_sniper.png",
+			"portrait": "res://assets/combat/anime/foes/foe_12_sniper.png",
+			"intent_bonus": 1
+		},
+		{
+			"id": "foe_13_acrobat",
+			"name": "Parkour",
+			"alias": "Ladrón acróbata",
+			"role": "tactica",
+			"hp": 22,
+			"sprite": "res://assets/combat/anime/foes/foe_13_acrobat.png",
+			"portrait": "res://assets/combat/anime/foes/foe_13_acrobat.png",
+			"intent_bonus": 0
+		},
+		{
+			"id": "foe_14_medic",
+			"name": "Jeringa",
+			"alias": "Paramédico corrupto",
+			"role": "especial",
+			"hp": 24,
+			"sprite": "res://assets/combat/anime/foes/foe_14_medic.png",
+			"portrait": "res://assets/combat/anime/foes/foe_14_medic.png",
+			"intent_bonus": 0
+		},
+		{
+			"id": "foe_15_clown",
+			"name": "Payaso",
+			"alias": "Máscara de caos",
+			"role": "especial",
+			"hp": 26,
+			"sprite": "res://assets/combat/anime/foes/foe_15_clown.png",
+			"portrait": "res://assets/combat/anime/foes/foe_15_clown.png",
+			"intent_bonus": 0
+		},
+		{
+			"id": "foe_16_handler",
+			"name": "Collar",
+			"alias": "Encargado de jauría",
+			"role": "ataque",
+			"hp": 28,
+			"sprite": "res://assets/combat/anime/foes/foe_16_handler.png",
+			"portrait": "res://assets/combat/anime/foes/foe_16_handler.png",
+			"intent_bonus": 1
+		},
+		{
+			"id": "foe_17_courier",
+			"name": "Repartidor",
+			"alias": "Mensajero armado",
+			"role": "tactica",
+			"hp": 22,
+			"sprite": "res://assets/combat/anime/foes/foe_17_courier.png",
+			"portrait": "res://assets/combat/anime/foes/foe_17_courier.png",
+			"intent_bonus": 0
+		},
+		{
+			"id": "foe_18_molotov",
+			"name": "Mecha",
+			"alias": "Punk incendiario",
+			"role": "especial",
+			"hp": 28,
+			"sprite": "res://assets/combat/anime/foes/foe_18_molotov.png",
+			"portrait": "res://assets/combat/anime/foes/foe_18_molotov.png",
+			"intent_bonus": 0
+		},
+		{
+			"id": "foe_19_boxer",
+			"name": "Puños",
+			"alias": "Boxeador callejero",
+			"role": "ataque",
+			"hp": 30,
+			"sprite": "res://assets/combat/anime/foes/foe_19_boxer.png",
+			"portrait": "res://assets/combat/anime/foes/foe_19_boxer.png",
+			"intent_bonus": 1
+		},
+		{
+			"id": "foe_20_assassin",
+			"name": "Silencio",
+			"alias": "Asesino de pistola",
+			"role": "ataque",
+			"hp": 26,
+			"sprite": "res://assets/combat/anime/foes/foe_20_assassin.png",
+			"portrait": "res://assets/combat/anime/foes/foe_20_assassin.png",
+			"intent_bonus": 1
+		}
+	],
+	"bosses": [
+		{
+			"id": "boss_01_capo",
+			"name": "EL CAPO",
+			"alias": "Jefe del crimen organizado",
+			"archetype": "organizado",
+			"arena": "bg_harbor",
+			"hp": 110,
+			"damage": 16,
+			"sprite": "res://assets/combat/anime/bosses/boss_01_capo.png",
+			"pose_attack": "res://assets/combat/anime/bosses/boss_01_capo_attack.png",
+			"pose_hurt": "res://assets/combat/anime/bosses/boss_01_capo_hurt.png",
+			"portrait": "res://assets/combat/anime/bosses/boss_01_capo.png",
+			"day_min": 2
+		},
+		{
+			"id": "boss_02_viuda",
+			"name": "LA VIUDA",
+			"alias": "Matriarca elegante",
+			"archetype": "organizado",
+			"arena": "bg_penthouse",
+			"hp": 95,
+			"damage": 14,
+			"sprite": "res://assets/combat/anime/bosses/boss_02_viuda.png",
+			"pose_attack": "res://assets/combat/anime/bosses/boss_02_viuda_attack.png",
+			"pose_hurt": "res://assets/combat/anime/bosses/boss_02_viuda_hurt.png",
+			"portrait": "res://assets/combat/anime/bosses/boss_02_viuda.png",
+			"day_min": 3
+		},
+		{
+			"id": "boss_03_fantasma",
+			"name": "EL FANTASMA",
+			"alias": "Francotirador fantasma",
+			"archetype": "letal",
+			"arena": "bg_rooftop",
+			"hp": 90,
+			"damage": 18,
+			"sprite": "res://assets/combat/anime/bosses/boss_03_fantasma.png",
+			"pose_attack": "res://assets/combat/anime/bosses/boss_03_fantasma_attack.png",
+			"pose_hurt": "res://assets/combat/anime/bosses/boss_03_fantasma_hurt.png",
+			"portrait": "res://assets/combat/anime/bosses/boss_03_fantasma.png",
+			"day_min": 4
+		},
+		{
+			"id": "boss_04_veneno",
+			"name": "DR. VENENO",
+			"alias": "Químico loco",
+			"archetype": "especial",
+			"arena": "bg_warehouse",
+			"hp": 100,
+			"damage": 13,
+			"sprite": "res://assets/combat/anime/bosses/boss_04_veneno.png",
+			"pose_attack": "res://assets/combat/anime/bosses/boss_04_veneno_attack.png",
+			"pose_hurt": "res://assets/combat/anime/bosses/boss_04_veneno_hurt.png",
+			"portrait": "res://assets/combat/anime/bosses/boss_04_veneno.png",
+			"day_min": 5
+		},
+		{
+			"id": "boss_05_titan",
+			"name": "TITÁN",
+			"alias": "Gigante invulnerable",
+			"archetype": "bruto",
+			"arena": "bg_construction",
+			"hp": 140,
+			"damage": 12,
+			"sprite": "res://assets/combat/anime/bosses/boss_05_titan.png",
+			"pose_attack": "res://assets/combat/anime/bosses/boss_05_titan_attack.png",
+			"pose_hurt": "res://assets/combat/anime/bosses/boss_05_titan_hurt.png",
+			"portrait": "res://assets/combat/anime/bosses/boss_05_titan.png",
+			"day_min": 6
+		},
+		{
+			"id": "boss_06_sombra",
+			"name": "LA SOMBRA",
+			"alias": "Asesina cyber",
+			"archetype": "letal",
+			"arena": "bg_neon_alley",
+			"hp": 98,
+			"damage": 17,
+			"sprite": "res://assets/combat/anime/bosses/boss_06_sombra.png",
+			"pose_attack": "res://assets/combat/anime/bosses/boss_06_sombra_attack.png",
+			"pose_hurt": "res://assets/combat/anime/bosses/boss_06_sombra_hurt.png",
+			"portrait": "res://assets/combat/anime/bosses/boss_06_sombra.png",
+			"day_min": 7
+		},
+		{
+			"id": "boss_07_rey_puerto",
+			"name": "REY DEL PUERTO",
+			"alias": "Señor de los muelles",
+			"archetype": "organizado",
+			"arena": "bg_harbor",
+			"hp": 115,
+			"damage": 15,
+			"sprite": "res://assets/combat/anime/bosses/boss_07_rey_puerto.png",
+			"pose_attack": "res://assets/combat/anime/bosses/boss_07_rey_puerto_attack.png",
+			"pose_hurt": "res://assets/combat/anime/bosses/boss_07_rey_puerto_hurt.png",
+			"portrait": "res://assets/combat/anime/bosses/boss_07_rey_puerto.png",
+			"day_min": 8
+		},
+		{
+			"id": "boss_08_zero",
+			"name": "HACKER ZERO",
+			"alias": "Cerebro digital",
+			"archetype": "especial",
+			"arena": "bg_subway",
+			"hp": 88,
+			"damage": 14,
+			"sprite": "res://assets/combat/anime/bosses/boss_08_zero.png",
+			"pose_attack": "res://assets/combat/anime/bosses/boss_08_zero_attack.png",
+			"pose_hurt": "res://assets/combat/anime/bosses/boss_08_zero_hurt.png",
+			"portrait": "res://assets/combat/anime/bosses/boss_08_zero.png",
+			"day_min": 9
+		},
+		{
+			"id": "boss_09_fuego",
+			"name": "HERMANO FUEGO",
+			"alias": "Pirómano",
+			"archetype": "especial",
+			"arena": "bg_warehouse",
+			"hp": 105,
+			"damage": 16,
+			"sprite": "res://assets/combat/anime/bosses/boss_09_fuego.png",
+			"pose_attack": "res://assets/combat/anime/bosses/boss_09_fuego_attack.png",
+			"pose_hurt": "res://assets/combat/anime/bosses/boss_09_fuego_hurt.png",
+			"portrait": "res://assets/combat/anime/bosses/boss_09_fuego.png",
+			"day_min": 10
+		},
+		{
+			"id": "boss_10_coronel",
+			"name": "CORONEL CAÍDO",
+			"alias": "Exmilitar corrupto",
+			"archetype": "militar",
+			"arena": "bg_station",
+			"hp": 120,
+			"damage": 16,
+			"sprite": "res://assets/combat/anime/bosses/boss_10_coronel.png",
+			"pose_attack": "res://assets/combat/anime/bosses/boss_10_coronel_attack.png",
+			"pose_hurt": "res://assets/combat/anime/bosses/boss_10_coronel_hurt.png",
+			"portrait": "res://assets/combat/anime/bosses/boss_10_coronel.png",
+			"day_min": 11
+		}
+	],
+	"arenas": [
+		{
+			"id": "bg_neon_alley",
+			"name": "Calle Neón",
+			"period": "night",
+			"path": "res://assets/combat/anime/bg/bg_neon_alley.png"
+		},
+		{
+			"id": "bg_warehouse",
+			"name": "Almacén",
+			"period": "night",
+			"path": "res://assets/combat/anime/bg/bg_warehouse.png"
+		},
+		{
+			"id": "bg_rooftop",
+			"name": "Azotea",
+			"period": "dusk",
+			"path": "res://assets/combat/anime/bg/bg_rooftop.png"
+		},
+		{
+			"id": "bg_subway",
+			"name": "Metro",
+			"period": "night",
+			"path": "res://assets/combat/anime/bg/bg_subway.png"
+		},
+		{
+			"id": "bg_harbor",
+			"name": "Puerto",
+			"period": "night",
+			"path": "res://assets/combat/anime/bg/bg_harbor.png"
+		},
+		{
+			"id": "bg_penthouse",
+			"name": "Ático",
+			"period": "night",
+			"path": "res://assets/combat/anime/bg/bg_penthouse.png"
+		},
+		{
+			"id": "bg_parking",
+			"name": "Parking",
+			"period": "night",
+			"path": "res://assets/combat/anime/bg/bg_parking.png"
+		},
+		{
+			"id": "bg_construction",
+			"name": "Obras",
+			"period": "dusk",
+			"path": "res://assets/combat/anime/bg/bg_construction.png"
+		},
+		{
+			"id": "bg_market",
+			"name": "Mercado Nocturno",
+			"period": "night",
+			"path": "res://assets/combat/anime/bg/bg_market.png"
+		},
+		{
+			"id": "bg_station",
+			"name": "Garaje Comisaría",
+			"period": "day",
+			"path": "res://assets/combat/anime/bg/bg_station.png"
+		}
+	],
+	"hero": {
+		"idle": "res://assets/combat/anime/hero/idle.png",
+		"shoot": "res://assets/combat/anime/hero/shoot.png",
+		"hurt": "res://assets/combat/anime/hero/hurt.png"
+	}
+}

@@ -6,6 +6,7 @@ signal combat_started
 signal combat_updated
 signal combat_ended(victory: bool)
 signal log_message(text: String)
+signal enemy_defeated(enemy_index: int, xp_gained: int)
 
 enum Phase { PLAYER, ENEMY, RESOLVING, ENDED }
 enum Intent { ATTACK, BLOCK, FLEE }
@@ -24,6 +25,9 @@ var mission_id: String = ""
 var location_label: String = ""
 var objective: String = "Detener a los sospechosos"
 var last_log: String = ""
+var combat_xp_gained: int = 0
+var combat_kills: int = 0
+var combat_levels_gained: int = 0
 
 const HAND_SIZE := 5
 const INTENT_LABELS := {
@@ -78,6 +82,9 @@ func start_combat(cfg: Dictionary) -> void:
 			"weak": 0,
 			"portrait": str(e.get("portrait", "")),
 			"sprite": str(e.get("sprite", "delinquent_01")),
+			"is_boss": bool(e.get("is_boss", false)),
+			"pose_attack": str(e.get("pose_attack", "")),
+			"pose_hurt": str(e.get("pose_hurt", "")),
 		})
 	_roll_intents()
 	selected_enemy = _first_living_enemy()
@@ -85,6 +92,9 @@ func start_combat(cfg: Dictionary) -> void:
 	draw_pile.clear()
 	discard_pile.clear()
 	hand.clear()
+	combat_xp_gained = 0
+	combat_kills = 0
+	combat_levels_gained = 0
 	var deck: Array = cfg.get("deck", [])
 	for c in deck:
 		draw_pile.append(str(c))
@@ -111,6 +121,12 @@ func get_snapshot() -> Dictionary:
 		"objective": objective,
 		"mission_id": mission_id,
 		"last_log": last_log,
+		"combat_xp": combat_xp_gained,
+		"combat_kills": combat_kills,
+		"combat_levels": combat_levels_gained,
+		"hero_level": GameState.hero_level,
+		"hero_xp": GameState.hero_xp,
+		"xp_to_next": GameState.xp_to_next_level(),
 	}
 
 
@@ -237,6 +253,7 @@ func _resolve_card(def: Dictionary, target_index: int) -> void:
 
 func _deal_to_enemy(index: int, amount: int) -> int:
 	var e: Dictionary = enemies[index]
+	var hp_before := int(e.get("hp", 0))
 	var blk := int(e.get("block", 0))
 	var dealt := amount
 	if blk > 0:
@@ -244,11 +261,24 @@ func _deal_to_enemy(index: int, amount: int) -> int:
 		e["block"] = blk - absorb
 		dealt = amount - absorb
 	e["hp"] = maxi(0, int(e.get("hp", 0)) - dealt)
-	if int(e.get("hp", 0)) <= 0 and not bool(e.get("detained", false)):
-		# Downed — can still be cuffed next card / auto-detain if already 0
-		pass
+	if hp_before > 0 and int(e.get("hp", 0)) <= 0 and not bool(e.get("xp_granted", false)):
+		e["xp_granted"] = true
+		var xp := _xp_for_enemy(e)
+		var res: Dictionary = GameState.add_combat_xp(xp)
+		combat_xp_gained += int(res.get("xp", xp))
+		combat_kills += 1
+		combat_levels_gained += int(res.get("levels", 0))
+		_log("%s neutralizado (+%d XP)." % [e.get("name", "?"), xp])
+		enemy_defeated.emit(index, xp)
 	enemies[index] = e
 	return dealt
+
+
+func _xp_for_enemy(e: Dictionary) -> int:
+	var max_hp := maxi(1, int(e.get("max_hp", 28)))
+	if bool(e.get("is_boss", false)):
+		return 90 + max_hp / 4
+	return 10 + max_hp / 3
 
 
 func _deal_to_player(amount: int) -> int:
@@ -322,11 +352,23 @@ func _roll_intents() -> void:
 		if not _enemy_alive(i):
 			continue
 		var e: Dictionary = enemies[i]
+		var is_boss := bool(e.get("is_boss", false))
 		var roll := randi() % 100
 		var hp_ratio := float(e.get("hp", 1)) / float(maxi(1, int(e.get("max_hp", 1))))
-		if hp_ratio < 0.3 and roll < 40:
+		# El Capo no huye.
+		if not is_boss and hp_ratio < 0.3 and roll < 40:
 			e["intent"] = Intent.FLEE
 			e["intent_value"] = 0
+		elif is_boss:
+			if roll < 70:
+				e["intent"] = Intent.ATTACK
+				e["intent_value"] = 12 + turn + (2 if hp_ratio < 0.5 else 0)
+			elif roll < 90:
+				e["intent"] = Intent.BLOCK
+				e["intent_value"] = 10 + turn
+			else:
+				e["intent"] = Intent.ATTACK
+				e["intent_value"] = 16 + turn
 		elif roll < 55:
 			e["intent"] = Intent.ATTACK
 			e["intent_value"] = 7 + (turn / 2) + (i * 2)
@@ -417,7 +459,12 @@ func _check_end_conditions() -> bool:
 func _end_combat(victory: bool) -> void:
 	phase = Phase.ENDED
 	active = false
-	last_log = "Intervención exitosa." if victory else "La unidad cae. Abortar."
+	if victory and combat_xp_gained > 0:
+		last_log = "Intervención exitosa. +%d XP." % combat_xp_gained
+		if combat_levels_gained > 0:
+			last_log += " ¡Subes de nivel!"
+	else:
+		last_log = "Intervención exitosa." if victory else "La unidad cae. Abortar."
 	_log(last_log)
 	combat_ended.emit(victory)
 	combat_updated.emit()
