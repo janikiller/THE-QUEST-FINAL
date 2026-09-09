@@ -1,0 +1,140 @@
+[gd_scene load_steps=2 format=3 uid="uid://bqmarketscreen1"]
+
+[ext_resource type="Script" path="res://scripts/market_screen.gd" id="1_script"]
+
+[node name="MarketScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.02, 0.05, 0.09, 0.97)
+
+[node name="Root" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 14
+
+[node name="Cols" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Main" type="VBoxContainer" parent="Root/Cols"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Header" type="HBoxContainer" parent="Root/Cols/Main"]
+layout_mode = 2
+
+[node name="TitleBox" type="VBoxContainer" parent="Root/Cols/Main/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Title" type="Label" parent="Root/Cols/Main/Header/TitleBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "MERCADO DE CARTAS"
+
+[node name="Sub" type="Label" parent="Root/Cols/Main/Header/TitleBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Amplía el mazo con créditos"
+
+[node name="CreditsLabel" type="Label" parent="Root/Cols/Main/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "CRÉDITOS  0"
+
+[node name="BtnClose" type="Button" parent="Root/Cols/Main/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 2
+text = "CERRAR"
+
+[node name="FilterRow" type="HBoxContainer" parent="Root/Cols/Main"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Scroll" type="ScrollContainer" parent="Root/Cols/Main"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CardsGrid" type="GridContainer" parent="Root/Cols/Main/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 4
+
+[node name="Side" type="PanelContainer" parent="Root/Cols"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+
+[node name="SideMargin" type="MarginContainer" parent="Root/Cols/Side"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="SideV" type="VBoxContainer" parent="Root/Cols/Side/SideMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="DetailName" type="Label" parent="Root/Cols/Side/SideMargin/SideV"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Elige una carta"
+autowrap_mode = 3
+
+[node name="DetailMeta" type="Label" parent="Root/Cols/Side/SideMargin/SideV"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="DetailEffect" type="RichTextLabel" parent="Root/Cols/Side/SideMargin/SideV"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+text = ""
+
+[node name="DetailDesc" type="Label" parent="Root/Cols/Side/SideMargin/SideV"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+autowrap_mode = 3
+text = ""
+
+[node name="Spacer" type="Control" parent="Root/Cols/Side/SideMargin/SideV"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BtnBuy" type="Button" parent="Root/Cols/Side/SideMargin/SideV"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "COMPRAR"
