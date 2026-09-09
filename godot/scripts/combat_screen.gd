@@ -264,6 +264,7 @@ func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
 	_prev_player_hp = -1
 	_prev_player_block = 0
 	visible = true
+	AudioDirector.enter_combat()
 	CombatState.start_combat(cfg)
 	_apply_hero_pose("idle")
 	_refresh()
@@ -275,6 +276,7 @@ func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
 
 func close() -> void:
 	visible = false
+	AudioDirector.exit_combat()
 	var router := get_parent()
 	if router and router.has_method("show_map"):
 		router.show_map()
@@ -797,7 +799,7 @@ func _play_card_fx(panel: Control, card_id: String) -> void:
 	await tw.finished
 
 	if is_attack:
-		await _hero_attack_sequence(def)
+		await _hero_attack_sequence(def, card_id)
 	elif is_block:
 		_apply_hero_pose("aim", 0.45)
 		await _hero_guard_pulse()
@@ -814,6 +816,7 @@ func _play_card_fx(panel: Control, card_id: String) -> void:
 
 
 func _hero_guard_pulse() -> void:
+	AudioDirector.play_shield()
 	if _player_actor == null:
 		await get_tree().create_timer(0.2).timeout
 		return
@@ -857,9 +860,10 @@ func _hero_guard_pulse() -> void:
 	await tw2.finished
 
 
-func _hero_attack_sequence(def: Dictionary) -> void:
+func _hero_attack_sequence(def: Dictionary, card_id: String = "") -> void:
 	_apply_hero_pose("shoot", 0.9)
 	if _player_actor == null:
+		AudioDirector.play_gunshot(card_id, def)
 		await get_tree().create_timer(0.25).timeout
 		return
 	var base := _player_base_pos
@@ -880,15 +884,22 @@ func _hero_attack_sequence(def: Dictionary) -> void:
 		tw.tween_property(_player_shadow, "scale", Vector2(1.35, 0.75), 0.14)
 	await tw.finished
 	var muzzle_pos := player_sprite.global_position + Vector2(135, 115)
+	AudioDirector.play_gunshot(card_id, def)
 	_spawn_fx_world(muzzle_pos, "muzzle", 0.16, Vector2(1.35, 1.35))
 	await get_tree().create_timer(0.04).timeout
 	_spawn_fx_world(muzzle_pos + Vector2(8, -4), "muzzle", 0.14, Vector2(0.9, 0.9))
+	# Segunda descarga en ráfagas
+	if int(def.get("hits", 1)) > 1:
+		await get_tree().create_timer(0.08).timeout
+		AudioDirector.play_shotgun(1.15)
+		_spawn_fx_world(muzzle_pos + Vector2(4, 6), "muzzle", 0.12, Vector2(1.1, 1.1))
 	await _screen_pulse(Color(1.0, 0.82, 0.3, 0.26))
 	var enemy_node := _selected_enemy_sprite()
 	var hit_pos := get_viewport_rect().size * Vector2(0.72, 0.48)
 	if enemy_node and is_instance_valid(enemy_node):
 		hit_pos = enemy_node.global_position + Vector2(70, enemy_node.size.y * 0.55)
 	await _fly_tracer(muzzle_pos, hit_pos)
+	AudioDirector.play_hit()
 	_spawn_fx_world(hit_pos, "impact", 0.28, Vector2(1.55, 1.55))
 	_spawn_fx_world(hit_pos + Vector2(12, -8), "impact", 0.22, Vector2(0.85, 0.85))
 	_spawn_fx_world(hit_pos + Vector2(6, 10), "blood", 0.4, Vector2(1.25, 1.25))
@@ -949,11 +960,13 @@ func _enemy_lunge_attack(index: int) -> void:
 		tw.tween_property(shadow, "scale", Vector2(1.3, 0.78), 0.14)
 	await tw.finished
 	var muzzle := spr.global_position + Vector2(24, spr.size.y * 0.48)
+	AudioDirector.play_shotgun(0.88)
 	_spawn_fx_world(muzzle, "muzzle", 0.16, Vector2(1.2, 1.2))
 	await get_tree().create_timer(0.03).timeout
 	_spawn_fx_world(muzzle + Vector2(-6, 3), "muzzle", 0.12, Vector2(0.8, 0.8))
 	var target := player_sprite.global_position + Vector2(90, player_sprite.size.y * 0.55)
 	await _fly_tracer(muzzle, target)
+	AudioDirector.play_hit()
 	_spawn_fx_world(target, "impact", 0.26, Vector2(1.35, 1.35))
 	_spawn_fx_world(target + Vector2(8, 6), "blood", 0.3)
 	var tw2 := create_tween()
