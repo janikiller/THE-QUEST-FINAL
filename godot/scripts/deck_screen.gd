@@ -139,7 +139,12 @@ func _rebuild_cards() -> void:
 		var def: Dictionary = CardDB.get_card(str(cid))
 		if def.is_empty():
 			continue
-		if _filter != "todos" and str(def.get("type", "")) != _filter:
+		var rar := CardDB.normalize_rarity(str(def.get("rarity", "basica")))
+		var typ := str(def.get("type", ""))
+		if _filter in ["basica", "magica", "fuerza", "legendaria"]:
+			if rar != _filter:
+				continue
+		elif _filter != "todos" and typ != _filter:
 			continue
 		var card := _make_card_widget(def, int(counts[cid]))
 		cards_grid.add_child(card)
