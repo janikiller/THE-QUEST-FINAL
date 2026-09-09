@@ -31,6 +31,74 @@ func _ready() -> void:
 		call_deferred("_boss_market_shot")
 	if OS.get_environment("TQ_BOSS_FIGHT") == "1":
 		call_deferred("_boss_fight_demo")
+	if OS.get_environment("TQ_ROSTER_SHOT") == "1":
+		call_deferred("_roster_shot")
+
+
+func _roster_shot() -> void:
+	## Evidencia: enemigos anime distintos + bosses + escenarios.
+	await get_tree().create_timer(1.0).timeout
+	print("ROSTER enemies=", CombatRoster.enemies.size(), " bosses=", CombatRoster.bosses.size(), " arenas=", CombatRoster.arenas.size())
+	if CombatRoster.enemies.size() < 20:
+		print("ROSTER_FAIL enemies")
+		get_tree().quit(1)
+		return
+	if CombatRoster.bosses.size() < 10:
+		print("ROSTER_FAIL bosses")
+		get_tree().quit(1)
+		return
+	# Misión normal con foes anime
+	await get_tree().create_timer(0.4).timeout
+	var mid := ""
+	for m in GameState.active_missions.values():
+		if str(m.get("status", "")) == "open" and not bool(m.get("is_boss", false)):
+			mid = str(m.get("id", ""))
+			break
+	if mid == "" and not GameState.active_missions.is_empty():
+		mid = str(GameState.active_missions.keys()[0])
+	if mid != "":
+		$UI/UIRouter.begin_fight(mid)
+		await get_tree().process_frame
+		await get_tree().create_timer(0.7).timeout
+		await _save_shot("anime_foes_variety")
+		$UI/UIRouter.show_map()
+		CombatState.active = false
+	# Tres bosses distintos
+	var shot_i := 0
+	for b in CombatRoster.bosses:
+		for old in GameState.active_missions.keys():
+			if bool(GameState.active_missions[old].get("is_boss", false)):
+				GameState.remove_mission(str(old))
+		GameState.boss_spawned = false
+		GameState.boss_mission_id = ""
+		GameState.active_boss_id = ""
+		GameState.day_index = int(b.get("day_min", 2))
+		GameState.defeated_bosses.clear()
+		# Marcar bosses previos como derrotados para forzar este
+		for prev in CombatRoster.bosses:
+			if str(prev.get("id", "")) == str(b.get("id", "")):
+				break
+			GameState.defeated_bosses.append(str(prev.get("id", "")))
+		GameState.request_boss_spawn()
+		await get_tree().create_timer(0.35).timeout
+		var bmid := GameState.boss_mission_id
+		if bmid == "":
+			continue
+		var p: Dictionary = GameState.patrols.get("alpha", {})
+		p["status"] = "available"
+		p.erase("_awaiting_combat")
+		GameState.set_patrol(p)
+		$UI/UIRouter.begin_fight(bmid)
+		await get_tree().process_frame
+		await get_tree().create_timer(0.55).timeout
+		await _save_shot("anime_boss_%02d_%s" % [shot_i + 1, str(b.get("id", "x")).replace("boss_", "")])
+		shot_i += 1
+		$UI/UIRouter.show_map()
+		CombatState.active = false
+		if shot_i >= 4:
+			break
+	print("ROSTER_SHOT_OK shots=", shot_i)
+	get_tree().quit(0)
 
 
 func _boss_fight_demo() -> void:
