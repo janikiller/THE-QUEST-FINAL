@@ -33,6 +33,87 @@ func _ready() -> void:
 		call_deferred("_boss_fight_demo")
 	if OS.get_environment("TQ_ROSTER_SHOT") == "1":
 		call_deferred("_roster_shot")
+	if OS.get_environment("TQ_ANIME_CARDS_SHOT") == "1":
+		call_deferred("_anime_cards_shot")
+
+
+func _anime_cards_shot() -> void:
+	## Evidencia: García anime + cartas por rareza (combate, mazo, mercado).
+	await get_tree().create_timer(1.0).timeout
+	print("ANIME_CARDS catalog=", CardDB.cards.size(), " starter=", CardDB.starter_deck.size())
+	if CardDB.cards.size() < 40:
+		print("ANIME_CARDS_FAIL catalog")
+		get_tree().quit(1)
+		return
+	var rar_ok := {"basica": 0, "magica": 0, "fuerza": 0, "legendaria": 0}
+	for c in CardDB.all_cards():
+		var r := CardDB.normalize_rarity(str(c.get("rarity", "")))
+		if rar_ok.has(r):
+			rar_ok[r] = int(rar_ok[r]) + 1
+	print("ANIME_CARDS rarities=", rar_ok)
+	for k in rar_ok.keys():
+		if int(rar_ok[k]) < 5:
+			print("ANIME_CARDS_FAIL rarity ", k)
+			get_tree().quit(1)
+			return
+	var tries := 0
+	while GameState.active_missions.is_empty() and tries < 40:
+		await get_tree().create_timer(0.2).timeout
+		tries += 1
+	if GameState.active_missions.is_empty():
+		print("ANIME_CARDS_FAIL no missions")
+		get_tree().quit(1)
+		return
+	var mid: String = String(GameState.active_missions.keys()[0])
+	var p: Dictionary = GameState.patrols.get("alpha", {})
+	p["status"] = "available"
+	p.erase("_awaiting_combat")
+	GameState.set_patrol(p)
+	$UI/UIRouter.show_combat(mid, "alpha")
+	await get_tree().process_frame
+	await get_tree().create_timer(0.7).timeout
+	if CombatState.is_active():
+		CombatState.hand = ["strike", "barrera_luz", "golpe_fuerza", "legend_judge", "cuff"]
+		CombatState.player["energy"] = 5
+		CombatState.player["energy_max"] = 5
+	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	if combat:
+		combat._refresh()
+		combat._apply_hero_pose("idle")
+	await get_tree().create_timer(0.35).timeout
+	await _save_shot("anime_garcia_idle_cartas")
+	if combat:
+		combat._apply_hero_pose("shoot", 1.2)
+	await get_tree().create_timer(0.25).timeout
+	await _save_shot("anime_garcia_shoot")
+	$UI/UIRouter.show_deck("alpha")
+	await get_tree().process_frame
+	await get_tree().create_timer(0.45).timeout
+	await _save_shot("anime_mazo_cartas")
+	GameState.credits = 60
+	GameState.credits_changed.emit(GameState.credits)
+	GameState.boss_defeated = true
+	$UI/UIRouter.show_market("alpha")
+	await get_tree().process_frame
+	var market = $UI/UIRouter.get_node_or_null("MarketScreen")
+	if market:
+		market._filter = "fuerza"
+		market._rebuild()
+	await get_tree().create_timer(0.4).timeout
+	await _save_shot("anime_mercado_fuerza")
+	if market:
+		market._filter = "legendaria"
+		market._rebuild()
+		var stock: Array = CardDB.cards_for_market(true)
+		for c in stock:
+			if CardDB.is_legendary(str(c.get("rarity", ""))):
+				market._selected_id = str(c.get("id", ""))
+				market._refresh_detail()
+				break
+	await get_tree().create_timer(0.4).timeout
+	await _save_shot("anime_mercado_legendaria")
+	print("ANIME_CARDS_SHOT_OK")
+	get_tree().quit(0)
 
 
 func _roster_shot() -> void:
