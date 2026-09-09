@@ -56,15 +56,17 @@ func _hero_tex(name: String) -> Texture2D:
 
 
 func _load_combat_tex(path: String) -> Texture2D:
-	## Carga PNG fresco desde disco cuando existe (evita cache .import stale).
+	## Prefer imported resources (export-safe). Raw PNG fallback for editor hot-reload.
 	if path == "":
 		return null
+	if ResourceLoader.exists(path):
+		var res = load(path)
+		if res is Texture2D:
+			return res as Texture2D
 	if FileAccess.file_exists(path):
 		var img := Image.load_from_file(path)
 		if img:
 			return ImageTexture.create_from_image(img)
-	if ResourceLoader.exists(path):
-		return load(path) as Texture2D
 	return null
 
 
@@ -91,6 +93,7 @@ func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
 		tex = _hero_tex("idle")
 	if tex:
 		player_sprite.texture = tex
+		player_sprite.flip_h = true
 
 
 func _tick_hero_pose() -> void:
@@ -146,6 +149,7 @@ func _setup_player_actor() -> void:
 	if player_sprite.get_parent().name == "PlayerActor":
 		_player_actor = player_sprite.get_parent()
 		_player_shadow = _player_actor.get_node_or_null("Shadow")
+		player_sprite.flip_h = true  # Arte mira izq.; García está a la izq. → enfrenta enemigos
 		return
 	var parent := player_sprite.get_parent()
 	var idx := player_sprite.get_index()
@@ -167,6 +171,7 @@ func _setup_player_actor() -> void:
 	player_sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	player_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	player_sprite.position = Vector2(0, 0)
+	player_sprite.flip_h = true  # Mira hacia los enemigos (derecha)
 	_player_shadow = TextureRect.new()
 	_player_shadow.name = "Shadow"
 	_player_shadow.texture = _fx_tex("shadow")
@@ -500,6 +505,10 @@ func _load_bg() -> void:
 
 
 func _rebuild_enemies(snap: Dictionary) -> void:
+	# No destruir paneles mientras hay muerte/hit en curso (rompe tweens).
+	if _busy or not _dying.is_empty():
+		_sync_enemy_stats(snap)
+		return
 	for c in enemies_row.get_children():
 		c.queue_free()
 	var enemies: Array = snap.get("enemies", [])
@@ -519,6 +528,34 @@ func _rebuild_enemies(snap: Dictionary) -> void:
 		elif prev > hp_now and hp_now > 0 and not _busy:
 			call_deferred("_animate_enemy_hit", panel, prev - hp_now)
 		_prev_enemy_hp[i] = hp_now
+
+
+func _sync_enemy_stats(snap: Dictionary) -> void:
+	## Actualiza HP/bloque en paneles existentes sin liberarlos.
+	var enemies: Array = snap.get("enemies", [])
+	var selected := int(snap.get("selected_enemy", 0))
+	for panel in enemies_row.get_children():
+		if not (panel is Control):
+			continue
+		var i := int(panel.get_meta("enemy_index", -1))
+		if i < 0 or i >= enemies.size():
+			continue
+		var e: Dictionary = enemies[i]
+		var hp_now := int(e.get("hp", 0))
+		var prev := int(_prev_enemy_hp.get(i, hp_now))
+		# Conserva prev>0 si acaba de caer a 0, para poder animar muerte al rebuild.
+		if not (prev > 0 and hp_now <= 0):
+			_prev_enemy_hp[i] = hp_now
+		var hp_bar: ProgressBar = panel.find_child("HpBar", true, false) as ProgressBar
+		if hp_bar:
+			hp_bar.max_value = float(e.get("max_hp", hp_bar.max_value))
+			hp_bar.value = float(hp_now)
+		var hp_txt: Label = panel.find_child("HpText", true, false) as Label
+		if hp_txt:
+			hp_txt.text = "%d/%d" % [hp_now, int(e.get("max_hp", hp_now))]
+		panel.modulate = Color(1.08, 1.08, 1.0) if i == selected else Color.WHITE
+		if bool(e.get("detained", false)) or bool(e.get("fled", false)) or hp_now <= 0:
+			panel.modulate = Color(0.55, 0.55, 0.6, 0.75)
 
 
 func _make_empty_slot(index: int) -> Control:
@@ -701,12 +738,14 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	var bars := VBoxContainer.new()
 	bars.add_theme_constant_override("separation", 2)
 	var hp_bar := ProgressBar.new()
+	hp_bar.name = "HpBar"
 	hp_bar.custom_minimum_size = Vector2(168 if is_boss else 132, 10 if is_boss else 8)
 	hp_bar.max_value = float(e.get("max_hp", 1))
 	hp_bar.value = float(maxi(0, int(e.get("hp", 0))))
 	_style_bar(hp_bar, Color(0.95, 0.35, 0.18) if is_boss else Color(0.86, 0.22, 0.28), 10.0 if is_boss else 8.0)
 	bars.add_child(hp_bar)
 	var hp_t := Label.new()
+	hp_t.name = "HpText"
 	hp_t.text = "%d/%d" % [maxi(0, int(e.get("hp", 0))), int(e.get("max_hp", 0))]
 	hp_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp_t.add_theme_font_size_override("font_size", 11 if is_boss else 10)

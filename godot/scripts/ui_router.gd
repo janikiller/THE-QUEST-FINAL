@@ -201,8 +201,19 @@ func show_combat(mission_id: String, patrol_id: String = "alpha") -> void:
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
 		world.modulate = Color(0.04, 0.05, 0.07, 1)
+	# Asegura resolución de misión al terminar (también en shots/playtest).
+	var pid := patrol_id if patrol_id != "" else HERO_PATROL
+	if GameState.patrols.has(pid):
+		var p: Dictionary = GameState.patrols[pid]
+		if str(p.get("mission_id", "")) == "" and mission_id != "":
+			p["mission_id"] = mission_id
+		p["_awaiting_combat"] = true
+		GameState.set_patrol(p)
+	var dispatch = get_tree().get_first_node_in_group("dispatch")
+	if dispatch and not CombatState.combat_ended.is_connected(dispatch._on_combat_ended):
+		CombatState.combat_ended.connect(dispatch._on_combat_ended)
 	if combat_screen.has_method("open_for_mission"):
-		combat_screen.open_for_mission(mission_id, patrol_id)
+		combat_screen.open_for_mission(mission_id, pid)
 
 
 ## Compat antigua

@@ -17,28 +17,87 @@ func _ready() -> void:
 	camera.zoom = Vector2(1.25, 1.25)
 	camera.position = player.global_position
 	print("COMISARIA_READY missions=", GameState.active_missions.size(), " patrols=", GameState.patrols.size())
-	if OS.get_environment("TQ_SMOKE") == "1":
-		call_deferred("_smoke")
-	if OS.get_environment("TQ_INV") == "1":
-		call_deferred("_inv_check")
-	if OS.get_environment("TQ_PLAYTEST") == "1":
-		call_deferred("_playtest")
-	if OS.get_environment("TQ_COMBAT_SHOT") == "1":
-		call_deferred("_combat_shot")
-	if OS.get_environment("TQ_MAP_SHOT") == "1":
-		call_deferred("_map_shot")
-	if OS.get_environment("TQ_BOSS_MARKET_SHOT") == "1":
-		call_deferred("_boss_market_shot")
-	if OS.get_environment("TQ_BOSS_FIGHT") == "1":
-		call_deferred("_boss_fight_demo")
-	if OS.get_environment("TQ_ROSTER_SHOT") == "1":
-		call_deferred("_roster_shot")
-	if OS.get_environment("TQ_ANIME_CARDS_SHOT") == "1":
-		call_deferred("_anime_cards_shot")
-	if OS.get_environment("TQ_MARKET_ROULETTE_SHOT") == "1":
-		call_deferred("_market_roulette_shot")
-	if OS.get_environment("TQ_XP_PACK_SHOT") == "1":
-		call_deferred("_xp_pack_shot")
+	# Un solo hook de playtest/shot a la vez (evita races de quit()).
+	var mode := ""
+	for key in [
+		"TQ_SMOKE", "TQ_INV", "TQ_PLAYTEST", "TQ_COMBAT_SHOT", "TQ_MAP_SHOT",
+		"TQ_BOSS_MARKET_SHOT", "TQ_BOSS_FIGHT", "TQ_ROSTER_SHOT", "TQ_ANIME_CARDS_SHOT",
+		"TQ_MARKET_ROULETTE_SHOT", "TQ_XP_PACK_SHOT", "TQ_FIX_SHOT",
+	]:
+		if OS.get_environment(key) == "1":
+			mode = key
+			break
+	match mode:
+		"TQ_SMOKE":
+			call_deferred("_smoke")
+		"TQ_INV":
+			call_deferred("_inv_check")
+		"TQ_PLAYTEST":
+			call_deferred("_playtest")
+		"TQ_COMBAT_SHOT":
+			call_deferred("_combat_shot")
+		"TQ_MAP_SHOT":
+			call_deferred("_map_shot")
+		"TQ_BOSS_MARKET_SHOT":
+			call_deferred("_boss_market_shot")
+		"TQ_BOSS_FIGHT":
+			call_deferred("_boss_fight_demo")
+		"TQ_ROSTER_SHOT":
+			call_deferred("_roster_shot")
+		"TQ_ANIME_CARDS_SHOT":
+			call_deferred("_anime_cards_shot")
+		"TQ_MARKET_ROULETTE_SHOT":
+			call_deferred("_market_roulette_shot")
+		"TQ_XP_PACK_SHOT":
+			call_deferred("_xp_pack_shot")
+		"TQ_FIX_SHOT":
+			call_deferred("_fix_shot")
+		_:
+			pass
+
+
+func _fix_shot() -> void:
+	## Evidencia post-arreglos: García enfrentando enemigos + HUD XP + mercado.
+	await get_tree().create_timer(0.8).timeout
+	var tries := 0
+	while GameState.active_missions.is_empty() and tries < 40:
+		await get_tree().create_timer(0.15).timeout
+		tries += 1
+	if GameState.active_missions.is_empty():
+		print("FIX_SHOT_FAIL no missions")
+		get_tree().quit(1)
+		return
+	var mid: String = ""
+	for m in GameState.active_missions.values():
+		if str(m.get("status", "")) == "open" and not bool(m.get("is_boss", false)):
+			mid = str(m.get("id", ""))
+			break
+	if mid == "":
+		mid = String(GameState.active_missions.keys()[0])
+	$UI/UIRouter.begin_fight(mid)
+	await get_tree().process_frame
+	await get_tree().create_timer(0.55).timeout
+	await _save_shot("fix_combate_facing")
+	GameState.credits = 40
+	GameState.credits_changed.emit(GameState.credits)
+	$UI/UIRouter.show_market("alpha")
+	await get_tree().process_frame
+	await get_tree().create_timer(0.4).timeout
+	await _save_shot("fix_mercado")
+	var market = $UI/UIRouter.get_node_or_null("MarketScreen")
+	if market and market.has_method("_set_mode"):
+		market._set_mode("roulette")
+		await get_tree().process_frame
+		await get_tree().create_timer(0.35).timeout
+		await _save_shot("fix_ruleta")
+	# Fuerza sobre de nivel
+	GameState.pending_level_packs = maxi(1, GameState.pending_level_packs)
+	$UI/UIRouter.show_level_up("alpha")
+	await get_tree().process_frame
+	await get_tree().create_timer(0.45).timeout
+	await _save_shot("fix_sobre_nivel")
+	print("FIX_SHOT_OK level=", GameState.hero_level, " cards=", CardDB.cards.size())
+	get_tree().quit(0)
 
 
 func _xp_pack_shot() -> void:

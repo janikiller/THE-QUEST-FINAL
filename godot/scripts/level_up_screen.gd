@@ -29,12 +29,9 @@ func open(patrol_id: String = "alpha") -> void:
 	visible = true
 	title.text = "SOBRE DE NIVEL"
 	level_label.text = "NIVEL %d" % GameState.hero_level
-	var left := GameState.pending_level_packs
-	if GameState.active_pack_open():
-		left = maxi(left, 1)
 	sub.text = "Elige 1 de 3 cartas para el mazo de García"
-	if left > 1:
-		sub.text += "  ·  %d sobres pendientes" % left
+	if GameState.pending_level_packs > 1:
+		sub.text += "  ·  %d sobres pendientes" % GameState.pending_level_packs
 	hint.text = "Las cartas del sobre son aleatorias según tu nivel."
 	_rebuild_cards()
 

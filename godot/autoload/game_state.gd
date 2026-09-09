@@ -128,6 +128,9 @@ func _init_patrols() -> void:
 			"target": Vector2.ZERO,
 			"progress": 0.0,
 			"report": "",
+			"protagonist": str(p.get("protagonist", p.get("name", "García"))),
+			"max_hp": int(p.get("max_hp", 50)),
+			"energy_max": int(p.get("energy_max", 3)),
 		}
 		patrols[runtime["id"]] = runtime
 	# Snap HQ patrols onto roads once RoadNav is ready (deferred)
@@ -1081,6 +1084,7 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 		enemies.append({
 			"id": str(s.get("id", "e%d" % i)),
 			"name": ename,
+			"alias": str(s.get("alias", "")),
 			"hp": ehp,
 			"portrait": thumb,
 			"sprite": spr,
@@ -1093,6 +1097,7 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 			enemies.append({
 				"id": str(e.get("id", "")),
 				"name": str(e.get("name", "Sospechoso")),
+				"alias": str(e.get("alias", "")),
 				"hp": int(e.get("hp", base_hp)),
 				"sprite": str(e.get("sprite", "")),
 			})

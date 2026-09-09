@@ -71,6 +71,7 @@ func start_combat(cfg: Dictionary) -> void:
 		enemies.append({
 			"id": str(e.get("id", "e%d" % i)),
 			"name": str(e.get("name", "Sospechoso")),
+			"alias": str(e.get("alias", "")),
 			"hp": ehp,
 			"max_hp": ehp,
 			"block": 0,
@@ -319,7 +320,14 @@ func _enemy_turn() -> void:
 					if int(e.get("hp", 0)) <= int(e.get("max_hp", 1)) * 0.35:
 						e["fled"] = true
 						e["hp"] = 0
-						_log("%s huye!" % e.get("name", "?"))
+						# XP reducido por huida (menos que derribo)
+						if not bool(e.get("xp_granted", false)):
+							e["xp_granted"] = true
+							var flee_xp := maxi(4, _xp_for_enemy(e) / 3)
+							var res: Dictionary = GameState.add_combat_xp(flee_xp)
+							combat_xp_gained += int(res.get("xp", flee_xp))
+							combat_levels_gained += int(res.get("levels", 0))
+						_log("%s huye! (+%d XP)" % [e.get("name", "?"), maxi(4, _xp_for_enemy(e) / 3)])
 					else:
 						var poke := 4
 						var dealt := _deal_to_player(poke)
