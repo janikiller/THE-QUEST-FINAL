@@ -27,6 +27,74 @@ func _ready() -> void:
 		call_deferred("_combat_shot")
 	if OS.get_environment("TQ_MAP_SHOT") == "1":
 		call_deferred("_map_shot")
+	if OS.get_environment("TQ_BOSS_MARKET_SHOT") == "1":
+		call_deferred("_boss_market_shot")
+
+
+func _boss_market_shot() -> void:
+	## Evidencia visual: mercado + boss día 2 en mapa/briefing.
+	print("BOSS_MARKET_SHOT begin")
+	await get_tree().create_timer(1.2).timeout
+	print("BOSS_MARKET_SHOT after wait missions=", GameState.active_missions.size())
+	var tries := 0
+	while GameState.active_missions.is_empty() and tries < 40:
+		await get_tree().create_timer(0.2).timeout
+		tries += 1
+	print("BOSS_MARKET_SHOT missions ready=", GameState.active_missions.size())
+	# Mercado con stock visible
+	GameState.credits = 40
+	GameState.credits_changed.emit(GameState.credits)
+	$UI/UIRouter.show_market("alpha")
+	await get_tree().process_frame
+	await get_tree().create_timer(0.5).timeout
+	await _save_shot("mercado_cartas")
+	# Desbloquear legendarias para segunda captura de mercado
+	GameState.boss_defeated = true
+	$UI/UIRouter.show_market("alpha")
+	await get_tree().process_frame
+	var market = $UI/UIRouter.get_node_or_null("MarketScreen")
+	if market:
+		market._filter = "legendary"
+		market._rebuild()
+		var stock: Array = CardDB.cards_for_market(true)
+		for c in stock:
+			if str(c.get("rarity", "")) == "legendary":
+				market._selected_id = str(c.get("id", ""))
+				market._refresh_detail()
+				break
+	await get_tree().create_timer(0.4).timeout
+	await _save_shot("mercado_legendarias")
+	# Boss en día 2
+	for mid in GameState.active_missions.keys():
+		var mm: Dictionary = GameState.active_missions[mid]
+		if bool(mm.get("is_boss", false)):
+			GameState.remove_mission(str(mid))
+	GameState.day_index = 2
+	GameState.boss_spawned = false
+	GameState.boss_defeated = false
+	GameState.boss_mission_id = ""
+	GameState.request_boss_spawn()
+	await get_tree().create_timer(0.5).timeout
+	$UI/UIRouter.show_map()
+	await get_tree().process_frame
+	var boss_mid := GameState.boss_mission_id
+	print("BOSS_MARKET_SHOT boss=", boss_mid, " spawned=", GameState.boss_spawned)
+	if boss_mid == "":
+		print("BOSS_MARKET_SHOT_FAIL no boss")
+		get_tree().quit(1)
+		return
+	var bmission: Dictionary = GameState.active_missions.get(boss_mid, {})
+	if bmission.has("pos"):
+		camera.global_position = bmission["pos"]
+		camera.zoom = Vector2(1.35, 1.35)
+	await get_tree().create_timer(0.45).timeout
+	await _save_shot("mapa_boss_capo")
+	$UI/UIRouter.show_mission(boss_mid)
+	await get_tree().process_frame
+	await get_tree().create_timer(0.45).timeout
+	await _save_shot("briefing_boss_capo")
+	print("BOSS_MARKET_SHOT_OK")
+	get_tree().quit(0)
 
 
 func _map_shot() -> void:
