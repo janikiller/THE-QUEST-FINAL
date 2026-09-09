@@ -11,6 +11,7 @@ signal selection_changed(mission_id: String)
 signal weather_changed(weather: String)
 signal lightning_flash
 signal time_speed_changed(speed: float)
+signal period_changed(period: String)
 
 var station: Dictionary = {}
 var events_catalog: Array = []
@@ -26,6 +27,14 @@ var time_speed: float = 1.0
 var weather: String = "clear"
 var _last_resolved: Dictionary = {}
 var _weather_check_minute: int = -1
+var _last_period: String = ""
+## Cuántas misiones cerradas en el periodo actual (meta: 3 → cambio).
+var period_missions_done: int = 0
+const PERIOD_MISSION_QUOTA := 3
+## Minutos que avanza el reloj al cerrar una misión, por periodo.
+const ADVANCE_DAY_MIN := 140 ## ~2h20 → 3 misiones llevan al atardecer
+const ADVANCE_DUSK_MIN := 70 ## ~1h10 → 3 misiones llevan a la noche
+const ADVANCE_NIGHT_MIN := 220 ## ~3h40 → 3 misiones llevan al día siguiente
 
 ## mission_id -> mission dict
 var active_missions: Dictionary = {}
@@ -48,6 +57,7 @@ func _ready() -> void:
 	_load_data()
 	_init_patrols()
 	_init_decks()
+	_last_period = time_of_day()
 	emit_time()
 	prestige_changed.emit(prestige)
 	# Arranque con algo de atmósfera
@@ -159,6 +169,19 @@ func emit_time() -> void:
 	time_changed.emit("%02d:%02d" % [hour, minute])
 
 
+func set_clock(h: int, m: int = 0) -> void:
+	var prev := time_of_day()
+	hour = posmod(h, 24)
+	minute = clampi(m, 0, 59)
+	emit_time()
+	_maybe_update_weather()
+	var now := time_of_day()
+	if now != prev:
+		_last_period = now
+		period_missions_done = 0
+		period_changed.emit(now)
+
+
 func time_of_day() -> String:
 	## day 7-16, dusk 17-19, night 20-6
 	if hour >= 7 and hour <= 16:
@@ -169,12 +192,90 @@ func time_of_day() -> String:
 
 
 func tick_minutes(amount: int = 1) -> void:
+	if amount <= 0:
+		return
+	var prev_period := time_of_day()
 	minute += amount
 	while minute >= 60:
 		minute -= 60
 		hour = (hour + 1) % 24
 	emit_time()
 	_maybe_update_weather()
+	var now_period := time_of_day()
+	if now_period != prev_period:
+		_last_period = now_period
+		period_missions_done = 0
+		period_changed.emit(now_period)
+
+
+func advance_after_mission(mission: Dictionary = {}) -> void:
+	## Tras cerrar una misión: avanzan horas según el periodo (3 misiones ≈ cambio).
+	var period := str(mission.get("period", time_of_day()))
+	if period == "":
+		period = time_of_day()
+	var mins := ADVANCE_DAY_MIN
+	match period:
+		"dusk":
+			mins = ADVANCE_DUSK_MIN
+		"night":
+			mins = ADVANCE_NIGHT_MIN
+		_:
+			mins = ADVANCE_DAY_MIN
+	period_missions_done += 1
+	var before := time_of_day()
+	tick_minutes(mins)
+	var after := time_of_day()
+	var label := "%02d:%02d" % [hour, minute]
+	if after != before:
+		RadioBus.push("El reloj marca %s — %s." % [label, period_label(after)], "dispatch")
+	else:
+		RadioBus.push("Han pasado horas en la ciudad. Reloj: %s." % label, "info")
+
+
+func period_label(period: String = "") -> String:
+	var p := period if period != "" else time_of_day()
+	match p:
+		"day":
+			return "DÍA"
+		"dusk":
+			return "ATARDECER"
+		"night":
+			return "NOCHE"
+		_:
+			return p.to_upper()
+
+
+func period_categories(period: String = "") -> Array:
+	## Categorías típicas de cada franja (noche = más peligrosa).
+	var p := period if period != "" else time_of_day()
+	match p:
+		"day":
+			return ["civiles", "trafico", "especiales", "delitos"]
+		"dusk":
+			return ["delitos", "trafico", "emergencias", "organizado"]
+		"night":
+			return ["organizado", "delitos", "emergencias"]
+		_:
+			return ["delitos", "civiles"]
+
+
+func severity_for_period(base: String, period: String = "") -> String:
+	var p := period if period != "" else time_of_day()
+	var order := ["low", "medium", "high", "critical"]
+	var idx := order.find(base)
+	if idx < 0:
+		idx = 1
+	match p:
+		"day":
+			# Día más calmado: no subir por encima de medium salvo que ya sea high
+			return order[mini(idx, 1)] if base != "high" else "medium"
+		"dusk":
+			return order[mini(idx + 1, 3)]
+		"night":
+			# Noche: siempre peligrosa
+			return order[maxi(idx + 1, 2)]
+		_:
+			return base
 
 
 func set_weather(w: String) -> void:
@@ -312,13 +413,15 @@ func get_dispatchable_events() -> Array:
 func create_mission_from_event(event: Dictionary, district: Dictionary, map_pos: Vector2) -> Dictionary:
 	_mission_seq += 1
 	var mid := "m_%d" % _mission_seq
-	var severity := str(event.get("severity", "medium"))
+	var period := time_of_day()
+	var severity := severity_for_period(str(event.get("severity", "medium")), period)
 	var mission := {
 		"id": mid,
 		"event_id": event.get("id", ""),
 		"title": event.get("name", "Incidente"),
 		"category": event.get("category", "delitos"),
 		"severity": severity,
+		"period": period,
 		"district_id": district.get("id", ""),
 		"district_name": district.get("name", ""),
 		"pos": map_pos,
@@ -339,6 +442,11 @@ func create_mission_from_event(event: Dictionary, district: Dictionary, map_pos:
 		"blurb": _blurb_for(event, district),
 		"radio_log": [],
 	}
+	# Noche: más sospechosos / más xp
+	if period == "night":
+		mission["xp"] = int(mission["xp"]) + 40
+	elif period == "dusk":
+		mission["xp"] = int(mission["xp"]) + 15
 	_seed_inicio_beat(mission)
 	active_missions[mid] = mission
 	_attach_suspects(mid)
@@ -351,8 +459,13 @@ func _attach_suspects(mission_id: String) -> void:
 		return
 	var m: Dictionary = active_missions[mission_id]
 	var count := 2
-	if str(m.get("severity", "")) in ["high", "critical"]:
+	var period := str(m.get("period", time_of_day()))
+	if period == "day" and str(m.get("severity", "")) == "low":
+		count = 1
+	elif str(m.get("severity", "")) in ["high", "critical"] or period == "night":
 		count = 3
+	elif period == "dusk":
+		count = 2
 	m["suspects"] = CharacterDB.delinquent_thumbs_for_mission(mission_id, count)
 	m["suspect_icon"] = CharacterDB.delinquent_icon_for_mission(mission_id)
 	var loc: Dictionary = LocationDB.house_for_mission(mission_id)
@@ -569,27 +682,38 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 
 	var enemies: Array = []
 	var suspects: Array = mission.get("suspects", [])
-	if suspects.size() < 3:
-		suspects = CharacterDB.delinquent_thumbs_for_mission(mission_id, 3)
+	var period := str(mission.get("period", time_of_day()))
+	var want := 2
+	if period == "night" or str(mission.get("severity", "")) in ["high", "critical"]:
+		want = 3
+	elif period == "day" and str(mission.get("severity", "")) == "low":
+		want = 1
+	if suspects.size() < want:
+		suspects = CharacterDB.delinquent_thumbs_for_mission(mission_id, want)
 	var base_hp := 26
 	match str(mission.get("severity", "medium")):
 		"low":
-			base_hp = 22
+			base_hp = 20
 		"high":
 			base_hp = 32
 		"critical":
-			base_hp = 38
-	for i in range(mini(3, suspects.size())):
+			base_hp = 40
+	# Noche más dura; atardecer un poco más exigente
+	if period == "night":
+		base_hp += 10
+	elif period == "dusk":
+		base_hp += 4
+	for i in range(mini(want, maxi(1, suspects.size()))):
 		var s: Dictionary = suspects[i]
 		enemies.append({
 			"id": str(s.get("id", "e%d" % i)),
 			"name": str(s.get("alias", s.get("name", "Sospechoso"))),
-			"hp": base_hp + i * 3,
+			"hp": base_hp + i * 3 + (4 if period == "night" else 0),
 			"portrait": str(s.get("thumb", "")),
 			"sprite": str(s.get("full", "res://assets/character/delinquents/delinq_00.png")),
 		})
 	if enemies.is_empty():
-		for i in range(3):
+		for i in range(want):
 			enemies.append({
 				"id": "e%d" % i,
 				"name": "Sospechoso %d" % (i + 1),
@@ -597,10 +721,19 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 				"sprite": "res://assets/character/delinquents/delinq_%02d.png" % i,
 			})
 
+	var objective := "Detener a los sospechosos"
+	match period:
+		"day":
+			objective = "Intervenir con control — turno de día"
+		"dusk":
+			objective = "Contener la amenaza al atardecer"
+		"night":
+			objective = "NOCHE: neutralizar amenaza de alto riesgo"
+
 	return {
 		"mission_id": mission_id,
 		"location": str(mission.get("title", mission.get("district_name", "Intervención"))),
-		"objective": "Detener a los sospechosos",
+		"objective": objective,
 		"hero_name": hero_name,
 		"max_hp": int(patrol.get("max_hp", 50)),
 		"energy_max": int(patrol.get("energy_max", 3)),
@@ -609,6 +742,7 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 		"deck": deck,
 		"enemies": enemies,
 		"patrol_id": patrol_id,
+		"period": period,
 	}
 
 

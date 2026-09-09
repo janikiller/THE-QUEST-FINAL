@@ -121,6 +121,7 @@ func resolve_talk(mission_id: String = "") -> void:
 	var snapshot: Dictionary = m.duplicate(true)
 	GameState.store_resolved_mission(snapshot)
 	GameState.add_prestige(1)
+	GameState.advance_after_mission(m)
 	RadioBus.push("Salida hablando: zona estabilizada.", "resolve")
 	# Liberar patrulla si estaba ligada
 	for p in GameState.patrols.values():

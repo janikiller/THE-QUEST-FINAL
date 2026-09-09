@@ -6,8 +6,8 @@
   "map_size": [1536, 1024],
   "start_hour": 10,
   "start_minute": 24,
-  "spawn_interval_sec": 16.0,
-  "max_active_missions": 9,
+  "spawn_interval_sec": 22.0,
+  "max_active_missions": 3,
   "hq_pos": [748, 470],
   "districts": [
     {
