@@ -22,7 +22,7 @@ func _ready() -> void:
 	for key in [
 		"TQ_SMOKE", "TQ_INV", "TQ_PLAYTEST", "TQ_COMBAT_SHOT", "TQ_MAP_SHOT",
 		"TQ_BOSS_MARKET_SHOT", "TQ_BOSS_FIGHT", "TQ_ROSTER_SHOT", "TQ_ANIME_CARDS_SHOT",
-		"TQ_MARKET_ROULETTE_SHOT", "TQ_XP_PACK_SHOT", "TQ_FIX_SHOT",
+		"TQ_MARKET_ROULETTE_SHOT", "TQ_XP_PACK_SHOT", "TQ_FIX_SHOT", "TQ_ENEMY_CARDS_SHOT",
 	]:
 		if OS.get_environment(key) == "1":
 			mode = key
@@ -52,8 +52,55 @@ func _ready() -> void:
 			call_deferred("_xp_pack_shot")
 		"TQ_FIX_SHOT":
 			call_deferred("_fix_shot")
+		"TQ_ENEMY_CARDS_SHOT":
+			call_deferred("_enemy_cards_shot")
 		_:
 			pass
+
+
+func _enemy_cards_shot() -> void:
+	## Evidencia: enemigos con cartas/intent de carta en combate.
+	await get_tree().create_timer(0.7).timeout
+	print("ENEMY_CARDS catalog=", CardDB.enemy_cards.size())
+	if CardDB.enemy_cards.size() < 10:
+		print("ENEMY_CARDS_FAIL catalog")
+		get_tree().quit(1)
+		return
+	var tries := 0
+	while GameState.active_missions.is_empty() and tries < 40:
+		await get_tree().create_timer(0.15).timeout
+		tries += 1
+	if GameState.active_missions.is_empty():
+		print("ENEMY_CARDS_FAIL no missions")
+		get_tree().quit(1)
+		return
+	var mid := ""
+	for m in GameState.active_missions.values():
+		if str(m.get("status", "")) == "open" and not bool(m.get("is_boss", false)):
+			mid = str(m.get("id", ""))
+			break
+	if mid == "":
+		mid = String(GameState.active_missions.keys()[0])
+	$UI/UIRouter.begin_fight(mid)
+	await get_tree().process_frame
+	await get_tree().create_timer(0.55).timeout
+	var named := 0
+	for e in CombatState.enemies:
+		if str(e.get("next_card_name", "")) != "":
+			named += 1
+	print("ENEMY_CARDS intents=", named, "/", CombatState.enemies.size())
+	if named < 1:
+		print("ENEMY_CARDS_FAIL no next_card")
+		get_tree().quit(1)
+		return
+	await _save_shot("enemigos_cartas_intent")
+	# Fuerza un turno enemigo jugando cartas
+	if CombatState.is_active():
+		CombatState.end_player_turn()
+		await get_tree().create_timer(0.8).timeout
+	await _save_shot("enemigos_cartas_jugaron")
+	print("ENEMY_CARDS_SHOT_OK")
+	get_tree().quit(0)
 
 
 func _fix_shot() -> void:

@@ -6,6 +6,9 @@ var cards: Dictionary = {} ## id -> Dictionary
 var starter_deck: Array = []
 var boss_rewards: Array = []
 var market_exclude: Dictionary = {} ## id -> true
+var enemy_cards: Dictionary = {} ## id -> Dictionary
+var enemy_role_pools: Dictionary = {}
+var enemy_boss_pools: Dictionary = {}
 
 
 func _ready() -> void:
@@ -21,6 +24,17 @@ func _ready() -> void:
 		var card: Dictionary = c.duplicate(true)
 		card["rarity"] = normalize_rarity(str(card.get("rarity", "basica")))
 		cards[str(card.get("id", ""))] = card
+	_load_enemy_cards()
+
+
+func _load_enemy_cards() -> void:
+	var data: Dictionary = _read("res://data/enemy_cards.json")
+	enemy_cards.clear()
+	for c in data.get("cards", []):
+		var card: Dictionary = c.duplicate(true)
+		enemy_cards[str(card.get("id", ""))] = card
+	enemy_role_pools = data.get("role_pools", {})
+	enemy_boss_pools = data.get("boss_pools", {})
 
 
 func _read(path: String) -> Dictionary:
@@ -62,6 +76,63 @@ func rarity_label(rarity: String) -> String:
 
 func get_card(card_id: String) -> Dictionary:
 	return cards.get(card_id, {})
+
+
+func get_enemy_card(card_id: String) -> Dictionary:
+	return enemy_cards.get(card_id, {})
+
+
+func get_any_card(card_id: String) -> Dictionary:
+	var c := get_card(card_id)
+	if not c.is_empty():
+		return c
+	return get_enemy_card(card_id)
+
+
+func enemy_pool_for_role(role: String) -> Array:
+	var pool: Array = enemy_role_pools.get(role, [])
+	if pool.is_empty():
+		pool = enemy_role_pools.get("default", [])
+	return pool.duplicate()
+
+
+func enemy_pool_for_boss(boss_id: String) -> Array:
+	var pool: Array = enemy_boss_pools.get(boss_id, [])
+	if pool.is_empty():
+		pool = enemy_boss_pools.get("default", [])
+	return pool.duplicate()
+
+
+func enemy_card_intent_kind(def: Dictionary) -> String:
+	var kind := str(def.get("kind", ""))
+	if kind != "":
+		return kind
+	if int(def.get("damage", 0)) > 0:
+		return "attack"
+	if int(def.get("block", 0)) > 0:
+		return "block"
+	if int(def.get("heal", 0)) > 0:
+		return "heal"
+	return "attack"
+
+
+func enemy_card_preview_value(def: Dictionary) -> int:
+	match enemy_card_intent_kind(def):
+		"attack":
+			return int(def.get("damage", 0)) * maxi(1, int(def.get("hits", 1)))
+		"block":
+			return int(def.get("block", 0))
+		"heal":
+			return int(def.get("heal", 0))
+		_:
+			return int(def.get("damage", 0))
+
+
+func enemy_effect_line(def: Dictionary) -> String:
+	var fx := str(def.get("effect", ""))
+	if fx != "":
+		return fx
+	return effect_line(def)
 
 
 func all_cards() -> Array:

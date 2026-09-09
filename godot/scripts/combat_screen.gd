@@ -556,6 +556,24 @@ func _sync_enemy_stats(snap: Dictionary) -> void:
 		panel.modulate = Color(1.08, 1.08, 1.0) if i == selected else Color.WHITE
 		if bool(e.get("detained", false)) or bool(e.get("fled", false)) or hp_now <= 0:
 			panel.modulate = Color(0.55, 0.55, 0.6, 0.75)
+		var intent_l: Label = panel.find_child("IntentLabel", true, false) as Label
+		if intent_l and hp_now > 0 and not bool(e.get("detained", false)) and not bool(e.get("fled", false)):
+			var card_name := str(e.get("next_card_name", ""))
+			var card_fx := str(e.get("next_card_effect", ""))
+			var intent_id := int(e.get("intent", 0))
+			var icon := "●"
+			var col := Color(1.0, 0.42, 0.38)
+			if intent_id == CombatState.Intent.BLOCK:
+				icon = "◈"
+				col = Color(0.45, 0.85, 1.0)
+			elif intent_id == CombatState.Intent.FLEE:
+				icon = "→"
+				col = Color(1.0, 0.78, 0.35)
+			if bool(e.get("is_boss", false)) and intent_id == CombatState.Intent.ATTACK:
+				icon = "◆"
+			if card_name != "":
+				intent_l.text = "%s %s\n%s" % [icon, card_name, card_fx if card_fx != "" else str(int(e.get("intent_value", 0)))]
+				intent_l.add_theme_color_override("font_color", col)
 
 
 func _make_empty_slot(index: int) -> Control:
@@ -684,8 +702,11 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	wrap.set_meta("idle_sprite", str(e.get("sprite", "")))
 
 	var intent := Label.new()
+	intent.name = "IntentLabel"
 	var intent_id := int(e.get("intent", 0))
 	var val := int(e.get("intent_value", 0))
+	var card_name := str(e.get("next_card_name", ""))
+	var card_fx := str(e.get("next_card_effect", ""))
 	if bool(e.get("detained", false)):
 		intent.text = "DETENIDO"
 		intent.add_theme_color_override("font_color", Color(0.4, 0.9, 0.55))
@@ -694,6 +715,22 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 		intent.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
 	elif int(e.get("hp", 0)) <= 0:
 		intent.text = ""
+	elif card_name != "":
+		# Muestra la carta que va a jugar
+		var icon := "●"
+		var col := Color(1.0, 0.42, 0.38)
+		if intent_id == CombatState.Intent.BLOCK:
+			icon = "◈"
+			col = Color(0.45, 0.85, 1.0)
+		elif intent_id == CombatState.Intent.FLEE:
+			icon = "→"
+			col = Color(1.0, 0.78, 0.35)
+		if is_boss and intent_id == CombatState.Intent.ATTACK:
+			icon = "◆"
+			col = Color(1.0, 0.55, 0.25)
+		var line2 := card_fx if card_fx != "" else ("%d" % val)
+		intent.text = "%s %s\n%s" % [icon, card_name, line2]
+		intent.add_theme_color_override("font_color", col)
 	elif intent_id == CombatState.Intent.ATTACK and val > 0:
 		intent.text = ("◆  %d" % val) if is_boss else ("●  %d" % val)
 		intent.add_theme_color_override("font_color", Color(1.0, 0.38, 0.38))
@@ -706,7 +743,8 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	else:
 		intent.text = CombatState.intent_label(intent_id)
 	intent.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	intent.add_theme_font_size_override("font_size", 16 if is_boss else 14)
+	intent.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	intent.add_theme_font_size_override("font_size", 13 if is_boss else 12)
 	wrap.add_child(intent)
 
 	var name_l := Label.new()

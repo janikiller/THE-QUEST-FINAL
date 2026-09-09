@@ -789,6 +789,8 @@ func _attach_suspects(mission_id: String) -> void:
 			"full": str(e.get("sprite", "")),
 			"thumb": str(e.get("portrait", "")),
 			"hp_bonus": int(e.get("hp", 26)),
+			"role": str(e.get("role", "ataque")),
+			"card_pool": e.get("card_pool", []),
 		})
 	if suspects.is_empty():
 		suspects = CharacterDB.delinquent_thumbs_for_mission(mission_id, count)
@@ -1091,6 +1093,9 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 			"pose_attack": pose_atk,
 			"pose_hurt": pose_hurt,
 			"is_boss": e_is_boss,
+			"role": str(s.get("role", s.get("archetype", "ataque"))),
+			"boss_id": str(s.get("boss_id", s.get("id", ""))),
+			"card_pool": s.get("card_pool", []),
 		})
 	if enemies.is_empty():
 		for e in CombatRoster.pick_enemies_for_mission(mission_id, want):
@@ -1100,6 +1105,8 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 				"alias": str(e.get("alias", "")),
 				"hp": int(e.get("hp", base_hp)),
 				"sprite": str(e.get("sprite", "")),
+				"role": str(e.get("role", "ataque")),
+				"card_pool": e.get("card_pool", []),
 			})
 
 	var objective := "Detener a los sospechosos"
