@@ -104,7 +104,19 @@ func _enemy_cards_shot() -> void:
 		print("ENEMY_CARDS_FAIL no visible cards")
 		get_tree().quit(1)
 		return
+	# Panel inferior: cartas enemigas en el menú grande
+	var bottom_n := 0
+	if combat:
+		var erow = combat.get_node_or_null("Bottom/BottomPanel/BottomRow/EnemyHandCol/EnemyHandRow")
+		if erow:
+			bottom_n = erow.get_child_count()
+	print("ENEMY_CARDS bottom_menu=", bottom_n)
+	if bottom_n < 1:
+		print("ENEMY_CARDS_FAIL no bottom menu cards")
+		get_tree().quit(1)
+		return
 	await _save_shot("enemigos_cartas_visibles")
+	await _save_shot("enemigos_cartas_panel_inferior")
 	# Fuerza un turno enemigo jugando cartas
 	if CombatState.is_active():
 		CombatState.end_player_turn()

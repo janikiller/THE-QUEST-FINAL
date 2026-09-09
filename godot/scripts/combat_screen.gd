@@ -47,6 +47,9 @@ var _dying: Dictionary = {}
 var _arena_path: String = ""
 var _enemy_card_menu: Control
 var _enemy_menu_enemy_index: int = -1
+var _enemy_hand_row: HBoxContainer
+var _enemy_hand_label: Label
+var _hand_label: Label
 
 
 func _hero_tex(name: String) -> Texture2D:
@@ -115,6 +118,7 @@ func _ready() -> void:
 	CombatState.log_message.connect(_on_log)
 	_style_end_btn()
 	_style_bottom_panel()
+	_ensure_enemy_hand_ui()
 	_fx_layer = Control.new()
 	_fx_layer.name = "FxLayer"
 	_fx_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -327,19 +331,71 @@ func close() -> void:
 
 
 func _style_bottom_panel() -> void:
+	var bottom := get_node_or_null("Bottom") as MarginContainer
+	if bottom:
+		# Un poco más alto para cartas enemigas legibles junto a tu mano
+		bottom.offset_top = -280.0
+	var arena := get_node_or_null("Arena") as Control
+	if arena:
+		arena.offset_bottom = -280.0
 	var panel := get_node_or_null("Bottom/BottomPanel")
 	if panel == null:
 		return
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.035, 0.05, 0.08, 0.88)
+	sb.bg_color = Color(0.035, 0.05, 0.08, 0.92)
 	sb.border_color = Color(1, 1, 1, 0.08)
 	sb.set_border_width_all(1)
 	sb.set_corner_radius_all(16)
 	sb.content_margin_left = 14
 	sb.content_margin_right = 14
-	sb.content_margin_top = 12
-	sb.content_margin_bottom = 12
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
 	panel.add_theme_stylebox_override("panel", sb)
+
+
+func _ensure_enemy_hand_ui() -> void:
+	## Usa el panel inferior grande: cartas enemigas al lado de TU MANO (mismo menú).
+	var bottom_row := get_node_or_null("Bottom/BottomPanel/BottomRow") as HBoxContainer
+	if bottom_row == null:
+		return
+	var existing := bottom_row.get_node_or_null("EnemyHandCol") as VBoxContainer
+	if existing:
+		_enemy_hand_label = existing.get_node_or_null("EnemyHandLabel") as Label
+		_enemy_hand_row = existing.get_node_or_null("EnemyHandRow") as HBoxContainer
+		return
+	var col := VBoxContainer.new()
+	col.name = "EnemyHandCol"
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_stretch_ratio = 0.95
+	col.add_theme_constant_override("separation", 4)
+	_enemy_hand_label = Label.new()
+	_enemy_hand_label.name = "EnemyHandLabel"
+	_enemy_hand_label.text = "ELLOS · SIGUIENTE CARTA"
+	_enemy_hand_label.add_theme_font_size_override("font_size", 11)
+	_enemy_hand_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.38))
+	_enemy_hand_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(_enemy_hand_label)
+	_enemy_hand_row = HBoxContainer.new()
+	_enemy_hand_row.name = "EnemyHandRow"
+	_enemy_hand_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_enemy_hand_row.add_theme_constant_override("separation", 8)
+	_enemy_hand_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(_enemy_hand_row)
+	bottom_row.add_child(col)
+	var hand_col := bottom_row.get_node_or_null("HandCol") as VBoxContainer
+	if hand_col:
+		bottom_row.move_child(col, hand_col.get_index())
+		hand_col.size_flags_stretch_ratio = 1.15
+	if _hand_label == null or not is_instance_valid(_hand_label):
+		_hand_label = Label.new()
+		_hand_label.name = "PlayerHandLabel"
+		_hand_label.text = "TU MANO"
+		_hand_label.add_theme_font_size_override("font_size", 11)
+		_hand_label.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
+		_hand_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		if hand_col:
+			hand_col.add_child(_hand_label)
+			hand_col.move_child(_hand_label, 0)
 
 
 func _style_end_btn() -> void:
@@ -439,6 +495,7 @@ func _refresh() -> void:
 	_load_bg()
 	if not _busy:
 		_rebuild_enemies(snap)
+	_rebuild_enemy_hand(snap)
 	_rebuild_hand(snap)
 	_rebuild_energy(snap)
 
@@ -819,6 +876,140 @@ func _rebuild_hand(snap: Dictionary) -> void:
 	for card_id in hand:
 		var cid := str(card_id)
 		hand_row.add_child(_make_card(cid, can_act and CombatState.can_play_card(cid)))
+
+
+func _rebuild_enemy_hand(snap: Dictionary) -> void:
+	_ensure_enemy_hand_ui()
+	if _enemy_hand_row == null:
+		return
+	for c in _enemy_hand_row.get_children():
+		c.queue_free()
+	var enemies: Array = snap.get("enemies", [])
+	var shown := 0
+	for i in range(enemies.size()):
+		var e: Dictionary = enemies[i]
+		if int(e.get("hp", 0)) <= 0 or bool(e.get("detained", false)) or bool(e.get("fled", false)):
+			continue
+		var cid := str(e.get("next_card", ""))
+		if cid == "":
+			continue
+		var def: Dictionary = CardDB.get_enemy_card(cid)
+		if def.is_empty():
+			def = {
+				"id": cid,
+				"name": str(e.get("next_card_name", cid)),
+				"effect": str(e.get("next_card_effect", "")),
+				"kind": "attack",
+			}
+		_enemy_hand_row.add_child(_make_bottom_enemy_card(def, str(e.get("name", "Sospechoso")), i))
+		shown += 1
+	if _enemy_hand_label:
+		if shown == 0:
+			_enemy_hand_label.text = "ELLOS · sin intent"
+		else:
+			_enemy_hand_label.text = "ELLOS · %d cartas (clic = mazo)" % shown
+	if shown == 0:
+		var empty := Label.new()
+		empty.text = "—"
+		empty.add_theme_color_override("font_color", Color(0.5, 0.55, 0.6))
+		_enemy_hand_row.add_child(empty)
+
+
+func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: int) -> Control:
+	## Carta grande en el panel inferior — mismo lenguaje visual que tu mano.
+	var kind := CardDB.enemy_card_intent_kind(def)
+	var is_boss := str(def.get("id", "")).begins_with("boss_")
+	var accent := _enemy_kind_accent(kind, is_boss)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(118, 188)
+	panel.clip_contents = true
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.07, 0.045, 0.05, 0.97)
+	sb.border_color = Color(accent.r, accent.g, accent.b, 0.95)
+	sb.set_border_width_all(2)
+	sb.border_width_top = 3
+	sb.set_corner_radius_all(12)
+	panel.add_theme_stylebox_override("panel", sb)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	panel.add_child(margin)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 3)
+	margin.add_child(v)
+
+	var owner_l := Label.new()
+	owner_l.text = owner_name
+	owner_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	owner_l.add_theme_font_size_override("font_size", 10)
+	owner_l.add_theme_color_override("font_color", Color(0.85, 0.7, 0.6))
+	owner_l.clip_text = true
+	v.add_child(owner_l)
+
+	var top := HBoxContainer.new()
+	v.add_child(top)
+	var badge := Label.new()
+	match kind:
+		"block":
+			badge.text = "◈ DEF"
+		"heal":
+			badge.text = "+ CURA"
+		"flee":
+			badge.text = "→ HUIR"
+		_:
+			badge.text = "● ATK"
+	badge.add_theme_font_size_override("font_size", 11)
+	badge.add_theme_color_override("font_color", accent)
+	badge.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(badge)
+
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(0, 72)
+	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var art_path := str(def.get("art", def.get("icon", "")))
+	if ResourceLoader.exists(art_path):
+		art.texture = load(art_path)
+	elif FileAccess.file_exists(art_path):
+		var aimg := Image.load_from_file(art_path)
+		if aimg:
+			art.texture = ImageTexture.create_from_image(aimg)
+	v.add_child(art)
+
+	var name_l := Label.new()
+	name_l.text = str(def.get("name", "?"))
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_l.max_lines_visible = 2
+	name_l.clip_text = true
+	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_l.add_theme_font_size_override("font_size", 12)
+	name_l.add_theme_color_override("font_color", Color(0.96, 0.98, 1.0))
+	v.add_child(name_l)
+
+	var fx := Label.new()
+	fx.text = CardDB.enemy_effect_line(def)
+	fx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	fx.max_lines_visible = 2
+	fx.clip_text = true
+	fx.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	fx.add_theme_font_size_override("font_size", 11)
+	fx.add_theme_color_override("font_color", Color(0.8, 0.88, 0.96))
+	v.add_child(fx)
+
+	var btn := Button.new()
+	btn.flat = true
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	btn.tooltip_text = "Ver mazo completo de %s" % owner_name
+	var idx := enemy_index
+	btn.pressed.connect(func(): _open_enemy_card_menu(idx))
+	panel.add_child(btn)
+	return panel
 
 
 func _type_accent(card_type: String) -> Color:
