@@ -89,22 +89,26 @@ func _ground_shot() -> void:
 		return
 	var floor_ok := combat.get_node_or_null("FloorPlane") != null
 	var flipped := false
+	var stretch := -1
 	if combat.player_sprite:
 		flipped = combat.player_sprite.flip_h
-	print("GROUND_SHOT floor=", floor_ok, " flip_h=", flipped)
+		stretch = int(combat.player_sprite.stretch_mode)
+	# Idle (anime y custom) mira a la DERECHA → flip_h debe ser false.
+	var expect_flip := false
+	print("GROUND_SHOT floor=", floor_ok, " flip_h=", flipped, " expect=", expect_flip, " stretch=", stretch)
 	if not floor_ok:
 		print("GROUND_SHOT_FAIL no floor")
 		get_tree().quit(1)
 		return
-	if flipped:
-		print("GROUND_SHOT_FAIL player still flipped")
+	if flipped != expect_flip:
+		print("GROUND_SHOT_FAIL bad facing flip_h=", flipped, " expect=", expect_flip)
 		get_tree().quit(1)
 		return
 	await _save_shot("combate_suelo_facing")
 	# Sangre visible
 	if combat.has_method("_spawn_blood_burst"):
-		combat._spawn_blood_burst(Vector2(900, 360), 1.7)
-		await get_tree().create_timer(0.5).timeout
+		combat._spawn_blood_burst(Vector2(900, 360), 2.0)
+		await get_tree().create_timer(0.55).timeout
 		await _save_shot("combate_sangre_impacto")
 	# Ataque con gesto
 	var snap: Dictionary = CombatState.get_snapshot()
@@ -113,7 +117,7 @@ func _ground_shot() -> void:
 		var id := str(cid)
 		if CombatState.can_play_card(id):
 			CombatState.play_card(id)
-			await get_tree().create_timer(1.0).timeout
+			await get_tree().create_timer(1.05).timeout
 			await _save_shot("combate_gesto_ataque")
 			break
 	print("GROUND_SHOT_OK")

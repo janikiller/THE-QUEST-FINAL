@@ -82,6 +82,32 @@ func _fx_tex(name: String) -> Texture2D:
 	return null
 
 
+func _hero_pose_key(pose: String) -> String:
+	match pose:
+		"shoot", "aim":
+			return "shoot"
+		"hurt":
+			return "hurt"
+		_:
+			return "idle"
+
+
+func _hero_using_anime(pose_key: String = "") -> bool:
+	var key := pose_key if pose_key != "" else _hero_pose_key(_hero_pose)
+	var path := CombatRoster.hero_pose(key)
+	return path.find("/anime/") >= 0
+
+
+func _apply_hero_facing() -> void:
+	## Anime idle/shoot/hurt ya miran a la DERECHA (hacia enemigos) → sin flip.
+	## Custom idle mira a la derecha; custom shoot mira a la izquierda.
+	var key := _hero_pose_key(_hero_pose)
+	if _hero_using_anime(key):
+		player_sprite.flip_h = false
+	else:
+		player_sprite.flip_h = key == "shoot"
+
+
 func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
 	_hero_pose = pose
 	if hold_sec > 0.0:
@@ -98,8 +124,8 @@ func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
 		tex = _hero_tex("idle")
 	if tex:
 		player_sprite.texture = tex
-		# Arte anime mira a la derecha (hacia enemigos)
-		player_sprite.flip_h = false
+		_apply_hero_facing()
+		_plant_hero_sprite()
 
 
 func _tick_hero_pose() -> void:
@@ -107,6 +133,42 @@ func _tick_hero_pose() -> void:
 		return
 	if Time.get_ticks_msec() / 1000.0 >= _hero_pose_until:
 		_apply_hero_pose("idle")
+
+
+func _plant_hero_sprite() -> void:
+	## Cuerpo completo, pies anclados al borde inferior (sin crop de torso).
+	if player_sprite == null:
+		return
+	var box := Vector2(210.0, GROUND_Y + 4.0)
+	_bottom_plant_texture(player_sprite, box)
+	if not bool(player_sprite.get_meta("anim_locked", false)):
+		# Restaura la base plantada (el bob suma offset encima)
+		var planted: Vector2 = player_sprite.get_meta("plant_pos", player_sprite.position)
+		player_sprite.position = planted
+
+
+func _bottom_plant_texture(tex: TextureRect, box: Vector2) -> void:
+	## Escala con aspect ratio y pega el borde inferior al suelo del slot.
+	if tex == null:
+		return
+	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tex.stretch_mode = TextureRect.STRETCH_SCALE
+	var dw := box.x
+	var dh := box.y
+	if tex.texture != null:
+		var tw := float(tex.texture.get_width())
+		var th := float(tex.texture.get_height())
+		if tw > 1.0 and th > 1.0:
+			var sc := minf(box.x / tw, box.y / th)
+			dw = tw * sc
+			dh = th * sc
+	tex.custom_minimum_size = Vector2(dw, dh)
+	tex.size = Vector2(dw, dh)
+	var planted := Vector2((box.x - dw) * 0.5, box.y - dh)
+	tex.position = planted
+	tex.set_meta("plant_pos", planted)
+	tex.set_meta("plant_box", box)
+	tex.pivot_offset = Vector2(dw * 0.5, dh * 0.94)
 
 
 func _ready() -> void:
@@ -138,11 +200,11 @@ func _ground_arena_layout() -> void:
 	var player_col := get_node_or_null("Arena/PlayerCol")
 	if player_col:
 		player_col.offset_top = -40.0
-		player_col.offset_bottom = 285.0
+		player_col.offset_bottom = 298.0
 		player_col.alignment = BoxContainer.ALIGNMENT_END
 	if enemies_row:
 		enemies_row.offset_top = -60.0
-		enemies_row.offset_bottom = 285.0
+		enemies_row.offset_bottom = 298.0
 		enemies_row.alignment = BoxContainer.ALIGNMENT_END
 	if player_marker:
 		player_marker.visible = true
@@ -157,30 +219,25 @@ func _setup_player_actor() -> void:
 	if player_sprite.get_parent().name == "PlayerActor":
 		_player_actor = player_sprite.get_parent()
 		_player_shadow = _player_actor.get_node_or_null("Shadow")
-		player_sprite.flip_h = false  # Arte mira a la derecha → enfrenta enemigos
+		_apply_hero_facing()
+		_plant_hero_sprite()
 		return
 	var parent := player_sprite.get_parent()
 	var idx := player_sprite.get_index()
 	_player_actor = Control.new()
 	_player_actor.name = "PlayerActor"
-	_player_actor.custom_minimum_size = Vector2(200, 300)
+	_player_actor.custom_minimum_size = Vector2(210, GROUND_Y + 28.0)
 	_player_actor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_player_actor.clip_contents = false
 	parent.add_child(_player_actor)
 	parent.move_child(_player_actor, idx)
 	parent.remove_child(player_sprite)
 	_player_actor.add_child(player_sprite)
-	player_sprite.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	player_sprite.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	player_sprite.anchor_right = 0.0
 	player_sprite.anchor_bottom = 0.0
-	player_sprite.offset_left = 0
-	player_sprite.offset_right = 0
-	player_sprite.offset_top = 0
-	player_sprite.offset_bottom = GROUND_Y + 4.0
-	player_sprite.custom_minimum_size = Vector2(230, GROUND_Y + 4.0)
-	player_sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	# COVERED planta mejor los pies en el borde inferior del rect
-	player_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	player_sprite.position = Vector2(0, 0)
-	player_sprite.flip_h = false  # Mira hacia los enemigos (derecha)
+	_plant_hero_sprite()
+	_apply_hero_facing()
 	_player_shadow = TextureRect.new()
 	_player_shadow.name = "Shadow"
 	_player_shadow.texture = _fx_tex("shadow")
@@ -190,26 +247,24 @@ func _setup_player_actor() -> void:
 	_player_shadow.modulate = Color(0, 0, 0, 0.92)
 	_player_actor.add_child(_player_shadow)
 	_player_actor.move_child(_player_shadow, 0)
-	_layout_ground_shadow(_player_shadow, _player_actor, 160.0)
+	_layout_ground_shadow(_player_shadow, _player_actor, 120.0)
 	_player_base_pos = _player_actor.position
 
 
 func _layout_ground_shadow(shadow: TextureRect, actor: Control, width: float) -> void:
 	if shadow == null or actor == null:
 		return
-	var h := 42.0
-	shadow.size = Vector2(width + 36.0, h)
-	# Sombra pegada al suelo (pies), no al centro del sprite
-	shadow.position = Vector2(
-		(actor.size.x - width - 36.0) * 0.5 if actor.size.x > 0.0 else (200.0 - width) * 0.5,
-		GROUND_Y - 4.0
-	)
-	shadow.pivot_offset = Vector2((width + 36.0) * 0.5, h * 0.55)
-	shadow.modulate = Color(0.02, 0.02, 0.04, 0.88)
+	var h := 28.0
+	var aw := actor.size.x if actor.size.x > 1.0 else 210.0
+	shadow.size = Vector2(width + 20.0, h)
+	# Sombra justo bajo la suela (contacto con el asfalto)
+	shadow.position = Vector2((aw - width - 20.0) * 0.5, GROUND_Y + 2.0)
+	shadow.pivot_offset = Vector2((width + 20.0) * 0.5, h * 0.55)
+	shadow.modulate = Color(0.01, 0.01, 0.02, 0.95)
 
 
 func _ensure_floor_plane() -> void:
-	## Suelo visible bajo los pies: asfalto + línea de contacto (deja de flotar).
+	## Franja de asfalto + borde de contacto bajo los pies.
 	var existing := get_node_or_null("FloorPlane") as Control
 	if existing:
 		return
@@ -217,8 +272,9 @@ func _ensure_floor_plane() -> void:
 	floor.name = "FloorPlane"
 	floor.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	floor.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	floor.offset_top = -292.0
-	floor.offset_bottom = -248.0
+	# Más alta: llega hasta la suela de los sprites (GROUND_Y en el arena)
+	floor.offset_top = -318.0
+	floor.offset_bottom = -238.0
 	floor.z_index = 2
 	add_child(floor)
 	move_child(floor, get_node("Bottom").get_index())
@@ -230,37 +286,53 @@ func _ensure_floor_plane() -> void:
 	asphalt.stretch_mode = TextureRect.STRETCH_SCALE
 	asphalt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	asphalt.texture = _make_asphalt_tex()
-	asphalt.modulate = Color(1, 1, 1, 0.92)
+	asphalt.modulate = Color(1, 1, 1, 0.98)
 	floor.add_child(asphalt)
 
 	var rim := ColorRect.new()
 	rim.name = "ContactRim"
-	rim.color = Color(0.55, 0.62, 0.7, 0.35)
+	rim.color = Color(0.78, 0.84, 0.92, 0.5)
 	rim.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	rim.offset_bottom = 3.0
+	rim.offset_bottom = 5.0
 	rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	floor.add_child(rim)
 
+	var gloss := ColorRect.new()
+	gloss.name = "WetGloss"
+	gloss.color = Color(0.35, 0.55, 0.85, 0.1)
+	gloss.set_anchors_preset(Control.PRESET_FULL_RECT)
+	gloss.offset_top = 8.0
+	gloss.offset_bottom = -6.0
+	gloss.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	floor.add_child(gloss)
+
 	var shade := get_node_or_null("GroundShade") as ColorRect
 	if shade:
-		shade.offset_top = -300.0
-		shade.color = Color(0.02, 0.03, 0.05, 0.42)
+		shade.offset_top = -325.0
+		shade.color = Color(0.02, 0.03, 0.05, 0.55)
 		shade.z_index = 1
 
 
 func _make_asphalt_tex() -> Texture2D:
-	var img := Image.create(256, 64, false, Image.FORMAT_RGBA8)
-	for y in range(64):
-		for x in range(256):
+	var img := Image.create(320, 80, false, Image.FORMAT_RGBA8)
+	for y in range(80):
+		for x in range(320):
 			var n := float((x * 17 + y * 31) % 23) / 23.0
-			var edge := absf(float(y) / 64.0 - 0.55)
-			var v := 0.10 + n * 0.07 - edge * 0.05
-			var a := 0.95 - edge * 0.55
-			img.set_pixel(x, y, Color(v * 0.85, v * 0.88, v * 0.95, clampf(a, 0.15, 0.95)))
-	# Líneas de acera / grietas horizontales
-	for x in range(256):
-		img.set_pixel(x, 18, Color(0.22, 0.24, 0.28, 0.55))
-		img.set_pixel(x, 42, Color(0.08, 0.09, 0.11, 0.7))
+			var n2 := float((x * 7 + y * 13) % 11) / 11.0
+			var edge := absf(float(y) / 80.0 - 0.48)
+			var v := 0.11 + n * 0.08 + n2 * 0.03 - edge * 0.06
+			var a := 0.98 - edge * 0.5
+			img.set_pixel(x, y, Color(v * 0.82, v * 0.86, v * 0.94, clampf(a, 0.2, 0.98)))
+	for x in range(320):
+		img.set_pixel(x, 14, Color(0.28, 0.3, 0.34, 0.6))
+		img.set_pixel(x, 38, Color(0.07, 0.08, 0.1, 0.75))
+		img.set_pixel(x, 62, Color(0.18, 0.2, 0.24, 0.45))
+	# Grietas verticales suaves
+	for i in range(8):
+		var cx := 20 + i * 38
+		for y in range(10, 70):
+			if (y + i * 3) % 5 == 0:
+				img.set_pixel(cx + (y % 3) - 1, y, Color(0.05, 0.05, 0.07, 0.55))
 	return ImageTexture.create_from_image(img)
 
 
@@ -313,18 +385,19 @@ func _idle_bob_player(delta: float = 0.016) -> void:
 		return
 	if bool(player_sprite.get_meta("anim_locked", false)):
 		return
-	# Respiración suave sin levantar los pies del suelo
-	var bob := sin(_bob_t * 1.65) * 0.7
-	var sway := cos(_bob_t * 0.85) * 1.2
-	var target := Vector2(sway, bob)
-	player_sprite.position = player_sprite.position.lerp(target, 1.0 - exp(-delta * 7.5))
-	var breath := 1.0 + sin(_bob_t * 1.65) * 0.022
-	player_sprite.scale = player_sprite.scale.lerp(Vector2(breath, 2.0 - breath), 1.0 - exp(-delta * 6.0))
+	# Micro-gesto: pecho/hombros; pies clavados (Y casi 0)
+	var bob := sin(_bob_t * 1.55) * 0.35
+	var sway := cos(_bob_t * 0.9) * 0.9
+	var planted: Vector2 = player_sprite.get_meta("plant_pos", Vector2.ZERO)
+	var target := planted + Vector2(sway, bob)
+	player_sprite.position = player_sprite.position.lerp(target, 1.0 - exp(-delta * 8.0))
+	var breath := 1.0 + sin(_bob_t * 1.55) * 0.018
+	player_sprite.scale = player_sprite.scale.lerp(Vector2(breath, 2.0 - breath), 1.0 - exp(-delta * 6.5))
 	if _player_shadow:
-		_layout_ground_shadow(_player_shadow, _player_actor, 168.0)
-		var squash := 1.0 + sin(_bob_t * 1.65) * 0.06
+		_layout_ground_shadow(_player_shadow, _player_actor, 118.0)
+		var squash := 1.0 + sin(_bob_t * 1.55) * 0.05
 		_player_shadow.scale = _player_shadow.scale.lerp(Vector2(squash, 1.0), 1.0 - exp(-delta * 6.0))
-		_player_shadow.modulate.a = lerpf(_player_shadow.modulate.a, 0.82 + absf(sin(_bob_t * 1.65)) * 0.08, 1.0 - exp(-delta * 5.0))
+		_player_shadow.modulate.a = lerpf(_player_shadow.modulate.a, 0.86 + absf(sin(_bob_t * 1.55)) * 0.06, 1.0 - exp(-delta * 5.0))
 
 
 func _idle_bob_enemies(delta: float = 0.016) -> void:
@@ -341,21 +414,21 @@ func _idle_bob_enemies(delta: float = 0.016) -> void:
 		if spr == null:
 			continue
 		var is_boss := bool(wrap.get_meta("is_boss", false))
-		var amp := 1.4 if is_boss else 0.8
-		var sway := 2.2 if is_boss else 1.4
-		var speed := 1.35 if is_boss else 1.7
+		var amp := 0.55 if is_boss else 0.35
+		var sway := 1.4 if is_boss else 0.9
+		var speed := 1.25 if is_boss else 1.55
 		var phase := _bob_t * speed + float(i) * 0.95
-		var base_pos: Vector2 = wrap.get_meta("sprite_base", Vector2(0, 4.0 if is_boss else 18.0))
+		var base_pos: Vector2 = wrap.get_meta("sprite_base", Vector2(0, 0))
 		var target := base_pos + Vector2(cos(phase * 0.7) * sway, sin(phase) * amp)
 		spr.position = spr.position.lerp(target, 1.0 - exp(-delta * 7.0))
-		var pulse := 1.0 + sin(phase * 0.55) * (0.028 if is_boss else 0.016)
-		var rot := sin(phase * 0.4) * (2.4 if is_boss else 1.2)
+		var pulse := 1.0 + sin(phase * 0.55) * (0.02 if is_boss else 0.014)
+		var rot := sin(phase * 0.4) * (1.6 if is_boss else 0.9)
 		spr.scale = spr.scale.lerp(Vector2(pulse, 2.0 - pulse), 1.0 - exp(-delta * 6.0))
 		spr.rotation_degrees = lerpf(spr.rotation_degrees, rot, 1.0 - exp(-delta * 5.5))
 		if shadow:
-			var squash := 1.0 + sin(phase) * (0.06 if is_boss else 0.04)
-			shadow.scale = shadow.scale.lerp(Vector2(squash * (1.15 if is_boss else 1.0), 1.0), 1.0 - exp(-delta * 6.0))
-			shadow.modulate.a = lerpf(shadow.modulate.a, 0.58 + absf(sin(phase)) * 0.1, 1.0 - exp(-delta * 5.0))
+			var squash := 1.0 + sin(phase) * (0.05 if is_boss else 0.035)
+			shadow.scale = shadow.scale.lerp(Vector2(squash * (1.1 if is_boss else 1.0), 1.0), 1.0 - exp(-delta * 6.0))
+			shadow.modulate.a = lerpf(shadow.modulate.a, 0.72 + absf(sin(phase)) * 0.08, 1.0 - exp(-delta * 5.0))
 		i += 1
 
 
@@ -900,13 +973,9 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	btn.clip_contents = false
 	var tex := TextureRect.new()
 	tex.name = "EnemySprite"
-	# Pies anclados al suelo
-	tex.position = Vector2(0, 0)
-	tex.size = Vector2(actor_w, ground_y - 4.0)
-	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	# Pies anclados al suelo (aspect completo, sin crop COVERED)
+	var slot := Vector2(actor_w, ground_y - 4.0)
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tex.pivot_offset = Vector2(actor_w * 0.5, (ground_y - 4.0) * 0.9)
 	# Prioridad: sprite propio del enemigo (boss) → pack por índice
 	var sp := str(e.get("sprite", ""))
 	if sp == "" or not (ResourceLoader.exists(sp) or FileAccess.file_exists(sp)):
@@ -916,6 +985,7 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	var loaded: Texture2D = _load_combat_tex(sp)
 	if loaded:
 		tex.texture = loaded
+	_bottom_plant_texture(tex, slot)
 	# Convención: assets enemigo miran a la IZQUIERDA (hacia García).
 	# Si algún enemigo viene con face=right, se espeja.
 	tex.flip_h = str(e.get("face", "left")) == "right"
@@ -923,7 +993,7 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	btn.pressed.connect(func(): CombatState.select_enemy(index))
 	actor.add_child(btn)
 	wrap.add_child(actor)
-	wrap.set_meta("sprite_base", tex.position)
+	wrap.set_meta("sprite_base", tex.get_meta("plant_pos", tex.position))
 
 	if bool(e.get("detained", false)) or bool(e.get("fled", false)):
 		wrap.modulate = Color(0.55, 0.55, 0.58, 0.85)
@@ -1790,25 +1860,25 @@ func _hero_attack_sequence(def: Dictionary) -> void:
 		return
 	player_sprite.set_meta("anim_locked", true)
 	var base := _player_base_pos
-	# Wind-up
+	# Wind-up: carga el hombro / arma (pies en suelo)
 	var tw0 := create_tween()
 	tw0.set_parallel(true)
-	tw0.tween_property(_player_actor, "position", base + Vector2(-32, 6), 0.14).set_trans(Tween.TRANS_CUBIC)
-	tw0.tween_property(player_sprite, "rotation_degrees", -8.0, 0.14)
-	tw0.tween_property(player_sprite, "scale", Vector2(1.14, 0.86), 0.14)
+	tw0.tween_property(_player_actor, "position", base + Vector2(-28, 4), 0.12).set_trans(Tween.TRANS_CUBIC)
+	tw0.tween_property(player_sprite, "rotation_degrees", -10.0, 0.12)
+	tw0.tween_property(player_sprite, "scale", Vector2(1.12, 0.88), 0.12)
 	if _player_shadow:
-		tw0.tween_property(_player_shadow, "scale", Vector2(1.28, 0.78), 0.14)
+		tw0.tween_property(_player_shadow, "scale", Vector2(1.22, 0.82), 0.12)
 	await tw0.finished
-	# Lunge hacia el enemigo
+	# Lunge hacia el enemigo (poca elevación)
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(_player_actor, "position", base + Vector2(118, -6), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(player_sprite, "rotation_degrees", 9.0, 0.16)
-	tw.tween_property(player_sprite, "scale", Vector2(0.9, 1.14), 0.16)
+	tw.tween_property(_player_actor, "position", base + Vector2(108, 2), 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(player_sprite, "rotation_degrees", 8.0, 0.15)
+	tw.tween_property(player_sprite, "scale", Vector2(0.92, 1.1), 0.15)
 	if _player_shadow:
-		tw.tween_property(_player_shadow, "scale", Vector2(1.45, 0.68), 0.16)
+		tw.tween_property(_player_shadow, "scale", Vector2(1.4, 0.7), 0.15)
 	await tw.finished
-	var muzzle_pos := player_sprite.global_position + Vector2(145, 115)
+	var muzzle_pos := player_sprite.global_position + Vector2(player_sprite.size.x * 0.72, player_sprite.size.y * 0.42)
 	_spawn_fx_world(muzzle_pos, "muzzle", 0.18, Vector2(1.55, 1.55))
 	await get_tree().create_timer(0.03).timeout
 	_spawn_fx_world(muzzle_pos + Vector2(10, -5), "muzzle", 0.14, Vector2(1.05, 1.05))
@@ -1816,26 +1886,26 @@ func _hero_attack_sequence(def: Dictionary) -> void:
 	var enemy_node := _selected_enemy_sprite()
 	var hit_pos := get_viewport_rect().size * Vector2(0.72, 0.48)
 	if enemy_node and is_instance_valid(enemy_node):
-		hit_pos = enemy_node.global_position + Vector2(70, enemy_node.size.y * 0.52)
+		hit_pos = enemy_node.global_position + Vector2(enemy_node.size.x * 0.45, enemy_node.size.y * 0.48)
 	await _fly_tracer(muzzle_pos, hit_pos)
 	_spawn_fx_world(hit_pos, "impact", 0.3, Vector2(1.7, 1.7))
-	_spawn_blood_burst(hit_pos, 1.35)
+	_spawn_blood_burst(hit_pos, 1.55)
 	if enemy_node and is_instance_valid(enemy_node):
 		await _hit_actor_heavy(enemy_node, maxi(1, int(def.get("damage", 8))), true)
 	# Recoil
 	var twr := create_tween()
 	twr.set_parallel(true)
-	twr.tween_property(_player_actor, "position", base + Vector2(48, 4), 0.1)
-	twr.tween_property(player_sprite, "rotation_degrees", -5.0, 0.1)
-	twr.tween_property(player_sprite, "scale", Vector2(1.06, 0.92), 0.1)
+	twr.tween_property(_player_actor, "position", base + Vector2(42, 3), 0.1)
+	twr.tween_property(player_sprite, "rotation_degrees", -6.0, 0.1)
+	twr.tween_property(player_sprite, "scale", Vector2(1.05, 0.94), 0.1)
 	await twr.finished
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
-	tw2.tween_property(_player_actor, "position", base, 0.26).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw2.tween_property(player_sprite, "rotation_degrees", 0.0, 0.26)
-	tw2.tween_property(player_sprite, "scale", Vector2.ONE, 0.26)
+	tw2.tween_property(_player_actor, "position", base, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw2.tween_property(player_sprite, "rotation_degrees", 0.0, 0.24)
+	tw2.tween_property(player_sprite, "scale", Vector2.ONE, 0.24)
 	if _player_shadow:
-		tw2.tween_property(_player_shadow, "scale", Vector2.ONE, 0.26)
+		tw2.tween_property(_player_shadow, "scale", Vector2.ONE, 0.24)
 	await tw2.finished
 	player_sprite.set_meta("anim_locked", false)
 
@@ -1982,43 +2052,81 @@ func _spawn_fx_at(node: CanvasItem, fx_name: String, offset: Vector2, life: floa
 
 
 func _spawn_blood_burst(pos: Vector2, power: float = 1.0) -> void:
-	## Salpicadura visible: varias gotas con caída.
-	var n := clampi(int(3.0 + power * 2.0), 3, 7)
+	## Salpicadura gruesa + gotas con gravedad hacia el suelo.
+	var n := clampi(int(5.0 + power * 3.0), 5, 11)
 	for i in range(n):
-		var off := Vector2(randf_range(-22.0, 28.0), randf_range(-18.0, 12.0)) * power
-		var sc := randf_range(0.9, 1.7) * power
-		var life := randf_range(0.42, 0.75)
-		var tint := Color(randf_range(0.85, 1.15), randf_range(0.05, 0.2), randf_range(0.05, 0.15), 1.0)
+		var off := Vector2(randf_range(-34.0, 38.0), randf_range(-26.0, 16.0)) * power
+		var sc := randf_range(1.05, 2.15) * power
+		var life := randf_range(0.55, 0.95)
+		var tint := Color(randf_range(0.75, 1.1), randf_range(0.02, 0.12), randf_range(0.02, 0.1), 1.0)
 		_spawn_blood_drop(pos + off, sc, life, tint)
-	_spawn_fx_world(pos, "impact", 0.2, Vector2(1.2, 1.2) * power, Color(1.0, 0.35, 0.25))
+	# Mancha base en el impacto
+	_spawn_blood_stain(pos, 1.15 * power)
+	_spawn_fx_world(pos, "impact", 0.28, Vector2(1.45, 1.45) * power, Color(1.0, 0.25, 0.18))
+
+
+func _spawn_blood_stain(pos: Vector2, sc: float) -> void:
+	## Mancha suave (sin rectángulo duro).
+	var tex := _fx_tex("blood")
+	var stain: Control
+	if tex != null:
+		var tr := TextureRect.new()
+		tr.texture = tex
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.size = Vector2(86, 48) * sc
+		stain = tr
+	else:
+		var blob := ColorRect.new()
+		blob.color = Color(0.55, 0.02, 0.05, 0.55)
+		blob.size = Vector2(36, 16) * sc
+		stain = blob
+	stain.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stain.z_index = 96
+	stain.modulate = Color(0.85, 0.05, 0.08, 0.85)
+	stain.pivot_offset = stain.size * 0.5
+	stain.rotation_degrees = randf_range(-30, 30)
+	stain.scale = Vector2(1.2, 0.55)
+	_fx_layer.add_child(stain)
+	stain.global_position = pos - stain.size * 0.5 + Vector2(0, 10)
+	var tw := create_tween()
+	tw.tween_property(stain, "scale", Vector2(1.55, 0.7), 0.14)
+	tw.tween_property(stain, "modulate:a", 0.0, 0.9).set_delay(0.4)
+	tw.tween_callback(stain.queue_free)
 
 
 func _spawn_blood_drop(pos: Vector2, sc: float, life: float, tint: Color) -> void:
 	var tex := _fx_tex("blood")
-	if tex == null:
-		return
-	var fx := TextureRect.new()
-	fx.texture = tex
-	fx.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	fx.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var fx: Control
+	if tex != null:
+		var tr := TextureRect.new()
+		tr.texture = tex
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.size = Vector2(70, 70) * sc
+		fx = tr
+	else:
+		var blob := ColorRect.new()
+		blob.color = Color(0.7, 0.05, 0.08, 0.95)
+		blob.size = Vector2(18, 22) * sc
+		fx = blob
 	fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fx.z_index = 97
 	fx.modulate = tint
-	fx.size = Vector2(54, 54) * sc
 	fx.pivot_offset = fx.size * 0.5
 	_fx_layer.add_child(fx)
 	fx.global_position = pos - fx.size * 0.5
-	var rise := pos + Vector2(randf_range(-10, 10), randf_range(-28, -12)) * sc
-	var fall := pos + Vector2(randf_range(-16, 18), randf_range(36, 70)) * sc
+	var rise := pos + Vector2(randf_range(-18, 18), randf_range(-42, -18)) * sc
+	var fall := pos + Vector2(randf_range(-28, 30), randf_range(55, 110)) * sc
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(fx, "global_position", rise - fx.size * 0.5, life * 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(fx, "scale", Vector2.ONE * (1.0 + 0.35 * sc), life * 0.28)
+	tw.tween_property(fx, "global_position", rise - fx.size * 0.5, life * 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(fx, "scale", Vector2.ONE * (1.0 + 0.45 * sc), life * 0.22)
 	tw.chain()
 	tw.set_parallel(true)
-	tw.tween_property(fx, "global_position", fall - fx.size * 0.5, life * 0.72).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_property(fx, "modulate:a", 0.0, life * 0.72)
-	tw.tween_property(fx, "rotation_degrees", randf_range(-40, 40), life * 0.72)
+	tw.tween_property(fx, "global_position", fall - fx.size * 0.5, life * 0.78).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(fx, "modulate:a", 0.0, life * 0.78)
+	tw.tween_property(fx, "rotation_degrees", randf_range(-55, 55), life * 0.78)
 	tw.chain().tween_callback(fx.queue_free)
 
 
