@@ -50,12 +50,19 @@ var _arena_path: String = ""
 func _hero_tex(name: String) -> Texture2D:
 	var anime := CombatRoster.hero_pose(name)
 	if anime != "" and (ResourceLoader.exists(anime) or FileAccess.file_exists(anime)):
-		if ResourceLoader.exists(anime):
-			return load(anime) as Texture2D
-		var img := Image.load_from_file(anime)
+		return _load_combat_tex(anime)
+	var path := PACK_HERO + name + ".png"
+	return _load_combat_tex(path)
+
+
+func _load_combat_tex(path: String) -> Texture2D:
+	## Carga PNG fresco desde disco cuando existe (evita cache .import stale).
+	if path == "":
+		return null
+	if FileAccess.file_exists(path):
+		var img := Image.load_from_file(path)
 		if img:
 			return ImageTexture.create_from_image(img)
-	var path := PACK_HERO + name + ".png"
 	if ResourceLoader.exists(path):
 		return load(path) as Texture2D
 	return null
@@ -517,8 +524,10 @@ func _animate_enemy_hit(panel: Control, dmg: int) -> void:
 	var idle_tex: Texture2D = spr.texture
 	var base: Vector2 = panel.get_meta("sprite_base", spr.position)
 	panel.set_meta("anim_locked", true)
-	if is_boss and hurt_path != "" and ResourceLoader.exists(hurt_path):
-		spr.texture = load(hurt_path)
+	if is_boss and hurt_path != "" and (ResourceLoader.exists(hurt_path) or FileAccess.file_exists(hurt_path)):
+		var ht := _load_combat_tex(hurt_path)
+		if ht:
+			spr.texture = ht
 	if is_boss:
 		_hit_actor_heavy(spr, dmg, true)
 		spr.modulate = Color(2.0, 1.6, 1.6)
@@ -558,8 +567,10 @@ func _animate_enemy_death(panel: Control, dmg: int) -> void:
 	var shadow: TextureRect = panel.find_child("Shadow", true, false)
 	var is_boss := bool(panel.get_meta("is_boss", false))
 	var hurt_path := str(panel.get_meta("pose_hurt", ""))
-	if spr and is_boss and hurt_path != "" and ResourceLoader.exists(hurt_path):
-		spr.texture = load(hurt_path)
+	if spr and is_boss and hurt_path != "" and (ResourceLoader.exists(hurt_path) or FileAccess.file_exists(hurt_path)):
+		var ht := _load_combat_tex(hurt_path)
+		if ht:
+			spr.texture = ht
 	if spr:
 		_spawn_dmg_number(spr, dmg)
 		_spawn_fx_at(spr, "impact", Vector2(40, 90), 0.3)
@@ -742,15 +753,12 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 		sp = PACK_FOE + "enemy_%d.png" % (index % 7)
 	if not (ResourceLoader.exists(sp) or FileAccess.file_exists(sp)):
 		sp = PACK_FOE + "enemy_0.png"
-	var loaded: Texture2D = null
-	if ResourceLoader.exists(sp):
-		loaded = load(sp)
-	elif FileAccess.file_exists(sp):
-		var img := Image.load_from_file(sp)
-		if img:
-			loaded = ImageTexture.create_from_image(img)
+	var loaded: Texture2D = _load_combat_tex(sp)
 	if loaded:
 		tex.texture = loaded
+	# Convención: assets enemigo miran a la IZQUIERDA (hacia García).
+	# Si algún enemigo viene con face=right, se espeja.
+	tex.flip_h = str(e.get("face", "left")) == "right"
 	btn.add_child(tex)
 	btn.pressed.connect(func(): CombatState.select_enemy(index))
 	actor.add_child(btn)
@@ -1088,8 +1096,10 @@ func _enemy_lunge_attack(index: int) -> void:
 	var idle_tex: Texture2D = spr.texture
 	var base: Vector2 = wrap.get_meta("sprite_base", spr.position)
 	wrap.set_meta("anim_locked", true)
-	if is_boss and attack_path != "" and ResourceLoader.exists(attack_path):
-		spr.texture = load(attack_path)
+	if is_boss and attack_path != "" and (ResourceLoader.exists(attack_path) or FileAccess.file_exists(attack_path)):
+		var at := _load_combat_tex(attack_path)
+		if at:
+			spr.texture = at
 	var wind := Vector2(18, 3) if is_boss else Vector2(10, 2)
 	var lunge := Vector2(-110, -8) if is_boss else Vector2(-62, -2)
 	var tw0 := create_tween()
