@@ -333,11 +333,11 @@ func close() -> void:
 func _style_bottom_panel() -> void:
 	var bottom := get_node_or_null("Bottom") as MarginContainer
 	if bottom:
-		# Un poco más alto para cartas enemigas legibles junto a tu mano
-		bottom.offset_top = -280.0
+		# Dos filas: cartas enemigas + tu mano
+		bottom.offset_top = -400.0
 	var arena := get_node_or_null("Arena") as Control
 	if arena:
-		arena.offset_bottom = -280.0
+		arena.offset_bottom = -400.0
 	var panel := get_node_or_null("Bottom/BottomPanel")
 	if panel == null:
 		return
@@ -348,54 +348,59 @@ func _style_bottom_panel() -> void:
 	sb.set_corner_radius_all(16)
 	sb.content_margin_left = 14
 	sb.content_margin_right = 14
-	sb.content_margin_top = 10
-	sb.content_margin_bottom = 10
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
 	panel.add_theme_stylebox_override("panel", sb)
 
 
 func _ensure_enemy_hand_ui() -> void:
-	## Usa el panel inferior grande: cartas enemigas al lado de TU MANO (mismo menú).
+	## Menú inferior grande: fila completa ELLOS encima de TU MANO (mismo tamaño de carta).
 	var bottom_row := get_node_or_null("Bottom/BottomPanel/BottomRow") as HBoxContainer
-	if bottom_row == null:
+	var hand_col := get_node_or_null("Bottom/BottomPanel/BottomRow/HandCol") as VBoxContainer
+	if hand_col == null:
 		return
-	var existing := bottom_row.get_node_or_null("EnemyHandCol") as VBoxContainer
-	if existing:
-		_enemy_hand_label = existing.get_node_or_null("EnemyHandLabel") as Label
-		_enemy_hand_row = existing.get_node_or_null("EnemyHandRow") as HBoxContainer
-		return
-	var col := VBoxContainer.new()
-	col.name = "EnemyHandCol"
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.size_flags_stretch_ratio = 0.95
-	col.add_theme_constant_override("separation", 4)
-	_enemy_hand_label = Label.new()
-	_enemy_hand_label.name = "EnemyHandLabel"
-	_enemy_hand_label.text = "ELLOS · SIGUIENTE CARTA"
-	_enemy_hand_label.add_theme_font_size_override("font_size", 11)
-	_enemy_hand_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.38))
-	_enemy_hand_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(_enemy_hand_label)
-	_enemy_hand_row = HBoxContainer.new()
-	_enemy_hand_row.name = "EnemyHandRow"
-	_enemy_hand_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_enemy_hand_row.add_theme_constant_override("separation", 8)
-	_enemy_hand_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	col.add_child(_enemy_hand_row)
-	bottom_row.add_child(col)
-	var hand_col := bottom_row.get_node_or_null("HandCol") as VBoxContainer
-	if hand_col:
-		bottom_row.move_child(col, hand_col.get_index())
-		hand_col.size_flags_stretch_ratio = 1.15
-	if _hand_label == null or not is_instance_valid(_hand_label):
+	# Quitar columna lateral antigua si existía
+	if bottom_row:
+		var old_col := bottom_row.get_node_or_null("EnemyHandCol")
+		if old_col:
+			bottom_row.remove_child(old_col)
+			old_col.free()
+	if _enemy_hand_label != null and is_instance_valid(_enemy_hand_label) and _enemy_hand_label.get_parent() == hand_col:
+		pass
+	elif hand_col.get_node_or_null("EnemyHandLabel") == null:
+		_enemy_hand_label = Label.new()
+		_enemy_hand_label.name = "EnemyHandLabel"
+		_enemy_hand_label.text = "ELLOS · SIGUIENTE CARTA"
+		_enemy_hand_label.add_theme_font_size_override("font_size", 12)
+		_enemy_hand_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.38))
+		_enemy_hand_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hand_col.add_child(_enemy_hand_label)
+		hand_col.move_child(_enemy_hand_label, 0)
+	else:
+		_enemy_hand_label = hand_col.get_node("EnemyHandLabel") as Label
+	if hand_col.get_node_or_null("EnemyHandRow") == null:
+		_enemy_hand_row = HBoxContainer.new()
+		_enemy_hand_row.name = "EnemyHandRow"
+		_enemy_hand_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		_enemy_hand_row.add_theme_constant_override("separation", 12)
+		_enemy_hand_row.custom_minimum_size = Vector2(0, 200)
+		hand_col.add_child(_enemy_hand_row)
+		hand_col.move_child(_enemy_hand_row, 1)
+	else:
+		_enemy_hand_row = hand_col.get_node("EnemyHandRow") as HBoxContainer
+	if hand_col.get_node_or_null("PlayerHandLabel") == null:
 		_hand_label = Label.new()
 		_hand_label.name = "PlayerHandLabel"
 		_hand_label.text = "TU MANO"
-		_hand_label.add_theme_font_size_override("font_size", 11)
+		_hand_label.add_theme_font_size_override("font_size", 12)
 		_hand_label.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
 		_hand_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		if hand_col:
-			hand_col.add_child(_hand_label)
-			hand_col.move_child(_hand_label, 0)
+		hand_col.add_child(_hand_label)
+		if hand_row:
+			hand_col.move_child(_hand_label, hand_row.get_index())
+	else:
+		_hand_label = hand_col.get_node("PlayerHandLabel") as Label
+	hand_col.add_theme_constant_override("separation", 4)
 
 
 func _style_end_btn() -> void:
@@ -921,7 +926,7 @@ func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: i
 	var is_boss := str(def.get("id", "")).begins_with("boss_")
 	var accent := _enemy_kind_accent(kind, is_boss)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(118, 188)
+	panel.custom_minimum_size = Vector2(136, 200)
 	panel.clip_contents = true
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.07, 0.045, 0.05, 0.97)

@@ -107,7 +107,7 @@ func _enemy_cards_shot() -> void:
 	# Panel inferior: cartas enemigas en el menú grande
 	var bottom_n := 0
 	if combat:
-		var erow = combat.get_node_or_null("Bottom/BottomPanel/BottomRow/EnemyHandCol/EnemyHandRow")
+		var erow = combat.find_child("EnemyHandRow", true, false)
 		if erow:
 			bottom_n = erow.get_child_count()
 	print("ENEMY_CARDS bottom_menu=", bottom_n)
