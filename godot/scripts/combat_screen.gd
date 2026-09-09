@@ -237,12 +237,21 @@ func _idle_bob_enemies() -> void:
 		var shadow: TextureRect = wrap.find_child("Shadow", true, false)
 		if spr == null:
 			continue
-		var phase := _bob_t * 1.9 + float(i) * 0.85
-		spr.position.y = sin(phase) * 1.5
-		spr.position.x = cos(phase * 0.7) * 0.6
+		var is_boss := bool(wrap.get_meta("is_boss", false))
+		var amp := 2.8 if is_boss else 1.5
+		var sway := 1.4 if is_boss else 0.6
+		var speed := 1.55 if is_boss else 1.9
+		var phase := _bob_t * speed + float(i) * 0.85
+		# Gestos de respiración / amenaza del Capo
+		if is_boss:
+			var pulse := 1.0 + sin(phase * 0.55) * 0.025
+			spr.scale = Vector2(pulse, 2.0 - pulse)
+			spr.rotation_degrees = sin(phase * 0.45) * 2.2
+		spr.position.y = sin(phase) * amp
+		spr.position.x = cos(phase * 0.7) * sway
 		if shadow:
-			var squash := 1.0 + sin(phase) * 0.035
-			shadow.scale = Vector2(squash, 1.0)
+			var squash := 1.0 + sin(phase) * (0.055 if is_boss else 0.035)
+			shadow.scale = Vector2(squash * (1.15 if is_boss else 1.0), 1.0)
 			shadow.modulate.a = 0.6 + absf(sin(phase)) * 0.08
 		i += 1
 
@@ -460,7 +469,25 @@ func _animate_enemy_hit(panel: Control, dmg: int) -> void:
 	if not is_instance_valid(panel):
 		return
 	var spr := panel.find_child("EnemySprite", true, false)
-	if spr:
+	if spr == null:
+		return
+	var is_boss := bool(panel.get_meta("is_boss", false))
+	var hurt_path := str(panel.get_meta("pose_hurt", ""))
+	var idle_tex: Texture2D = spr.texture
+	if is_boss and hurt_path != "" and ResourceLoader.exists(hurt_path):
+		spr.texture = load(hurt_path)
+	if is_boss:
+		_hit_actor_heavy(spr, dmg, true)
+		spr.modulate = Color(2.0, 1.6, 1.6)
+		_spawn_fx_at(spr, "impact", Vector2(48, 100), 0.35)
+		_spawn_fx_at(spr, "blood", Vector2(56, 110), 0.4)
+		_screen_pulse(Color(1.0, 0.35, 0.2, 0.28))
+		await get_tree().create_timer(0.22).timeout
+		if is_instance_valid(spr):
+			spr.modulate = Color.WHITE
+			if idle_tex:
+				spr.texture = idle_tex
+	else:
 		_hit_actor(spr, dmg, true)
 		_spawn_fx_at(spr, "impact", Vector2(40, 90), 0.3)
 		_spawn_fx_at(spr, "blood", Vector2(50, 100), 0.35)
@@ -482,10 +509,17 @@ func _animate_enemy_death(panel: Control, dmg: int) -> void:
 	var actor: Control = panel.get_node_or_null("ActorSlot")
 	var spr: TextureRect = panel.find_child("EnemySprite", true, false)
 	var shadow: TextureRect = panel.find_child("Shadow", true, false)
+	var is_boss := bool(panel.get_meta("is_boss", false))
+	var hurt_path := str(panel.get_meta("pose_hurt", ""))
+	if spr and is_boss and hurt_path != "" and ResourceLoader.exists(hurt_path):
+		spr.texture = load(hurt_path)
 	if spr:
 		_spawn_dmg_number(spr, dmg)
 		_spawn_fx_at(spr, "impact", Vector2(40, 90), 0.3)
 		_spawn_fx_at(spr, "blood", Vector2(40, 100), 0.55)
+		if is_boss:
+			_spawn_fx_at(spr, "blood", Vector2(70, 80), 0.6)
+			_screen_pulse(Color(1.0, 0.2, 0.15, 0.35))
 	if actor == null or spr == null:
 		await get_tree().create_timer(0.35).timeout
 		return
@@ -500,37 +534,43 @@ func _animate_enemy_death(panel: Control, dmg: int) -> void:
 	twb.tween_property(spr, "scale", Vector2(1.12, 0.82), 0.12)
 	twb.tween_property(spr, "rotation_degrees", 18.0, 0.12)
 	await twb.finished
+	var fall_t := 0.62 if is_boss else 0.38
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(spr, "rotation_degrees", 92.0, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tw.tween_property(spr, "position", Vector2(22, 88), 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_property(spr, "scale", Vector2(1.05, 0.7), 0.38)
-	tw.tween_property(spr, "modulate", Color(0.45, 0.45, 0.48, 1.0), 0.3)
+	tw.tween_property(spr, "rotation_degrees", 92.0, fall_t).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tw.tween_property(spr, "position", Vector2(22, 88 if not is_boss else 110), fall_t).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(spr, "scale", Vector2(1.05, 0.7), fall_t)
+	tw.tween_property(spr, "modulate", Color(0.45, 0.45, 0.48, 1.0), fall_t * 0.8)
 	if shadow:
-		tw.tween_property(shadow, "modulate:a", 0.2, 0.38)
-		tw.tween_property(shadow, "scale", Vector2(1.5, 0.55), 0.38)
+		tw.tween_property(shadow, "modulate:a", 0.2, fall_t)
+		tw.tween_property(shadow, "scale", Vector2(1.5, 0.55), fall_t)
 	await tw.finished
 	_spawn_fx_world(spr.global_position + Vector2(40, 20), "impact", 0.25, Vector2(0.7, 0.7), Color(0.6, 0.6, 0.6))
 	var twr := create_tween()
 	twr.tween_property(spr, "position:y", spr.position.y - 8.0, 0.08)
 	twr.tween_property(spr, "position:y", spr.position.y, 0.1)
 	await twr.finished
-	await get_tree().create_timer(0.35).timeout
+	await get_tree().create_timer(0.55 if is_boss else 0.35).timeout
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
-	tw2.tween_property(panel, "modulate:a", 0.0, 0.5)
+	tw2.tween_property(panel, "modulate:a", 0.0, 0.65 if is_boss else 0.5)
 	if shadow:
 		tw2.tween_property(shadow, "modulate:a", 0.0, 0.5)
 	await tw2.finished
 
 
 func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
+	var is_boss := bool(e.get("is_boss", false))
 	var wrap := VBoxContainer.new()
-	wrap.custom_minimum_size = Vector2(168, 340)
+	wrap.custom_minimum_size = Vector2(210 if is_boss else 168, 380 if is_boss else 340)
 	wrap.alignment = BoxContainer.ALIGNMENT_END
 	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	wrap.add_theme_constant_override("separation", 4)
 	wrap.set_meta("enemy_index", index)
+	wrap.set_meta("is_boss", is_boss)
+	wrap.set_meta("pose_attack", str(e.get("pose_attack", "")))
+	wrap.set_meta("pose_hurt", str(e.get("pose_hurt", "")))
+	wrap.set_meta("idle_sprite", str(e.get("sprite", "")))
 
 	var intent := Label.new()
 	var intent_id := int(e.get("intent", 0))
@@ -544,7 +584,7 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	elif int(e.get("hp", 0)) <= 0:
 		intent.text = ""
 	elif intent_id == CombatState.Intent.ATTACK and val > 0:
-		intent.text = "●  %d" % val
+		intent.text = ("◆  %d" % val) if is_boss else ("●  %d" % val)
 		intent.add_theme_color_override("font_color", Color(1.0, 0.38, 0.38))
 	elif intent_id == CombatState.Intent.BLOCK and val > 0:
 		intent.text = "◈  %d" % val
@@ -555,39 +595,44 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	else:
 		intent.text = CombatState.intent_label(intent_id)
 	intent.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	intent.add_theme_font_size_override("font_size", 14)
+	intent.add_theme_font_size_override("font_size", 16 if is_boss else 14)
 	wrap.add_child(intent)
 
 	var name_l := Label.new()
 	name_l.text = str(e.get("name", "Sospechoso"))
-	if selected and int(e.get("hp", 0)) > 0:
+	if is_boss:
+		name_l.text = "★ " + name_l.text
+		name_l.add_theme_color_override("font_color", Color(1.0, 0.72, 0.28))
+		name_l.add_theme_font_size_override("font_size", 15)
+	elif selected and int(e.get("hp", 0)) > 0:
 		name_l.text = "▸ " + name_l.text
 		name_l.add_theme_color_override("font_color", Color(0.55, 0.9, 1.0))
+		name_l.add_theme_font_size_override("font_size", 12)
 	else:
 		name_l.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+		name_l.add_theme_font_size_override("font_size", 12)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_l.add_theme_font_size_override("font_size", 12)
 	wrap.add_child(name_l)
 
 	# Barras ENCIMA del cuerpo (no bajo los pies) para no flotar
 	var bars := VBoxContainer.new()
 	bars.add_theme_constant_override("separation", 2)
 	var hp_bar := ProgressBar.new()
-	hp_bar.custom_minimum_size = Vector2(132, 8)
+	hp_bar.custom_minimum_size = Vector2(168 if is_boss else 132, 10 if is_boss else 8)
 	hp_bar.max_value = float(e.get("max_hp", 1))
 	hp_bar.value = float(maxi(0, int(e.get("hp", 0))))
-	_style_bar(hp_bar, Color(0.86, 0.22, 0.28), 8.0)
+	_style_bar(hp_bar, Color(0.95, 0.35, 0.18) if is_boss else Color(0.86, 0.22, 0.28), 10.0 if is_boss else 8.0)
 	bars.add_child(hp_bar)
 	var hp_t := Label.new()
 	hp_t.text = "%d/%d" % [maxi(0, int(e.get("hp", 0))), int(e.get("max_hp", 0))]
 	hp_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_t.add_theme_font_size_override("font_size", 10)
-	hp_t.add_theme_color_override("font_color", Color(0.85, 0.88, 0.92))
+	hp_t.add_theme_font_size_override("font_size", 11 if is_boss else 10)
+	hp_t.add_theme_color_override("font_color", Color(1.0, 0.85, 0.55) if is_boss else Color(0.85, 0.88, 0.92))
 	bars.add_child(hp_t)
 	var blk := int(e.get("block", 0))
 	if blk > 0:
 		var blk_bar := ProgressBar.new()
-		blk_bar.custom_minimum_size = Vector2(132, 6)
+		blk_bar.custom_minimum_size = Vector2(168 if is_boss else 132, 6)
 		blk_bar.max_value = maxf(12.0, float(blk))
 		blk_bar.value = float(blk)
 		_style_bar(blk_bar, Color(0.35, 0.72, 1.0), 6.0)
@@ -600,9 +645,11 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 		bars.add_child(blk_t)
 	wrap.add_child(bars)
 
+	var actor_w := 196.0 if is_boss else 160.0
+	var actor_h := 290.0 if is_boss else 250.0
 	var actor := Control.new()
 	actor.name = "ActorSlot"
-	actor.custom_minimum_size = Vector2(160, 250)
+	actor.custom_minimum_size = Vector2(actor_w, actor_h)
 	actor.clip_contents = false
 
 	var shadow := TextureRect.new()
@@ -613,30 +660,32 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shadow.modulate = Color(0, 0, 0, 0.9)
 	shadow.position = Vector2(8, GROUND_Y - 6.0)
-	shadow.size = Vector2(144, 36)
-	shadow.pivot_offset = Vector2(72, 18)
+	shadow.size = Vector2(actor_w - 16.0, 36 if not is_boss else 42)
+	shadow.pivot_offset = Vector2((actor_w - 16.0) * 0.5, 18)
 	actor.add_child(shadow)
 
 	var btn := Button.new()
 	btn.name = "SelectBtn"
 	btn.position = Vector2.ZERO
-	btn.size = Vector2(160, GROUND_Y)
+	btn.size = Vector2(actor_w, GROUND_Y)
 	btn.flat = true
 	btn.clip_contents = false
 	var tex := TextureRect.new()
 	tex.name = "EnemySprite"
-	tex.position = Vector2(0, 18)
-	tex.size = Vector2(160, GROUND_Y - 14.0)
+	tex.position = Vector2(0, 8 if is_boss else 18)
+	tex.size = Vector2(actor_w, GROUND_Y - (6.0 if is_boss else 14.0))
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sp := PACK_FOE + "enemy_%d.png" % (index % 7)
+	tex.pivot_offset = Vector2(actor_w * 0.5, (GROUND_Y - 14.0) * 0.7)
+	# Prioridad: sprite propio del enemigo (boss) → pack por índice
+	var sp := str(e.get("sprite", ""))
+	if sp == "" or not ResourceLoader.exists(sp):
+		sp = PACK_FOE + "enemy_%d.png" % (index % 7)
 	if not ResourceLoader.exists(sp):
 		sp = PACK_FOE + "enemy_0.png"
 	if ResourceLoader.exists(sp):
 		tex.texture = load(sp)
-	elif ResourceLoader.exists(str(e.get("sprite", ""))):
-		tex.texture = load(str(e.get("sprite", "")))
 	btn.add_child(tex)
 	btn.pressed.connect(func(): CombatState.select_enemy(index))
 	actor.add_child(btn)
@@ -933,37 +982,56 @@ func _enemy_lunge_attack(index: int) -> void:
 	var shadow: TextureRect = wrap.find_child("Shadow", true, false)
 	if actor == null or spr == null:
 		return
+	var is_boss := bool(wrap.get_meta("is_boss", false))
+	var attack_path := str(wrap.get_meta("pose_attack", ""))
+	var idle_tex: Texture2D = spr.texture
+	if is_boss and attack_path != "" and ResourceLoader.exists(attack_path):
+		spr.texture = load(attack_path)
 	var base := actor.position
+	var wind := Vector2(18, 3) if is_boss else Vector2(14, 2)
+	var lunge := Vector2(-96, -6) if is_boss else Vector2(-62, -2)
 	var tw0 := create_tween()
 	tw0.set_parallel(true)
-	tw0.tween_property(actor, "position", base + Vector2(14, 2), 0.1)
-	tw0.tween_property(spr, "rotation_degrees", 5.0, 0.1)
-	tw0.tween_property(spr, "scale", Vector2(1.06, 0.92), 0.1)
+	tw0.tween_property(actor, "position", base + wind, 0.14 if is_boss else 0.1)
+	tw0.tween_property(spr, "rotation_degrees", 8.0 if is_boss else 5.0, 0.14 if is_boss else 0.1)
+	tw0.tween_property(spr, "scale", Vector2(1.1, 0.88) if is_boss else Vector2(1.06, 0.92), 0.14 if is_boss else 0.1)
 	await tw0.finished
+	# Gesto de pump / amenaza del Capo
+	if is_boss:
+		var twp := create_tween()
+		twp.tween_property(spr, "position:x", spr.position.x + 6.0, 0.06)
+		twp.tween_property(spr, "position:x", spr.position.x - 2.0, 0.08)
+		await twp.finished
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(actor, "position", base + Vector2(-62, -2), 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(spr, "rotation_degrees", -7.0, 0.14)
-	tw.tween_property(spr, "scale", Vector2(0.94, 1.08), 0.14)
+	tw.tween_property(actor, "position", base + lunge, 0.18 if is_boss else 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(spr, "rotation_degrees", -10.0 if is_boss else -7.0, 0.18 if is_boss else 0.14)
+	tw.tween_property(spr, "scale", Vector2(0.9, 1.14) if is_boss else Vector2(0.94, 1.08), 0.18 if is_boss else 0.14)
 	if shadow:
-		tw.tween_property(shadow, "scale", Vector2(1.3, 0.78), 0.14)
+		tw.tween_property(shadow, "scale", Vector2(1.45, 0.72) if is_boss else Vector2(1.3, 0.78), 0.14)
 	await tw.finished
+	if is_boss:
+		_screen_pulse(Color(1.0, 0.55, 0.2, 0.32))
 	var muzzle := spr.global_position + Vector2(24, spr.size.y * 0.48)
-	_spawn_fx_world(muzzle, "muzzle", 0.16, Vector2(1.2, 1.2))
+	_spawn_fx_world(muzzle, "muzzle", 0.18 if is_boss else 0.16, Vector2(1.45, 1.45) if is_boss else Vector2(1.2, 1.2))
 	await get_tree().create_timer(0.03).timeout
-	_spawn_fx_world(muzzle + Vector2(-6, 3), "muzzle", 0.12, Vector2(0.8, 0.8))
+	_spawn_fx_world(muzzle + Vector2(-6, 3), "muzzle", 0.12, Vector2(0.9, 0.9) if is_boss else Vector2(0.8, 0.8))
+	if is_boss:
+		_spawn_fx_world(muzzle + Vector2(-14, -4), "muzzle", 0.1, Vector2(0.7, 0.7))
 	var target := player_sprite.global_position + Vector2(90, player_sprite.size.y * 0.55)
 	await _fly_tracer(muzzle, target)
-	_spawn_fx_world(target, "impact", 0.26, Vector2(1.35, 1.35))
-	_spawn_fx_world(target + Vector2(8, 6), "blood", 0.3)
+	_spawn_fx_world(target, "impact", 0.3 if is_boss else 0.26, Vector2(1.55, 1.55) if is_boss else Vector2(1.35, 1.35))
+	_spawn_fx_world(target + Vector2(8, 6), "blood", 0.35 if is_boss else 0.3)
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
-	tw2.tween_property(actor, "position", base, 0.2).set_trans(Tween.TRANS_SINE)
-	tw2.tween_property(spr, "rotation_degrees", 0.0, 0.2)
-	tw2.tween_property(spr, "scale", Vector2.ONE, 0.2)
+	tw2.tween_property(actor, "position", base, 0.26 if is_boss else 0.2).set_trans(Tween.TRANS_SINE)
+	tw2.tween_property(spr, "rotation_degrees", 0.0, 0.26 if is_boss else 0.2)
+	tw2.tween_property(spr, "scale", Vector2.ONE, 0.26 if is_boss else 0.2)
 	if shadow:
 		tw2.tween_property(shadow, "scale", Vector2.ONE, 0.2)
 	await tw2.finished
+	if is_instance_valid(spr) and idle_tex:
+		spr.texture = idle_tex
 
 
 func _hit_actor_heavy(node: CanvasItem, dmg: int, knock_right: bool) -> void:

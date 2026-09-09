@@ -78,6 +78,9 @@ func start_combat(cfg: Dictionary) -> void:
 			"weak": 0,
 			"portrait": str(e.get("portrait", "")),
 			"sprite": str(e.get("sprite", "delinquent_01")),
+			"is_boss": bool(e.get("is_boss", false)),
+			"pose_attack": str(e.get("pose_attack", "")),
+			"pose_hurt": str(e.get("pose_hurt", "")),
 		})
 	_roll_intents()
 	selected_enemy = _first_living_enemy()
@@ -322,11 +325,23 @@ func _roll_intents() -> void:
 		if not _enemy_alive(i):
 			continue
 		var e: Dictionary = enemies[i]
+		var is_boss := bool(e.get("is_boss", false))
 		var roll := randi() % 100
 		var hp_ratio := float(e.get("hp", 1)) / float(maxi(1, int(e.get("max_hp", 1))))
-		if hp_ratio < 0.3 and roll < 40:
+		# El Capo no huye.
+		if not is_boss and hp_ratio < 0.3 and roll < 40:
 			e["intent"] = Intent.FLEE
 			e["intent_value"] = 0
+		elif is_boss:
+			if roll < 70:
+				e["intent"] = Intent.ATTACK
+				e["intent_value"] = 12 + turn + (2 if hp_ratio < 0.5 else 0)
+			elif roll < 90:
+				e["intent"] = Intent.BLOCK
+				e["intent_value"] = 10 + turn
+			else:
+				e["intent"] = Intent.ATTACK
+				e["intent_value"] = 16 + turn
 		elif roll < 55:
 			e["intent"] = Intent.ATTACK
 			e["intent_value"] = 7 + (turn / 2) + (i * 2)

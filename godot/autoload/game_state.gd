@@ -824,19 +824,41 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 		base_hp += 4
 	if is_boss:
 		base_hp += 18
+	const BOSS_SPRITE := "res://assets/combat/custom/foes/boss_el_capo.png"
+	const BOSS_ATTACK := "res://assets/combat/custom/foes/boss_el_capo_attack.png"
+	const BOSS_HURT := "res://assets/combat/custom/foes/boss_el_capo_hurt.png"
+	const BOSS_THUMB := "res://assets/character/portraits/boss_el_capo_thumb.png"
+	const ESCORT_SPRITES := [
+		"res://assets/combat/custom/foes/enemy_0.png",
+		"res://assets/combat/custom/foes/enemy_3.png",
+		"res://assets/combat/custom/foes/enemy_5.png",
+	]
 	for i in range(mini(want, maxi(1, suspects.size()))):
 		var s: Dictionary = suspects[i]
 		var ehp := base_hp + i * 3 + (4 if period == "night" else 0)
 		var ename := str(s.get("alias", s.get("name", "Sospechoso")))
+		var spr := str(s.get("full", "res://assets/character/delinquents/delinq_00.png"))
+		var thumb := str(s.get("thumb", ""))
+		var pose_atk := ""
+		var pose_hurt := ""
 		if is_boss and i == 0:
 			ename = "EL CAPO"
-			ehp += 30
+			ehp += 36
+			spr = BOSS_SPRITE
+			thumb = BOSS_THUMB if ResourceLoader.exists(BOSS_THUMB) else thumb
+			pose_atk = BOSS_ATTACK
+			pose_hurt = BOSS_HURT
+		elif is_boss:
+			spr = ESCORT_SPRITES[i % ESCORT_SPRITES.size()]
+			ename = ["Escolta", "Sicario", "Brazo"][mini(i - 1, 2)]
 		enemies.append({
 			"id": str(s.get("id", "e%d" % i)),
 			"name": ename,
 			"hp": ehp,
-			"portrait": str(s.get("thumb", "")),
-			"sprite": str(s.get("full", "res://assets/character/delinquents/delinq_00.png")),
+			"portrait": thumb,
+			"sprite": spr,
+			"pose_attack": pose_atk,
+			"pose_hurt": pose_hurt,
 			"is_boss": is_boss and i == 0,
 		})
 	if enemies.is_empty():
@@ -845,7 +867,7 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 				"id": "e%d" % i,
 				"name": "Sospechoso %d" % (i + 1),
 				"hp": base_hp + i * 3,
-				"sprite": "res://assets/character/delinquents/delinq_%02d.png" % i,
+				"sprite": "res://assets/combat/custom/foes/enemy_%d.png" % (i % 7),
 			})
 
 	var objective := "Detener a los sospechosos"
@@ -865,8 +887,8 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 		"location": str(mission.get("title", mission.get("district_name", "Intervención"))),
 		"objective": objective,
 		"hero_name": hero_name,
-		"max_hp": int(patrol.get("max_hp", 50)) + (10 if is_boss else 0),
-		"energy_max": int(patrol.get("energy_max", 3)),
+		"max_hp": int(patrol.get("max_hp", 50)) + (14 if is_boss else 0),
+		"energy_max": int(patrol.get("energy_max", 3)) + (1 if is_boss else 0),
 		"portrait": portrait,
 		"sprite": sprite,
 		"deck": deck,

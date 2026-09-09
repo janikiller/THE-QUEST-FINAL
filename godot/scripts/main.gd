@@ -29,6 +29,56 @@ func _ready() -> void:
 		call_deferred("_map_shot")
 	if OS.get_environment("TQ_BOSS_MARKET_SHOT") == "1":
 		call_deferred("_boss_market_shot")
+	if OS.get_environment("TQ_BOSS_FIGHT") == "1":
+		call_deferred("_boss_fight_demo")
+
+
+func _boss_fight_demo() -> void:
+	## Abre directamente el combate contra El Capo (jugable / captura).
+	await get_tree().create_timer(1.0).timeout
+	for mid in GameState.active_missions.keys():
+		var mm: Dictionary = GameState.active_missions[mid]
+		if bool(mm.get("is_boss", false)):
+			GameState.remove_mission(str(mid))
+	GameState.day_index = 2
+	GameState.boss_spawned = false
+	GameState.boss_defeated = false
+	GameState.boss_mission_id = ""
+	GameState.request_boss_spawn()
+	await get_tree().create_timer(0.5).timeout
+	var boss_mid := GameState.boss_mission_id
+	print("BOSS_FIGHT mid=", boss_mid)
+	if boss_mid == "":
+		print("BOSS_FIGHT_FAIL no boss")
+		get_tree().quit(1)
+		return
+	var p: Dictionary = GameState.patrols.get("alpha", {})
+	p["status"] = "available"
+	p.erase("_awaiting_combat")
+	GameState.set_patrol(p)
+	$UI/UIRouter.begin_fight(boss_mid)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(0.8).timeout
+	await _save_shot("boss_fight_idle")
+	# Mostrar gesto de ataque del Capo
+	if CombatState.is_active():
+		await _save_shot("boss_fight_ready")
+		var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+		if combat and combat.has_method("_enemy_lunge_attack"):
+			await combat._enemy_lunge_attack(0)
+			await get_tree().create_timer(0.2).timeout
+			await _save_shot("boss_fight_attack")
+		# Golpe al Capo
+		if CombatState.enemies.size() > 0:
+			CombatState.enemies[0]["hp"] = maxi(1, int(CombatState.enemies[0].get("hp", 10)) - 18)
+			CombatState.combat_updated.emit()
+			await get_tree().create_timer(0.45).timeout
+			await _save_shot("boss_fight_hurt")
+	print("BOSS_FIGHT_OK")
+	# Dejar la pelea abierta si no es headless captura-only
+	if OS.get_environment("TQ_BOSS_FIGHT_QUIT") == "1":
+		get_tree().quit(0)
 
 
 func _boss_market_shot() -> void:
