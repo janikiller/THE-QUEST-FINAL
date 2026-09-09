@@ -127,7 +127,10 @@ func _ground_arena_layout() -> void:
 		enemies_row.offset_bottom = 285.0
 		enemies_row.alignment = BoxContainer.ALIGNMENT_END
 	if player_marker:
-		player_marker.visible = false
+		player_marker.visible = true
+		player_marker.text = "GARCÍA · U.P.R. 091"
+		player_marker.add_theme_color_override("font_color", Color(0.75, 0.92, 1.0))
+		player_marker.add_theme_font_size_override("font_size", 13)
 
 
 func _setup_player_actor() -> void:
@@ -646,17 +649,26 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	name_l.text = str(e.get("name", "Sospechoso"))
 	if is_boss:
 		name_l.text = "★ " + name_l.text
-		name_l.add_theme_color_override("font_color", Color(1.0, 0.72, 0.28))
-		name_l.add_theme_font_size_override("font_size", 15)
+		name_l.add_theme_color_override("font_color", Color(1.0, 0.78, 0.32))
+		name_l.add_theme_font_size_override("font_size", 16)
 	elif selected and int(e.get("hp", 0)) > 0:
 		name_l.text = "▸ " + name_l.text
-		name_l.add_theme_color_override("font_color", Color(0.55, 0.9, 1.0))
-		name_l.add_theme_font_size_override("font_size", 12)
+		name_l.add_theme_color_override("font_color", Color(0.65, 0.95, 1.0))
+		name_l.add_theme_font_size_override("font_size", 13)
 	else:
-		name_l.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+		name_l.add_theme_color_override("font_color", Color(0.88, 0.92, 0.98))
 		name_l.add_theme_font_size_override("font_size", 12)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	wrap.add_child(name_l)
+
+	var alias := str(e.get("alias", ""))
+	if alias != "":
+		var alias_l := Label.new()
+		alias_l.text = alias
+		alias_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		alias_l.add_theme_font_size_override("font_size", 10)
+		alias_l.add_theme_color_override("font_color", Color(0.7, 0.78, 0.88, 0.9))
+		wrap.add_child(alias_l)
 
 	# Barras ENCIMA del cuerpo (no bajo los pies) para no flotar
 	var bars := VBoxContainer.new()
@@ -715,6 +727,19 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	btn.size = Vector2(actor_w, ground_y)
 	btn.flat = true
 	btn.clip_contents = false
+	# Halo suave detrás del sprite (cariño anime)
+	var aura := ColorRect.new()
+	aura.name = "Aura"
+	aura.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	aura.position = Vector2(actor_w * 0.18, ground_y * 0.22)
+	aura.size = Vector2(actor_w * 0.64, ground_y * 0.62)
+	if is_boss:
+		aura.color = Color(1.0, 0.55, 0.15, 0.18)
+	elif selected:
+		aura.color = Color(0.35, 0.75, 1.0, 0.16)
+	else:
+		aura.color = Color(0.2, 0.35, 0.55, 0.10)
+	btn.add_child(aura)
 	var tex := TextureRect.new()
 	tex.name = "EnemySprite"
 	tex.position = Vector2(0, 4 if is_boss else 18)
@@ -765,9 +790,11 @@ func _type_accent(card_type: String) -> Color:
 			return Color(0.95, 0.4, 0.35)
 		"defensa":
 			return Color(0.4, 0.75, 1.0)
-		"tactica":
+		"control", "tactica":
 			return Color(0.55, 0.9, 0.65)
-		"especial":
+		"cura":
+			return Color(0.45, 0.95, 0.7)
+		"utilidad", "especial":
 			return Color(0.95, 0.75, 0.35)
 		_:
 			return Color(0.55, 0.65, 0.75)
@@ -776,35 +803,49 @@ func _type_accent(card_type: String) -> Color:
 func _make_card(card_id: String, playable: bool) -> Control:
 	var def := CardDB.get_card(card_id)
 	var card_type := str(def.get("type", ""))
-	var accent := _type_accent(card_type)
+	var rarity := CardDB.normalize_rarity(str(def.get("rarity", "basica")))
+	var accent := CardDB.rarity_color(rarity)
+	var type_col := _type_accent(card_type)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(132, 198)
+	panel.custom_minimum_size = Vector2(138, 210)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.06, 0.08, 0.11, 0.94)
-	sb.border_color = Color(accent.r, accent.g, accent.b, 0.55 if playable else 0.22)
-	sb.border_width_left = 1
+	sb.bg_color = Color(0.05, 0.07, 0.11, 0.96)
+	sb.border_color = Color(accent.r, accent.g, accent.b, 0.85 if playable else 0.28)
+	sb.border_width_left = 2
 	sb.border_width_top = 3
-	sb.border_width_right = 1
-	sb.border_width_bottom = 1
-	sb.set_corner_radius_all(14)
-	sb.content_margin_left = 10
-	sb.content_margin_right = 10
-	sb.content_margin_top = 10
-	sb.content_margin_bottom = 10
+	sb.border_width_right = 2
+	sb.border_width_bottom = 2
+	sb.set_corner_radius_all(12)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
 	panel.add_theme_stylebox_override("panel", sb)
 	if not playable:
 		panel.modulate = Color(0.6, 0.6, 0.65, 0.75)
 
 	var root := Control.new()
-	root.custom_minimum_size = Vector2(112, 178)
+	root.custom_minimum_size = Vector2(118, 190)
 	panel.add_child(root)
+
+	# Rareza cinta
+	var rar_l := Label.new()
+	rar_l.text = CardDB.rarity_label(rarity)
+	rar_l.position = Vector2(32, 2)
+	rar_l.size = Vector2(86, 18)
+	rar_l.add_theme_font_size_override("font_size", 9)
+	rar_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	rar_l.add_theme_color_override("font_color", accent)
+	root.add_child(rar_l)
 
 	# Cost badge
 	var cost_bg := Panel.new()
 	cost_bg.position = Vector2(0, 0)
 	cost_bg.size = Vector2(28, 28)
 	var csb := StyleBoxFlat.new()
-	csb.bg_color = Color(0.1, 0.35, 0.55, 0.95)
+	csb.bg_color = Color(type_col.r * 0.35, type_col.g * 0.35, type_col.b * 0.4, 0.95)
+	csb.border_color = accent
+	csb.set_border_width_all(1)
 	csb.set_corner_radius_all(14)
 	cost_bg.add_theme_stylebox_override("panel", csb)
 	root.add_child(cost_bg)
@@ -814,23 +855,43 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cost.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	cost.add_theme_font_size_override("font_size", 15)
-	cost.add_theme_color_override("font_color", Color(0.75, 0.95, 1.0))
+	cost.add_theme_color_override("font_color", Color(0.9, 0.97, 1.0))
 	cost_bg.add_child(cost)
 
+	var art_host := Control.new()
+	art_host.position = Vector2(8, 28)
+	art_host.size = Vector2(102, 88)
+	root.add_child(art_host)
+	var frame := TextureRect.new()
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	frame.stretch_mode = TextureRect.STRETCH_SCALE
+	frame.modulate = Color(accent.r, accent.g, accent.b, 0.45)
+	var fp := CardDB.frame_path(rarity)
+	if ResourceLoader.exists(fp):
+		frame.texture = load(fp)
+	elif FileAccess.file_exists(fp):
+		var fimg := Image.load_from_file(fp)
+		if fimg:
+			frame.texture = ImageTexture.create_from_image(fimg)
+	art_host.add_child(frame)
 	var art := TextureRect.new()
-	art.position = Vector2(16, 34)
-	art.size = Vector2(80, 70)
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var art_path := str(def.get("art", def.get("icon", "")))
 	if ResourceLoader.exists(art_path):
 		art.texture = load(art_path)
-	root.add_child(art)
+	elif FileAccess.file_exists(art_path):
+		var aimg := Image.load_from_file(art_path)
+		if aimg:
+			art.texture = ImageTexture.create_from_image(aimg)
+	art_host.add_child(art)
 
 	var name_l := Label.new()
 	name_l.text = str(def.get("name", card_id))
-	name_l.position = Vector2(0, 108)
-	name_l.size = Vector2(112, 34)
+	name_l.position = Vector2(0, 118)
+	name_l.size = Vector2(118, 34)
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD
 	name_l.add_theme_font_size_override("font_size", 12)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -838,9 +899,9 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	root.add_child(name_l)
 
 	var fx := Label.new()
-	fx.text = str(def.get("effect", ""))
-	fx.position = Vector2(0, 142)
-	fx.size = Vector2(112, 36)
+	fx.text = str(def.get("effect", def.get("desc", "")))
+	fx.position = Vector2(0, 150)
+	fx.size = Vector2(118, 40)
 	fx.autowrap_mode = TextServer.AUTOWRAP_WORD
 	fx.add_theme_font_size_override("font_size", 10)
 	fx.add_theme_color_override("font_color", Color(0.65, 0.72, 0.8))

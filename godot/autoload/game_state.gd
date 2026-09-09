@@ -262,7 +262,7 @@ func grant_boss_rewards(patrol_id: String = "alpha") -> Array:
 	var pool: Array = CardDB.boss_rewards.duplicate()
 	if pool.is_empty():
 		for c in CardDB.all_cards():
-			if str(c.get("rarity", "")) == "legendary":
+			if CardDB.is_legendary(str(c.get("rarity", ""))):
 				pool.append(str(c.get("id", "")))
 	pool.shuffle()
 	var gained: Array = []

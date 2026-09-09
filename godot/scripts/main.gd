@@ -212,11 +212,11 @@ func _boss_market_shot() -> void:
 	await get_tree().process_frame
 	var market = $UI/UIRouter.get_node_or_null("MarketScreen")
 	if market:
-		market._filter = "legendary"
+		market._filter = "legendaria"
 		market._rebuild()
 		var stock: Array = CardDB.cards_for_market(true)
 		for c in stock:
-			if str(c.get("rarity", "")) == "legendary":
+			if CardDB.is_legendary(str(c.get("rarity", ""))):
 				market._selected_id = str(c.get("id", ""))
 				market._refresh_detail()
 				break

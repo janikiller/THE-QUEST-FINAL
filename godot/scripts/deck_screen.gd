@@ -162,9 +162,9 @@ func _rebuild_cards() -> void:
 func _make_card_widget(def: Dictionary, copies: int) -> Control:
 	var wrap := PanelContainer.new()
 	wrap.custom_minimum_size = Vector2(168, 236)
-	var rarity := str(def.get("rarity", "common"))
+	var rarity := CardDB.normalize_rarity(str(def.get("rarity", "basica")))
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.06, 0.1, 0.16, 0.98)
+	sb.bg_color = Color(0.05, 0.08, 0.14, 0.98)
 	sb.border_color = CardDB.rarity_color(rarity)
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(10)
@@ -186,21 +186,37 @@ func _make_card_widget(def: Dictionary, copies: int) -> Control:
 	cost.add_theme_color_override("font_color", Color(0.95, 0.9, 0.55))
 	top.add_child(cost)
 	var type_l := Label.new()
-	type_l.text = str(def.get("type", "")).to_upper()
+	type_l.text = "%s · %s" % [CardDB.rarity_label(rarity), str(def.get("type", "")).to_upper()]
 	type_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	type_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	type_l.add_theme_font_size_override("font_size", 10)
+	type_l.add_theme_font_size_override("font_size", 9)
 	type_l.add_theme_color_override("font_color", CardDB.rarity_color(rarity))
 	top.add_child(type_l)
 
+	var art_wrap := Control.new()
+	art_wrap.custom_minimum_size = Vector2(0, 110)
+	v.add_child(art_wrap)
+	var frame := TextureRect.new()
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	frame.stretch_mode = TextureRect.STRETCH_SCALE
+	frame.modulate = Color(1, 1, 1, 0.32)
+	var fp := CardDB.frame_path(rarity)
+	if ResourceLoader.exists(fp):
+		frame.texture = load(fp)
+	art_wrap.add_child(frame)
 	var art := TextureRect.new()
-	art.custom_minimum_size = Vector2(0, 110)
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var art_path := str(def.get("art", def.get("icon", "")))
 	if ResourceLoader.exists(art_path):
 		art.texture = load(art_path)
-	v.add_child(art)
+	elif FileAccess.file_exists(art_path):
+		var img := Image.load_from_file(art_path)
+		if img:
+			art.texture = ImageTexture.create_from_image(img)
+	art_wrap.add_child(art)
 
 	var name_l := Label.new()
 	name_l.text = str(def.get("name", "?"))
@@ -241,11 +257,17 @@ func _select_card(card_id: String) -> void:
 	detail_meta.text = "Coste %s  ·  %s  ·  %s" % [
 		str(def.get("cost", 0)),
 		str(def.get("type", "")).to_upper(),
-		str(def.get("rarity", "")).to_upper(),
+		CardDB.rarity_label(str(def.get("rarity", "basica"))),
 	]
-	detail_meta.add_theme_color_override("font_color", CardDB.rarity_color(str(def.get("rarity", "common"))))
+	detail_meta.add_theme_color_override("font_color", CardDB.rarity_color(str(def.get("rarity", "basica"))))
 	var art_path := str(def.get("art", ""))
-	detail_art.texture = load(art_path) if ResourceLoader.exists(art_path) else null
+	if ResourceLoader.exists(art_path):
+		detail_art.texture = load(art_path)
+	elif FileAccess.file_exists(art_path):
+		var dimg := Image.load_from_file(art_path)
+		detail_art.texture = ImageTexture.create_from_image(dimg) if dimg else null
+	else:
+		detail_art.texture = null
 	detail_effect.text = "[b]%s[/b]" % str(def.get("effect", ""))
 	detail_desc.text = str(def.get("description", ""))
 

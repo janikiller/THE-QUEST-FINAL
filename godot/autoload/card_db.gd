@@ -1,5 +1,5 @@
 extends Node
-## Catálogo de cartas del roguelike táctico.
+## Catálogo de cartas del roguelike táctico (anime: básica / mágica / fuerza / legendaria).
 
 var types: Array = []
 var cards: Dictionary = {} ## id -> Dictionary
@@ -18,7 +18,9 @@ func _ready() -> void:
 		market_exclude[str(cid)] = true
 	cards.clear()
 	for c in data.get("cards", []):
-		cards[str(c.get("id", ""))] = c
+		var card: Dictionary = c.duplicate(true)
+		card["rarity"] = normalize_rarity(str(card.get("rarity", "basica")))
+		cards[str(card.get("id", ""))] = card
 
 
 func _read(path: String) -> Dictionary:
@@ -30,6 +32,34 @@ func _read(path: String) -> Dictionary:
 	return parsed if typeof(parsed) == TYPE_DICTIONARY else {}
 
 
+func normalize_rarity(rarity: String) -> String:
+	match rarity:
+		"common", "basica", "básica":
+			return "basica"
+		"uncommon", "rare", "magica", "mágica", "magic":
+			return "magica"
+		"epic", "fuerza", "force":
+			return "fuerza"
+		"legendary", "legendaria":
+			return "legendaria"
+		_:
+			return rarity if rarity != "" else "basica"
+
+
+func rarity_label(rarity: String) -> String:
+	match normalize_rarity(rarity):
+		"basica":
+			return "BÁSICA"
+		"magica":
+			return "MÁGICA"
+		"fuerza":
+			return "FUERZA"
+		"legendaria":
+			return "LEGENDARIA"
+		_:
+			return rarity.to_upper()
+
+
 func get_card(card_id: String) -> Dictionary:
 	return cards.get(card_id, {})
 
@@ -38,14 +68,18 @@ func all_cards() -> Array:
 	return cards.values()
 
 
+func is_legendary(rarity: String) -> bool:
+	return normalize_rarity(rarity) == "legendaria"
+
+
 func cards_for_market(include_legendary: bool = false) -> Array:
 	var out: Array = []
 	for c in cards.values():
 		var cid := str(c.get("id", ""))
-		var rar := str(c.get("rarity", "common"))
+		var rar := normalize_rarity(str(c.get("rarity", "basica")))
 		if market_exclude.has(cid):
 			continue
-		if rar == "legendary" and not include_legendary:
+		if rar == "legendaria" and not include_legendary:
 			continue
 		out.append(c)
 	out.sort_custom(func(a, b):
@@ -59,19 +93,17 @@ func cards_for_market(include_legendary: bool = false) -> Array:
 
 
 func _rarity_rank(rarity: String) -> int:
-	match rarity:
-		"common":
+	match normalize_rarity(rarity):
+		"basica":
 			return 0
-		"uncommon":
+		"magica":
 			return 1
-		"rare":
+		"fuerza":
 			return 2
-		"epic":
+		"legendaria":
 			return 3
-		"legendary":
-			return 4
 		_:
-			return 5
+			return 4
 
 
 func price_of(card_id: String) -> int:
@@ -80,35 +112,42 @@ func price_of(card_id: String) -> int:
 		return 99
 	if c.has("price"):
 		return int(c["price"])
-	match str(c.get("rarity", "common")):
-		"uncommon":
-			return 5
-		"rare":
-			return 9
-		"epic":
+	match normalize_rarity(str(c.get("rarity", "basica"))):
+		"magica":
+			return 8
+		"fuerza":
 			return 14
-		"legendary":
+		"legendaria":
 			return 22
 		_:
 			return 3
 
 
 func rarity_color(rarity: String) -> Color:
-	match rarity:
-		"uncommon":
-			return Color(0.35, 0.85, 0.5)
-		"rare":
-			return Color(0.35, 0.65, 1.0)
-		"epic":
-			return Color(0.95, 0.75, 0.25)
-		"legendary":
-			return Color(1.0, 0.55, 0.15)
+	match normalize_rarity(rarity):
+		"magica":
+			return Color(0.45, 0.72, 1.0)
+		"fuerza":
+			return Color(0.95, 0.55, 0.28)
+		"legendaria":
+			return Color(1.0, 0.78, 0.28)
 		_:
-			return Color(0.55, 0.7, 0.85)
+			return Color(0.55, 0.72, 0.82)
 
 
 func frame_path(rarity: String) -> String:
-	var p := "res://assets/cards/frames/%s.png" % rarity
-	if ResourceLoader.exists(p):
+	var key := normalize_rarity(rarity)
+	var p := "res://assets/cards/frames/%s.png" % key
+	if ResourceLoader.exists(p) or FileAccess.file_exists(p):
 		return p
+	# Aliases antiguos
+	var aliases := {
+		"basica": "common",
+		"magica": "rare",
+		"fuerza": "epic",
+		"legendaria": "legendary",
+	}
+	var alt := "res://assets/cards/frames/%s.png" % aliases.get(key, "common")
+	if ResourceLoader.exists(alt) or FileAccess.file_exists(alt):
+		return alt
 	return "res://assets/cards/frames/common.png"
