@@ -23,6 +23,8 @@ func _ready() -> void:
 
 
 func _hide_all() -> void:
+	if combat_screen.visible:
+		AudioDirector.exit_combat()
 	map_hud.visible = false
 	missions_menu.visible = false
 	mission_screen.visible = false

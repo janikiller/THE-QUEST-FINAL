@@ -47,6 +47,9 @@ func _combat_shot() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await get_tree().create_timer(0.8).timeout
+	print("COMBAT_AUDIO in_combat=", AudioDirector._in_combat, " music_playing=", AudioDirector._music.playing if AudioDirector._music else false)
+	if not AudioDirector._in_combat:
+		print("COMBAT_SHOT_WARN combat music not entered")
 	await _save_shot("combat_turno1")
 	# Asegurar cartas de ataque y defensa en mano
 	if CombatState.is_active() and CombatState.hand.size() >= 2:
@@ -58,7 +61,7 @@ func _combat_shot() -> void:
 	await get_tree().process_frame
 	combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 	if combat and CombatState.is_active():
-		# Defensa primero -> barra de escudo
+		# Defensa primero -> barra de escudo + SFX
 		if CombatState.can_play_card("shield"):
 			combat._busy = true
 			await combat._hero_guard_pulse()
@@ -67,7 +70,7 @@ func _combat_shot() -> void:
 			combat._refresh()
 			await get_tree().create_timer(0.35).timeout
 			await _save_shot("combat_escudo")
-		# Ataque con lunge
+		# Ataque con lunge + escopeta
 		if CombatState.can_play_card("strike"):
 			var def: Dictionary = CardDB.get_card("strike")
 			combat._busy = true
@@ -80,7 +83,7 @@ func _combat_shot() -> void:
 			var sel := int(CombatState.get_snapshot().get("selected_enemy", 0))
 			if sel >= 0 and sel < CombatState.enemies.size():
 				CombatState.enemies[sel]["hp"] = 1
-			await combat._hero_attack_sequence(def)
+			await combat._hero_attack_sequence(def, "strike")
 			CombatState.play_card("strike")
 			var wrap = combat._enemy_wrap(sel)
 			if wrap and int(CombatState.enemies[sel].get("hp", 1)) <= 0:
@@ -439,12 +442,18 @@ func _playtest() -> void:
 
 	if not ResourceLoader.exists("res://assets/audio/music/comisaria_theme_loop.ogg"):
 		errors.append("music missing")
+	if not ResourceLoader.exists("res://assets/audio/music/combat_theme_loop.ogg"):
+		errors.append("combat music missing")
+	if not ResourceLoader.exists("res://assets/audio/sfx/shotgun_shot.ogg"):
+		errors.append("shotgun sfx missing")
+	if not ResourceLoader.exists("res://assets/audio/sfx/shield_deploy.ogg"):
+		errors.append("shield sfx missing")
 	if not ResourceLoader.exists("res://assets/audio/ambience/rain_medium_loop.ogg"):
 		errors.append("rain ambience missing")
 	GameState.set_weather("storm")
 	if GameState.weather != "storm":
 		errors.append("weather not storm")
-	print("PLAYTEST weather=", GameState.weather, " music=", AudioDirector.music_on)
+	print("PLAYTEST weather=", GameState.weather, " music=", AudioDirector.music_on, " in_combat=", AudioDirector._in_combat)
 
 	if errors.is_empty():
 		print("PLAYTEST_OK")
