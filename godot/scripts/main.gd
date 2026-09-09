@@ -61,20 +61,51 @@ func _boss_fight_demo() -> void:
 	await get_tree().process_frame
 	await get_tree().create_timer(0.8).timeout
 	await _save_shot("boss_fight_idle")
-	# Mostrar gesto de ataque del Capo
+	# Gesto de ataque del Capo — captura a mitad del lunge
 	if CombatState.is_active():
-		await _save_shot("boss_fight_ready")
 		var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
-		if combat and combat.has_method("_enemy_lunge_attack"):
-			await combat._enemy_lunge_attack(0)
-			await get_tree().create_timer(0.2).timeout
-			await _save_shot("boss_fight_attack")
-		# Golpe al Capo
-		if CombatState.enemies.size() > 0:
-			CombatState.enemies[0]["hp"] = maxi(1, int(CombatState.enemies[0].get("hp", 10)) - 18)
-			CombatState.combat_updated.emit()
-			await get_tree().create_timer(0.45).timeout
-			await _save_shot("boss_fight_hurt")
+		if combat:
+			var wrap = combat._enemy_wrap(0)
+			if wrap:
+				var actor: Control = wrap.get_node_or_null("ActorSlot")
+				var spr: TextureRect = wrap.find_child("EnemySprite", true, false)
+				if actor and spr:
+					var atk := str(wrap.get_meta("pose_attack", ""))
+					if atk != "" and ResourceLoader.exists(atk):
+						spr.texture = load(atk)
+					var base := actor.position
+					var tw := create_tween()
+					tw.set_parallel(true)
+					tw.tween_property(actor, "position", base + Vector2(-96, -6), 0.18)
+					tw.tween_property(spr, "rotation_degrees", -10.0, 0.18)
+					tw.tween_property(spr, "scale", Vector2(0.9, 1.14), 0.18)
+					await tw.finished
+					await _save_shot("boss_fight_attack")
+					var tw2 := create_tween()
+					tw2.set_parallel(true)
+					tw2.tween_property(actor, "position", base, 0.2)
+					tw2.tween_property(spr, "rotation_degrees", 0.0, 0.2)
+					tw2.tween_property(spr, "scale", Vector2.ONE, 0.2)
+					await tw2.finished
+					var idle_sp := str(wrap.get_meta("idle_sprite", ""))
+					if idle_sp != "" and ResourceLoader.exists(idle_sp):
+						spr.texture = load(idle_sp)
+			# Daño al Capo con pose hurt (sin rebuild)
+			if CombatState.enemies.size() > 0:
+				wrap = combat._enemy_wrap(0)
+				if wrap:
+					var hurt := str(wrap.get_meta("pose_hurt", ""))
+					var spr2: TextureRect = wrap.find_child("EnemySprite", true, false)
+					if spr2 and hurt != "" and ResourceLoader.exists(hurt):
+						spr2.texture = load(hurt)
+						spr2.modulate = Color(1.0, 0.35, 0.3)
+					CombatState.enemies[0]["hp"] = maxi(1, int(CombatState.enemies[0].get("hp", 10)) - 18)
+					# Actualizar barra sin destruir el actor
+					for c in wrap.get_children():
+						if c is ProgressBar:
+							c.value = float(CombatState.enemies[0]["hp"])
+					await get_tree().create_timer(0.25).timeout
+					await _save_shot("boss_fight_hurt")
 	print("BOSS_FIGHT_OK")
 	# Dejar la pelea abierta si no es headless captura-only
 	if OS.get_environment("TQ_BOSS_FIGHT_QUIT") == "1":

@@ -645,8 +645,9 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 		bars.add_child(blk_t)
 	wrap.add_child(bars)
 
-	var actor_w := 196.0 if is_boss else 160.0
-	var actor_h := 290.0 if is_boss else 250.0
+	var actor_w := 210.0 if is_boss else 160.0
+	var actor_h := 320.0 if is_boss else 250.0
+	var ground_y := GROUND_Y + (28.0 if is_boss else 0.0)
 	var actor := Control.new()
 	actor.name = "ActorSlot"
 	actor.custom_minimum_size = Vector2(actor_w, actor_h)
@@ -659,33 +660,40 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shadow.modulate = Color(0, 0, 0, 0.9)
-	shadow.position = Vector2(8, GROUND_Y - 6.0)
-	shadow.size = Vector2(actor_w - 16.0, 36 if not is_boss else 42)
-	shadow.pivot_offset = Vector2((actor_w - 16.0) * 0.5, 18)
+	shadow.position = Vector2(10, ground_y - 6.0)
+	shadow.size = Vector2(actor_w - 20.0, 42 if is_boss else 36)
+	shadow.pivot_offset = Vector2((actor_w - 20.0) * 0.5, 18)
 	actor.add_child(shadow)
 
 	var btn := Button.new()
 	btn.name = "SelectBtn"
 	btn.position = Vector2.ZERO
-	btn.size = Vector2(actor_w, GROUND_Y)
+	btn.size = Vector2(actor_w, ground_y)
 	btn.flat = true
 	btn.clip_contents = false
 	var tex := TextureRect.new()
 	tex.name = "EnemySprite"
-	tex.position = Vector2(0, 8 if is_boss else 18)
-	tex.size = Vector2(actor_w, GROUND_Y - (6.0 if is_boss else 14.0))
+	tex.position = Vector2(0, 4 if is_boss else 18)
+	tex.size = Vector2(actor_w, ground_y - (4.0 if is_boss else 14.0))
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tex.pivot_offset = Vector2(actor_w * 0.5, (GROUND_Y - 14.0) * 0.7)
+	tex.pivot_offset = Vector2(actor_w * 0.5, (ground_y - 14.0) * 0.75)
 	# Prioridad: sprite propio del enemigo (boss) → pack por índice
 	var sp := str(e.get("sprite", ""))
-	if sp == "" or not ResourceLoader.exists(sp):
+	if sp == "" or not (ResourceLoader.exists(sp) or FileAccess.file_exists(sp)):
 		sp = PACK_FOE + "enemy_%d.png" % (index % 7)
-	if not ResourceLoader.exists(sp):
+	if not (ResourceLoader.exists(sp) or FileAccess.file_exists(sp)):
 		sp = PACK_FOE + "enemy_0.png"
+	var loaded: Texture2D = null
 	if ResourceLoader.exists(sp):
-		tex.texture = load(sp)
+		loaded = load(sp)
+	elif FileAccess.file_exists(sp):
+		var img := Image.load_from_file(sp)
+		if img:
+			loaded = ImageTexture.create_from_image(img)
+	if loaded:
+		tex.texture = loaded
 	btn.add_child(tex)
 	btn.pressed.connect(func(): CombatState.select_enemy(index))
 	actor.add_child(btn)
