@@ -1476,7 +1476,7 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	var type_col := _type_accent(card_type)
 
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(152, 236)
+	panel.custom_minimum_size = Vector2(136, 210)
 	panel.clip_contents = true
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.045, 0.06, 0.09, 0.97)
