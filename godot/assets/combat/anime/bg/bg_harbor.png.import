@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://2xn0owjqoyrs"
-valid=false
+uid="uid://87dga2xpu13i"
+path="res://.godot/imported/bg_harbor.png-6249797c64af6906af3ee6a603109a94.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_harbor.png"
+dest_files=["res://.godot/imported/bg_harbor.png-6249797c64af6906af3ee6a603109a94.ctex"]
 
 [params]
 

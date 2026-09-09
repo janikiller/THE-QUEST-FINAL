@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cs8e7ebydywuk"
-valid=false
+uid="uid://clqwcxre2dpo4"
+path="res://.godot/imported/bg_parking.png-c12ed505bf27c7055fa144195accf340.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_parking.png"
+dest_files=["res://.godot/imported/bg_parking.png-c12ed505bf27c7055fa144195accf340.ctex"]
 
 [params]
 

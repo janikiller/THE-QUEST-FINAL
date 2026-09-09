@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dusuoujc8uyhl"
-valid=false
+uid="uid://ctwhq8cji1yed"
+path="res://.godot/imported/bg_station.png-dd02e20784913ec915bd2a2fa796ec45.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_station.png"
+dest_files=["res://.godot/imported/bg_station.png-dd02e20784913ec915bd2a2fa796ec45.ctex"]
 
 [params]
 

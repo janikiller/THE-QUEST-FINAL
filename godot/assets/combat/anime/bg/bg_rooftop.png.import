@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://1cgr4xdjcgfc"
-valid=false
+uid="uid://ccel65hbooafe"
+path="res://.godot/imported/bg_rooftop.png-9deccf8c07f92718321a32789c92cb82.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_rooftop.png"
+dest_files=["res://.godot/imported/bg_rooftop.png-9deccf8c07f92718321a32789c92cb82.ctex"]
 
 [params]
 

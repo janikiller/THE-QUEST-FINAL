@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d3vk6vjn6il3g"
-valid=false
+uid="uid://b60ykm7mimwxg"
+path="res://.godot/imported/bg_penthouse.png-07d7b246305a0cf1533f064cc08b7d6c.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_penthouse.png"
+dest_files=["res://.godot/imported/bg_penthouse.png-07d7b246305a0cf1533f064cc08b7d6c.ctex"]
 
 [params]
 

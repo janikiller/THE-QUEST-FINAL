@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c2ue7v57xsbtc"
-valid=false
+uid="uid://djram450xlg61"
+path="res://.godot/imported/bg_warehouse.png-1ccf2e8b5f1184668a5d83d57fc16506.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_warehouse.png"
+dest_files=["res://.godot/imported/bg_warehouse.png-1ccf2e8b5f1184668a5d83d57fc16506.ctex"]
 
 [params]
 

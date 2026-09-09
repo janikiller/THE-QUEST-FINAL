@@ -2,12 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dmxu11ddgpk4m"
-valid=false
+uid="uid://2oxk4lu8jno1"
+path="res://.godot/imported/bg_subway.png-46d1856fef2c3ffc22f2bd5747d882b2.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_subway.png"
+dest_files=["res://.godot/imported/bg_subway.png-46d1856fef2c3ffc22f2bd5747d882b2.ctex"]
 
 [params]
 

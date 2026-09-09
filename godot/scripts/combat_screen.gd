@@ -459,14 +459,18 @@ func _load_bg() -> void:
 	for path in candidates:
 		if str(path) == "":
 			continue
+		var tex: Texture2D = null
 		if ResourceLoader.exists(path):
-			bg.texture = load(path)
-			return
-		if FileAccess.file_exists(path):
+			var res = load(path)
+			if res is Texture2D:
+				tex = res
+		if tex == null and FileAccess.file_exists(path):
 			var img := Image.load_from_file(path)
 			if img:
-				bg.texture = ImageTexture.create_from_image(img)
-				return
+				tex = ImageTexture.create_from_image(img)
+		if tex:
+			bg.texture = tex
+			return
 
 
 func _rebuild_enemies(snap: Dictionary) -> void:
