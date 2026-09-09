@@ -1,5 +1,5 @@
 extends Control
-## HUD del mapa: barra superior + unidad activa inferior (mockup comisaría).
+## HUD del mapa: barra superior + dock inferior usable (unidad + acciones).
 
 @onready var time_label: Label = %TimeLabel
 @onready var prestige_label: Label = %PrestigeLabel
@@ -15,22 +15,34 @@ extends Control
 @onready var btn_speed_60: Button = %BtnSpeed60
 
 var _speed_group: ButtonGroup
-var _unit_row: HBoxContainer
-var _alerts_btn: Button
 var _selected_patrol_id: String = "alpha"
+var _dock: PanelContainer
+var _unit_face: TextureRect
+var _unit_title: Label
+var _unit_sub: Label
+var _unit_status: Label
+var _lights: TextureRect
+var _btn_missions_dock: Button
+var _btn_deck_dock: Button
+var _btn_alerts: Button
+var _period_chip: Label
+var _flash_t: float = 0.0
 
 
 func _ready() -> void:
 	GameState.time_changed.connect(func(t):
 		time_label.text = t
 		_update_tod_hint()
+		_refresh_dock()
 	)
 	GameState.prestige_changed.connect(func(_v): _update_tod_hint())
 	GameState.time_speed_changed.connect(func(_s): _sync_speed_buttons())
 	GameState.weather_changed.connect(func(_w): _update_tod_hint())
-	GameState.patrol_updated.connect(func(_p): _rebuild_active_unit())
-	GameState.mission_added.connect(func(_m): _update_mission_badge())
-	GameState.mission_updated.connect(func(_m): _update_mission_badge())
+	GameState.patrol_updated.connect(func(_p): _refresh_dock())
+	GameState.mission_added.connect(func(_m): _refresh_dock())
+	GameState.mission_updated.connect(func(_m): _refresh_dock())
+	GameState.mission_removed.connect(func(_id): _refresh_dock())
+	GameState.period_changed.connect(func(_p): _refresh_dock())
 	RadioBus.radio_message.connect(_on_radio)
 	btn_missions.pressed.connect(_open_missions)
 	btn_deck.pressed.connect(_open_deck)
@@ -45,215 +57,233 @@ func _ready() -> void:
 	btn_speed_16.pressed.connect(func(): GameState.set_time_speed(16.0))
 	btn_speed_60.pressed.connect(func(): GameState.set_time_speed(60.0))
 	time_label.text = "%02d:%02d" % [GameState.hour, GameState.minute]
-	hint.text = "WASD mover · M misiones (Luchar / Hablar) · I mazo · C clima · N música · 1-4 velocidad"
-	_build_bottom_bar()
+	hint.text = "WASD mover · M misiones · I mazo · 1-4 velocidad"
+	_build_bottom_dock()
 	_update_tod_hint()
 	_sync_speed_buttons()
-	_rebuild_active_unit()
-	_update_mission_badge()
+	_refresh_dock()
 
 
-func _build_bottom_bar() -> void:
-	var bar := PanelContainer.new()
-	bar.name = "ActiveUnitBar"
-	bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	bar.offset_left = 16
-	bar.offset_right = -16
-	bar.offset_top = -188
-	bar.offset_bottom = -12
+func _process(delta: float) -> void:
+	_flash_t += delta * 6.0
+	if _lights and is_instance_valid(_lights):
+		var on := sin(_flash_t) >= 0.0
+		_lights.modulate = Color(0.7, 0.85, 1.3, 1.0) if on else Color(1.3, 0.75, 0.8, 1.0)
+
+
+func _build_bottom_dock() -> void:
+	_dock = PanelContainer.new()
+	_dock.name = "BottomDock"
+	_dock.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_dock.offset_left = 18
+	_dock.offset_right = -18
+	_dock.offset_top = -128
+	_dock.offset_bottom = -12
+	_dock.mouse_filter = Control.MOUSE_FILTER_STOP
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.04, 0.08, 0.14, 0.94)
-	sb.border_color = Color(0.2, 0.45, 0.75, 0.85)
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(8)
-	bar.add_theme_stylebox_override("panel", sb)
-	add_child(bar)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	bar.add_child(margin)
+	sb.bg_color = Color(0.03, 0.06, 0.1, 0.92)
+	sb.border_color = Color(0.25, 0.55, 0.95, 0.55)
+	sb.border_width_top = 2
+	sb.border_width_left = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 1
+	sb.set_corner_radius_all(14)
+	sb.content_margin_left = 14
+	sb.content_margin_right = 14
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	_dock.add_theme_stylebox_override("panel", sb)
+	add_child(_dock)
 
 	var root := HBoxContainer.new()
-	root.add_theme_constant_override("separation", 12)
-	margin.add_child(root)
+	root.add_theme_constant_override("separation", 16)
+	_dock.add_child(root)
 
-	var left := VBoxContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.add_theme_constant_override("separation", 6)
-	root.add_child(left)
+	# --- Unidad (izquierda) ---
+	var unit := HBoxContainer.new()
+	unit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	unit.add_theme_constant_override("separation", 12)
+	root.add_child(unit)
 
-	var title := Label.new()
-	title.text = "UNIDAD ACTIVA"
-	title.add_theme_font_size_override("font_size", 12)
-	title.add_theme_color_override("font_color", Color(0.55, 0.78, 1.0))
-	left.add_child(title)
+	# Badge circular de luces
+	_lights = TextureRect.new()
+	_lights.custom_minimum_size = Vector2(64, 64)
+	_lights.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_lights.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	if ResourceLoader.exists("res://assets/ui/police_beacon.png"):
+		_lights.texture = load("res://assets/ui/police_beacon.png")
+	elif ResourceLoader.exists("res://assets/ui/police_lightbar.png"):
+		_lights.texture = load("res://assets/ui/police_lightbar.png")
+	unit.add_child(_lights)
 
-	_unit_row = HBoxContainer.new()
-	_unit_row.add_theme_constant_override("separation", 8)
-	_unit_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left.add_child(_unit_row)
+	_unit_face = TextureRect.new()
+	_unit_face.visible = false
+	unit.add_child(_unit_face)
 
-	var nav := VBoxContainer.new()
-	nav.custom_minimum_size = Vector2(280, 0)
-	nav.add_theme_constant_override("separation", 6)
-	root.add_child(nav)
+	var unit_text := VBoxContainer.new()
+	unit_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	unit_text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	unit_text.add_theme_constant_override("separation", 1)
+	unit.add_child(unit_text)
 
-	var nav_title := Label.new()
-	nav_title.text = "COMISARÍA"
-	nav_title.add_theme_font_size_override("font_size", 11)
-	nav_title.add_theme_color_override("font_color", Color(0.6, 0.72, 0.88))
-	nav.add_child(nav_title)
+	var unit_tag := Label.new()
+	unit_tag.text = "UNIDAD ACTIVA"
+	unit_tag.add_theme_font_size_override("font_size", 10)
+	unit_tag.add_theme_color_override("font_color", Color(0.5, 0.72, 1.0))
+	unit_text.add_child(unit_tag)
 
-	var nav_row := HBoxContainer.new()
-	nav_row.add_theme_constant_override("separation", 6)
-	nav.add_child(nav_row)
-	_add_nav_btn(nav_row, "MAZO", _open_deck)
-	_add_nav_btn(nav_row, "MISIONES", _open_missions)
-	_add_nav_btn(nav_row, "MAPA", func(): pass)
+	_unit_title = Label.new()
+	_unit_title.add_theme_font_size_override("font_size", 18)
+	_unit_title.add_theme_color_override("font_color", Color(0.97, 0.98, 1.0))
+	unit_text.add_child(_unit_title)
 
-	var nav_row2 := HBoxContainer.new()
-	nav_row2.add_theme_constant_override("separation", 6)
-	nav.add_child(nav_row2)
-	_add_nav_btn(nav_row2, "GARCÍA", _open_deck)
+	_unit_sub = Label.new()
+	_unit_sub.add_theme_font_size_override("font_size", 13)
+	_unit_sub.add_theme_color_override("font_color", Color(0.55, 0.8, 1.0))
+	unit_text.add_child(_unit_sub)
 
-	_alerts_btn = null
+	_unit_status = Label.new()
+	_unit_status.add_theme_font_size_override("font_size", 12)
+	_unit_status.add_theme_color_override("font_color", Color(0.75, 0.82, 0.9))
+	unit_text.add_child(_unit_status)
 
-	# Lift toast/hint above the new bar
-	radio_toast.offset_top = -250
-	radio_toast.offset_bottom = -210
+	# --- Acciones (centro) ---
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 10)
+	actions.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	root.add_child(actions)
+
+	_btn_missions_dock = _make_dock_btn("MISIONES", "Abrir lista", Color(0.15, 0.48, 0.98))
+	_btn_missions_dock.pressed.connect(_open_missions)
+	actions.add_child(_btn_missions_dock)
+
+	_btn_deck_dock = _make_dock_btn("MAZO", "Cartas · I", Color(0.1, 0.58, 0.72))
+	_btn_deck_dock.pressed.connect(_open_deck)
+	actions.add_child(_btn_deck_dock)
+
+	_btn_alerts = _make_dock_btn("SEÑALES", "En el mapa", Color(0.88, 0.22, 0.3))
+	_btn_alerts.pressed.connect(_open_missions)
+	actions.add_child(_btn_alerts)
+
+	# --- Franja (derecha) ---
+	var right := PanelContainer.new()
+	right.custom_minimum_size = Vector2(132, 0)
+	var rsb := StyleBoxFlat.new()
+	rsb.bg_color = Color(0.05, 0.09, 0.14, 0.95)
+	rsb.border_color = Color(0.3, 0.5, 0.8, 0.45)
+	rsb.set_border_width_all(1)
+	rsb.set_corner_radius_all(10)
+	rsb.content_margin_left = 10
+	rsb.content_margin_right = 10
+	rsb.content_margin_top = 8
+	rsb.content_margin_bottom = 8
+	right.add_theme_stylebox_override("panel", rsb)
+	root.add_child(right)
+
+	var right_col := VBoxContainer.new()
+	right_col.add_theme_constant_override("separation", 2)
+	right.add_child(right_col)
+
+	var right_title := Label.new()
+	right_title.text = "TURNO"
+	right_title.add_theme_font_size_override("font_size", 10)
+	right_title.add_theme_color_override("font_color", Color(0.55, 0.7, 0.85))
+	right_col.add_child(right_title)
+
+	_period_chip = Label.new()
+	_period_chip.add_theme_font_size_override("font_size", 20)
+	_period_chip.add_theme_color_override("font_color", Color(1, 1, 1))
+	right_col.add_child(_period_chip)
+
+	# Toast / hint por encima del dock
+	radio_toast.offset_top = -168
+	radio_toast.offset_bottom = -128
 	hint.offset_top = -28
 	hint.offset_bottom = -8
+	hint.visible = false
 
 
-func _add_nav_btn(parent: Control, text: String, cb: Callable) -> void:
+func _make_dock_btn(title: String, subtitle: String, accent: Color) -> Button:
 	var b := Button.new()
-	b.text = text
-	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.custom_minimum_size = Vector2(0, 36)
-	b.pressed.connect(cb)
-	parent.add_child(b)
+	b.text = "%s\n%s" % [title, subtitle]
+	b.custom_minimum_size = Vector2(128, 74)
+	b.focus_mode = Control.FOCUS_NONE
+	var n := StyleBoxFlat.new()
+	n.bg_color = Color(0.05, 0.09, 0.14, 0.98)
+	n.border_color = Color(accent.r, accent.g, accent.b, 0.9)
+	n.set_border_width_all(2)
+	n.set_corner_radius_all(12)
+	n.content_margin_left = 12
+	n.content_margin_right = 12
+	n.content_margin_top = 10
+	n.content_margin_bottom = 10
+	b.add_theme_stylebox_override("normal", n)
+	var h := n.duplicate()
+	h.bg_color = Color(accent.r, accent.g, accent.b, 0.32)
+	b.add_theme_stylebox_override("hover", h)
+	var p := n.duplicate()
+	p.bg_color = Color(accent.r, accent.g, accent.b, 0.5)
+	b.add_theme_stylebox_override("pressed", p)
+	b.add_theme_font_size_override("font_size", 13)
+	b.add_theme_color_override("font_color", Color(0.96, 0.98, 1.0))
+	return b
 
 
-func _rebuild_active_unit() -> void:
-	if _unit_row == null:
+func _refresh_dock() -> void:
+	if _dock == null:
 		return
-	for c in _unit_row.get_children():
-		c.queue_free()
 	if not GameState.patrols.has(_selected_patrol_id):
 		var keys: Array = GameState.patrols.keys()
 		if keys.is_empty():
 			return
 		_selected_patrol_id = str(keys[0])
-	# Prefer a busy patrol if any
 	for p in GameState.patrols.values():
 		if str(p.get("status", "")) != "available":
 			_selected_patrol_id = str(p.get("id", _selected_patrol_id))
 			break
 	var patrol: Dictionary = GameState.patrols[_selected_patrol_id]
-	var names: Array = patrol.get("agents", [])
-	var portraits: Array = patrol.get("agent_portraits", [])
-	var stats_all: Array = patrol.get("agent_stats", [])
-	var header := Label.new()
-	header.text = "%s  ·  %s" % [patrol.get("name", ""), patrol.get("callsign", "")]
-	header.add_theme_font_size_override("font_size", 13)
-	header.add_theme_color_override("font_color", Color(0.92, 0.96, 1.0))
-	# Put callsign as first tiny card label via spacer then agents
-	for i in range(names.size()):
-		_unit_row.add_child(_make_agent_card(
-			str(names[i]),
-			str(portraits[i]) if i < portraits.size() else "",
-			stats_all[i] if i < stats_all.size() else {},
-			i
-		))
-	# Patrol switcher chips
-	for p in GameState.patrols.values():
-		var chip := Button.new()
-		chip.text = str(p.get("callsign", "?"))
-		chip.custom_minimum_size = Vector2(72, 48)
-		var pid := str(p.get("id", ""))
-		if pid == _selected_patrol_id:
-			chip.modulate = Color(0.6, 0.9, 1.0)
-		chip.pressed.connect(func():
-			_selected_patrol_id = pid
-			_rebuild_active_unit()
-		)
-		_unit_row.add_child(chip)
+	var agents: Array = patrol.get("agents", [])
+	var agent_name := str(agents[0]) if not agents.is_empty() else str(patrol.get("name", "Unidad"))
+	_unit_title.text = agent_name.to_upper()
+	_unit_sub.text = str(patrol.get("callsign", "U.P.R."))
+	var st := str(patrol.get("status", "available"))
+	var st_label := "EN BASE"
+	var st_col := Color(0.45, 0.85, 0.55)
+	match st:
+		"en_route":
+			st_label = "EN RUTA"
+			st_col = Color(0.35, 0.7, 1.0)
+		"on_scene":
+			st_label = "EN ESCENA"
+			st_col = Color(1.0, 0.75, 0.25)
+		"returning":
+			st_label = "REGRESANDO"
+			st_col = Color(0.75, 0.8, 0.9)
+	_unit_status.text = st_label
+	_unit_status.add_theme_color_override("font_color", st_col)
 
-
-func _make_agent_card(agent_name: String, portrait_path: String, stats: Dictionary, idx: int) -> Control:
-	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(150, 140)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.07, 0.12, 0.2, 0.98)
-	sb.border_color = Color(0.25, 0.55, 0.9, 0.8)
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(6)
-	sb.content_margin_left = 6
-	sb.content_margin_right = 6
-	sb.content_margin_top = 4
-	sb.content_margin_bottom = 4
-	card.add_theme_stylebox_override("panel", sb)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 2)
-	card.add_child(v)
-	var name_l := Label.new()
-	name_l.text = "%s #%03d" % [agent_name.to_upper(), 10 + idx * 13]
-	name_l.add_theme_font_size_override("font_size", 11)
-	v.add_child(name_l)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
-	v.add_child(row)
-	var face := TextureRect.new()
-	face.custom_minimum_size = Vector2(52, 68)
-	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	if ResourceLoader.exists(portrait_path):
-		face.texture = load(portrait_path)
-	row.add_child(face)
-	var stats_col := VBoxContainer.new()
-	stats_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stats_col.add_theme_constant_override("separation", 1)
-	row.add_child(stats_col)
-	for key in ["fuerza", "resistencia", "destreza", "investigacion", "conduccion"]:
-		var bar := ProgressBar.new()
-		bar.custom_minimum_size = Vector2(0, 8)
-		bar.max_value = 1.0
-		bar.value = float(stats.get(key, 0.5))
-		bar.show_percentage = false
-		var fill := StyleBoxFlat.new()
-		match key:
-			"fuerza":
-				fill.bg_color = Color(0.9, 0.25, 0.3)
-			"resistencia":
-				fill.bg_color = Color(0.95, 0.55, 0.2)
-			"destreza":
-				fill.bg_color = Color(0.95, 0.85, 0.25)
-			"investigacion":
-				fill.bg_color = Color(0.3, 0.65, 1.0)
-			_:
-				fill.bg_color = Color(0.35, 0.85, 0.95)
-		fill.set_corner_radius_all(2)
-		bar.add_theme_stylebox_override("fill", fill)
-		var bg := StyleBoxFlat.new()
-		bg.bg_color = Color(0.1, 0.14, 0.2)
-		bg.set_corner_radius_all(2)
-		bar.add_theme_stylebox_override("background", bg)
-		stats_col.add_child(bar)
-	return card
-
-
-func _update_mission_badge() -> void:
-	if _alerts_btn == null:
-		return
 	var open_n := 0
 	for m in GameState.active_missions.values():
 		if str(m.get("status", "")) in ["open", "dispatched", "resolving"]:
 			open_n += 1
-	_alerts_btn.text = "ALERTAS  %d" % open_n
-	btn_missions.text = "MISIONES (%d)" % open_n
+	if _btn_missions_dock:
+		_btn_missions_dock.text = "MISIONES\n%d activas" % open_n
+	if _btn_alerts:
+		_btn_alerts.text = "SEÑALES\n%d en mapa" % open_n
+	if _btn_deck_dock:
+		_btn_deck_dock.text = "MAZO\nCartas · I"
+	btn_missions.text = "MISIONES  (%d)" % open_n
+
+	var period := GameState.period_label()
+	if _period_chip:
+		_period_chip.text = period
+		match GameState.time_of_day():
+			"dusk":
+				_period_chip.add_theme_color_override("font_color", Color(1.0, 0.7, 0.35))
+			"night":
+				_period_chip.add_theme_color_override("font_color", Color(0.55, 0.7, 1.0))
+			_:
+				_period_chip.add_theme_color_override("font_color", Color(0.95, 0.95, 0.85))
 
 
 func _update_tod_hint() -> void:
@@ -268,6 +298,7 @@ func _update_tod_hint() -> void:
 		GameState.prestige, label, GameState.weather_label(), int(round(GameState.time_speed))
 	]
 	btn_weather.text = GameState.weather_label()
+	_refresh_dock()
 
 
 func _sync_speed_buttons() -> void:

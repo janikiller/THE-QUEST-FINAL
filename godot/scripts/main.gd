@@ -25,6 +25,42 @@ func _ready() -> void:
 		call_deferred("_playtest")
 	if OS.get_environment("TQ_COMBAT_SHOT") == "1":
 		call_deferred("_combat_shot")
+	if OS.get_environment("TQ_MAP_SHOT") == "1":
+		call_deferred("_map_shot")
+
+
+func _map_shot() -> void:
+	## Captura el mapa con marcadores tácticos de misión.
+	await get_tree().create_timer(1.4).timeout
+	var tries := 0
+	while GameState.active_missions.size() < 3 and tries < 50:
+		await get_tree().create_timer(0.25).timeout
+		tries += 1
+	$UI/UIRouter.show_map()
+	await get_tree().process_frame
+	# Encuaadra varias misiones
+	var markers := get_tree().get_nodes_in_group("mission_marker")
+	print("MAP_SHOT markers=", markers.size(), " missions=", GameState.active_missions.size())
+	if markers.is_empty():
+		print("MAP_SHOT_FAIL no markers")
+		get_tree().quit(1)
+		return
+	var center := Vector2.ZERO
+	for m in markers:
+		center += (m as Node2D).global_position
+	center /= float(markers.size())
+	camera.global_position = center
+	camera.zoom = Vector2(0.95, 0.95)
+	await get_tree().create_timer(0.5).timeout
+	await _save_shot("map_tactical_markers")
+	# Acercar a un marcador
+	var first: Node2D = markers[0]
+	camera.global_position = first.global_position
+	camera.zoom = Vector2(1.55, 1.55)
+	await get_tree().create_timer(0.35).timeout
+	await _save_shot("map_tactical_marker_close")
+	print("MAP_SHOT_OK")
+	get_tree().quit(0)
 
 
 func _combat_shot() -> void:
@@ -292,22 +328,56 @@ func _playtest() -> void:
 		errors.append("player did not move")
 	print("PLAYTEST player moved ", p0, "->", player.global_position)
 
-	# Marcadores de alerta en mapa activos
+	# Marcadores de alerta en mapa activos (máx. 3 por franja)
 	var markers = get_tree().get_nodes_in_group("mission_marker")
 	print("PLAYTEST markers group=", markers.size())
 	if markers.size() < 1:
 		errors.append("map alerts should appear")
+	if markers.size() > 3:
+		errors.append("too many map missions for period")
+
+	# Ciclo día → atardecer → noche con 3 misiones
+	GameState.set_clock(10, 0)
+	GameState.period_missions_done = 0
+	for _i in 3:
+		GameState.advance_after_mission({"period": "day"})
+	print("PLAYTEST after 3 day missions tod=", GameState.time_of_day(), " clock=%02d:%02d" % [GameState.hour, GameState.minute])
+	if GameState.time_of_day() != "dusk":
+		errors.append("3 day missions should reach dusk")
+	for _i in 3:
+		GameState.advance_after_mission({"period": "dusk"})
+	print("PLAYTEST after 3 dusk missions tod=", GameState.time_of_day(), " clock=%02d:%02d" % [GameState.hour, GameState.minute])
+	if GameState.time_of_day() != "night":
+		errors.append("3 dusk missions should reach night")
+	# Noche más dura en combate
+	GameState.set_clock(22, 0)
+	await get_tree().create_timer(0.3).timeout
+	var night_mid := ""
+	for m in GameState.active_missions.values():
+		if str(m.get("period", "")) == "night" and str(m.get("status", "")) == "open":
+			night_mid = str(m["id"])
+			break
+	if night_mid == "" and not GameState.active_missions.is_empty():
+		night_mid = str(GameState.active_missions.keys()[0])
+	if night_mid != "":
+		var cfg_n := GameState.build_combat_config(night_mid, "alpha")
+		var ehp := 0
+		for e in cfg_n.get("enemies", []):
+			ehp = maxi(ehp, int(e.get("hp", 0)))
+		print("PLAYTEST night combat enemies=", cfg_n.get("enemies", []).size(), " max_hp=", ehp)
+		if cfg_n.get("enemies", []).size() < 3:
+			errors.append("night should be harder (3 enemies)")
+		if ehp < 40:
+			errors.append("night enemy hp too low")
 
 	# 8) Day/night + mission art
 	print("PLAYTEST tod=", GameState.time_of_day())
-	GameState.hour = 18
-	GameState.emit_time()
+	GameState.set_clock(18, 0)
 	await get_tree().process_frame
 	print("PLAYTEST tod dusk=", GameState.time_of_day())
 	if GameState.time_of_day() != "dusk":
 		errors.append("dusk tod failed")
-	GameState.hour = 22
-	GameState.emit_time()
+	GameState.set_clock(22, 0)
 	await get_tree().process_frame
 	print("PLAYTEST tod night=", GameState.time_of_day())
 	if GameState.time_of_day() != "night":

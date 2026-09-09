@@ -202,6 +202,8 @@ func _on_combat_ended(victory: bool) -> void:
 			bonus = 2
 		GameState.add_prestige(bonus + int(mission.get("xp", 50) / 100))
 
+	GameState.advance_after_mission(mission)
+
 	patrol["status"] = "returning"
 	patrol["report"] = report
 	patrol.erase("_awaiting_combat")
@@ -290,6 +292,8 @@ func _resolve_scene(patrol: Dictionary, delta: float) -> void:
 		if str(patrol.get("specialty", "")) == str(mission.get("category", "")):
 			bonus = 2
 		GameState.add_prestige(bonus + int(mission.get("xp", 50) / 100))
+
+	GameState.advance_after_mission(mission)
 
 	patrol["status"] = "returning"
 	patrol["report"] = report
