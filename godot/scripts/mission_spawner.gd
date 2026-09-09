@@ -15,6 +15,10 @@ func _ready() -> void:
 	_period = GameState.time_of_day()
 	if not GameState.period_changed.is_connected(_on_period_changed):
 		GameState.period_changed.connect(_on_period_changed)
+	if not GameState.day_changed.is_connected(_on_day_changed):
+		GameState.day_changed.connect(_on_day_changed)
+	if not GameState.boss_available.is_connected(_on_boss_available):
+		GameState.boss_available.connect(_on_boss_available)
 
 
 func _process(delta: float) -> void:
@@ -22,9 +26,41 @@ func _process(delta: float) -> void:
 	if not _boot_spawned:
 		_boot_spawned = true
 		_ensure_period_missions(true)
+		if GameState.day_index >= GameState.BOSS_DAY and not GameState.boss_spawned:
+			_spawn_boss_if_needed()
 	if _timer <= 0.0:
 		_timer = float(GameState.station.get("spawn_interval_sec", 20.0))
 		_ensure_period_missions(false)
+
+
+func _on_day_changed(day: int) -> void:
+	if day >= GameState.BOSS_DAY:
+		_spawn_boss_if_needed()
+
+
+func _on_boss_available(_mid: String) -> void:
+	_spawn_boss_if_needed()
+
+
+func _spawn_boss_if_needed() -> void:
+	if GameState.boss_spawned or GameState.boss_defeated:
+		return
+	if GameState.day_index < GameState.BOSS_DAY:
+		return
+	if city_map == null:
+		return
+	var districts: Array = GameState.station.get("districts", [])
+	var district: Dictionary = {}
+	for d in districts:
+		if str(d.get("id", "")) == "puerto":
+			district = d
+			break
+	if district.is_empty() and not districts.is_empty():
+		district = districts[0]
+	if district.is_empty():
+		return
+	var pos: Vector2 = city_map.random_point_in_district(district)
+	GameState.create_boss_mission(district, pos)
 
 
 func _on_period_changed(period: String) -> void:
@@ -50,6 +86,9 @@ func _purge_other_period_missions(keep_period: String) -> void:
 			continue
 		if st != "open":
 			continue
+		# El boss permanece en el mapa hasta derrotarlo.
+		if bool(m.get("is_boss", false)):
+			continue
 		if str(m.get("period", "")) != keep_period:
 			to_remove.append(mid)
 	for mid in to_remove:
@@ -60,6 +99,9 @@ func _count_open_for_period(period: String) -> int:
 	var n := 0
 	for m in GameState.active_missions.values():
 		if str(m.get("status", "")) not in ["open", "dispatched", "resolving"]:
+			continue
+		# Boss no cuenta para la cuota de 3 señales de la franja.
+		if bool(m.get("is_boss", false)):
 			continue
 		if str(m.get("period", period)) == period:
 			n += 1
@@ -80,6 +122,7 @@ func _ensure_period_missions(force_fill: bool) -> void:
 	for i in need:
 		if not _try_spawn_for_period(period):
 			break
+	_spawn_boss_if_needed()
 
 
 func _try_spawn_for_period(period: String) -> bool:

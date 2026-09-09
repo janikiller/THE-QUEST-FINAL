@@ -33,7 +33,8 @@
 			"effect": "Inflige 8 de daño.",
 			"description": "Disparo reglamentario a corta distancia.",
 			"damage": 8,
-			"target": "enemy"
+			"target": "enemy",
+			"price": 3
 		},
 		{
 			"id": "burst",
@@ -47,7 +48,8 @@
 			"description": "Ráfaga corta para saturar la amenaza.",
 			"damage": 5,
 			"hits": 2,
-			"target": "enemy"
+			"target": "enemy",
+			"price": 5
 		},
 		{
 			"id": "shield",
@@ -60,7 +62,8 @@
 			"effect": "Gana 6 de defensa este turno.",
 			"description": "Te pegas a un muro y reorganizas.",
 			"block": 6,
-			"target": "self"
+			"target": "self",
+			"price": 3
 		},
 		{
 			"id": "cover",
@@ -74,7 +77,8 @@
 			"description": "Respiro y reorganización.",
 			"block": 4,
 			"draw": 1,
-			"target": "self"
+			"target": "self",
+			"price": 3
 		},
 		{
 			"id": "flashlight",
@@ -87,7 +91,8 @@
 			"effect": "Aplica Vulnerable (x1.5 daño) 1 turno.",
 			"description": "Ilumina y desnuda la defensa.",
 			"vulnerable": 1,
-			"target": "enemy"
+			"target": "enemy",
+			"price": 3
 		},
 		{
 			"id": "cuff",
@@ -100,7 +105,8 @@
 			"effect": "Si el enemigo tiene 0 PV, queda detenido.",
 			"description": "Fin de la intervención para ese sospechoso.",
 			"detain": true,
-			"target": "enemy"
+			"target": "enemy",
+			"price": 5
 		},
 		{
 			"id": "support",
@@ -113,7 +119,8 @@
 			"effect": "Causa 10 de daño a todos los enemigos.",
 			"description": "Central responde. Presión total.",
 			"damage": 10,
-			"target": "all"
+			"target": "all",
+			"price": 14
 		},
 		{
 			"id": "frag",
@@ -126,7 +133,8 @@
 			"effect": "Inflige 14 de daño en zona.",
 			"description": "Granada ofensiva. Solo amenazas extremas.",
 			"damage": 14,
-			"target": "all"
+			"target": "all",
+			"price": 9
 		},
 		{
 			"id": "flash",
@@ -139,7 +147,8 @@
 			"effect": "Aturde a todos 1 turno (no actúan).",
 			"description": "Flashbang: ciega antes de entrar.",
 			"stun": 1,
-			"target": "all"
+			"target": "all",
+			"price": 5
 		},
 		{
 			"id": "smoke",
@@ -152,7 +161,8 @@
 			"effect": "Gana 5 de defensa.",
 			"description": "Cortina de humo para moverse a salvo.",
 			"block": 5,
-			"target": "self"
+			"target": "self",
+			"price": 3
 		},
 		{
 			"id": "incendiary",
@@ -166,7 +176,8 @@
 			"description": "Thermite: zona de fuego.",
 			"damage": 6,
 			"burn": 4,
-			"target": "enemy"
+			"target": "enemy",
+			"price": 9
 		},
 		{
 			"id": "tear",
@@ -179,7 +190,8 @@
 			"effect": "Todos: -3 daño de intención este turno.",
 			"description": "CN Tear Gas: debilita el asalto.",
 			"weaken": 3,
-			"target": "all"
+			"target": "all",
+			"price": 5
 		},
 		{
 			"id": "impact",
@@ -192,7 +204,8 @@
 			"effect": "Inflige 10 de daño al instante.",
 			"description": "Estalla al contacto.",
 			"damage": 10,
-			"target": "enemy"
+			"target": "enemy",
+			"price": 5
 		},
 		{
 			"id": "sticky",
@@ -205,7 +218,8 @@
 			"effect": "Inflige 16 de daño a un objetivo.",
 			"description": "Se pega y detona.",
 			"damage": 16,
-			"target": "enemy"
+			"target": "enemy",
+			"price": 14
 		},
 		{
 			"id": "decoy",
@@ -219,7 +233,8 @@
 			"description": "Distrae y redirige la atención.",
 			"block": 3,
 			"draw": 1,
-			"target": "self"
+			"target": "self",
+			"price": 3
 		},
 		{
 			"id": "negotiate",
@@ -232,7 +247,8 @@
 			"effect": "Roba 2 cartas.",
 			"description": "Ganas tiempo y opciones.",
 			"draw": 2,
-			"target": "self"
+			"target": "self",
+			"price": 5
 		},
 		{
 			"id": "breach",
@@ -246,7 +262,8 @@
 			"description": "Breaching: abre y neutraliza.",
 			"damage": 12,
 			"bonus_vs_stun": 6,
-			"target": "enemy"
+			"target": "enemy",
+			"price": 9
 		},
 		{
 			"id": "medkit",
@@ -259,7 +276,544 @@
 			"effect": "Cura 8 PV.",
 			"description": "Estabiliza heridas en escena.",
 			"heal": 8,
-			"target": "self"
+			"target": "self",
+			"price": 3
+		},
+		{
+			"id": "double_tap",
+			"name": "Doble toque",
+			"type": "ataque",
+			"cost": 1,
+			"rarity": "common",
+			"art": "res://assets/combat/custom/cards/pistol.png",
+			"icon": "res://assets/combat/custom/cards/pistol.png",
+			"effect": "Inflige 5 de daño 2 veces.",
+			"description": "Dos disparos rápidos al pecho.",
+			"damage": 5,
+			"hits": 2,
+			"target": "enemy",
+			"price": 3
+		},
+		{
+			"id": "baton",
+			"name": "Porra reglamentaria",
+			"type": "ataque",
+			"cost": 1,
+			"rarity": "common",
+			"art": "res://assets/combat/custom/cards/cuffs.png",
+			"icon": "res://assets/combat/custom/cards/cuffs.png",
+			"effect": "Inflige 6 de daño.",
+			"description": "Golpe corto para abrir espacio.",
+			"damage": 6,
+			"target": "enemy",
+			"price": 2
+		},
+		{
+			"id": "reload",
+			"name": "Recarga rápida",
+			"type": "tactica",
+			"cost": 0,
+			"rarity": "common",
+			"art": "res://assets/combat/custom/cards/pistol.png",
+			"icon": "res://assets/combat/custom/cards/pistol.png",
+			"effect": "Roba 1 carta.",
+			"description": "Cambias el cargador sin perder ritmo.",
+			"draw": 1,
+			"target": "self",
+			"price": 2
+		},
+		{
+			"id": "kevlar",
+			"name": "Chaleco ligero",
+			"type": "defensa",
+			"cost": 1,
+			"rarity": "common",
+			"art": "res://assets/combat/custom/cards/shield.png",
+			"icon": "res://assets/combat/custom/cards/shield.png",
+			"effect": "Gana 5 de defensa.",
+			"description": "Placas blandas ante el primer impacto.",
+			"block": 5,
+			"target": "self",
+			"price": 3
+		},
+		{
+			"id": "bandage",
+			"name": "Vendaje de campo",
+			"type": "defensa",
+			"cost": 0,
+			"rarity": "common",
+			"art": "res://assets/combat/custom/cards/medkit.png",
+			"icon": "res://assets/combat/custom/cards/medkit.png",
+			"effect": "Cura 4 PV.",
+			"description": "Parche rápido antes de seguir.",
+			"heal": 4,
+			"target": "self",
+			"price": 2
+		},
+		{
+			"id": "warn",
+			"name": "Advertencia",
+			"type": "tactica",
+			"cost": 0,
+			"rarity": "common",
+			"art": "res://assets/combat/custom/cards/radio.png",
+			"icon": "res://assets/combat/custom/cards/radio.png",
+			"effect": "Gana 2 de defensa. Roba 1.",
+			"description": "Identifícate y gana un segundo.",
+			"block": 2,
+			"draw": 1,
+			"target": "self",
+			"price": 2
+		},
+		{
+			"id": "suppressive",
+			"name": "Fuego de cobertura",
+			"type": "ataque",
+			"cost": 2,
+			"rarity": "uncommon",
+			"art": "res://assets/combat/custom/cards/rifle.png",
+			"icon": "res://assets/combat/custom/cards/rifle.png",
+			"effect": "Inflige 7 a todos.",
+			"description": "Ráfaga corta para bajar cabezas.",
+			"damage": 7,
+			"target": "all",
+			"price": 5
+		},
+		{
+			"id": "taser",
+			"name": "Táser",
+			"type": "tactica",
+			"cost": 1,
+			"rarity": "uncommon",
+			"art": "res://assets/combat/custom/cards/flash.png",
+			"icon": "res://assets/combat/custom/cards/flash.png",
+			"effect": "Aturde 1 turno. Inflige 3.",
+			"description": "Descarga no letal. Inmoviliza.",
+			"damage": 3,
+			"stun": 1,
+			"target": "enemy",
+			"price": 5
+		},
+		{
+			"id": "riot_shield",
+			"name": "Escudo antidisturbios",
+			"type": "defensa",
+			"cost": 2,
+			"rarity": "uncommon",
+			"art": "res://assets/combat/custom/cards/shield.png",
+			"icon": "res://assets/combat/custom/cards/shield.png",
+			"effect": "Gana 12 de defensa.",
+			"description": "Muro móvil frente a balas.",
+			"block": 12,
+			"target": "self",
+			"price": 6
+		},
+		{
+			"id": "adrenaline",
+			"name": "Adrenalina",
+			"type": "defensa",
+			"cost": 1,
+			"rarity": "uncommon",
+			"art": "res://assets/combat/custom/cards/medkit.png",
+			"icon": "res://assets/combat/custom/cards/medkit.png",
+			"effect": "Cura 6. Gana 3 de defensa.",
+			"description": "Inyección de combate.",
+			"heal": 6,
+			"block": 3,
+			"target": "self",
+			"price": 5
+		},
+		{
+			"id": "spotter",
+			"name": "Marcaje",
+			"type": "tactica",
+			"cost": 1,
+			"rarity": "uncommon",
+			"art": "res://assets/combat/custom/cards/flashlight.png",
+			"icon": "res://assets/combat/custom/cards/flashlight.png",
+			"effect": "Vulnerable 2 turnos.",
+			"description": "Señalas el blanco al equipo.",
+			"vulnerable": 2,
+			"target": "enemy",
+			"price": 5
+		},
+		{
+			"id": "backup_call",
+			"name": "Refuerzo local",
+			"type": "especial",
+			"cost": 2,
+			"rarity": "uncommon",
+			"art": "res://assets/combat/custom/cards/radio.png",
+			"icon": "res://assets/combat/custom/cards/radio.png",
+			"effect": "Inflige 8 a todos. Roba 1.",
+			"description": "Unidades cercanas responden.",
+			"damage": 8,
+			"draw": 1,
+			"target": "all",
+			"price": 6
+		},
+		{
+			"id": "sniper",
+			"name": "Disparo de precisión",
+			"type": "ataque",
+			"cost": 2,
+			"rarity": "rare",
+			"art": "res://assets/combat/custom/cards/rifle.png",
+			"icon": "res://assets/combat/custom/cards/rifle.png",
+			"effect": "Inflige 18 de daño.",
+			"description": "Un tiro, un problema menos.",
+			"damage": 18,
+			"target": "enemy",
+			"price": 9
+		},
+		{
+			"id": "breach_charge",
+			"name": "Carga de asalto",
+			"type": "ataque",
+			"cost": 2,
+			"rarity": "rare",
+			"art": "res://assets/combat/custom/cards/shotgun.png",
+			"icon": "res://assets/combat/custom/cards/shotgun.png",
+			"effect": "Inflige 11. Si vulnerable, +7.",
+			"description": "Rompe la puerta y el ritmo.",
+			"damage": 11,
+			"bonus_vs_stun": 7,
+			"target": "enemy",
+			"price": 9
+		},
+		{
+			"id": "fortify",
+			"name": "Fortificar",
+			"type": "defensa",
+			"cost": 2,
+			"rarity": "rare",
+			"art": "res://assets/combat/custom/cards/shield.png",
+			"icon": "res://assets/combat/custom/cards/shield.png",
+			"effect": "Gana 10 de defensa. Cura 5.",
+			"description": "Te atrincheras y respiras.",
+			"block": 10,
+			"heal": 5,
+			"target": "self",
+			"price": 9
+		},
+		{
+			"id": "net",
+			"name": "Red de captura",
+			"type": "tactica",
+			"cost": 1,
+			"rarity": "rare",
+			"art": "res://assets/combat/custom/cards/cuffs.png",
+			"icon": "res://assets/combat/custom/cards/cuffs.png",
+			"effect": "Aturde 1. Weaken 3.",
+			"description": "Inmoviliza sin disparar.",
+			"stun": 1,
+			"weaken": 3,
+			"target": "enemy",
+			"price": 8
+		},
+		{
+			"id": "overwatch",
+			"name": "Vigilancia cruzada",
+			"type": "especial",
+			"cost": 2,
+			"rarity": "rare",
+			"art": "res://assets/combat/custom/cards/rifle.png",
+			"icon": "res://assets/combat/custom/cards/rifle.png",
+			"effect": "Inflige 9 a todos. Gana 4 defensa.",
+			"description": "Ángulos cubiertos.",
+			"damage": 9,
+			"block": 4,
+			"target": "all",
+			"price": 10
+		},
+		{
+			"id": "swat_raid",
+			"name": "Asalto GEO",
+			"type": "ataque",
+			"cost": 3,
+			"rarity": "epic",
+			"art": "res://assets/combat/custom/cards/shotgun.png",
+			"icon": "res://assets/combat/custom/cards/shotgun.png",
+			"effect": "Inflige 12 tres veces.",
+			"description": "Entrada total. Sin piedad.",
+			"damage": 12,
+			"hits": 3,
+			"target": "enemy",
+			"price": 14
+		},
+		{
+			"id": "airstrike",
+			"name": "Apoyo aéreo",
+			"type": "especial",
+			"cost": 3,
+			"rarity": "epic",
+			"art": "res://assets/combat/custom/cards/radio.png",
+			"icon": "res://assets/combat/custom/cards/radio.png",
+			"effect": "Inflige 16 a todos.",
+			"description": "Helicóptero marca la zona.",
+			"damage": 16,
+			"target": "all",
+			"price": 15
+		},
+		{
+			"id": "iron_wall",
+			"name": "Muro de acero",
+			"type": "defensa",
+			"cost": 2,
+			"rarity": "epic",
+			"art": "res://assets/combat/custom/cards/shield.png",
+			"icon": "res://assets/combat/custom/cards/shield.png",
+			"effect": "Gana 20 de defensa.",
+			"description": "Nadie pasa.",
+			"block": 20,
+			"target": "self",
+			"price": 13
+		},
+		{
+			"id": "field_surgery",
+			"name": "Cirugía de combate",
+			"type": "defensa",
+			"cost": 2,
+			"rarity": "epic",
+			"art": "res://assets/combat/custom/cards/medkit.png",
+			"icon": "res://assets/combat/custom/cards/medkit.png",
+			"effect": "Cura 18 PV.",
+			"description": "Estabilización extrema.",
+			"heal": 18,
+			"target": "self",
+			"price": 13
+		},
+		{
+			"id": "legend_judge",
+			"name": "Juicio final",
+			"type": "ataque",
+			"cost": 2,
+			"rarity": "legendary",
+			"art": "res://assets/combat/custom/cards/rifle.png",
+			"icon": "res://assets/combat/custom/cards/rifle.png",
+			"effect": "Inflige 28 de daño.",
+			"description": "La sentencia del segundo día.",
+			"damage": 28,
+			"target": "enemy",
+			"price": 22
+		},
+		{
+			"id": "legend_shield",
+			"name": "Égida U.P.R.",
+			"type": "defensa",
+			"cost": 2,
+			"rarity": "legendary",
+			"art": "res://assets/combat/custom/cards/shield.png",
+			"icon": "res://assets/combat/custom/cards/shield.png",
+			"effect": "Gana 25 de defensa. Cura 8.",
+			"description": "Protocolo máximo de supervivencia.",
+			"block": 25,
+			"heal": 8,
+			"target": "self",
+			"price": 22
+		},
+		{
+			"id": "legend_raid",
+			"name": "Caza al jefe",
+			"type": "especial",
+			"cost": 3,
+			"rarity": "legendary",
+			"art": "res://assets/combat/custom/cards/shotgun.png",
+			"icon": "res://assets/combat/custom/cards/shotgun.png",
+			"effect": "Inflige 20 a todos. Aturde 1.",
+			"description": "Derribo coordinado del capo.",
+			"damage": 20,
+			"stun": 1,
+			"target": "all",
+			"price": 24
+		},
+		{
+			"id": "legend_ace",
+			"name": "As de la comisaría",
+			"type": "tactica",
+			"cost": 1,
+			"rarity": "legendary",
+			"art": "res://assets/combat/custom/cards/radio.png",
+			"icon": "res://assets/combat/custom/cards/radio.png",
+			"effect": "Roba 3. Gana 6 defensa.",
+			"description": "Experiencia de dos turnos en uno.",
+			"draw": 3,
+			"block": 6,
+			"target": "self",
+			"price": 20
+		},
+		{
+			"id": "legend_cuffs",
+			"name": "Esposas de oro",
+			"type": "especial",
+			"cost": 2,
+			"rarity": "legendary",
+			"art": "res://assets/combat/custom/cards/cuffs.png",
+			"icon": "res://assets/combat/custom/cards/cuffs.png",
+			"effect": "16 daño. Si muere, detenido.",
+			"description": "Cierre legendario del expediente.",
+			"damage": 16,
+			"detain": true,
+			"target": "enemy",
+			"price": 21
+		},
+		{
+			"id": "sidearm_drill",
+			"name": "Taladro de corto",
+			"type": "ataque",
+			"cost": 1,
+			"rarity": "common",
+			"art": "res://assets/combat/custom/cards/pistol.png",
+			"icon": "res://assets/combat/custom/cards/pistol.png",
+			"effect": "Inflige 6. Roba 1.",
+			"description": "Entrenamiento de arma corta.",
+			"damage": 6,
+			"draw": 1,
+			"target": "enemy",
+			"price": 4
+		},
+		{
+			"id": "breach_ram",
+			"name": "Ariete de entrada",
+			"type": "ataque",
+			"cost": 2,
+			"rarity": "uncommon",
+			"art": "res://assets/combat/custom/cards/shotgun.png",
+			"icon": "res://assets/combat/custom/cards/shotgun.png",
+			"effect": "Inflige 12.",
+			"description": "Apertura forzada.",
+			"damage": 12,
+			"target": "enemy",
+			"price": 6
+		},
+		{
+			"id": "kite_shield",
+			"name": "Escudo de asalto",
+			"type": "defensa",
+			"cost": 1,
+			"rarity": "common",
+			"art": "res://assets/combat/custom/cards/shield.png",
+			"icon": "res://assets/combat/custom/cards/shield.png",
+			"effect": "Gana 8 de defensa.",
+			"description": "Bloqueo reglamentario.",
+			"block": 8,
+			"target": "self",
+			"price": 3
+		},
+		{
+			"id": "net_gun",
+			"name": "Pistola de red",
+			"type": "especial",
+			"cost": 2,
+			"rarity": "rare",
+			"art": "res://assets/combat/custom/cards/cuffs.png",
+			"icon": "res://assets/combat/custom/cards/cuffs.png",
+			"effect": "8 daño. Aturde 1.",
+			"description": "Captura no letal.",
+			"damage": 8,
+			"stun": 1,
+			"target": "enemy",
+			"price": 9
+		},
+		{
+			"id": "ballistic_vest",
+			"name": "Chaleco balístico",
+			"type": "defensa",
+			"cost": 2,
+			"rarity": "rare",
+			"art": "res://assets/combat/custom/cards/shield.png",
+			"icon": "res://assets/combat/custom/cards/shield.png",
+			"effect": "Gana 14 de defensa.",
+			"description": "Protección táctica.",
+			"block": 14,
+			"target": "self",
+			"price": 9
+		},
+		{
+			"id": "flash_volley",
+			"name": "Salva deslumbrante",
+			"type": "ataque",
+			"cost": 2,
+			"rarity": "uncommon",
+			"art": "res://assets/combat/custom/cards/flash.png",
+			"icon": "res://assets/combat/custom/cards/flash.png",
+			"effect": "5 daño a todos.",
+			"description": "Granada de destello ofensiva.",
+			"damage": 5,
+			"target": "all",
+			"price": 7
+		},
+		{
+			"id": "smoke_screen",
+			"name": "Cortina táctica",
+			"type": "defensa",
+			"cost": 1,
+			"rarity": "uncommon",
+			"art": "res://assets/combat/custom/cards/smoke.png",
+			"icon": "res://assets/combat/custom/cards/smoke.png",
+			"effect": "Gana 6 defensa. Roba 1.",
+			"description": "Ocultación temporal.",
+			"block": 6,
+			"draw": 1,
+			"target": "self",
+			"price": 5
+		},
+		{
+			"id": "precision_shot",
+			"name": "Tiro de precisión",
+			"type": "ataque",
+			"cost": 2,
+			"rarity": "rare",
+			"art": "res://assets/combat/custom/cards/rifle.png",
+			"icon": "res://assets/combat/custom/cards/rifle.png",
+			"effect": "Inflige 16 de daño.",
+			"description": "Disparo medido.",
+			"damage": 16,
+			"target": "enemy",
+			"price": 10
+		},
+		{
+			"id": "command_push",
+			"name": "Empuje de mando",
+			"type": "tactica",
+			"cost": 1,
+			"rarity": "epic",
+			"art": "res://assets/combat/custom/cards/radio.png",
+			"icon": "res://assets/combat/custom/cards/radio.png",
+			"effect": "Roba 2.",
+			"description": "Órdenes claras bajo fuego.",
+			"draw": 2,
+			"target": "self",
+			"price": 14
+		},
+		{
+			"id": "riot_line",
+			"name": "Línea antidisturbios",
+			"type": "defensa",
+			"cost": 2,
+			"rarity": "epic",
+			"art": "res://assets/combat/custom/cards/shield.png",
+			"icon": "res://assets/combat/custom/cards/shield.png",
+			"effect": "Gana 12 defensa.",
+			"description": "Avance en formación.",
+			"block": 12,
+			"target": "self",
+			"price": 15
+		},
+		{
+			"id": "silent_cuff",
+			"name": "Esposado silencioso",
+			"type": "especial",
+			"cost": 1,
+			"rarity": "common",
+			"art": "res://assets/combat/custom/cards/cuffs.png",
+			"icon": "res://assets/combat/custom/cards/cuffs.png",
+			"effect": "Inflige 5. Si muere, detenido.",
+			"description": "Arresto limpio.",
+			"damage": 5,
+			"detain": true,
+			"target": "enemy",
+			"price": 4
 		}
 	],
 	"starter_deck": [
@@ -280,5 +834,25 @@
 		"negotiate",
 		"medkit",
 		"impact"
+	],
+	"boss_rewards": [
+		"legend_judge",
+		"legend_shield",
+		"legend_raid",
+		"legend_ace",
+		"legend_cuffs"
+	],
+	"market_exclude": [
+		"cover",
+		"cuff",
+		"decoy",
+		"flash",
+		"flashlight",
+		"impact",
+		"medkit",
+		"negotiate",
+		"shield",
+		"smoke",
+		"strike"
 	]
 }

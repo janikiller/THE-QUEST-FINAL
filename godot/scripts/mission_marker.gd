@@ -103,6 +103,8 @@ func _layout_hit() -> void:
 
 
 func _badge_for_mission(mission: Dictionary) -> String:
+	if bool(mission.get("is_boss", false)):
+		return "narcotrafico"
 	var cat := str(mission.get("category", "")).to_lower()
 	var eid := str(mission.get("event_id", "")).to_lower()
 	var title := str(mission.get("title", "")).to_lower()

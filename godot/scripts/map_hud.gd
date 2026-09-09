@@ -24,8 +24,10 @@ var _unit_status: Label
 var _lights: TextureRect
 var _btn_missions_dock: Button
 var _btn_deck_dock: Button
+var _btn_market_dock: Button
 var _btn_alerts: Button
 var _period_chip: Label
+var _credits_chip: Label
 var _flash_t: float = 0.0
 
 
@@ -43,6 +45,8 @@ func _ready() -> void:
 	GameState.mission_updated.connect(func(_m): _refresh_dock())
 	GameState.mission_removed.connect(func(_id): _refresh_dock())
 	GameState.period_changed.connect(func(_p): _refresh_dock())
+	GameState.credits_changed.connect(func(_v): _refresh_dock())
+	GameState.day_changed.connect(func(_d): _refresh_dock())
 	RadioBus.radio_message.connect(_on_radio)
 	btn_missions.pressed.connect(_open_missions)
 	btn_deck.pressed.connect(_open_deck)
@@ -57,7 +61,7 @@ func _ready() -> void:
 	btn_speed_16.pressed.connect(func(): GameState.set_time_speed(16.0))
 	btn_speed_60.pressed.connect(func(): GameState.set_time_speed(60.0))
 	time_label.text = "%02d:%02d" % [GameState.hour, GameState.minute]
-	hint.text = "WASD mover · M misiones · I mazo · 1-4 velocidad"
+	hint.text = "WASD mover · M misiones · I mazo · K mercado · 1-4 velocidad"
 	_build_bottom_dock()
 	_update_tod_hint()
 	_sync_speed_buttons()
@@ -161,13 +165,17 @@ func _build_bottom_dock() -> void:
 	_btn_deck_dock.pressed.connect(_open_deck)
 	actions.add_child(_btn_deck_dock)
 
+	_btn_market_dock = _make_dock_btn("MERCADO", "Cartas · K", Color(0.86, 0.58, 0.12))
+	_btn_market_dock.pressed.connect(_open_market)
+	actions.add_child(_btn_market_dock)
+
 	_btn_alerts = _make_dock_btn("SEÑALES", "En el mapa", Color(0.88, 0.22, 0.3))
 	_btn_alerts.pressed.connect(_open_missions)
 	actions.add_child(_btn_alerts)
 
 	# --- Franja (derecha) ---
 	var right := PanelContainer.new()
-	right.custom_minimum_size = Vector2(132, 0)
+	right.custom_minimum_size = Vector2(148, 0)
 	var rsb := StyleBoxFlat.new()
 	rsb.bg_color = Color(0.05, 0.09, 0.14, 0.95)
 	rsb.border_color = Color(0.3, 0.5, 0.8, 0.45)
@@ -191,9 +199,14 @@ func _build_bottom_dock() -> void:
 	right_col.add_child(right_title)
 
 	_period_chip = Label.new()
-	_period_chip.add_theme_font_size_override("font_size", 20)
+	_period_chip.add_theme_font_size_override("font_size", 18)
 	_period_chip.add_theme_color_override("font_color", Color(1, 1, 1))
 	right_col.add_child(_period_chip)
+
+	_credits_chip = Label.new()
+	_credits_chip.add_theme_font_size_override("font_size", 12)
+	_credits_chip.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
+	right_col.add_child(_credits_chip)
 
 	# Toast / hint por encima del dock
 	radio_toast.offset_top = -168
@@ -206,7 +219,7 @@ func _build_bottom_dock() -> void:
 func _make_dock_btn(title: String, subtitle: String, accent: Color) -> Button:
 	var b := Button.new()
 	b.text = "%s\n%s" % [title, subtitle]
-	b.custom_minimum_size = Vector2(128, 74)
+	b.custom_minimum_size = Vector2(112, 74)
 	b.focus_mode = Control.FOCUS_NONE
 	var n := StyleBoxFlat.new()
 	n.bg_color = Color(0.05, 0.09, 0.14, 0.98)
@@ -272,11 +285,16 @@ func _refresh_dock() -> void:
 		_btn_alerts.text = "SEÑALES\n%d en mapa" % open_n
 	if _btn_deck_dock:
 		_btn_deck_dock.text = "MAZO\nCartas · I"
+	if _btn_market_dock:
+		_btn_market_dock.text = "MERCADO\n%d★ · K" % GameState.credits
 	btn_missions.text = "MISIONES  (%d)" % open_n
 
 	var period := GameState.period_label()
 	if _period_chip:
-		_period_chip.text = period
+		var day_bit := "D%d" % GameState.day_index
+		if GameState.boss_spawned and not GameState.boss_defeated:
+			day_bit += " BOSS"
+		_period_chip.text = "%s · %s" % [day_bit, period]
 		match GameState.time_of_day():
 			"dusk":
 				_period_chip.add_theme_color_override("font_color", Color(1.0, 0.7, 0.35))
@@ -284,6 +302,8 @@ func _refresh_dock() -> void:
 				_period_chip.add_theme_color_override("font_color", Color(0.55, 0.7, 1.0))
 			_:
 				_period_chip.add_theme_color_override("font_color", Color(0.95, 0.95, 0.85))
+	if _credits_chip:
+		_credits_chip.text = "CRÉDITOS %d★" % GameState.credits
 
 
 func _update_tod_hint() -> void:
@@ -326,6 +346,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				GameState.set_time_speed(16.0)
 			KEY_4:
 				GameState.set_time_speed(60.0)
+			KEY_K:
+				_open_market()
 			KEY_PERIOD, KEY_EQUAL:
 				GameState.cycle_time_speed()
 			KEY_C:
@@ -344,6 +366,12 @@ func _open_deck() -> void:
 	var router := get_parent()
 	if router and router.has_method("show_deck"):
 		router.show_deck("alpha")
+
+
+func _open_market() -> void:
+	var router := get_parent()
+	if router and router.has_method("show_market"):
+		router.show_market("alpha")
 
 
 func _on_radio(text: String, kind: String) -> void:

@@ -12,6 +12,9 @@ signal weather_changed(weather: String)
 signal lightning_flash
 signal time_speed_changed(speed: float)
 signal period_changed(period: String)
+signal day_changed(day: int)
+signal boss_available(mission_id: String)
+signal credits_changed(value: int)
 
 var station: Dictionary = {}
 var events_catalog: Array = []
@@ -20,7 +23,14 @@ var categories: Dictionary = {}
 var hour: int = 21
 var minute: int = 0
 var prestige: int = 0
+## Créditos del mercado de cartas (se ganan con misiones).
+var credits: int = 12
 var selected_mission_id: String = ""
+## Día de campaña (1 = inicio). El boss aparece el día 2.
+var day_index: int = 1
+var boss_spawned: bool = false
+var boss_defeated: bool = false
+var boss_mission_id: String = ""
 ## Multiplicador de velocidad de partida (1, 4, 16, 60). Afecta el reloj del día/noche.
 var time_speed: float = 1.0
 ## Clima actual: clear | drizzle | rain | storm
@@ -35,6 +45,7 @@ const PERIOD_MISSION_QUOTA := 3
 const ADVANCE_DAY_MIN := 140 ## ~2h20 → 3 misiones llevan al atardecer
 const ADVANCE_DUSK_MIN := 70 ## ~1h10 → 3 misiones llevan a la noche
 const ADVANCE_NIGHT_MIN := 220 ## ~3h40 → 3 misiones llevan al día siguiente
+const BOSS_DAY := 2
 
 ## mission_id -> mission dict
 var active_missions: Dictionary = {}
@@ -177,9 +188,7 @@ func set_clock(h: int, m: int = 0) -> void:
 	_maybe_update_weather()
 	var now := time_of_day()
 	if now != prev:
-		_last_period = now
-		period_missions_done = 0
-		period_changed.emit(now)
+		_on_period_transition(prev, now)
 
 
 func time_of_day() -> String:
@@ -203,9 +212,71 @@ func tick_minutes(amount: int = 1) -> void:
 	_maybe_update_weather()
 	var now_period := time_of_day()
 	if now_period != prev_period:
-		_last_period = now_period
-		period_missions_done = 0
-		period_changed.emit(now_period)
+		_on_period_transition(prev_period, now_period)
+
+
+func _on_period_transition(prev: String, now: String) -> void:
+	_last_period = now
+	period_missions_done = 0
+	# Noche → día: nuevo día de campaña
+	if prev == "night" and now == "day":
+		day_index += 1
+		day_changed.emit(day_index)
+		RadioBus.push("Amanece el día %d en la ciudad." % day_index, "dispatch")
+		if day_index >= BOSS_DAY and not boss_spawned and not boss_defeated:
+			call_deferred("request_boss_spawn")
+	period_changed.emit(now)
+
+
+func request_boss_spawn() -> void:
+	if boss_spawned or boss_defeated:
+		return
+	boss_available.emit("")
+
+
+func add_credits(delta: int) -> void:
+	credits = maxi(0, credits + delta)
+	credits_changed.emit(credits)
+
+
+func spend_credits(amount: int) -> bool:
+	if amount <= 0:
+		return true
+	if credits < amount:
+		return false
+	credits -= amount
+	credits_changed.emit(credits)
+	return true
+
+
+func buy_card_for_patrol(patrol_id: String, card_id: String) -> bool:
+	var price := CardDB.price_of(card_id)
+	if CardDB.get_card(card_id).is_empty():
+		return false
+	if not spend_credits(price):
+		return false
+	add_card_to_deck(patrol_id, card_id)
+	RadioBus.push("Mercado: adquirida «%s» (−%d ★)." % [str(CardDB.get_card(card_id).get("name", card_id)), price], "resolve")
+	return true
+
+
+func grant_boss_rewards(patrol_id: String = "alpha") -> Array:
+	## Otorga 2 cartas legendarias al derrotar al boss.
+	var pool: Array = CardDB.boss_rewards.duplicate()
+	if pool.is_empty():
+		for c in CardDB.all_cards():
+			if str(c.get("rarity", "")) == "legendary":
+				pool.append(str(c.get("id", "")))
+	pool.shuffle()
+	var gained: Array = []
+	for i in mini(2, pool.size()):
+		var cid := str(pool[i])
+		add_card_to_deck(patrol_id, cid)
+		gained.append(cid)
+	add_credits(18)
+	add_prestige(5)
+	boss_defeated = true
+	return gained
 
 
 func advance_after_mission(mission: Dictionary = {}) -> void:
@@ -408,6 +479,54 @@ func get_dispatchable_events() -> Array:
 			continue
 		out.append(e)
 	return out
+
+
+func create_boss_mission(district: Dictionary, map_pos: Vector2) -> Dictionary:
+	## Jefe del segundo día: combate duro con recompensa legendaria.
+	_mission_seq += 1
+	var mid := "m_boss_%d" % _mission_seq
+	var mission := {
+		"id": mid,
+		"event_id": "boss_cartel_jefe",
+		"title": "El Capo del Puerto",
+		"category": "organizado",
+		"severity": "critical",
+		"period": time_of_day(),
+		"is_boss": true,
+		"district_id": district.get("id", "puerto"),
+		"district_name": district.get("name", "Puerto"),
+		"pos": map_pos,
+		"file": "events/tiles/organizado/laboratorio_ilegal.png",
+		"xp": 220,
+		"duration_sec": 180.0,
+		"status": "open",
+		"phase": "inicio",
+		"phase_label": "INICIO",
+		"beats": [],
+		"outcome": "",
+		"outcome_report": "",
+		"tactic": "",
+		"assigned_patrol": "",
+		"suspects": [],
+		"created_at": "%02d:%02d" % [hour, minute],
+		"blurb": "DÍA %d — Señal prioritaria: el capo mueve armas en %s. Intervenir y detener." % [day_index, str(district.get("name", "la ciudad"))],
+		"radio_log": [],
+	}
+	_seed_inicio_beat(mission)
+	active_missions[mid] = mission
+	# 3 enemigos duros + jefe
+	mission["suspects"] = CharacterDB.delinquent_thumbs_for_mission(mid, 3)
+	mission["suspect_icon"] = CharacterDB.delinquent_icon_for_mission(mid)
+	var loc: Dictionary = LocationDB.house_for_mission(mid)
+	mission["location_art"] = str(loc.get("path", ""))
+	mission["location_name"] = str(loc.get("name", "Almacén del puerto"))
+	active_missions[mid] = mission
+	boss_spawned = true
+	boss_mission_id = mid
+	mission_added.emit(mission)
+	boss_available.emit(mid)
+	RadioBus.push("¡ALERTA DÍA %d! Boss en el mapa: El Capo del Puerto." % day_index, "alert")
+	return mission
 
 
 func create_mission_from_event(event: Dictionary, district: Dictionary, map_pos: Vector2) -> Dictionary:
@@ -683,8 +802,9 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 	var enemies: Array = []
 	var suspects: Array = mission.get("suspects", [])
 	var period := str(mission.get("period", time_of_day()))
+	var is_boss := bool(mission.get("is_boss", false))
 	var want := 2
-	if period == "night" or str(mission.get("severity", "")) in ["high", "critical"]:
+	if is_boss or period == "night" or str(mission.get("severity", "")) in ["high", "critical"]:
 		want = 3
 	elif period == "day" and str(mission.get("severity", "")) == "low":
 		want = 1
@@ -698,19 +818,26 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 			base_hp = 32
 		"critical":
 			base_hp = 40
-	# Noche más dura; atardecer un poco más exigente
 	if period == "night":
 		base_hp += 10
 	elif period == "dusk":
 		base_hp += 4
+	if is_boss:
+		base_hp += 18
 	for i in range(mini(want, maxi(1, suspects.size()))):
 		var s: Dictionary = suspects[i]
+		var ehp := base_hp + i * 3 + (4 if period == "night" else 0)
+		var ename := str(s.get("alias", s.get("name", "Sospechoso")))
+		if is_boss and i == 0:
+			ename = "EL CAPO"
+			ehp += 30
 		enemies.append({
 			"id": str(s.get("id", "e%d" % i)),
-			"name": str(s.get("alias", s.get("name", "Sospechoso"))),
-			"hp": base_hp + i * 3 + (4 if period == "night" else 0),
+			"name": ename,
+			"hp": ehp,
 			"portrait": str(s.get("thumb", "")),
 			"sprite": str(s.get("full", "res://assets/character/delinquents/delinq_00.png")),
+			"is_boss": is_boss and i == 0,
 		})
 	if enemies.is_empty():
 		for i in range(want):
@@ -722,20 +849,23 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 			})
 
 	var objective := "Detener a los sospechosos"
-	match period:
-		"day":
-			objective = "Intervenir con control — turno de día"
-		"dusk":
-			objective = "Contener la amenaza al atardecer"
-		"night":
-			objective = "NOCHE: neutralizar amenaza de alto riesgo"
+	if is_boss:
+		objective = "BOSS: derrota a El Capo y su escolta"
+	else:
+		match period:
+			"day":
+				objective = "Intervenir con control — turno de día"
+			"dusk":
+				objective = "Contener la amenaza al atardecer"
+			"night":
+				objective = "NOCHE: neutralizar amenaza de alto riesgo"
 
 	return {
 		"mission_id": mission_id,
 		"location": str(mission.get("title", mission.get("district_name", "Intervención"))),
 		"objective": objective,
 		"hero_name": hero_name,
-		"max_hp": int(patrol.get("max_hp", 50)),
+		"max_hp": int(patrol.get("max_hp", 50)) + (10 if is_boss else 0),
 		"energy_max": int(patrol.get("energy_max", 3)),
 		"portrait": portrait,
 		"sprite": sprite,
@@ -743,6 +873,7 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 		"enemies": enemies,
 		"patrol_id": patrol_id,
 		"period": period,
+		"is_boss": is_boss,
 	}
 
 

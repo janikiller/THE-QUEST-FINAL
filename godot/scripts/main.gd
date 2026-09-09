@@ -328,12 +328,15 @@ func _playtest() -> void:
 		errors.append("player did not move")
 	print("PLAYTEST player moved ", p0, "->", player.global_position)
 
-	# Marcadores de alerta en mapa activos (máx. 3 por franja)
+	# Marcadores de alerta en mapa activos (máx. 3 por franja + boss opcional)
 	var markers = get_tree().get_nodes_in_group("mission_marker")
 	print("PLAYTEST markers group=", markers.size())
 	if markers.size() < 1:
 		errors.append("map alerts should appear")
-	if markers.size() > 3:
+	var marker_cap := 3
+	if GameState.boss_spawned and not GameState.boss_defeated:
+		marker_cap = 4
+	if markers.size() > marker_cap:
 		errors.append("too many map missions for period")
 
 	# Ciclo día → atardecer → noche con 3 misiones
@@ -515,6 +518,76 @@ func _playtest() -> void:
 	if GameState.weather != "storm":
 		errors.append("weather not storm")
 	print("PLAYTEST weather=", GameState.weather, " music=", AudioDirector.music_on)
+
+	# Mercado de cartas + boss día 2
+	print("PLAYTEST catalog=", CardDB.cards.size(), " market=", CardDB.cards_for_market(false).size())
+	if CardDB.cards.size() < 40:
+		errors.append("card catalog too small")
+	if CardDB.cards_for_market(false).size() < 20:
+		errors.append("market stock too small")
+	$UI/UIRouter.show_market("alpha")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not $UI/UIRouter/MarketScreen.visible:
+		errors.append("market screen not visible")
+	else:
+		print("PLAYTEST market OK credits=", GameState.credits)
+	var before_credits := GameState.credits
+	var buy_id := ""
+	for c in CardDB.cards_for_market(false):
+		var cid := str(c.get("id", ""))
+		if CardDB.price_of(cid) <= before_credits:
+			buy_id = cid
+			break
+	var deck_before := GameState.get_patrol_deck("alpha").size()
+	if buy_id != "" and GameState.buy_card_for_patrol("alpha", buy_id):
+		if GameState.credits >= before_credits:
+			errors.append("credits not spent")
+		if GameState.get_patrol_deck("alpha").size() != deck_before + 1:
+			errors.append("market buy did not add card")
+		print("PLAYTEST bought ", buy_id, " credits=", GameState.credits)
+	else:
+		errors.append("market buy failed")
+	$UI/UIRouter.show_map()
+
+	# Forzar día 2 y boss
+	for mid in GameState.active_missions.keys():
+		var mm: Dictionary = GameState.active_missions[mid]
+		if bool(mm.get("is_boss", false)):
+			GameState.remove_mission(str(mid))
+	GameState.day_index = 1
+	GameState.boss_spawned = false
+	GameState.boss_defeated = false
+	GameState.boss_mission_id = ""
+	GameState.set_clock(22, 0)
+	await get_tree().process_frame
+	GameState.set_clock(8, 0)
+	await get_tree().create_timer(0.4).timeout
+	print("PLAYTEST day=", GameState.day_index, " boss_spawned=", GameState.boss_spawned, " mid=", GameState.boss_mission_id)
+	if GameState.day_index < 2:
+		errors.append("day did not advance to 2")
+	if not GameState.boss_spawned or GameState.boss_mission_id == "":
+		errors.append("boss not spawned on day 2")
+	else:
+		var bcfg := GameState.build_combat_config(GameState.boss_mission_id, "alpha")
+		var boss_named := false
+		for e in bcfg.get("enemies", []):
+			if str(e.get("name", "")) == "EL CAPO" or bool(e.get("is_boss", false)):
+				boss_named = true
+		print("PLAYTEST boss combat enemies=", bcfg.get("enemies", []).size(), " named=", boss_named)
+		if not boss_named:
+			errors.append("boss combat missing EL CAPO")
+		var deck_pre := GameState.get_patrol_deck("alpha").size()
+		var gained: Array = GameState.grant_boss_rewards("alpha")
+		print("PLAYTEST boss rewards=", gained)
+		if gained.size() < 2:
+			errors.append("boss should grant 2 legendaries")
+		if GameState.get_patrol_deck("alpha").size() < deck_pre + 2:
+			errors.append("legendaries not added to deck")
+		if not GameState.boss_defeated:
+			errors.append("boss_defeated flag missing")
+		if CardDB.cards_for_market(true).size() <= CardDB.cards_for_market(false).size():
+			errors.append("legendaries should unlock in market after boss")
 
 	if errors.is_empty():
 		print("PLAYTEST_OK")
