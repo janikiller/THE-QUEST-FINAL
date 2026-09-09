@@ -6,26 +6,47 @@
 z_index = 20
 script = ExtResource("1_script")
 
-[node name="Suspect" type="Sprite2D" parent="."]
-position = Vector2(22, -8)
+[node name="Icon" type="Sprite2D" parent="."]
+z_index = 2
+position = Vector2(0, -10)
 centered = true
 
 [node name="Hit" type="Button" parent="."]
-offset_left = -22.0
-offset_top = -44.0
-offset_right = 22.0
-offset_bottom = 10.0
+offset_left = -36.0
+offset_top = -48.0
+offset_right = 110.0
+offset_bottom = 36.0
 flat = true
 modulate = Color(1, 1, 1, 0)
 
-[node name="Title" type="Label" parent="."]
-offset_left = -70.0
+[node name="LabelPanel" type="PanelContainer" parent="."]
+offset_left = -8.0
 offset_top = 12.0
-offset_right = 70.0
-offset_bottom = 30.0
-theme_override_colors/font_color = Color(1, 0.92, 0.92, 0.95)
-theme_override_colors/font_outline_color = Color(0.05, 0, 0, 0.85)
-theme_override_constants/outline_size = 5
+offset_right = 118.0
+offset_bottom = 48.0
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="LabelPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+[node name="VBox" type="VBoxContainer" parent="LabelPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Headline" type="Label" parent="LabelPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.96)
 theme_override_font_sizes/font_size = 11
-text = ""
-horizontal_alignment = 1
+text = "INCIDENTE"
+vertical_alignment = 1
+
+[node name="Subline" type="Label" parent="LabelPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.86, 0.9, 0.88)
+theme_override_font_sizes/font_size = 9
+text = "Descripción"
+clip_text = true
