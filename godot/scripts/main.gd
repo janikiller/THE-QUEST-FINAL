@@ -93,11 +93,22 @@ func _enemy_cards_shot() -> void:
 		print("ENEMY_CARDS_FAIL no next_card")
 		get_tree().quit(1)
 		return
-	await _save_shot("enemigos_cartas_intent")
+	# Verifica mini-cartas visuales en la UI de combate
+	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	var visible_cards := 0
+	if combat:
+		for n in combat.find_children("EnemyIntentCard", "", true, false):
+			visible_cards += 1
+	print("ENEMY_CARDS visible_ui=", visible_cards)
+	if visible_cards < 1:
+		print("ENEMY_CARDS_FAIL no visible cards")
+		get_tree().quit(1)
+		return
+	await _save_shot("enemigos_cartas_visibles")
 	# Fuerza un turno enemigo jugando cartas
 	if CombatState.is_active():
 		CombatState.end_player_turn()
-		await get_tree().create_timer(0.8).timeout
+		await get_tree().create_timer(0.9).timeout
 	await _save_shot("enemigos_cartas_jugaron")
 	print("ENEMY_CARDS_SHOT_OK")
 	get_tree().quit(0)

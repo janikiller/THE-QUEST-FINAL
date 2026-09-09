@@ -7,7 +7,9 @@
       "damage": 8,
       "target": "player",
       "effect": "8 daño",
-      "description": "Disparo improviso."
+      "description": "Disparo improviso.",
+      "art": "res://assets/combat/anime/cards/pistol.png",
+      "icon": "res://assets/combat/anime/cards/pistol.png"
     },
     {
       "id": "foe_burst",
@@ -17,7 +19,9 @@
       "hits": 2,
       "target": "player",
       "effect": "4×2 daño",
-      "description": "Dos disparos rápidos."
+      "description": "Dos disparos rápidos.",
+      "art": "res://assets/combat/anime/cards/rifle.png",
+      "icon": "res://assets/combat/anime/cards/rifle.png"
     },
     {
       "id": "foe_bash",
@@ -26,7 +30,9 @@
       "damage": 11,
       "target": "player",
       "effect": "11 daño",
-      "description": "Porrazo o bate."
+      "description": "Porrazo o bate.",
+      "art": "res://assets/combat/anime/cards/baton.png",
+      "icon": "res://assets/combat/anime/cards/baton.png"
     },
     {
       "id": "foe_slash",
@@ -36,7 +42,9 @@
       "weaken": 1,
       "target": "player",
       "effect": "7 daño · debilita",
-      "description": "Corte que debilita."
+      "description": "Corte que debilita.",
+      "art": "res://assets/combat/anime/cards/force_fist.png",
+      "icon": "res://assets/combat/anime/cards/force_fist.png"
     },
     {
       "id": "foe_snipe",
@@ -45,7 +53,9 @@
       "damage": 14,
       "target": "player",
       "effect": "14 daño",
-      "description": "Apunta y dispara."
+      "description": "Apunta y dispara.",
+      "art": "res://assets/combat/anime/cards/rifle.png",
+      "icon": "res://assets/combat/anime/cards/rifle.png"
     },
     {
       "id": "foe_cover",
@@ -54,7 +64,9 @@
       "block": 8,
       "target": "self",
       "effect": "+8 defensa",
-      "description": "Se protege."
+      "description": "Se protege.",
+      "art": "res://assets/combat/anime/cards/shield.png",
+      "icon": "res://assets/combat/anime/cards/shield.png"
     },
     {
       "id": "foe_brace",
@@ -63,7 +75,9 @@
       "block": 12,
       "target": "self",
       "effect": "+12 defensa",
-      "description": "Resiste el turno."
+      "description": "Resiste el turno.",
+      "art": "res://assets/combat/anime/cards/barrier.png",
+      "icon": "res://assets/combat/anime/cards/barrier.png"
     },
     {
       "id": "foe_patch",
@@ -72,7 +86,9 @@
       "heal": 8,
       "target": "self",
       "effect": "cura 8",
-      "description": "Se cura a medias."
+      "description": "Se cura a medias.",
+      "art": "res://assets/combat/anime/cards/medkit.png",
+      "icon": "res://assets/combat/anime/cards/medkit.png"
     },
     {
       "id": "foe_intimidate",
@@ -82,7 +98,9 @@
       "vulnerable": 1,
       "target": "player",
       "effect": "4 daño · vulnerable",
-      "description": "Te marca como presa."
+      "description": "Te marca como presa.",
+      "art": "res://assets/combat/anime/cards/flashlight.png",
+      "icon": "res://assets/combat/anime/cards/flashlight.png"
     },
     {
       "id": "foe_smoke",
@@ -92,7 +110,9 @@
       "damage": 3,
       "target": "player",
       "effect": "+6 defensa · 3 daño",
-      "description": "Cortina y escape corto."
+      "description": "Cortina y escape corto.",
+      "art": "res://assets/combat/anime/cards/smoke.png",
+      "icon": "res://assets/combat/anime/cards/smoke.png"
     },
     {
       "id": "foe_molotov",
@@ -102,7 +122,9 @@
       "vulnerable": 1,
       "target": "player",
       "effect": "10 daño · vulnerable",
-      "description": "Fuego improvisado."
+      "description": "Fuego improvisado.",
+      "art": "res://assets/combat/anime/cards/flash.png",
+      "icon": "res://assets/combat/anime/cards/flash.png"
     },
     {
       "id": "foe_chain",
@@ -112,7 +134,9 @@
       "stun": 1,
       "target": "player",
       "effect": "9 daño · stun",
-      "description": "Te enreda un turno."
+      "description": "Te enreda un turno.",
+      "art": "res://assets/combat/anime/cards/cuffs.png",
+      "icon": "res://assets/combat/anime/cards/cuffs.png"
     },
     {
       "id": "foe_poison",
@@ -122,7 +146,9 @@
       "weaken": 2,
       "target": "player",
       "effect": "5 daño · debilita 2",
-      "description": "Sustancia ilegal."
+      "description": "Sustancia ilegal.",
+      "art": "res://assets/combat/anime/cards/medkit.png",
+      "icon": "res://assets/combat/anime/cards/medkit.png"
     },
     {
       "id": "foe_flee",
@@ -130,7 +156,9 @@
       "kind": "flee",
       "target": "self",
       "effect": "intenta huir",
-      "description": "Sale corriendo."
+      "description": "Sale corriendo.",
+      "art": "res://assets/combat/anime/cards/smoke.png",
+      "icon": "res://assets/combat/anime/cards/smoke.png"
     },
     {
       "id": "boss_barrage",
@@ -140,7 +168,9 @@
       "hits": 3,
       "target": "player",
       "effect": "6×3 daño",
-      "description": "Descarga de élite."
+      "description": "Descarga de élite.",
+      "art": "res://assets/combat/anime/cards/shotgun.png",
+      "icon": "res://assets/combat/anime/cards/shotgun.png"
     },
     {
       "id": "boss_ironwall",
@@ -150,7 +180,9 @@
       "heal": 6,
       "target": "self",
       "effect": "+18 defensa · cura 6",
-      "description": "Defensa de jefe."
+      "description": "Defensa de jefe.",
+      "art": "res://assets/combat/anime/cards/barrier.png",
+      "icon": "res://assets/combat/anime/cards/barrier.png"
     },
     {
       "id": "boss_capo_orden",
@@ -160,7 +192,9 @@
       "vulnerable": 2,
       "target": "player",
       "effect": "16 daño · vuln. 2",
-      "description": "La ciudad obedece."
+      "description": "La ciudad obedece.",
+      "art": "res://assets/combat/anime/cards/legend_badge.png",
+      "icon": "res://assets/combat/anime/cards/legend_badge.png"
     },
     {
       "id": "boss_viuda_beso",
@@ -171,7 +205,9 @@
       "stun": 1,
       "target": "player",
       "effect": "12 · debilita · stun",
-      "description": "Veneno elegante."
+      "description": "Veneno elegante.",
+      "art": "res://assets/combat/anime/cards/legend_phoenix.png",
+      "icon": "res://assets/combat/anime/cards/legend_phoenix.png"
     },
     {
       "id": "boss_fantasma_tiro",
@@ -180,7 +216,9 @@
       "damage": 22,
       "target": "player",
       "effect": "22 daño",
-      "description": "Un solo disparo limpio."
+      "description": "Un solo disparo limpio.",
+      "art": "res://assets/combat/anime/cards/rifle.png",
+      "icon": "res://assets/combat/anime/cards/rifle.png"
     },
     {
       "id": "boss_veneno_nube",
@@ -191,7 +229,9 @@
       "weaken": 1,
       "target": "player",
       "effect": "10 · vuln · debilita",
-      "description": "Química letal."
+      "description": "Química letal.",
+      "art": "res://assets/combat/anime/cards/smoke.png",
+      "icon": "res://assets/combat/anime/cards/smoke.png"
     },
     {
       "id": "boss_titan_golpe",
@@ -201,7 +241,9 @@
       "stun": 1,
       "target": "player",
       "effect": "20 daño · stun",
-      "description": "Impacto demoledor."
+      "description": "Impacto demoledor.",
+      "art": "res://assets/combat/anime/cards/force_fist.png",
+      "icon": "res://assets/combat/anime/cards/force_fist.png"
     },
     {
       "id": "boss_sombra_corte",
@@ -212,7 +254,9 @@
       "weaken": 1,
       "target": "player",
       "effect": "8×2 · debilita",
-      "description": "Ataque cyber."
+      "description": "Ataque cyber.",
+      "art": "res://assets/combat/anime/cards/force_fist.png",
+      "icon": "res://assets/combat/anime/cards/force_fist.png"
     },
     {
       "id": "boss_rey_garfio",
@@ -222,7 +266,9 @@
       "block": 6,
       "target": "player",
       "effect": "15 daño · +6 defensa",
-      "description": "Embiste y se cubre."
+      "description": "Embiste y se cubre.",
+      "art": "res://assets/combat/anime/cards/baton.png",
+      "icon": "res://assets/combat/anime/cards/baton.png"
     },
     {
       "id": "boss_zero_hack",
@@ -233,7 +279,9 @@
       "stun": 1,
       "target": "player",
       "effect": "8 · vuln · stun",
-      "description": "Tu equipo falla."
+      "description": "Tu equipo falla.",
+      "art": "res://assets/combat/anime/cards/radio.png",
+      "icon": "res://assets/combat/anime/cards/radio.png"
     },
     {
       "id": "boss_fuego_llamarada",
@@ -243,7 +291,9 @@
       "vulnerable": 1,
       "target": "player",
       "effect": "18 daño · vulnerable",
-      "description": "Todo arde."
+      "description": "Todo arde.",
+      "art": "res://assets/combat/anime/cards/flash.png",
+      "icon": "res://assets/combat/anime/cards/flash.png"
     },
     {
       "id": "boss_coronel_rafaga",
@@ -253,26 +303,112 @@
       "hits": 3,
       "target": "player",
       "effect": "7×3 daño",
-      "description": "Disciplina de fuego."
+      "description": "Disciplina de fuego.",
+      "art": "res://assets/combat/anime/cards/shotgun.png",
+      "icon": "res://assets/combat/anime/cards/shotgun.png"
     }
   ],
   "role_pools": {
-    "ataque": ["foe_shot", "foe_burst", "foe_bash", "foe_cover", "foe_intimidate", "foe_flee"],
-    "tactica": ["foe_slash", "foe_shot", "foe_cover", "foe_smoke", "foe_brace", "foe_flee"],
-    "especial": ["foe_poison", "foe_molotov", "foe_patch", "foe_shot", "foe_cover", "foe_flee"],
-    "default": ["foe_shot", "foe_cover", "foe_bash", "foe_flee"]
+    "ataque": [
+      "foe_shot",
+      "foe_burst",
+      "foe_bash",
+      "foe_cover",
+      "foe_intimidate",
+      "foe_flee"
+    ],
+    "tactica": [
+      "foe_slash",
+      "foe_shot",
+      "foe_cover",
+      "foe_smoke",
+      "foe_brace",
+      "foe_flee"
+    ],
+    "especial": [
+      "foe_poison",
+      "foe_molotov",
+      "foe_patch",
+      "foe_shot",
+      "foe_cover",
+      "foe_flee"
+    ],
+    "default": [
+      "foe_shot",
+      "foe_cover",
+      "foe_bash",
+      "foe_flee"
+    ]
   },
   "boss_pools": {
-    "boss_01_capo": ["foe_shot", "foe_brace", "boss_barrage", "boss_capo_orden", "boss_ironwall"],
-    "boss_02_viuda": ["foe_slash", "foe_cover", "boss_viuda_beso", "boss_barrage", "boss_ironwall"],
-    "boss_03_fantasma": ["foe_snipe", "foe_cover", "boss_fantasma_tiro", "boss_barrage"],
-    "boss_04_veneno": ["foe_poison", "foe_patch", "boss_veneno_nube", "boss_ironwall"],
-    "boss_05_titan": ["foe_bash", "foe_brace", "boss_titan_golpe", "boss_ironwall"],
-    "boss_06_sombra": ["foe_slash", "foe_smoke", "boss_sombra_corte", "boss_barrage"],
-    "boss_07_rey_puerto": ["foe_bash", "foe_cover", "boss_rey_garfio", "boss_ironwall"],
-    "boss_08_zero": ["foe_intimidate", "foe_cover", "boss_zero_hack", "boss_barrage"],
-    "boss_09_fuego": ["foe_molotov", "foe_brace", "boss_fuego_llamarada", "boss_ironwall"],
-    "boss_10_coronel": ["foe_burst", "foe_brace", "boss_coronel_rafaga", "boss_barrage", "boss_ironwall"],
-    "default": ["foe_shot", "foe_brace", "boss_barrage", "boss_ironwall"]
+    "boss_01_capo": [
+      "foe_shot",
+      "foe_brace",
+      "boss_barrage",
+      "boss_capo_orden",
+      "boss_ironwall"
+    ],
+    "boss_02_viuda": [
+      "foe_slash",
+      "foe_cover",
+      "boss_viuda_beso",
+      "boss_barrage",
+      "boss_ironwall"
+    ],
+    "boss_03_fantasma": [
+      "foe_snipe",
+      "foe_cover",
+      "boss_fantasma_tiro",
+      "boss_barrage"
+    ],
+    "boss_04_veneno": [
+      "foe_poison",
+      "foe_patch",
+      "boss_veneno_nube",
+      "boss_ironwall"
+    ],
+    "boss_05_titan": [
+      "foe_bash",
+      "foe_brace",
+      "boss_titan_golpe",
+      "boss_ironwall"
+    ],
+    "boss_06_sombra": [
+      "foe_slash",
+      "foe_smoke",
+      "boss_sombra_corte",
+      "boss_barrage"
+    ],
+    "boss_07_rey_puerto": [
+      "foe_bash",
+      "foe_cover",
+      "boss_rey_garfio",
+      "boss_ironwall"
+    ],
+    "boss_08_zero": [
+      "foe_intimidate",
+      "foe_cover",
+      "boss_zero_hack",
+      "boss_barrage"
+    ],
+    "boss_09_fuego": [
+      "foe_molotov",
+      "foe_brace",
+      "boss_fuego_llamarada",
+      "boss_ironwall"
+    ],
+    "boss_10_coronel": [
+      "foe_burst",
+      "foe_brace",
+      "boss_coronel_rafaga",
+      "boss_barrage",
+      "boss_ironwall"
+    ],
+    "default": [
+      "foe_shot",
+      "foe_brace",
+      "boss_barrage",
+      "boss_ironwall"
+    ]
   }
 }

@@ -556,29 +556,14 @@ func _sync_enemy_stats(snap: Dictionary) -> void:
 		panel.modulate = Color(1.08, 1.08, 1.0) if i == selected else Color.WHITE
 		if bool(e.get("detained", false)) or bool(e.get("fled", false)) or hp_now <= 0:
 			panel.modulate = Color(0.55, 0.55, 0.6, 0.75)
-		var intent_l: Label = panel.find_child("IntentLabel", true, false) as Label
-		if intent_l and hp_now > 0 and not bool(e.get("detained", false)) and not bool(e.get("fled", false)):
-			var card_name := str(e.get("next_card_name", ""))
-			var card_fx := str(e.get("next_card_effect", ""))
-			var intent_id := int(e.get("intent", 0))
-			var icon := "●"
-			var col := Color(1.0, 0.42, 0.38)
-			if intent_id == CombatState.Intent.BLOCK:
-				icon = "◈"
-				col = Color(0.45, 0.85, 1.0)
-			elif intent_id == CombatState.Intent.FLEE:
-				icon = "→"
-				col = Color(1.0, 0.78, 0.35)
-			if bool(e.get("is_boss", false)) and intent_id == CombatState.Intent.ATTACK:
-				icon = "◆"
-			if card_name != "":
-				intent_l.text = "%s %s\n%s" % [icon, card_name, card_fx if card_fx != "" else str(int(e.get("intent_value", 0)))]
-				intent_l.add_theme_color_override("font_color", col)
+		var intent_host: Control = panel.find_child("EnemyIntentHost", true, false) as Control
+		if intent_host:
+			_refresh_enemy_intent_host(intent_host, e)
 
 
 func _make_empty_slot(index: int) -> Control:
 	var wrap := Control.new()
-	wrap.custom_minimum_size = Vector2(160, 320)
+	wrap.custom_minimum_size = Vector2(160, 400)
 	wrap.set_meta("enemy_index", index)
 	wrap.set_meta("fallen", true)
 	return wrap
@@ -691,7 +676,7 @@ func _animate_enemy_death(panel: Control, dmg: int) -> void:
 func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	var is_boss := bool(e.get("is_boss", false))
 	var wrap := VBoxContainer.new()
-	wrap.custom_minimum_size = Vector2(260 if is_boss else 214, 420 if is_boss else 380)
+	wrap.custom_minimum_size = Vector2(260 if is_boss else 220, 520 if is_boss else 470)
 	wrap.alignment = BoxContainer.ALIGNMENT_END
 	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	wrap.add_theme_constant_override("separation", 4)
@@ -701,51 +686,11 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	wrap.set_meta("pose_hurt", str(e.get("pose_hurt", "")))
 	wrap.set_meta("idle_sprite", str(e.get("sprite", "")))
 
-	var intent := Label.new()
-	intent.name = "IntentLabel"
-	var intent_id := int(e.get("intent", 0))
-	var val := int(e.get("intent_value", 0))
-	var card_name := str(e.get("next_card_name", ""))
-	var card_fx := str(e.get("next_card_effect", ""))
-	if bool(e.get("detained", false)):
-		intent.text = "DETENIDO"
-		intent.add_theme_color_override("font_color", Color(0.4, 0.9, 0.55))
-	elif bool(e.get("fled", false)):
-		intent.text = "HUYÓ"
-		intent.add_theme_color_override("font_color", Color(0.8, 0.8, 0.85))
-	elif int(e.get("hp", 0)) <= 0:
-		intent.text = ""
-	elif card_name != "":
-		# Muestra la carta que va a jugar
-		var icon := "●"
-		var col := Color(1.0, 0.42, 0.38)
-		if intent_id == CombatState.Intent.BLOCK:
-			icon = "◈"
-			col = Color(0.45, 0.85, 1.0)
-		elif intent_id == CombatState.Intent.FLEE:
-			icon = "→"
-			col = Color(1.0, 0.78, 0.35)
-		if is_boss and intent_id == CombatState.Intent.ATTACK:
-			icon = "◆"
-			col = Color(1.0, 0.55, 0.25)
-		var line2 := card_fx if card_fx != "" else ("%d" % val)
-		intent.text = "%s %s\n%s" % [icon, card_name, line2]
-		intent.add_theme_color_override("font_color", col)
-	elif intent_id == CombatState.Intent.ATTACK and val > 0:
-		intent.text = ("◆  %d" % val) if is_boss else ("●  %d" % val)
-		intent.add_theme_color_override("font_color", Color(1.0, 0.38, 0.38))
-	elif intent_id == CombatState.Intent.BLOCK and val > 0:
-		intent.text = "◈  %d" % val
-		intent.add_theme_color_override("font_color", Color(0.45, 0.8, 1.0))
-	elif intent_id == CombatState.Intent.FLEE:
-		intent.text = "→ HUIR"
-		intent.add_theme_color_override("font_color", Color(1.0, 0.78, 0.35))
-	else:
-		intent.text = CombatState.intent_label(intent_id)
-	intent.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	intent.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	intent.add_theme_font_size_override("font_size", 13 if is_boss else 12)
-	wrap.add_child(intent)
+	var intent_host := CenterContainer.new()
+	intent_host.name = "EnemyIntentHost"
+	intent_host.custom_minimum_size = Vector2(112 if is_boss else 104, 168 if is_boss else 156)
+	_refresh_enemy_intent_host(intent_host, e)
+	wrap.add_child(intent_host)
 
 	var name_l := Label.new()
 	name_l.text = str(e.get("name", "Sospechoso"))
@@ -887,6 +832,247 @@ func _type_accent(card_type: String) -> Color:
 			return Color(0.95, 0.75, 0.35)
 		_:
 			return Color(0.55, 0.65, 0.75)
+
+
+func _refresh_enemy_intent_host(host: Control, e: Dictionary) -> void:
+	while host.get_child_count() > 0:
+		var old := host.get_child(0)
+		host.remove_child(old)
+		old.free()
+	host.add_child(_build_enemy_intent_content(e))
+
+
+func _build_enemy_intent_content(e: Dictionary) -> Control:
+	if bool(e.get("detained", false)):
+		return _enemy_intent_status("DETENIDO", Color(0.4, 0.9, 0.55))
+	if bool(e.get("fled", false)):
+		return _enemy_intent_status("HUYÓ", Color(0.8, 0.8, 0.85))
+	if int(e.get("hp", 0)) <= 0:
+		return _enemy_intent_status("", Color.WHITE)
+	var cid := str(e.get("next_card", ""))
+	if cid != "":
+		return _make_enemy_intent_card(e)
+	# Fallback a intent clásico sin carta
+	var intent_id := int(e.get("intent", 0))
+	var val := int(e.get("intent_value", 0))
+	var is_boss := bool(e.get("is_boss", false))
+	var txt := CombatState.intent_label(intent_id)
+	var col := Color(0.9, 0.92, 0.96)
+	if intent_id == CombatState.Intent.ATTACK and val > 0:
+		txt = ("◆  %d" % val) if is_boss else ("●  %d" % val)
+		col = Color(1.0, 0.38, 0.38)
+	elif intent_id == CombatState.Intent.BLOCK and val > 0:
+		txt = "◈  %d" % val
+		col = Color(0.45, 0.8, 1.0)
+	elif intent_id == CombatState.Intent.FLEE:
+		txt = "→ HUIR"
+		col = Color(1.0, 0.78, 0.35)
+	return _enemy_intent_status(txt, col)
+
+
+func _enemy_intent_status(text: String, col: Color) -> Control:
+	var l := Label.new()
+	l.name = "IntentLabel"
+	l.text = text
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", col)
+	l.custom_minimum_size = Vector2(96, 36)
+	return l
+
+
+func _enemy_kind_accent(kind: String, is_boss: bool) -> Color:
+	match kind:
+		"block":
+			return Color(0.42, 0.82, 1.0)
+		"heal":
+			return Color(0.45, 0.9, 0.55)
+		"flee":
+			return Color(1.0, 0.78, 0.35)
+		"weaken", "vulnerable", "stun", "status":
+			return Color(0.95, 0.62, 0.35)
+		_:
+			return Color(1.0, 0.48, 0.28) if is_boss else Color(1.0, 0.4, 0.36)
+
+
+func _enemy_kind_frame(kind: String, is_boss: bool) -> String:
+	if is_boss:
+		return "fuerza" if kind == "attack" else "magica"
+	match kind:
+		"block", "heal":
+			return "magica"
+		"flee", "weaken", "vulnerable", "stun", "status":
+			return "basica"
+		_:
+			return "basica"
+
+
+func _make_enemy_intent_card(e: Dictionary) -> Control:
+	var cid := str(e.get("next_card", ""))
+	var def: Dictionary = CardDB.get_enemy_card(cid)
+	if def.is_empty():
+		def = {
+			"id": cid,
+			"name": str(e.get("next_card_name", cid)),
+			"effect": str(e.get("next_card_effect", "")),
+			"kind": "attack",
+		}
+	var is_boss := bool(e.get("is_boss", false))
+	var kind := CardDB.enemy_card_intent_kind(def)
+	var accent := _enemy_kind_accent(kind, is_boss)
+	var rarity := _enemy_kind_frame(kind, is_boss)
+	var w := 108.0 if is_boss else 100.0
+	var h := 158.0 if is_boss else 148.0
+
+	var panel := PanelContainer.new()
+	panel.name = "EnemyIntentCard"
+	panel.custom_minimum_size = Vector2(w, h)
+	panel.clip_contents = true
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.set_meta("card_id", cid)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.07, 0.045, 0.05, 0.97) if is_boss else Color(0.05, 0.055, 0.08, 0.97)
+	sb.border_color = Color(accent.r, accent.g, accent.b, 0.95)
+	sb.set_border_width_all(2)
+	sb.border_width_top = 3
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 0
+	sb.content_margin_right = 0
+	sb.content_margin_top = 0
+	sb.content_margin_bottom = 0
+	panel.add_theme_stylebox_override("panel", sb)
+
+	var stack := Control.new()
+	stack.custom_minimum_size = Vector2(w - 4.0, h - 4.0)
+	stack.clip_contents = true
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(stack)
+
+	var frame := TextureRect.new()
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	frame.stretch_mode = TextureRect.STRETCH_SCALE
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.modulate = Color(accent.r, accent.g, accent.b, 0.55)
+	var fp := CardDB.frame_path(rarity)
+	if ResourceLoader.exists(fp):
+		frame.texture = load(fp)
+	elif FileAccess.file_exists(fp):
+		var fimg := Image.load_from_file(fp)
+		if fimg:
+			frame.texture = ImageTexture.create_from_image(fimg)
+	stack.add_child(frame)
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 7)
+	margin.add_theme_constant_override("margin_right", 7)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(margin)
+
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 3)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(v)
+
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 4)
+	v.add_child(top)
+
+	var badge := PanelContainer.new()
+	badge.custom_minimum_size = Vector2(22, 22)
+	var bsb := StyleBoxFlat.new()
+	bsb.bg_color = Color(accent.r * 0.35, accent.g * 0.35, accent.b * 0.4, 0.95)
+	bsb.border_color = accent
+	bsb.set_border_width_all(1)
+	bsb.set_corner_radius_all(11)
+	badge.add_theme_stylebox_override("panel", bsb)
+	top.add_child(badge)
+	var badge_l := Label.new()
+	match kind:
+		"block":
+			badge_l.text = "◈"
+		"heal":
+			badge_l.text = "+"
+		"flee":
+			badge_l.text = "→"
+		_:
+			badge_l.text = "◆" if is_boss else "●"
+	badge_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	badge_l.add_theme_font_size_override("font_size", 11)
+	badge_l.add_theme_color_override("font_color", Color(0.96, 0.98, 1.0))
+	badge.add_child(badge_l)
+
+	var next_l := Label.new()
+	next_l.text = "SIGUIENTE"
+	next_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	next_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	next_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	next_l.add_theme_font_size_override("font_size", 8)
+	next_l.add_theme_color_override("font_color", accent)
+	top.add_child(next_l)
+
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(0, 54 if is_boss else 48)
+	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var art_path := str(def.get("art", def.get("icon", "")))
+	if ResourceLoader.exists(art_path):
+		art.texture = load(art_path)
+	elif FileAccess.file_exists(art_path):
+		var aimg := Image.load_from_file(art_path)
+		if aimg:
+			art.texture = ImageTexture.create_from_image(aimg)
+	v.add_child(art)
+
+	var text_box := PanelContainer.new()
+	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var tsb := StyleBoxFlat.new()
+	tsb.bg_color = Color(0.02, 0.03, 0.05, 0.84)
+	tsb.set_corner_radius_all(7)
+	tsb.content_margin_left = 4
+	tsb.content_margin_right = 4
+	tsb.content_margin_top = 3
+	tsb.content_margin_bottom = 3
+	text_box.add_theme_stylebox_override("panel", tsb)
+	v.add_child(text_box)
+
+	var tv := VBoxContainer.new()
+	tv.add_theme_constant_override("separation", 1)
+	text_box.add_child(tv)
+
+	var name_l := Label.new()
+	name_l.text = str(def.get("name", e.get("next_card_name", cid)))
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_l.max_lines_visible = 2
+	name_l.clip_text = true
+	name_l.add_theme_font_size_override("font_size", 11 if is_boss else 10)
+	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_l.add_theme_color_override("font_color", Color(0.96, 0.98, 1.0))
+	tv.add_child(name_l)
+
+	var fx := Label.new()
+	var fx_txt := CardDB.enemy_effect_line(def)
+	if fx_txt == "":
+		fx_txt = str(e.get("next_card_effect", ""))
+	fx.text = fx_txt
+	fx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	fx.max_lines_visible = 2
+	fx.clip_text = true
+	fx.add_theme_font_size_override("font_size", 10)
+	fx.add_theme_color_override("font_color", Color(accent.r * 0.85 + 0.15, accent.g * 0.85 + 0.15, accent.b * 0.85 + 0.15))
+	fx.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tv.add_child(fx)
+
+	return panel
 
 
 func _make_card(card_id: String, playable: bool) -> Control:
