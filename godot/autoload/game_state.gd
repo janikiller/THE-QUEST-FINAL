@@ -31,6 +31,9 @@ var day_index: int = 1
 var boss_spawned: bool = false
 var boss_defeated: bool = false
 var boss_mission_id: String = ""
+## IDs de bosses derrotados (progresión de 10 jefes).
+var defeated_bosses: Array = []
+var active_boss_id: String = ""
 ## Multiplicador de velocidad de partida (1, 4, 16, 60). Afecta el reloj del día/noche.
 var time_speed: float = 1.0
 ## Clima actual: clear | drizzle | rain | storm
@@ -223,15 +226,9 @@ func _on_period_transition(prev: String, now: String) -> void:
 		day_index += 1
 		day_changed.emit(day_index)
 		RadioBus.push("Amanece el día %d en la ciudad." % day_index, "dispatch")
-		if day_index >= BOSS_DAY and not boss_spawned and not boss_defeated:
+		if day_index >= BOSS_DAY:
 			call_deferred("request_boss_spawn")
 	period_changed.emit(now)
-
-
-func request_boss_spawn() -> void:
-	if boss_spawned or boss_defeated:
-		return
-	boss_available.emit("")
 
 
 func add_credits(delta: int) -> void:
@@ -261,7 +258,7 @@ func buy_card_for_patrol(patrol_id: String, card_id: String) -> bool:
 
 
 func grant_boss_rewards(patrol_id: String = "alpha") -> Array:
-	## Otorga 2 cartas legendarias al derrotar al boss.
+	## Otorga 2 cartas legendarias al derrotar al boss activo.
 	var pool: Array = CardDB.boss_rewards.duplicate()
 	if pool.is_empty():
 		for c in CardDB.all_cards():
@@ -275,8 +272,112 @@ func grant_boss_rewards(patrol_id: String = "alpha") -> Array:
 		gained.append(cid)
 	add_credits(18)
 	add_prestige(5)
-	boss_defeated = true
+	if active_boss_id != "" and active_boss_id not in defeated_bosses:
+		defeated_bosses.append(active_boss_id)
+	boss_defeated = defeated_bosses.size() >= CombatRoster.bosses.size() and not CombatRoster.bosses.is_empty()
+	boss_spawned = false
+	boss_mission_id = ""
+	var done_id := active_boss_id
+	active_boss_id = ""
+	RadioBus.push("Boss derrotado (%s). Quedan %d jefes." % [
+		done_id if done_id != "" else "?",
+		maxi(0, CombatRoster.bosses.size() - defeated_bosses.size())
+	], "resolve")
+	# Preparar siguiente boss si el día lo permite
+	call_deferred("request_boss_spawn")
 	return gained
+
+
+func request_boss_spawn() -> void:
+	if boss_spawned:
+		return
+	if CombatRoster.next_boss(day_index, defeated_bosses).is_empty():
+		return
+	boss_available.emit("")
+
+
+func create_boss_mission(district: Dictionary, map_pos: Vector2) -> Dictionary:
+	## Uno de los 10 bosses anime, segúnado por día y progresión.
+	if boss_spawned:
+		return {}
+	var boss_def: Dictionary = CombatRoster.next_boss(day_index, defeated_bosses)
+	if boss_def.is_empty():
+		return {}
+	_mission_seq += 1
+	var mid := "m_boss_%d" % _mission_seq
+	var bname := str(boss_def.get("name", "BOSS"))
+	var alias := str(boss_def.get("alias", bname))
+	var arena: Dictionary = CombatRoster.pick_arena_for_mission({"id": mid, "period": time_of_day()}, boss_def)
+	var mission := {
+		"id": mid,
+		"event_id": str(boss_def.get("id", "boss")),
+		"title": bname,
+		"category": "organizado",
+		"severity": "critical",
+		"period": time_of_day(),
+		"is_boss": true,
+		"boss_id": str(boss_def.get("id", "")),
+		"arena_id": str(arena.get("id", "")),
+		"arena_path": str(arena.get("path", "")),
+		"district_id": district.get("id", "puerto"),
+		"district_name": district.get("name", "Puerto"),
+		"pos": map_pos,
+		"file": "events/tiles/organizado/laboratorio_ilegal.png",
+		"xp": 220,
+		"duration_sec": 180.0,
+		"status": "open",
+		"phase": "inicio",
+		"phase_label": "INICIO",
+		"beats": [],
+		"outcome": "",
+		"outcome_report": "",
+		"tactic": "",
+		"assigned_patrol": "",
+		"suspects": [],
+		"created_at": "%02d:%02d" % [hour, minute],
+		"blurb": "DÍA %d — ¡BOSS! %s en %s. Escenario: %s." % [
+			day_index, alias, str(district.get("name", "la ciudad")), str(arena.get("name", "zona crítica"))
+		],
+		"radio_log": [],
+	}
+	_seed_inicio_beat(mission)
+	# Boss + escoltas del catálogo anime
+	var escorts: Array = CombatRoster.pick_enemies_for_mission(mid + ":escort", 2)
+	var suspects: Array = []
+	suspects.append({
+		"id": str(boss_def.get("id", "boss")),
+		"name": bname,
+		"alias": alias,
+		"full": str(boss_def.get("sprite", "")),
+		"thumb": str(boss_def.get("portrait", "")),
+		"is_boss": true,
+		"pose_attack": str(boss_def.get("pose_attack", "")),
+		"pose_hurt": str(boss_def.get("pose_hurt", "")),
+		"hp_bonus": int(boss_def.get("hp", 100)),
+		"damage": int(boss_def.get("damage", 14)),
+	})
+	for e in escorts:
+		suspects.append({
+			"id": str(e.get("id", "")),
+			"name": str(e.get("name", "Escolta")),
+			"alias": str(e.get("alias", e.get("name", "Escolta"))),
+			"full": str(e.get("sprite", "")),
+			"thumb": str(e.get("portrait", "")),
+			"hp_bonus": int(e.get("hp", 26)),
+		})
+	mission["suspects"] = suspects
+	mission["suspect_icon"] = str(boss_def.get("portrait", ""))
+	var loc: Dictionary = LocationDB.house_for_mission(mid)
+	mission["location_art"] = str(loc.get("path", ""))
+	mission["location_name"] = str(arena.get("name", loc.get("name", "Zona del boss")))
+	active_missions[mid] = mission
+	boss_spawned = true
+	boss_mission_id = mid
+	active_boss_id = str(boss_def.get("id", ""))
+	mission_added.emit(mission)
+	boss_available.emit(mid)
+	RadioBus.push("¡ALERTA DÍA %d! Boss en el mapa: %s." % [day_index, bname], "alert")
+	return mission
 
 
 func advance_after_mission(mission: Dictionary = {}) -> void:
@@ -481,63 +582,6 @@ func get_dispatchable_events() -> Array:
 	return out
 
 
-func create_boss_mission(district: Dictionary, map_pos: Vector2) -> Dictionary:
-	## Jefe del segundo día: combate duro con recompensa legendaria.
-	_mission_seq += 1
-	var mid := "m_boss_%d" % _mission_seq
-	var mission := {
-		"id": mid,
-		"event_id": "boss_cartel_jefe",
-		"title": "El Capo del Puerto",
-		"category": "organizado",
-		"severity": "critical",
-		"period": time_of_day(),
-		"is_boss": true,
-		"district_id": district.get("id", "puerto"),
-		"district_name": district.get("name", "Puerto"),
-		"pos": map_pos,
-		"file": "events/tiles/organizado/laboratorio_ilegal.png",
-		"xp": 220,
-		"duration_sec": 180.0,
-		"status": "open",
-		"phase": "inicio",
-		"phase_label": "INICIO",
-		"beats": [],
-		"outcome": "",
-		"outcome_report": "",
-		"tactic": "",
-		"assigned_patrol": "",
-		"suspects": [],
-		"created_at": "%02d:%02d" % [hour, minute],
-		"blurb": "DÍA %d — Señal prioritaria: el capo mueve armas en %s. Intervenir y detener." % [day_index, str(district.get("name", "la ciudad"))],
-		"radio_log": [],
-	}
-	_seed_inicio_beat(mission)
-	active_missions[mid] = mission
-	# 3 enemigos duros + jefe con asset propio
-	mission["suspects"] = CharacterDB.delinquent_thumbs_for_mission(mid, 3)
-	if not mission["suspects"].is_empty():
-		var capo: Dictionary = mission["suspects"][0]
-		capo["name"] = "El Capo"
-		capo["alias"] = "EL CAPO"
-		capo["full"] = "res://assets/combat/custom/foes/boss_el_capo.png"
-		capo["thumb"] = "res://assets/character/portraits/boss_el_capo_thumb.png"
-		mission["suspects"][0] = capo
-	mission["suspect_icon"] = CharacterDB.delinquent_icon_for_mission(mid)
-	if ResourceLoader.exists("res://assets/character/portraits/boss_el_capo_thumb.png"):
-		mission["suspect_icon"] = "res://assets/character/portraits/boss_el_capo_thumb.png"
-	var loc: Dictionary = LocationDB.house_for_mission(mid)
-	mission["location_art"] = str(loc.get("path", ""))
-	mission["location_name"] = str(loc.get("name", "Almacén del puerto"))
-	active_missions[mid] = mission
-	boss_spawned = true
-	boss_mission_id = mid
-	mission_added.emit(mission)
-	boss_available.emit(mid)
-	RadioBus.push("¡ALERTA DÍA %d! Boss en el mapa: El Capo del Puerto." % day_index, "alert")
-	return mission
-
-
 func create_mission_from_event(event: Dictionary, district: Dictionary, map_pos: Vector2) -> Dictionary:
 	_mission_seq += 1
 	var mid := "m_%d" % _mission_seq
@@ -594,11 +638,29 @@ func _attach_suspects(mission_id: String) -> void:
 		count = 3
 	elif period == "dusk":
 		count = 2
-	m["suspects"] = CharacterDB.delinquent_thumbs_for_mission(mission_id, count)
-	m["suspect_icon"] = CharacterDB.delinquent_icon_for_mission(mission_id)
+	# Catálogo anime (20+ enemigos distintos)
+	var roster_foes: Array = CombatRoster.pick_enemies_for_mission(mission_id, count)
+	var suspects: Array = []
+	for e in roster_foes:
+		suspects.append({
+			"id": str(e.get("id", "")),
+			"name": str(e.get("name", "Sospechoso")),
+			"alias": str(e.get("alias", e.get("name", "Sospechoso"))),
+			"full": str(e.get("sprite", "")),
+			"thumb": str(e.get("portrait", "")),
+			"hp_bonus": int(e.get("hp", 26)),
+		})
+	if suspects.is_empty():
+		suspects = CharacterDB.delinquent_thumbs_for_mission(mission_id, count)
+	m["suspects"] = suspects
+	m["suspect_icon"] = str(suspects[0].get("thumb", "")) if not suspects.is_empty() else CharacterDB.delinquent_icon_for_mission(mission_id)
+	var arena: Dictionary = CombatRoster.pick_arena_for_mission(m)
+	if not arena.is_empty():
+		m["arena_id"] = str(arena.get("id", ""))
+		m["arena_path"] = str(arena.get("path", ""))
 	var loc: Dictionary = LocationDB.house_for_mission(mission_id)
 	m["location_art"] = str(loc.get("path", ""))
-	m["location_name"] = str(loc.get("name", "Inmueble"))
+	m["location_name"] = str(arena.get("name", loc.get("name", "Inmueble")))
 	active_missions[mission_id] = m
 
 
@@ -805,7 +867,7 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 
 	var hero_name := str(patrol.get("protagonist", "García"))
 	var hero := CharacterDB.police_by_name(hero_name)
-	var sprite := str(hero.get("full", patrol.get("portrait", "res://assets/character/police/police_00.png")))
+	var sprite := CombatRoster.hero_pose("idle")
 	var portrait := str(hero.get("thumb", ""))
 
 	var enemies: Array = []
@@ -818,7 +880,16 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 	elif period == "day" and str(mission.get("severity", "")) == "low":
 		want = 1
 	if suspects.size() < want:
-		suspects = CharacterDB.delinquent_thumbs_for_mission(mission_id, want)
+		var fill: Array = CombatRoster.pick_enemies_for_mission(mission_id, want)
+		for e in fill:
+			suspects.append({
+				"id": str(e.get("id", "")),
+				"name": str(e.get("name", "Sospechoso")),
+				"alias": str(e.get("alias", "")),
+				"full": str(e.get("sprite", "")),
+				"thumb": str(e.get("portrait", "")),
+				"hp_bonus": int(e.get("hp", 26)),
+			})
 	var base_hp := 26
 	match str(mission.get("severity", "medium")):
 		"low":
@@ -831,35 +902,37 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 		base_hp += 10
 	elif period == "dusk":
 		base_hp += 4
-	if is_boss:
-		base_hp += 18
-	const BOSS_SPRITE := "res://assets/combat/custom/foes/boss_el_capo.png"
-	const BOSS_ATTACK := "res://assets/combat/custom/foes/boss_el_capo_attack.png"
-	const BOSS_HURT := "res://assets/combat/custom/foes/boss_el_capo_hurt.png"
-	const BOSS_THUMB := "res://assets/character/portraits/boss_el_capo_thumb.png"
-	const ESCORT_SPRITES := [
-		"res://assets/combat/custom/foes/enemy_0.png",
-		"res://assets/combat/custom/foes/enemy_3.png",
-		"res://assets/combat/custom/foes/enemy_5.png",
-	]
 	for i in range(mini(want, maxi(1, suspects.size()))):
 		var s: Dictionary = suspects[i]
-		var ehp := base_hp + i * 3 + (4 if period == "night" else 0)
-		var ename := str(s.get("alias", s.get("name", "Sospechoso")))
-		var spr := str(s.get("full", "res://assets/character/delinquents/delinq_00.png"))
+		var e_is_boss := is_boss and (i == 0 or bool(s.get("is_boss", false)))
+		var ehp := int(s.get("hp_bonus", 0))
+		if ehp <= 0:
+			ehp = base_hp + i * 3 + (4 if period == "night" else 0)
+		elif not e_is_boss:
+			ehp = int(s.get("hp_bonus", base_hp)) + (4 if period == "night" else 0)
+		var ename := str(s.get("name", s.get("alias", "Sospechoso")))
+		var spr := str(s.get("full", ""))
 		var thumb := str(s.get("thumb", ""))
-		var pose_atk := ""
-		var pose_hurt := ""
-		if is_boss and i == 0:
-			ename = "EL CAPO"
-			ehp += 36
-			spr = BOSS_SPRITE
-			thumb = BOSS_THUMB if ResourceLoader.exists(BOSS_THUMB) else thumb
-			pose_atk = BOSS_ATTACK
-			pose_hurt = BOSS_HURT
-		elif is_boss:
-			spr = ESCORT_SPRITES[i % ESCORT_SPRITES.size()]
-			ename = ["Escolta", "Sicario", "Brazo"][mini(i - 1, 2)]
+		var pose_atk := str(s.get("pose_attack", ""))
+		var pose_hurt := str(s.get("pose_hurt", ""))
+		if e_is_boss:
+			# Completar poses desde roster si faltan
+			var bid := str(mission.get("boss_id", s.get("id", "")))
+			var bdef := CombatRoster.boss_by_id(bid)
+			if not bdef.is_empty():
+				ename = str(bdef.get("name", ename))
+				spr = str(bdef.get("sprite", spr))
+				pose_atk = str(bdef.get("pose_attack", pose_atk))
+				pose_hurt = str(bdef.get("pose_hurt", pose_hurt))
+				thumb = str(bdef.get("portrait", thumb))
+				if int(s.get("hp_bonus", 0)) > 0:
+					ehp = int(s.get("hp_bonus", ehp))
+		if spr == "" or not (ResourceLoader.exists(spr) or FileAccess.file_exists(spr)):
+			var fallback: Array = CombatRoster.pick_enemies_for_mission(mission_id + ":%d" % i, 1)
+			if not fallback.is_empty():
+				spr = str(fallback[0].get("sprite", ""))
+				if ename == "Sospechoso":
+					ename = str(fallback[0].get("name", ename))
 		enemies.append({
 			"id": str(s.get("id", "e%d" % i)),
 			"name": ename,
@@ -868,20 +941,20 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 			"sprite": spr,
 			"pose_attack": pose_atk,
 			"pose_hurt": pose_hurt,
-			"is_boss": is_boss and i == 0,
+			"is_boss": e_is_boss,
 		})
 	if enemies.is_empty():
-		for i in range(want):
+		for e in CombatRoster.pick_enemies_for_mission(mission_id, want):
 			enemies.append({
-				"id": "e%d" % i,
-				"name": "Sospechoso %d" % (i + 1),
-				"hp": base_hp + i * 3,
-				"sprite": "res://assets/combat/custom/foes/enemy_%d.png" % (i % 7),
+				"id": str(e.get("id", "")),
+				"name": str(e.get("name", "Sospechoso")),
+				"hp": int(e.get("hp", base_hp)),
+				"sprite": str(e.get("sprite", "")),
 			})
 
 	var objective := "Detener a los sospechosos"
 	if is_boss:
-		objective = "BOSS: derrota a El Capo y su escolta"
+		objective = "BOSS: derrota a %s y su escolta" % str(enemies[0].get("name", "el jefe") if not enemies.is_empty() else "el jefe")
 	else:
 		match period:
 			"day":
@@ -890,6 +963,11 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 				objective = "Contener la amenaza al atardecer"
 			"night":
 				objective = "NOCHE: neutralizar amenaza de alto riesgo"
+
+	var arena_path := str(mission.get("arena_path", ""))
+	if arena_path == "":
+		var arena: Dictionary = CombatRoster.pick_arena_for_mission(mission)
+		arena_path = str(arena.get("path", ""))
 
 	return {
 		"mission_id": mission_id,
@@ -905,6 +983,7 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 		"patrol_id": patrol_id,
 		"period": period,
 		"is_boss": is_boss,
+		"arena_path": arena_path,
 	}
 
 

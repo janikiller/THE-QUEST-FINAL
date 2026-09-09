@@ -44,9 +44,17 @@ var _player_block_bar: ProgressBar
 var _player_block_text: Label
 var _gone_enemies: Dictionary = {} # index -> true after death fade
 var _dying: Dictionary = {}
+var _arena_path: String = ""
 
 
 func _hero_tex(name: String) -> Texture2D:
+	var anime := CombatRoster.hero_pose(name)
+	if anime != "" and (ResourceLoader.exists(anime) or FileAccess.file_exists(anime)):
+		if ResourceLoader.exists(anime):
+			return load(anime) as Texture2D
+		var img := Image.load_from_file(anime)
+		if img:
+			return ImageTexture.create_from_image(img)
 	var path := PACK_HERO + name + ".png"
 	if ResourceLoader.exists(path):
 		return load(path) as Texture2D
@@ -205,28 +213,36 @@ func _ensure_player_block_bar() -> void:
 
 
 func _process(delta: float) -> void:
-	if not visible or _busy:
+	if not visible:
 		return
+	# Movimiento suave y constante aunque haya acciones (salvo actors bloqueados).
 	_bob_t += delta
-	_tick_hero_pose()
-	_idle_bob_player()
-	_idle_bob_enemies()
+	if not _busy:
+		_tick_hero_pose()
+	_idle_bob_player(delta)
+	_idle_bob_enemies(delta)
 
 
-func _idle_bob_player() -> void:
+func _idle_bob_player(delta: float = 0.016) -> void:
 	if _player_actor == null or not is_instance_valid(_player_actor):
 		return
-	# Solo el sprite respira; la sombra queda fija en el suelo.
-	var bob := sin(_bob_t * 2.0) * 1.6
-	player_sprite.position.y = bob
+	if bool(player_sprite.get_meta("anim_locked", false)):
+		return
+	# Respiración suave y constante (lerp para evitar saltos)
+	var bob := sin(_bob_t * 1.65) * 2.2
+	var sway := cos(_bob_t * 0.85) * 0.8
+	var target := Vector2(sway, bob)
+	player_sprite.position = player_sprite.position.lerp(target, 1.0 - exp(-delta * 7.5))
+	var breath := 1.0 + sin(_bob_t * 1.65) * 0.018
+	player_sprite.scale = player_sprite.scale.lerp(Vector2(breath, 2.0 - breath), 1.0 - exp(-delta * 6.0))
 	if _player_shadow:
 		_layout_ground_shadow(_player_shadow, _player_actor, 160.0)
-		var squash := 1.0 + sin(_bob_t * 2.0) * 0.04
-		_player_shadow.scale = Vector2(squash, 1.0)
-		_player_shadow.modulate.a = 0.62 + absf(sin(_bob_t * 2.0)) * 0.08
+		var squash := 1.0 + sin(_bob_t * 1.65) * 0.05
+		_player_shadow.scale = _player_shadow.scale.lerp(Vector2(squash, 1.0), 1.0 - exp(-delta * 6.0))
+		_player_shadow.modulate.a = lerpf(_player_shadow.modulate.a, 0.62 + absf(sin(_bob_t * 1.65)) * 0.1, 1.0 - exp(-delta * 5.0))
 
 
-func _idle_bob_enemies() -> void:
+func _idle_bob_enemies(delta: float = 0.016) -> void:
 	var i := 0
 	for wrap in enemies_row.get_children():
 		if not is_instance_valid(wrap):
@@ -240,24 +256,21 @@ func _idle_bob_enemies() -> void:
 		if spr == null:
 			continue
 		var is_boss := bool(wrap.get_meta("is_boss", false))
-		var amp := 2.8 if is_boss else 1.5
-		var sway := 1.4 if is_boss else 0.6
-		var speed := 1.55 if is_boss else 1.9
-		var phase := _bob_t * speed + float(i) * 0.85
-		var base_pos: Vector2 = wrap.get_meta("sprite_base", Vector2(spr.position.x, 4.0 if is_boss else 18.0))
-		# Gestos de respiración / amenaza del Capo
-		if is_boss:
-			var pulse := 1.0 + sin(phase * 0.55) * 0.025
-			spr.scale = Vector2(pulse, 2.0 - pulse)
-			spr.rotation_degrees = sin(phase * 0.45) * 2.2
-		else:
-			spr.scale = Vector2.ONE
-			spr.rotation_degrees = 0.0
-		spr.position = base_pos + Vector2(cos(phase * 0.7) * sway, sin(phase) * amp)
+		var amp := 3.2 if is_boss else 2.0
+		var sway := 1.8 if is_boss else 1.0
+		var speed := 1.35 if is_boss else 1.7
+		var phase := _bob_t * speed + float(i) * 0.95
+		var base_pos: Vector2 = wrap.get_meta("sprite_base", Vector2(0, 4.0 if is_boss else 18.0))
+		var target := base_pos + Vector2(cos(phase * 0.7) * sway, sin(phase) * amp)
+		spr.position = spr.position.lerp(target, 1.0 - exp(-delta * 7.0))
+		var pulse := 1.0 + sin(phase * 0.55) * (0.028 if is_boss else 0.016)
+		var rot := sin(phase * 0.4) * (2.4 if is_boss else 1.2)
+		spr.scale = spr.scale.lerp(Vector2(pulse, 2.0 - pulse), 1.0 - exp(-delta * 6.0))
+		spr.rotation_degrees = lerpf(spr.rotation_degrees, rot, 1.0 - exp(-delta * 5.5))
 		if shadow:
-			var squash := 1.0 + sin(phase) * (0.055 if is_boss else 0.035)
-			shadow.scale = Vector2(squash * (1.15 if is_boss else 1.0), 1.0)
-			shadow.modulate.a = 0.6 + absf(sin(phase)) * 0.08
+			var squash := 1.0 + sin(phase) * (0.06 if is_boss else 0.04)
+			shadow.scale = shadow.scale.lerp(Vector2(squash * (1.15 if is_boss else 1.0), 1.0), 1.0 - exp(-delta * 6.0))
+			shadow.modulate.a = lerpf(shadow.modulate.a, 0.58 + absf(sin(phase)) * 0.1, 1.0 - exp(-delta * 5.0))
 		i += 1
 
 
@@ -273,12 +286,14 @@ func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
 	_bob_t = 0.0
 	_gone_enemies.clear()
 	_dying.clear()
+	_arena_path = str(cfg.get("arena_path", ""))
 	result_panel.visible = false
 	_prev_enemy_hp.clear()
 	_prev_player_hp = -1
 	_prev_player_block = 0
 	visible = true
 	CombatState.start_combat(cfg)
+	_load_bg()
 	_apply_hero_pose("idle")
 	_refresh()
 	await get_tree().process_frame
@@ -430,14 +445,28 @@ func _style_player_bars(p: Dictionary) -> void:
 
 
 func _load_bg() -> void:
-	for path in [
+	# Escenario de la misión (anime) → fallback clásico
+	var candidates: Array = []
+	if _arena_path != "":
+		candidates.append(_arena_path)
+	for a in CombatRoster.arenas:
+		candidates.append(str(a.get("path", "")))
+	candidates.append_array([
 		"res://assets/combat/bg/alley_night.jpg",
 		"res://assets/combat/bg/alley_night2.jpg",
 		"res://assets/combat/bg/combat_arena.jpg",
-	]:
+	])
+	for path in candidates:
+		if str(path) == "":
+			continue
 		if ResourceLoader.exists(path):
 			bg.texture = load(path)
 			return
+		if FileAccess.file_exists(path):
+			var img := Image.load_from_file(path)
+			if img:
+				bg.texture = ImageTexture.create_from_image(img)
+				return
 
 
 func _rebuild_enemies(snap: Dictionary) -> void:
@@ -479,6 +508,8 @@ func _animate_enemy_hit(panel: Control, dmg: int) -> void:
 	var is_boss := bool(panel.get_meta("is_boss", false))
 	var hurt_path := str(panel.get_meta("pose_hurt", ""))
 	var idle_tex: Texture2D = spr.texture
+	var base: Vector2 = panel.get_meta("sprite_base", spr.position)
+	panel.set_meta("anim_locked", true)
 	if is_boss and hurt_path != "" and ResourceLoader.exists(hurt_path):
 		spr.texture = load(hurt_path)
 	if is_boss:
@@ -486,16 +517,20 @@ func _animate_enemy_hit(panel: Control, dmg: int) -> void:
 		spr.modulate = Color(2.0, 1.6, 1.6)
 		_spawn_fx_at(spr, "impact", Vector2(48, 100), 0.35)
 		_spawn_fx_at(spr, "blood", Vector2(56, 110), 0.4)
-		_screen_pulse(Color(1.0, 0.35, 0.2, 0.28))
-		await get_tree().create_timer(0.22).timeout
+		await _screen_pulse(Color(1.0, 0.35, 0.2, 0.28))
+		await get_tree().create_timer(0.18).timeout
 		if is_instance_valid(spr):
 			spr.modulate = Color.WHITE
+			spr.position = base
 			if idle_tex:
 				spr.texture = idle_tex
 	else:
 		_hit_actor(spr, dmg, true)
 		_spawn_fx_at(spr, "impact", Vector2(40, 90), 0.3)
 		_spawn_fx_at(spr, "blood", Vector2(50, 100), 0.35)
+		await get_tree().create_timer(0.2).timeout
+	if is_instance_valid(panel):
+		panel.set_meta("anim_locked", false)
 
 
 func _start_enemy_death(panel: Control, index: int, last_dmg: int) -> void:

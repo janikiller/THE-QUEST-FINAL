@@ -43,9 +43,11 @@ func _on_boss_available(_mid: String) -> void:
 
 
 func _spawn_boss_if_needed() -> void:
-	if GameState.boss_spawned or GameState.boss_defeated:
+	if GameState.boss_spawned:
 		return
 	if GameState.day_index < GameState.BOSS_DAY:
+		return
+	if CombatRoster.next_boss(GameState.day_index, GameState.defeated_bosses).is_empty():
 		return
 	if city_map == null:
 		return
