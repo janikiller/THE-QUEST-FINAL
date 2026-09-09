@@ -48,46 +48,49 @@ func _combat_shot() -> void:
 	await get_tree().process_frame
 	await get_tree().create_timer(0.8).timeout
 	await _save_shot("combat_turno1")
-	# Asegurar una carta de ataque en mano para el demo de VFX
-	if CombatState.is_active() and CombatState.hand.size() > 0:
+	# Asegurar cartas de ataque y defensa en mano
+	if CombatState.is_active() and CombatState.hand.size() >= 2:
 		CombatState.hand[0] = "strike"
-		if "strike" in CombatState.draw_pile:
-			CombatState.draw_pile.erase("strike")
+		CombatState.hand[1] = "shield"
 	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 	if combat:
 		combat._refresh()
 	await get_tree().process_frame
-	# Preferir ataque; si no hay, cualquier carta jugable
 	combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 	if combat and CombatState.is_active():
-		var chosen := ""
-		for cid in CombatState.hand.duplicate():
-			if CombatState.can_play_card(str(cid)):
-				var def0: Dictionary = CardDB.get_card(str(cid))
-				if int(def0.get("damage", 0)) > 0 or str(def0.get("type", "")) == "ataque":
-					chosen = str(cid)
-					break
-		if chosen == "":
-			for cid in CombatState.hand.duplicate():
-				if CombatState.can_play_card(str(cid)):
-					chosen = str(cid)
-					break
-		if chosen != "":
-			var def: Dictionary = CardDB.get_card(chosen)
+		# Defensa primero -> barra de escudo
+		if CombatState.can_play_card("shield"):
 			combat._busy = true
-			if int(def.get("damage", 0)) > 0 or str(def.get("type", "")) == "ataque":
-				combat._apply_hero_pose("shoot", 0.9)
-				if combat._player_actor:
-					combat._player_actor.position = combat._player_base_pos + Vector2(70, -8)
-				await get_tree().process_frame
-				await get_tree().create_timer(0.05).timeout
-				await _save_shot("combat_ataque_lunge")
-				await combat._hero_attack_sequence(def)
-			CombatState.play_card(chosen)
+			await combat._hero_guard_pulse()
+			CombatState.play_card("shield")
 			combat._busy = false
 			combat._refresh()
+			await get_tree().create_timer(0.35).timeout
+			await _save_shot("combat_escudo")
+		# Ataque con lunge
+		if CombatState.can_play_card("strike"):
+			var def: Dictionary = CardDB.get_card("strike")
+			combat._busy = true
+			combat._apply_hero_pose("shoot", 0.9)
+			if combat._player_actor:
+				combat._player_actor.position = combat._player_base_pos + Vector2(58, 0)
+			await get_tree().process_frame
+			await _save_shot("combat_ataque_lunge")
+			# Forzar kill del seleccionado para demo de caída
+			var sel := int(CombatState.get_snapshot().get("selected_enemy", 0))
+			if sel >= 0 and sel < CombatState.enemies.size():
+				CombatState.enemies[sel]["hp"] = 1
+			await combat._hero_attack_sequence(def)
+			CombatState.play_card("strike")
+			var wrap = combat._enemy_wrap(sel)
+			if wrap and int(CombatState.enemies[sel].get("hp", 1)) <= 0:
+				await combat._start_enemy_death(wrap, sel, 8)
+			combat._busy = false
+			combat._refresh()
+			await get_tree().create_timer(0.5).timeout
+			await _save_shot("combat_muerte")
 	await get_tree().process_frame
-	await get_tree().create_timer(0.55).timeout
+	await get_tree().create_timer(0.35).timeout
 	await _save_shot("combat_tras_carta")
 	print("COMBAT_SHOT_OK")
 	await get_tree().create_timer(0.2).timeout
