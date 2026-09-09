@@ -199,13 +199,13 @@ func _make_card_widget(def: Dictionary, copies: int) -> Control:
 	top.add_child(type_l)
 
 	var art_wrap := Control.new()
-	art_wrap.custom_minimum_size = Vector2(0, 110)
+	art_wrap.custom_minimum_size = Vector2(0, 96)
 	v.add_child(art_wrap)
 	var frame := TextureRect.new()
 	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	frame.stretch_mode = TextureRect.STRETCH_SCALE
-	frame.modulate = Color(1, 1, 1, 0.32)
+	frame.modulate = Color(1, 1, 1, 0.28)
 	var fp := CardDB.frame_path(rarity)
 	if ResourceLoader.exists(fp):
 		frame.texture = load(fp)
@@ -227,13 +227,17 @@ func _make_card_widget(def: Dictionary, copies: int) -> Control:
 	name_l.text = str(def.get("name", "?"))
 	name_l.add_theme_font_size_override("font_size", 12)
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_l.max_lines_visible = 2
+	name_l.clip_text = true
 	v.add_child(name_l)
 
 	var effect := Label.new()
-	effect.text = str(def.get("effect", ""))
-	effect.add_theme_font_size_override("font_size", 10)
+	effect.text = CardDB.effect_line(def)
+	effect.add_theme_font_size_override("font_size", 11)
 	effect.add_theme_color_override("font_color", Color(0.75, 0.85, 0.95))
 	effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	effect.max_lines_visible = 2
+	effect.clip_text = true
 	v.add_child(effect)
 
 	if copies > 1:
@@ -273,8 +277,8 @@ func _select_card(card_id: String) -> void:
 		detail_art.texture = ImageTexture.create_from_image(dimg) if dimg else null
 	else:
 		detail_art.texture = null
-	detail_effect.text = "[b]%s[/b]" % str(def.get("effect", ""))
-	detail_desc.text = str(def.get("description", ""))
+	detail_effect.text = "[b]%s[/b]" % CardDB.effect_line(def)
+	detail_desc.text = CardDB.flavor_line(def)
 
 
 func _clear_detail() -> void:

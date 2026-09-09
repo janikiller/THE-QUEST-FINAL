@@ -93,7 +93,7 @@
       "damage": 8,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/pistol.png",
-      "effect": "Disparo limpio. 8 daño.",
+      "effect": "8 daño",
       "description": "Disparo limpio. 8 daño.",
       "icon": "res://assets/combat/anime/cards/pistol.png",
       "price": 3
@@ -107,7 +107,7 @@
       "block": 6,
       "target": "self",
       "art": "res://assets/combat/anime/cards/shield.png",
-      "effect": "Bloqueo 6 este turno.",
+      "effect": "+6 bloqueo",
       "description": "Bloqueo 6 este turno.",
       "icon": "res://assets/combat/anime/cards/shield.png",
       "price": 3
@@ -122,7 +122,7 @@
       "draw": 1,
       "target": "self",
       "art": "res://assets/combat/anime/cards/shield.png",
-      "effect": "Bloqueo 4 y roba 1.",
+      "effect": "+4 bloqueo · roba 1",
       "description": "Bloqueo 4 y roba 1.",
       "icon": "res://assets/combat/anime/cards/shield.png",
       "price": 3
@@ -136,7 +136,7 @@
       "draw": 1,
       "target": "self",
       "art": "res://assets/combat/anime/cards/flashlight.png",
-      "effect": "Ilumina el perímetro. Roba 1.",
+      "effect": "roba 1",
       "description": "Ilumina el perímetro. Roba 1.",
       "icon": "res://assets/combat/anime/cards/flashlight.png",
       "price": 3
@@ -150,7 +150,7 @@
       "block": 5,
       "target": "self",
       "art": "res://assets/combat/anime/cards/smoke.png",
-      "effect": "Nube de cobertura. Bloqueo 5.",
+      "effect": "+5 bloqueo",
       "description": "Nube de cobertura. Bloqueo 5.",
       "icon": "res://assets/combat/anime/cards/smoke.png",
       "price": 3
@@ -164,7 +164,7 @@
       "heal": 8,
       "target": "self",
       "art": "res://assets/combat/anime/cards/medkit.png",
-      "effect": "Cura 8 HP.",
+      "effect": "+8 cura",
       "description": "Cura 8 HP.",
       "icon": "res://assets/combat/anime/cards/medkit.png",
       "price": 3
@@ -178,7 +178,7 @@
       "damage": 6,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/baton.png",
-      "effect": "Golpe de bastón. 6 daño.",
+      "effect": "6 daño",
       "description": "Golpe de bastón. 6 daño.",
       "icon": "res://assets/combat/anime/cards/baton.png",
       "price": 3
@@ -192,7 +192,7 @@
       "damage": 3,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/radio.png",
-      "effect": "Intimidación. 3 daño.",
+      "effect": "3 daño",
       "description": "Intimidación. 3 daño.",
       "icon": "res://assets/combat/anime/cards/radio.png",
       "price": 3
@@ -206,7 +206,7 @@
       "heal": 4,
       "target": "self",
       "art": "res://assets/combat/anime/cards/medkit.png",
-      "effect": "Cura 4 HP.",
+      "effect": "+4 cura",
       "description": "Cura 4 HP.",
       "icon": "res://assets/combat/anime/cards/medkit.png",
       "price": 3
@@ -220,7 +220,7 @@
       "draw": 1,
       "target": "self",
       "art": "res://assets/combat/anime/cards/flashlight.png",
-      "effect": "Revisa el perímetro. Roba 1.",
+      "effect": "roba 1",
       "description": "Revisa el perímetro. Roba 1.",
       "icon": "res://assets/combat/anime/cards/flashlight.png",
       "price": 3
@@ -234,7 +234,7 @@
       "draw": 2,
       "target": "self",
       "art": "res://assets/combat/anime/cards/radio.png",
-      "effect": "Pides apoyo. Roba 2.",
+      "effect": "roba 2",
       "description": "Pides apoyo. Roba 2.",
       "icon": "res://assets/combat/anime/cards/radio.png",
       "price": 3
@@ -249,7 +249,7 @@
       "hits": 2,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/pistol.png",
-      "effect": "Dos disparos. 4+4 daño.",
+      "effect": "4×2 daño",
       "description": "Dos disparos. 4+4 daño.",
       "icon": "res://assets/combat/anime/cards/pistol.png",
       "price": 3
@@ -263,7 +263,7 @@
       "detain": true,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/cuffs.png",
-      "effect": "Si el enemigo tiene 0 PV, queda detenido.",
+      "effect": "detiene (0 PV)",
       "description": "Si el enemigo tiene 0 PV, queda detenido.",
       "icon": "res://assets/combat/anime/cards/cuffs.png",
       "price": 8
@@ -277,7 +277,7 @@
       "stun": 1,
       "target": "all",
       "art": "res://assets/combat/anime/cards/flash.png",
-      "effect": "Destello mágico. Stun a todos 1 turno.",
+      "effect": "stun",
       "description": "Destello mágico. Stun a todos 1 turno.",
       "icon": "res://assets/combat/anime/cards/flash.png",
       "price": 8
@@ -291,7 +291,7 @@
       "damage": 10,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/force_fist.png",
-      "effect": "Descarga mágica. 10 daño.",
+      "effect": "10 daño",
       "description": "Descarga mágica. 10 daño.",
       "icon": "res://assets/combat/anime/cards/force_fist.png",
       "price": 8
@@ -306,7 +306,7 @@
       "draw": 1,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/smoke.png",
-      "effect": "Nube arcana. Stun 1 + roba 1.",
+      "effect": "roba 1 · stun",
       "description": "Nube arcana. Stun 1 + roba 1.",
       "icon": "res://assets/combat/anime/cards/smoke.png",
       "price": 8
@@ -320,7 +320,7 @@
       "block": 10,
       "target": "self",
       "art": "res://assets/combat/anime/cards/barrier.png",
-      "effect": "Escudo mágico. Bloqueo 10.",
+      "effect": "+10 bloqueo",
       "description": "Escudo mágico. Bloqueo 10.",
       "icon": "res://assets/combat/anime/cards/barrier.png",
       "price": 8
@@ -334,7 +334,7 @@
       "heal": 12,
       "target": "self",
       "art": "res://assets/combat/anime/cards/medkit.png",
-      "effect": "Energía curativa. Cura 12.",
+      "effect": "+12 cura",
       "description": "Energía curativa. Cura 12.",
       "icon": "res://assets/combat/anime/cards/medkit.png",
       "price": 8
@@ -348,7 +348,7 @@
       "stun": 1,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/cuffs.png",
-      "effect": "Atadura mágica. Stun 1 turno.",
+      "effect": "stun",
       "description": "Atadura mágica. Stun 1 turno.",
       "icon": "res://assets/combat/anime/cards/cuffs.png",
       "price": 8
@@ -362,7 +362,7 @@
       "draw": 2,
       "target": "self",
       "art": "res://assets/combat/anime/cards/flashlight.png",
-      "effect": "Ojos mágicos. Roba 2.",
+      "effect": "roba 2",
       "description": "Ojos mágicos. Roba 2.",
       "icon": "res://assets/combat/anime/cards/flashlight.png",
       "price": 8
@@ -376,7 +376,7 @@
       "draw": 3,
       "target": "self",
       "art": "res://assets/combat/anime/cards/radio.png",
-      "effect": "Señal mágica. Roba 3.",
+      "effect": "roba 3",
       "description": "Señal mágica. Roba 3.",
       "icon": "res://assets/combat/anime/cards/radio.png",
       "price": 8
@@ -391,7 +391,7 @@
       "stun": 1,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/flash.png",
-      "effect": "Haz de luz. 8 daño + stun.",
+      "effect": "8 daño · stun",
       "description": "Haz de luz. 8 daño + stun.",
       "icon": "res://assets/combat/anime/cards/flash.png",
       "price": 8
@@ -406,7 +406,7 @@
       "draw": 1,
       "target": "self",
       "art": "res://assets/combat/anime/cards/smoke.png",
-      "effect": "Niebla protectora. Bloqueo 8 + roba 1.",
+      "effect": "+8 bloqueo · roba 1",
       "description": "Niebla protectora. Bloqueo 8 + roba 1.",
       "icon": "res://assets/combat/anime/cards/smoke.png",
       "price": 8
@@ -420,7 +420,7 @@
       "detain": true,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/cuffs.png",
-      "effect": "Si el enemigo tiene 0 PV, detención mágica.",
+      "effect": "detiene (0 PV)",
       "description": "Si el enemigo tiene 0 PV, detención mágica.",
       "icon": "res://assets/combat/anime/cards/cuffs.png",
       "price": 8
@@ -434,7 +434,7 @@
       "draw": 2,
       "target": "self",
       "art": "res://assets/combat/anime/cards/smoke.png",
-      "effect": "Distrae. Roba 2 cartas.",
+      "effect": "roba 2",
       "description": "Distrae. Roba 2 cartas.",
       "icon": "res://assets/combat/anime/cards/smoke.png",
       "price": 8
@@ -448,7 +448,7 @@
       "stun": 1,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/radio.png",
-      "effect": "Negociación firme. Stun 1.",
+      "effect": "stun",
       "description": "Negociación firme. Stun 1.",
       "icon": "res://assets/combat/anime/cards/radio.png",
       "price": 8
@@ -462,7 +462,7 @@
       "damage": 14,
       "target": "all",
       "art": "res://assets/combat/anime/cards/force_fist.png",
-      "effect": "Explosión de poder. 14 daño en zona.",
+      "effect": "14 daño",
       "description": "Explosión de poder. 14 daño en zona.",
       "icon": "res://assets/combat/anime/cards/force_fist.png",
       "price": 14
@@ -476,7 +476,7 @@
       "stun": 1,
       "target": "all",
       "art": "res://assets/combat/anime/cards/smoke.png",
-      "effect": "Aturde a todos 1 turno.",
+      "effect": "stun",
       "description": "Aturde a todos 1 turno.",
       "icon": "res://assets/combat/anime/cards/smoke.png",
       "price": 14
@@ -490,7 +490,7 @@
       "damage": 16,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/shotgun.png",
-      "effect": "Rompe la línea. 16 daño.",
+      "effect": "16 daño",
       "description": "Rompe la línea. 16 daño.",
       "icon": "res://assets/combat/anime/cards/shotgun.png",
       "price": 14
@@ -505,7 +505,7 @@
       "stun": 1,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/flash.png",
-      "effect": "Carga explosiva. 12 daño + stun.",
+      "effect": "12 daño · stun",
       "description": "Carga explosiva. 12 daño + stun.",
       "icon": "res://assets/combat/anime/cards/flash.png",
       "price": 14
@@ -519,7 +519,7 @@
       "damage": 14,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/force_fist.png",
-      "effect": "Puño de poder. 14 daño.",
+      "effect": "14 daño",
       "description": "Puño de poder. 14 daño.",
       "icon": "res://assets/combat/anime/cards/force_fist.png",
       "price": 14
@@ -533,7 +533,7 @@
       "damage": 16,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/shotgun.png",
-      "effect": "Descarga brutal. 16 daño.",
+      "effect": "16 daño",
       "description": "Descarga brutal. 16 daño.",
       "icon": "res://assets/combat/anime/cards/shotgun.png",
       "price": 14
@@ -547,7 +547,7 @@
       "damage": 18,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/rifle.png",
-      "effect": "Tiro quirúrgico. 18 daño.",
+      "effect": "18 daño",
       "description": "Tiro quirúrgico. 18 daño.",
       "icon": "res://assets/combat/anime/cards/rifle.png",
       "price": 14
@@ -561,7 +561,7 @@
       "block": 16,
       "target": "self",
       "art": "res://assets/combat/anime/cards/barrier.png",
-      "effect": "Muro de fuerza. Bloqueo 16.",
+      "effect": "+16 bloqueo",
       "description": "Muro de fuerza. Bloqueo 16.",
       "icon": "res://assets/combat/anime/cards/barrier.png",
       "price": 14
@@ -576,7 +576,7 @@
       "hits": 3,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/force_fist.png",
-      "effect": "Ráfaga de golpes. 6×3 daño.",
+      "effect": "6×3 daño",
       "description": "Ráfaga de golpes. 6×3 daño.",
       "icon": "res://assets/combat/anime/cards/force_fist.png",
       "price": 14
@@ -591,7 +591,7 @@
       "block": 6,
       "target": "self",
       "art": "res://assets/combat/anime/cards/medkit.png",
-      "effect": "Empuje vital. Cura 10 + bloqueo 6.",
+      "effect": "+6 bloqueo · +10 cura",
       "description": "Empuje vital. Cura 10 + bloqueo 6.",
       "icon": "res://assets/combat/anime/cards/medkit.png",
       "price": 14
@@ -606,7 +606,7 @@
       "stun": 1,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/baton.png",
-      "effect": "12 daño + stun.",
+      "effect": "12 daño · stun",
       "description": "12 daño + stun.",
       "icon": "res://assets/combat/anime/cards/baton.png",
       "price": 14
@@ -620,7 +620,7 @@
       "block": 12,
       "target": "self",
       "art": "res://assets/combat/anime/cards/shield.png",
-      "effect": "Bloqueo 12 (rebote visual).",
+      "effect": "+12 bloqueo",
       "description": "Bloqueo 12 (rebote visual).",
       "icon": "res://assets/combat/anime/cards/shield.png",
       "price": 14
@@ -635,7 +635,7 @@
       "hits": 3,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/pistol.png",
-      "effect": "Tres disparos. 5×3 daño.",
+      "effect": "5×3 daño",
       "description": "Tres disparos. 5×3 daño.",
       "icon": "res://assets/combat/anime/cards/pistol.png",
       "price": 14
@@ -649,7 +649,7 @@
       "damage": 22,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/force_fist.png",
-      "effect": "Fuerza devastadora. 22 daño.",
+      "effect": "22 daño",
       "description": "Fuerza devastadora. 22 daño.",
       "icon": "res://assets/combat/anime/cards/force_fist.png",
       "price": 14
@@ -664,7 +664,7 @@
       "block": 8,
       "target": "self",
       "art": "res://assets/combat/anime/cards/radio.png",
-      "effect": "Refuerzo. Roba 2 + bloqueo 8.",
+      "effect": "+8 bloqueo · roba 2",
       "description": "Refuerzo. Roba 2 + bloqueo 8.",
       "icon": "res://assets/combat/anime/cards/radio.png",
       "price": 14
@@ -679,7 +679,7 @@
       "hits": 2,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/pistol.png",
-      "effect": "Dos impactos. 7×2 daño.",
+      "effect": "7×2 daño",
       "description": "Dos impactos. 7×2 daño.",
       "icon": "res://assets/combat/anime/cards/pistol.png",
       "price": 14
@@ -693,7 +693,7 @@
       "damage": 15,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/shotgun.png",
-      "effect": "Fuego de fuerza. 15 daño.",
+      "effect": "15 daño",
       "description": "Fuego de fuerza. 15 daño.",
       "icon": "res://assets/combat/anime/cards/shotgun.png",
       "price": 14
@@ -707,7 +707,7 @@
       "damage": 28,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/legend_justice.png",
-      "effect": "El golpe definitivo. 28 daño.",
+      "effect": "28 daño",
       "description": "El golpe definitivo. 28 daño.",
       "icon": "res://assets/combat/anime/cards/legend_justice.png",
       "price": 22
@@ -722,7 +722,7 @@
       "heal": 8,
       "target": "self",
       "art": "res://assets/combat/anime/cards/barrier.png",
-      "effect": "Muralla legendaria. Bloqueo 25 + cura 8.",
+      "effect": "+25 bloqueo · +8 cura",
       "description": "Muralla legendaria. Bloqueo 25 + cura 8.",
       "icon": "res://assets/combat/anime/cards/barrier.png",
       "price": 22
@@ -737,7 +737,7 @@
       "hits": 4,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/legend_justice.png",
-      "effect": "Ráfaga legendaria. 8×4 daño.",
+      "effect": "8×4 daño",
       "description": "Ráfaga legendaria. 8×4 daño.",
       "icon": "res://assets/combat/anime/cards/legend_justice.png",
       "price": 22
@@ -752,7 +752,7 @@
       "heal": 6,
       "target": "self",
       "art": "res://assets/combat/anime/cards/legend_badge.png",
-      "effect": "Insignia de leyenda. Roba 2 + cura 6.",
+      "effect": "+6 cura · roba 2",
       "description": "Insignia de leyenda. Roba 2 + cura 6.",
       "icon": "res://assets/combat/anime/cards/legend_badge.png",
       "price": 22
@@ -766,7 +766,7 @@
       "detain": true,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/legend_badge.png",
-      "effect": "Si el enemigo tiene 0 PV, detención total.",
+      "effect": "detiene (0 PV)",
       "description": "Si el enemigo tiene 0 PV, detención total.",
       "icon": "res://assets/combat/anime/cards/legend_badge.png",
       "price": 22
@@ -781,7 +781,7 @@
       "block": 10,
       "target": "self",
       "art": "res://assets/combat/anime/cards/legend_phoenix.png",
-      "effect": "Renaces. Cura 20 + bloqueo 10.",
+      "effect": "+10 bloqueo · +20 cura",
       "description": "Renaces. Cura 20 + bloqueo 10.",
       "icon": "res://assets/combat/anime/cards/legend_phoenix.png",
       "price": 22
@@ -795,7 +795,7 @@
       "draw": 4,
       "target": "self",
       "art": "res://assets/combat/anime/cards/legend_badge.png",
-      "effect": "Destino brillante. Roba 4.",
+      "effect": "roba 4",
       "description": "Destino brillante. Roba 4.",
       "icon": "res://assets/combat/anime/cards/legend_badge.png",
       "price": 22
@@ -810,7 +810,7 @@
       "stun": 2,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/legend_justice.png",
-      "effect": "20 daño + stun.",
+      "effect": "20 daño · stun 2",
       "description": "20 daño + stun.",
       "icon": "res://assets/combat/anime/cards/legend_justice.png",
       "price": 22
@@ -825,7 +825,7 @@
       "draw": 2,
       "target": "self",
       "art": "res://assets/combat/anime/cards/legend_phoenix.png",
-      "effect": "Cura 16 + roba 2.",
+      "effect": "+16 cura · roba 2",
       "description": "Cura 16 + roba 2.",
       "icon": "res://assets/combat/anime/cards/legend_phoenix.png",
       "price": 22
@@ -839,7 +839,7 @@
       "damage": 24,
       "target": "enemy",
       "art": "res://assets/combat/anime/cards/force_fist.png",
-      "effect": "Puño legendario. 24 daño.",
+      "effect": "24 daño",
       "description": "Puño legendario. 24 daño.",
       "icon": "res://assets/combat/anime/cards/force_fist.png",
       "price": 22

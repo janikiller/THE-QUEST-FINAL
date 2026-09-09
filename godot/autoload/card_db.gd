@@ -151,3 +151,53 @@ func frame_path(rarity: String) -> String:
 	if ResourceLoader.exists(alt) or FileAccess.file_exists(alt):
 		return alt
 	return "res://assets/cards/frames/common.png"
+
+
+func effect_line(def: Dictionary) -> String:
+	## Texto corto mecánico que cabe en la cara de la carta.
+	var bits: Array[String] = []
+	var dmg := int(def.get("damage", 0))
+	var hits := maxi(1, int(def.get("hits", 1)))
+	if dmg > 0:
+		if hits > 1:
+			bits.append("%d×%d daño" % [dmg, hits])
+		else:
+			bits.append("%d daño" % dmg)
+	var block := int(def.get("block", 0))
+	if block > 0:
+		bits.append("+%d bloqueo" % block)
+	var heal := int(def.get("heal", 0))
+	if heal > 0:
+		bits.append("+%d cura" % heal)
+	var draw_n := int(def.get("draw", 0))
+	if draw_n > 0:
+		bits.append("roba %d" % draw_n)
+	var stun := int(def.get("stun", 0))
+	if stun > 0 or bool(def.get("stun", false)):
+		bits.append("stun" if stun <= 1 else "stun %d" % stun)
+	if bool(def.get("detain", false)):
+		bits.append("detiene a 0 PV")
+	if bits.is_empty():
+		var fallback := str(def.get("effect", def.get("desc", def.get("description", ""))))
+		return _clip_text(fallback, 36)
+	var out := ""
+	for i in range(bits.size()):
+		if i > 0:
+			out += " · "
+		out += bits[i]
+	return out
+
+
+func flavor_line(def: Dictionary) -> String:
+	## Texto de sabor para paneles de detalle (mazo/mercado).
+	var flavor := str(def.get("description", ""))
+	if flavor == "":
+		flavor = str(def.get("effect", def.get("desc", "")))
+	return flavor
+
+
+func _clip_text(text: String, max_len: int) -> String:
+	var t := text.strip_edges()
+	if t.length() <= max_len:
+		return t
+	return t.substr(0, maxi(1, max_len - 1)) + "…"

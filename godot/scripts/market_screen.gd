@@ -191,8 +191,8 @@ func _refresh_detail() -> void:
 		price,
 	]
 	detail_meta.add_theme_color_override("font_color", CardDB.rarity_color(str(def.get("rarity", "basica"))))
-	detail_effect.text = str(def.get("effect", def.get("desc", "")))
-	detail_desc.text = str(def.get("description", def.get("effect", "")))
+	detail_effect.text = CardDB.effect_line(def)
+	detail_desc.text = CardDB.flavor_line(def)
 	btn_buy.disabled = GameState.credits < price
 	btn_buy.text = "COMPRAR  %d★" % price
 

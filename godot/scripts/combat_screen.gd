@@ -802,67 +802,35 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	var rarity := CardDB.normalize_rarity(str(def.get("rarity", "basica")))
 	var accent := CardDB.rarity_color(rarity)
 	var type_col := _type_accent(card_type)
+
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(138, 210)
+	panel.custom_minimum_size = Vector2(152, 236)
+	panel.clip_contents = true
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.05, 0.07, 0.11, 0.96)
-	sb.border_color = Color(accent.r, accent.g, accent.b, 0.85 if playable else 0.28)
-	sb.border_width_left = 2
+	sb.bg_color = Color(0.045, 0.06, 0.09, 0.97)
+	sb.border_color = Color(accent.r, accent.g, accent.b, 0.92 if playable else 0.3)
+	sb.set_border_width_all(2)
 	sb.border_width_top = 3
-	sb.border_width_right = 2
-	sb.border_width_bottom = 2
 	sb.set_corner_radius_all(12)
-	sb.content_margin_left = 8
-	sb.content_margin_right = 8
-	sb.content_margin_top = 8
-	sb.content_margin_bottom = 8
+	sb.content_margin_left = 0
+	sb.content_margin_right = 0
+	sb.content_margin_top = 0
+	sb.content_margin_bottom = 0
 	panel.add_theme_stylebox_override("panel", sb)
 	if not playable:
-		panel.modulate = Color(0.6, 0.6, 0.65, 0.75)
+		panel.modulate = Color(0.62, 0.62, 0.66, 0.78)
 
-	var root := Control.new()
-	root.custom_minimum_size = Vector2(118, 190)
-	panel.add_child(root)
+	var stack := Control.new()
+	stack.custom_minimum_size = Vector2(148, 232)
+	stack.clip_contents = true
+	panel.add_child(stack)
 
-	# Rareza cinta
-	var rar_l := Label.new()
-	rar_l.text = CardDB.rarity_label(rarity)
-	rar_l.position = Vector2(32, 2)
-	rar_l.size = Vector2(86, 18)
-	rar_l.add_theme_font_size_override("font_size", 9)
-	rar_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	rar_l.add_theme_color_override("font_color", accent)
-	root.add_child(rar_l)
-
-	# Cost badge
-	var cost_bg := Panel.new()
-	cost_bg.position = Vector2(0, 0)
-	cost_bg.size = Vector2(28, 28)
-	var csb := StyleBoxFlat.new()
-	csb.bg_color = Color(type_col.r * 0.35, type_col.g * 0.35, type_col.b * 0.4, 0.95)
-	csb.border_color = accent
-	csb.set_border_width_all(1)
-	csb.set_corner_radius_all(14)
-	cost_bg.add_theme_stylebox_override("panel", csb)
-	root.add_child(cost_bg)
-	var cost := Label.new()
-	cost.text = str(int(def.get("cost", 0)))
-	cost.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cost.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	cost.add_theme_font_size_override("font_size", 15)
-	cost.add_theme_color_override("font_color", Color(0.9, 0.97, 1.0))
-	cost_bg.add_child(cost)
-
-	var art_host := Control.new()
-	art_host.position = Vector2(8, 28)
-	art_host.size = Vector2(102, 88)
-	root.add_child(art_host)
 	var frame := TextureRect.new()
 	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	frame.stretch_mode = TextureRect.STRETCH_SCALE
-	frame.modulate = Color(accent.r, accent.g, accent.b, 0.45)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.modulate = Color(accent.r, accent.g, accent.b, 0.5)
 	var fp := CardDB.frame_path(rarity)
 	if ResourceLoader.exists(fp):
 		frame.texture = load(fp)
@@ -870,11 +838,59 @@ func _make_card(card_id: String, playable: bool) -> Control:
 		var fimg := Image.load_from_file(fp)
 		if fimg:
 			frame.texture = ImageTexture.create_from_image(fimg)
-	art_host.add_child(frame)
+	stack.add_child(frame)
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(margin)
+
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_child(v)
+
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 6)
+	v.add_child(top)
+
+	var cost_bg := PanelContainer.new()
+	cost_bg.custom_minimum_size = Vector2(26, 26)
+	var csb := StyleBoxFlat.new()
+	csb.bg_color = Color(type_col.r * 0.35, type_col.g * 0.35, type_col.b * 0.4, 0.95)
+	csb.border_color = accent
+	csb.set_border_width_all(1)
+	csb.set_corner_radius_all(13)
+	cost_bg.add_theme_stylebox_override("panel", csb)
+	top.add_child(cost_bg)
+	var cost := Label.new()
+	cost.text = str(int(def.get("cost", 0)))
+	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cost.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cost.add_theme_font_size_override("font_size", 14)
+	cost.add_theme_color_override("font_color", Color(0.92, 0.97, 1.0))
+	cost_bg.add_child(cost)
+
+	var rar_l := Label.new()
+	rar_l.text = CardDB.rarity_label(rarity)
+	rar_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rar_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	rar_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	rar_l.add_theme_font_size_override("font_size", 10)
+	rar_l.add_theme_color_override("font_color", accent)
+	top.add_child(rar_l)
+
 	var art := TextureRect.new()
-	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	art.custom_minimum_size = Vector2(0, 86)
+	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_path := str(def.get("art", def.get("icon", "")))
 	if ResourceLoader.exists(art_path):
 		art.texture = load(art_path)
@@ -882,30 +898,50 @@ func _make_card(card_id: String, playable: bool) -> Control:
 		var aimg := Image.load_from_file(art_path)
 		if aimg:
 			art.texture = ImageTexture.create_from_image(aimg)
-	art_host.add_child(art)
+	v.add_child(art)
+
+	var text_box := PanelContainer.new()
+	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_box.custom_minimum_size = Vector2(0, 62)
+	var tsb := StyleBoxFlat.new()
+	tsb.bg_color = Color(0.02, 0.035, 0.055, 0.82)
+	tsb.set_corner_radius_all(8)
+	tsb.content_margin_left = 6
+	tsb.content_margin_right = 6
+	tsb.content_margin_top = 5
+	tsb.content_margin_bottom = 5
+	text_box.add_theme_stylebox_override("panel", tsb)
+	v.add_child(text_box)
+
+	var tv := VBoxContainer.new()
+	tv.add_theme_constant_override("separation", 2)
+	text_box.add_child(tv)
 
 	var name_l := Label.new()
 	name_l.text = str(def.get("name", card_id))
-	name_l.position = Vector2(0, 118)
-	name_l.size = Vector2(118, 34)
-	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD
-	name_l.add_theme_font_size_override("font_size", 12)
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_l.max_lines_visible = 2
+	name_l.clip_text = true
+	name_l.add_theme_font_size_override("font_size", 13)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_l.add_theme_color_override("font_color", Color(0.92, 0.95, 0.98))
-	root.add_child(name_l)
+	name_l.add_theme_color_override("font_color", Color(0.96, 0.98, 1.0))
+	name_l.custom_minimum_size = Vector2(0, 28)
+	tv.add_child(name_l)
 
 	var fx := Label.new()
-	fx.text = str(def.get("effect", def.get("desc", "")))
-	fx.position = Vector2(0, 150)
-	fx.size = Vector2(118, 40)
-	fx.autowrap_mode = TextServer.AUTOWRAP_WORD
-	fx.add_theme_font_size_override("font_size", 10)
-	fx.add_theme_color_override("font_color", Color(0.65, 0.72, 0.8))
+	fx.text = CardDB.effect_line(def)
+	fx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	fx.max_lines_visible = 2
+	fx.clip_text = true
+	fx.add_theme_font_size_override("font_size", 12)
+	fx.add_theme_color_override("font_color", Color(0.8, 0.9, 0.98))
 	fx.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	root.add_child(fx)
+	fx.custom_minimum_size = Vector2(0, 20)
+	tv.add_child(fx)
 
 	var btn := Button.new()
 	btn.flat = true
+	btn.focus_mode = Control.FOCUS_NONE
 	btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	btn.pressed.connect(func(): _try_play_card(card_id, panel))
 	panel.add_child(btn)
