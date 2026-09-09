@@ -233,6 +233,8 @@ func _idle_bob_enemies() -> void:
 			continue
 		if bool(wrap.get_meta("fallen", false)):
 			continue
+		if bool(wrap.get_meta("anim_locked", false)):
+			continue
 		var spr: TextureRect = wrap.find_child("EnemySprite", true, false)
 		var shadow: TextureRect = wrap.find_child("Shadow", true, false)
 		if spr == null:
@@ -242,13 +244,16 @@ func _idle_bob_enemies() -> void:
 		var sway := 1.4 if is_boss else 0.6
 		var speed := 1.55 if is_boss else 1.9
 		var phase := _bob_t * speed + float(i) * 0.85
+		var base_pos: Vector2 = wrap.get_meta("sprite_base", Vector2(spr.position.x, 4.0 if is_boss else 18.0))
 		# Gestos de respiración / amenaza del Capo
 		if is_boss:
 			var pulse := 1.0 + sin(phase * 0.55) * 0.025
 			spr.scale = Vector2(pulse, 2.0 - pulse)
 			spr.rotation_degrees = sin(phase * 0.45) * 2.2
-		spr.position.y = sin(phase) * amp
-		spr.position.x = cos(phase * 0.7) * sway
+		else:
+			spr.scale = Vector2.ONE
+			spr.rotation_degrees = 0.0
+		spr.position = base_pos + Vector2(cos(phase * 0.7) * sway, sin(phase) * amp)
 		if shadow:
 			var squash := 1.0 + sin(phase) * (0.055 if is_boss else 0.035)
 			shadow.scale = Vector2(squash * (1.15 if is_boss else 1.0), 1.0)
@@ -698,6 +703,7 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	btn.pressed.connect(func(): CombatState.select_enemy(index))
 	actor.add_child(btn)
 	wrap.add_child(actor)
+	wrap.set_meta("sprite_base", tex.position)
 
 	if bool(e.get("detained", false)) or bool(e.get("fled", false)):
 		wrap.modulate = Color(0.55, 0.55, 0.58, 0.85)
@@ -985,41 +991,40 @@ func _enemy_lunge_attack(index: int) -> void:
 	var wrap := _enemy_wrap(index)
 	if wrap == null:
 		return
-	var actor: Control = wrap.get_node_or_null("ActorSlot")
 	var spr: TextureRect = wrap.find_child("EnemySprite", true, false)
 	var shadow: TextureRect = wrap.find_child("Shadow", true, false)
-	if actor == null or spr == null:
+	if spr == null:
 		return
 	var is_boss := bool(wrap.get_meta("is_boss", false))
 	var attack_path := str(wrap.get_meta("pose_attack", ""))
 	var idle_tex: Texture2D = spr.texture
+	var base: Vector2 = wrap.get_meta("sprite_base", spr.position)
+	wrap.set_meta("anim_locked", true)
 	if is_boss and attack_path != "" and ResourceLoader.exists(attack_path):
 		spr.texture = load(attack_path)
-	var base := actor.position
-	var wind := Vector2(18, 3) if is_boss else Vector2(14, 2)
-	var lunge := Vector2(-96, -6) if is_boss else Vector2(-62, -2)
+	var wind := Vector2(18, 3) if is_boss else Vector2(10, 2)
+	var lunge := Vector2(-110, -8) if is_boss else Vector2(-62, -2)
 	var tw0 := create_tween()
 	tw0.set_parallel(true)
-	tw0.tween_property(actor, "position", base + wind, 0.14 if is_boss else 0.1)
+	tw0.tween_property(spr, "position", base + wind, 0.14 if is_boss else 0.1)
 	tw0.tween_property(spr, "rotation_degrees", 8.0 if is_boss else 5.0, 0.14 if is_boss else 0.1)
 	tw0.tween_property(spr, "scale", Vector2(1.1, 0.88) if is_boss else Vector2(1.06, 0.92), 0.14 if is_boss else 0.1)
 	await tw0.finished
-	# Gesto de pump / amenaza del Capo
 	if is_boss:
 		var twp := create_tween()
-		twp.tween_property(spr, "position:x", spr.position.x + 6.0, 0.06)
-		twp.tween_property(spr, "position:x", spr.position.x - 2.0, 0.08)
+		twp.tween_property(spr, "position", base + wind + Vector2(8, 0), 0.06)
+		twp.tween_property(spr, "position", base + wind + Vector2(-4, 0), 0.08)
 		await twp.finished
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(actor, "position", base + lunge, 0.18 if is_boss else 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(spr, "rotation_degrees", -10.0 if is_boss else -7.0, 0.18 if is_boss else 0.14)
-	tw.tween_property(spr, "scale", Vector2(0.9, 1.14) if is_boss else Vector2(0.94, 1.08), 0.18 if is_boss else 0.14)
+	tw.tween_property(spr, "position", base + lunge, 0.18 if is_boss else 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(spr, "rotation_degrees", -12.0 if is_boss else -7.0, 0.18 if is_boss else 0.14)
+	tw.tween_property(spr, "scale", Vector2(0.88, 1.16) if is_boss else Vector2(0.94, 1.08), 0.18 if is_boss else 0.14)
 	if shadow:
 		tw.tween_property(shadow, "scale", Vector2(1.45, 0.72) if is_boss else Vector2(1.3, 0.78), 0.14)
 	await tw.finished
 	if is_boss:
-		_screen_pulse(Color(1.0, 0.55, 0.2, 0.32))
+		await _screen_pulse(Color(1.0, 0.55, 0.2, 0.32))
 	var muzzle := spr.global_position + Vector2(24, spr.size.y * 0.48)
 	_spawn_fx_world(muzzle, "muzzle", 0.18 if is_boss else 0.16, Vector2(1.45, 1.45) if is_boss else Vector2(1.2, 1.2))
 	await get_tree().create_timer(0.03).timeout
@@ -1032,7 +1037,7 @@ func _enemy_lunge_attack(index: int) -> void:
 	_spawn_fx_world(target + Vector2(8, 6), "blood", 0.35 if is_boss else 0.3)
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
-	tw2.tween_property(actor, "position", base, 0.26 if is_boss else 0.2).set_trans(Tween.TRANS_SINE)
+	tw2.tween_property(spr, "position", base, 0.26 if is_boss else 0.2).set_trans(Tween.TRANS_SINE)
 	tw2.tween_property(spr, "rotation_degrees", 0.0, 0.26 if is_boss else 0.2)
 	tw2.tween_property(spr, "scale", Vector2.ONE, 0.26 if is_boss else 0.2)
 	if shadow:
@@ -1040,6 +1045,8 @@ func _enemy_lunge_attack(index: int) -> void:
 	await tw2.finished
 	if is_instance_valid(spr) and idle_tex:
 		spr.texture = idle_tex
+	if is_instance_valid(wrap):
+		wrap.set_meta("anim_locked", false)
 
 
 func _hit_actor_heavy(node: CanvasItem, dmg: int, knock_right: bool) -> void:
