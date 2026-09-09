@@ -1,5 +1,5 @@
 extends CharacterBody2D
-## Agente controlable en el mapa (WASD / flechas).
+## Agente controlable en el mapa — marcador con luces de policía.
 
 @export var speed: float = 220.0
 
@@ -9,14 +9,23 @@ extends CharacterBody2D
 
 var facing: Vector2 = Vector2.DOWN
 var can_move: bool = true
+var _flash: float = 0.0
 
 
 func _ready() -> void:
 	add_to_group("player")
 	var hq: Array = GameState.station.get("hq_pos", [748, 470])
 	global_position = Vector2(float(hq[0]), float(hq[1]))
-	label.text = "TÚ"
-	_pulse()
+	label.text = "U.P.R."
+	if body:
+		body.visible = false
+	if shadow:
+		shadow.visible = false
+
+
+func _process(delta: float) -> void:
+	_flash += delta * 7.0
+	queue_redraw()
 
 
 func _physics_process(_delta: float) -> void:
@@ -44,6 +53,19 @@ func _physics_process(_delta: float) -> void:
 	global_position.y = clampf(global_position.y, 40.0, float(size[1]) - 40.0)
 
 
-func _pulse() -> void:
-	var tw := create_tween().set_loops()
-	tw.tween_property(shadow, "modulate:a", 0.25, 0.9).from(0.55)
+func _draw() -> void:
+	var t := sin(_flash)
+	var blue_on := t >= 0.0
+	var blue := Color(0.15, 0.5, 1.0, 1.0)
+	var red := Color(1.0, 0.15, 0.22, 1.0)
+	var left := blue if blue_on else Color(0.1, 0.15, 0.25, 0.55)
+	var right := red if not blue_on else Color(0.1, 0.15, 0.25, 0.55)
+
+	draw_circle(Vector2(0, 12), 13.0, Color(0, 0, 0, 0.32))
+	draw_circle(Vector2(0, -4), 18.0, Color(0.05, 0.08, 0.12, 0.94))
+	draw_arc(Vector2(0, -4), 18.0, 0.0, TAU, 32, Color(0.35, 0.65, 1.0, 0.75), 2.5, true)
+
+	draw_rect(Rect2(-14, -10, 12, 10), left, true)
+	draw_rect(Rect2(2, -10, 12, 10), right, true)
+	draw_circle(Vector2(-8, -5), 11.0, Color(left.r, left.g, left.b, 0.38))
+	draw_circle(Vector2(8, -5), 11.0, Color(right.r, right.g, right.b, 0.38))
