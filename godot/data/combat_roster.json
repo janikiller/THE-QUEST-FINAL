@@ -346,6 +346,12 @@
 	],
 	"arenas": [
 		{
+			"id": "bg_street_physics",
+			"name": "Calle Asfalto",
+			"period": "night",
+			"path": "res://assets/combat/custom/map/arena_street_physics.png"
+		},
+		{
 			"id": "bg_neon_alley",
 			"name": "Calle Neón",
 			"period": "night",

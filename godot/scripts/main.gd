@@ -88,29 +88,40 @@ func _ground_shot() -> void:
 		get_tree().quit(1)
 		return
 	var floor_ok := combat.get_node_or_null("FloorPlane") != null
+	var solid_ok := combat.get_node_or_null("FloorPlane/SolidDeck") != null
+	var overhead := 0
+	if combat.enemies_row:
+		for panel in combat.enemies_row.get_children():
+			if panel.find_child("EnemyIntentHost", true, false) != null:
+				overhead += 1
 	var flipped := false
-	var stretch := -1
+	var bg_path := ""
 	if combat.player_sprite:
 		flipped = combat.player_sprite.flip_h
-		stretch = int(combat.player_sprite.stretch_mode)
-	# Idle (anime y custom) mira a la DERECHA → flip_h debe ser false.
+	if combat.bg and combat.bg.texture:
+		bg_path = str(combat.bg.texture.resource_path)
 	var expect_flip := false
-	print("GROUND_SHOT floor=", floor_ok, " flip_h=", flipped, " expect=", expect_flip, " stretch=", stretch)
-	if not floor_ok:
-		print("GROUND_SHOT_FAIL no floor")
+	print("GROUND_SHOT floor=", floor_ok, " solid=", solid_ok, " overhead=", overhead, " flip_h=", flipped, " bg=", bg_path)
+	if not floor_ok or not solid_ok:
+		print("GROUND_SHOT_FAIL no floor deck")
+		get_tree().quit(1)
+		return
+	if overhead > 0:
+		print("GROUND_SHOT_FAIL overhead intent cards still present")
 		get_tree().quit(1)
 		return
 	if flipped != expect_flip:
 		print("GROUND_SHOT_FAIL bad facing flip_h=", flipped, " expect=", expect_flip)
 		get_tree().quit(1)
 		return
-	await _save_shot("combate_suelo_facing")
-	# Sangre visible
+	await _save_shot("mapa_fisica_sin_cartas")
 	if combat.has_method("_spawn_blood_burst"):
 		combat._spawn_blood_burst(Vector2(900, 360), 2.0)
+	if combat.has_method("_spawn_dust_puff"):
+		combat._spawn_dust_puff(Vector2(220, 520), 1.4)
+		combat._spawn_dust_puff(Vector2(980, 530), 1.2)
 		await get_tree().create_timer(0.55).timeout
-		await _save_shot("combate_sangre_impacto")
-	# Ataque con gesto
+		await _save_shot("mapa_fisica_sangre_polvo")
 	var snap: Dictionary = CombatState.get_snapshot()
 	var hand: Array = snap.get("hand", [])
 	for cid in hand:
@@ -118,7 +129,7 @@ func _ground_shot() -> void:
 		if CombatState.can_play_card(id):
 			CombatState.play_card(id)
 			await get_tree().create_timer(1.05).timeout
-			await _save_shot("combate_gesto_ataque")
+			await _save_shot("mapa_fisica_gesto")
 			break
 	print("GROUND_SHOT_OK")
 	get_tree().quit(0)
