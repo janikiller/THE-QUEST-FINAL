@@ -514,9 +514,18 @@ func create_boss_mission(district: Dictionary, map_pos: Vector2) -> Dictionary:
 	}
 	_seed_inicio_beat(mission)
 	active_missions[mid] = mission
-	# 3 enemigos duros + jefe
+	# 3 enemigos duros + jefe con asset propio
 	mission["suspects"] = CharacterDB.delinquent_thumbs_for_mission(mid, 3)
+	if not mission["suspects"].is_empty():
+		var capo: Dictionary = mission["suspects"][0]
+		capo["name"] = "El Capo"
+		capo["alias"] = "EL CAPO"
+		capo["full"] = "res://assets/combat/custom/foes/boss_el_capo.png"
+		capo["thumb"] = "res://assets/character/portraits/boss_el_capo_thumb.png"
+		mission["suspects"][0] = capo
 	mission["suspect_icon"] = CharacterDB.delinquent_icon_for_mission(mid)
+	if ResourceLoader.exists("res://assets/character/portraits/boss_el_capo_thumb.png"):
+		mission["suspect_icon"] = "res://assets/character/portraits/boss_el_capo_thumb.png"
 	var loc: Dictionary = LocationDB.house_for_mission(mid)
 	mission["location_art"] = str(loc.get("path", ""))
 	mission["location_name"] = str(loc.get("name", "Almacén del puerto"))
