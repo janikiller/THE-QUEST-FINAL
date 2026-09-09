@@ -155,7 +155,7 @@ func _setup_player_actor() -> void:
 	_player_shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_player_shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	_player_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_player_shadow.modulate = Color(0.05, 0.05, 0.08, 0.75)
+	_player_shadow.modulate = Color(0, 0, 0, 0.92)
 	_player_actor.add_child(_player_shadow)
 	_player_actor.move_child(_player_shadow, 0)
 	_layout_ground_shadow(_player_shadow, _player_actor, 160.0)
@@ -165,10 +165,10 @@ func _setup_player_actor() -> void:
 func _layout_ground_shadow(shadow: TextureRect, actor: Control, width: float) -> void:
 	if shadow == null or actor == null:
 		return
-	var h := 30.0
-	shadow.size = Vector2(width, h)
-	shadow.position = Vector2((actor.size.x - width) * 0.5 if actor.size.x > 0.0 else (200.0 - width) * 0.5, GROUND_Y - 10.0)
-	shadow.pivot_offset = Vector2(width * 0.5, h * 0.5)
+	var h := 38.0
+	shadow.size = Vector2(width + 24.0, h)
+	shadow.position = Vector2((actor.size.x - width - 24.0) * 0.5 if actor.size.x > 0.0 else (200.0 - width) * 0.5, GROUND_Y - 6.0)
+	shadow.pivot_offset = Vector2((width + 24.0) * 0.5, h * 0.5)
 
 
 func _ensure_player_block_bar() -> void:
@@ -181,7 +181,7 @@ func _ensure_player_block_bar() -> void:
 	player_hp_text.add_theme_font_size_override("font_size", 11)
 	_player_block_bar = ProgressBar.new()
 	_player_block_bar.name = "PlayerBlockBar"
-	_player_block_bar.custom_minimum_size = Vector2(0, 8)
+	_player_block_bar.custom_minimum_size = Vector2(0, 10)
 	_player_block_bar.max_value = 20
 	_player_block_bar.value = 0
 	_player_block_bar.show_percentage = false
@@ -190,7 +190,7 @@ func _ensure_player_block_bar() -> void:
 	_player_block_text = Label.new()
 	_player_block_text.name = "PlayerBlockText"
 	_player_block_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_player_block_text.add_theme_font_size_override("font_size", 10)
+	_player_block_text.add_theme_font_size_override("font_size", 11)
 	_player_block_text.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
 	_player_block_text.visible = false
 	parent.add_child(_player_block_text)
@@ -409,7 +409,7 @@ func _style_player_bars(p: Dictionary) -> void:
 		_player_block_bar.visible = blk > 0
 		_player_block_bar.max_value = maxf(20.0, float(blk))
 		_player_block_bar.value = float(blk)
-		_style_bar(_player_block_bar, Color(0.35, 0.72, 1.0), 8.0)
+		_style_bar(_player_block_bar, Color(0.35, 0.72, 1.0), 10.0)
 	if _player_block_text:
 		_player_block_text.visible = blk > 0
 		_player_block_text.text = "ESCUDO  %d" % blk
@@ -591,10 +591,10 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shadow.modulate = Color(0.02, 0.02, 0.04, 0.82)
-	shadow.position = Vector2(14, GROUND_Y - 8.0)
-	shadow.size = Vector2(132, 32)
-	shadow.pivot_offset = Vector2(66, 16)
+	shadow.modulate = Color(0, 0, 0, 0.9)
+	shadow.position = Vector2(8, GROUND_Y - 6.0)
+	shadow.size = Vector2(144, 36)
+	shadow.pivot_offset = Vector2(72, 18)
 	actor.add_child(shadow)
 
 	var btn := Button.new()
