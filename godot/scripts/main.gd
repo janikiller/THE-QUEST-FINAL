@@ -25,6 +25,42 @@ func _ready() -> void:
 		call_deferred("_playtest")
 	if OS.get_environment("TQ_COMBAT_SHOT") == "1":
 		call_deferred("_combat_shot")
+	if OS.get_environment("TQ_MAP_SHOT") == "1":
+		call_deferred("_map_shot")
+
+
+func _map_shot() -> void:
+	## Captura el mapa con marcadores tácticos de misión.
+	await get_tree().create_timer(1.4).timeout
+	var tries := 0
+	while GameState.active_missions.size() < 3 and tries < 50:
+		await get_tree().create_timer(0.25).timeout
+		tries += 1
+	$UI/UIRouter.show_map()
+	await get_tree().process_frame
+	# Encuaadra varias misiones
+	var markers := get_tree().get_nodes_in_group("mission_marker")
+	print("MAP_SHOT markers=", markers.size(), " missions=", GameState.active_missions.size())
+	if markers.is_empty():
+		print("MAP_SHOT_FAIL no markers")
+		get_tree().quit(1)
+		return
+	var center := Vector2.ZERO
+	for m in markers:
+		center += (m as Node2D).global_position
+	center /= float(markers.size())
+	camera.global_position = center
+	camera.zoom = Vector2(0.95, 0.95)
+	await get_tree().create_timer(0.5).timeout
+	await _save_shot("map_tactical_markers")
+	# Acercar a un marcador
+	var first: Node2D = markers[0]
+	camera.global_position = first.global_position
+	camera.zoom = Vector2(1.55, 1.55)
+	await get_tree().create_timer(0.35).timeout
+	await _save_shot("map_tactical_marker_close")
+	print("MAP_SHOT_OK")
+	get_tree().quit(0)
 
 
 func _combat_shot() -> void:
