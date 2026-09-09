@@ -59,7 +59,7 @@
       "callsign": "U.P.R. 091",
       "name": "Unidad García",
       "portrait": "res://assets/character/police/police_00.png",
-      "map_icon": "res://assets/character/map_icons/police_00.png",
+      "map_icon": "res://assets/map/police_lights_marker.png",
       "specialty": "general",
       "speed": 115.0,
       "agents": ["García"],
