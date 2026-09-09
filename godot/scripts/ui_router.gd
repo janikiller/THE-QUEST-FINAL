@@ -171,14 +171,14 @@ func show_mission_result(mission_id: String = "") -> void:
 		mission_result.open_for(mission_id)
 
 
-func show_deck(patrol_id: String = "") -> void:
+func show_deck(patrol_id: String = "", mode: String = "mazo") -> void:
 	_hide_all()
 	deck_screen.visible = true
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
 		world.modulate = Color(0.14, 0.18, 0.28, 1)
 	if deck_screen.has_method("open"):
-		deck_screen.open(patrol_id if patrol_id != "" else HERO_PATROL)
+		deck_screen.open(patrol_id if patrol_id != "" else HERO_PATROL, mode)
 
 
 func show_market(patrol_id: String = "") -> void:

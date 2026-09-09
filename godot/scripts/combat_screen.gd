@@ -45,6 +45,8 @@ var _player_block_text: Label
 var _gone_enemies: Dictionary = {} # index -> true after death fade
 var _dying: Dictionary = {}
 var _arena_path: String = ""
+var _enemy_card_menu: Control
+var _enemy_menu_enemy_index: int = -1
 
 
 func _hero_tex(name: String) -> Texture2D:
@@ -558,7 +560,7 @@ func _sync_enemy_stats(snap: Dictionary) -> void:
 			panel.modulate = Color(0.55, 0.55, 0.6, 0.75)
 		var intent_host: Control = panel.find_child("EnemyIntentHost", true, false) as Control
 		if intent_host:
-			_refresh_enemy_intent_host(intent_host, e)
+			_refresh_enemy_intent_host(intent_host, e, i)
 
 
 func _make_empty_slot(index: int) -> Control:
@@ -689,7 +691,8 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	var intent_host := CenterContainer.new()
 	intent_host.name = "EnemyIntentHost"
 	intent_host.custom_minimum_size = Vector2(112 if is_boss else 104, 168 if is_boss else 156)
-	_refresh_enemy_intent_host(intent_host, e)
+	intent_host.set_meta("enemy_index", index)
+	_refresh_enemy_intent_host(intent_host, e, index)
 	wrap.add_child(intent_host)
 
 	var name_l := Label.new()
@@ -834,15 +837,19 @@ func _type_accent(card_type: String) -> Color:
 			return Color(0.55, 0.65, 0.75)
 
 
-func _refresh_enemy_intent_host(host: Control, e: Dictionary) -> void:
+func _refresh_enemy_intent_host(host: Control, e: Dictionary, enemy_index: int = -1) -> void:
+	if enemy_index < 0:
+		enemy_index = int(host.get_meta("enemy_index", -1))
+	else:
+		host.set_meta("enemy_index", enemy_index)
 	while host.get_child_count() > 0:
 		var old := host.get_child(0)
 		host.remove_child(old)
 		old.free()
-	host.add_child(_build_enemy_intent_content(e))
+	host.add_child(_build_enemy_intent_content(e, enemy_index))
 
 
-func _build_enemy_intent_content(e: Dictionary) -> Control:
+func _build_enemy_intent_content(e: Dictionary, enemy_index: int = -1) -> Control:
 	if bool(e.get("detained", false)):
 		return _enemy_intent_status("DETENIDO", Color(0.4, 0.9, 0.55))
 	if bool(e.get("fled", false)):
@@ -851,7 +858,7 @@ func _build_enemy_intent_content(e: Dictionary) -> Control:
 		return _enemy_intent_status("", Color.WHITE)
 	var cid := str(e.get("next_card", ""))
 	if cid != "":
-		return _make_enemy_intent_card(e)
+		return _make_enemy_intent_card(e, enemy_index)
 	# Fallback a intent clásico sin carta
 	var intent_id := int(e.get("intent", 0))
 	var val := int(e.get("intent_value", 0))
@@ -908,7 +915,7 @@ func _enemy_kind_frame(kind: String, is_boss: bool) -> String:
 			return "basica"
 
 
-func _make_enemy_intent_card(e: Dictionary) -> Control:
+func _make_enemy_intent_card(e: Dictionary, enemy_index: int = -1) -> Control:
 	var cid := str(e.get("next_card", ""))
 	var def: Dictionary = CardDB.get_enemy_card(cid)
 	if def.is_empty():
@@ -929,8 +936,9 @@ func _make_enemy_intent_card(e: Dictionary) -> Control:
 	panel.name = "EnemyIntentCard"
 	panel.custom_minimum_size = Vector2(w, h)
 	panel.clip_contents = true
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.set_meta("card_id", cid)
+	panel.tooltip_text = "Clic: ver mazo enemigo"
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.07, 0.045, 0.05, 0.97) if is_boss else Color(0.05, 0.055, 0.08, 0.97)
 	sb.border_color = Color(accent.r, accent.g, accent.b, 0.95)
@@ -1082,7 +1090,191 @@ func _make_enemy_intent_card(e: Dictionary) -> Control:
 	fx.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tv.add_child(fx)
 
+	var btn := Button.new()
+	btn.flat = true
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	btn.tooltip_text = "Ver cartas de este enemigo"
+	var idx := enemy_index
+	btn.pressed.connect(func():
+		_open_enemy_card_menu(idx)
+	)
+	panel.add_child(btn)
+
 	return panel
+
+
+func _open_enemy_card_menu(enemy_index: int) -> void:
+	var snap := CombatState.get_snapshot()
+	var enemies: Array = snap.get("enemies", [])
+	if enemy_index < 0 or enemy_index >= enemies.size():
+		return
+	var e: Dictionary = enemies[enemy_index]
+	_enemy_menu_enemy_index = enemy_index
+	if _enemy_card_menu and is_instance_valid(_enemy_card_menu):
+		_enemy_card_menu.queue_free()
+	_enemy_card_menu = Control.new()
+	_enemy_card_menu.name = "EnemyCardMenu"
+	_enemy_card_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_enemy_card_menu.z_index = 80
+	_enemy_card_menu.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_enemy_card_menu)
+
+	var dim := ColorRect.new()
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.02, 0.04, 0.08, 0.88)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_enemy_card_menu.add_child(dim)
+
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.custom_minimum_size = Vector2(920, 520)
+	panel.position = Vector2(180, 80)
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = Color(0.05, 0.07, 0.11, 0.98)
+	psb.border_color = Color(1.0, 0.48, 0.32, 0.9)
+	psb.set_border_width_all(2)
+	psb.set_corner_radius_all(14)
+	psb.content_margin_left = 16
+	psb.content_margin_right = 16
+	psb.content_margin_top = 14
+	psb.content_margin_bottom = 14
+	panel.add_theme_stylebox_override("panel", psb)
+	_enemy_card_menu.add_child(panel)
+
+	var root := VBoxContainer.new()
+	root.add_theme_constant_override("separation", 10)
+	panel.add_child(root)
+
+	var head := HBoxContainer.new()
+	root.add_child(head)
+	var title := Label.new()
+	title.text = "MAZO ENEMIGO  ·  %s" % str(e.get("name", "Sospechoso"))
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_font_size_override("font_size", 22)
+	title.add_theme_color_override("font_color", Color(1.0, 0.72, 0.55))
+	head.add_child(title)
+	var next_hint := Label.new()
+	next_hint.text = "Siguiente: %s" % str(e.get("next_card_name", "—"))
+	next_hint.add_theme_font_size_override("font_size", 13)
+	next_hint.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	head.add_child(next_hint)
+	var close_b := Button.new()
+	close_b.text = "CERRAR"
+	close_b.custom_minimum_size = Vector2(100, 36)
+	close_b.pressed.connect(_close_enemy_card_menu)
+	head.add_child(close_b)
+
+	var sub := Label.new()
+	sub.text = "Cartas que puede jugar este sospechoso (mismo tamaño que tu mazo)."
+	sub.add_theme_color_override("font_color", Color(0.7, 0.78, 0.88))
+	root.add_child(sub)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.custom_minimum_size = Vector2(0, 400)
+	root.add_child(scroll)
+	var grid := HBoxContainer.new()
+	grid.add_theme_constant_override("separation", 12)
+	scroll.add_child(grid)
+
+	var pool: Array = e.get("card_pool", [])
+	if pool.is_empty():
+		pool = [str(e.get("next_card", ""))]
+	var seen: Dictionary = {}
+	for cid_v in pool:
+		var cid := str(cid_v)
+		if cid == "" or seen.has(cid):
+			continue
+		seen[cid] = true
+		var def: Dictionary = CardDB.get_enemy_card(cid)
+		if def.is_empty():
+			continue
+		var is_next := cid == str(e.get("next_card", ""))
+		grid.add_child(_make_enemy_menu_card(def, is_next))
+
+	dim.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			_close_enemy_card_menu()
+	)
+
+
+func _close_enemy_card_menu() -> void:
+	if _enemy_card_menu and is_instance_valid(_enemy_card_menu):
+		_enemy_card_menu.queue_free()
+	_enemy_card_menu = null
+	_enemy_menu_enemy_index = -1
+
+
+func _make_enemy_menu_card(def: Dictionary, is_next: bool) -> Control:
+	## Carta grande estilo mazo del jugador, dentro del menú de combate.
+	var kind := CardDB.enemy_card_intent_kind(def)
+	var accent := _enemy_kind_accent(kind, str(def.get("id", "")).begins_with("boss_"))
+	var wrap := PanelContainer.new()
+	wrap.custom_minimum_size = Vector2(168, 248)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.07, 0.05, 0.06, 0.98)
+	sb.border_color = accent if not is_next else Color(1.0, 0.85, 0.35)
+	sb.set_border_width_all(3 if is_next else 2)
+	sb.set_corner_radius_all(12)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	wrap.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	wrap.add_child(v)
+	if is_next:
+		var badge := Label.new()
+		badge.text = "▶ SIGUIENTE"
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		badge.add_theme_font_size_override("font_size", 11)
+		badge.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
+		v.add_child(badge)
+	var top := HBoxContainer.new()
+	v.add_child(top)
+	var kind_l := Label.new()
+	kind_l.text = kind.to_upper()
+	kind_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	kind_l.add_theme_font_size_override("font_size", 11)
+	kind_l.add_theme_color_override("font_color", accent)
+	top.add_child(kind_l)
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(0, 100)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var art_path := str(def.get("art", def.get("icon", "")))
+	if ResourceLoader.exists(art_path):
+		art.texture = load(art_path)
+	elif FileAccess.file_exists(art_path):
+		var img := Image.load_from_file(art_path)
+		if img:
+			art.texture = ImageTexture.create_from_image(img)
+	v.add_child(art)
+	var name_l := Label.new()
+	name_l.text = str(def.get("name", "?"))
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_l.max_lines_visible = 2
+	name_l.add_theme_font_size_override("font_size", 14)
+	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(name_l)
+	var fx := Label.new()
+	fx.text = CardDB.enemy_effect_line(def)
+	fx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	fx.max_lines_visible = 3
+	fx.add_theme_font_size_override("font_size", 12)
+	fx.add_theme_color_override("font_color", Color(0.8, 0.88, 0.96))
+	fx.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(fx)
+	var desc := Label.new()
+	desc.text = str(def.get("description", ""))
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.max_lines_visible = 3
+	desc.add_theme_font_size_override("font_size", 11)
+	desc.add_theme_color_override("font_color", Color(0.65, 0.72, 0.8))
+	v.add_child(desc)
+	return wrap
 
 
 func _make_card(card_id: String, playable: bool) -> Control:

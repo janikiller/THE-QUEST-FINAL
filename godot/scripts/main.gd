@@ -111,7 +111,19 @@ func _enemy_cards_shot() -> void:
 		await get_tree().create_timer(1.2).timeout
 	await _save_shot("enemigos_cartas_jugaron")
 	# Deja ver el turno 2 un momento (evidencia / grabación)
-	await get_tree().create_timer(1.4).timeout
+	await get_tree().create_timer(0.6).timeout
+	# Menú grande de mazo enemigo en combate
+	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	if combat and combat.has_method("_open_enemy_card_menu"):
+		combat._open_enemy_card_menu(0)
+		await get_tree().create_timer(0.45).timeout
+		await _save_shot("enemigos_cartas_menu_combate")
+		if combat.has_method("_close_enemy_card_menu"):
+			combat._close_enemy_card_menu()
+	# Catálogo ENEMIGAS en el menú MAZO (mismo menú grande)
+	$UI/UIRouter.show_deck("alpha", "enemigas")
+	await get_tree().create_timer(0.55).timeout
+	await _save_shot("enemigos_cartas_menu_mazo")
 	print("ENEMY_CARDS_SHOT_OK")
 	get_tree().quit(0)
 

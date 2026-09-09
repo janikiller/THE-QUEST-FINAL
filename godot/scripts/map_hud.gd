@@ -163,7 +163,7 @@ func _build_bottom_dock() -> void:
 	_btn_missions_dock.pressed.connect(_open_missions)
 	actions.add_child(_btn_missions_dock)
 
-	_btn_deck_dock = _make_dock_btn("MAZO", "Cartas · I", Color(0.1, 0.58, 0.72))
+	_btn_deck_dock = _make_dock_btn("MAZO", "Tuyas · enemigas · I", Color(0.1, 0.58, 0.72))
 	_btn_deck_dock.pressed.connect(_open_deck)
 	actions.add_child(_btn_deck_dock)
 
@@ -286,7 +286,7 @@ func _refresh_dock() -> void:
 	if _btn_alerts:
 		_btn_alerts.text = "SEÑALES\n%d en mapa" % open_n
 	if _btn_deck_dock:
-		_btn_deck_dock.text = "MAZO\nCartas · I"
+		_btn_deck_dock.text = "MAZO\nTuyas · enemigas · I"
 	if _btn_market_dock:
 		_btn_market_dock.text = "MERCADO\n%d★ · K" % GameState.credits
 	btn_missions.text = "MISIONES  (%d)" % open_n
