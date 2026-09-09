@@ -25,6 +25,200 @@ func _ready() -> void:
 		call_deferred("_playtest")
 	if OS.get_environment("TQ_COMBAT_SHOT") == "1":
 		call_deferred("_combat_shot")
+	if OS.get_environment("TQ_MAP_SHOT") == "1":
+		call_deferred("_map_shot")
+	if OS.get_environment("TQ_BOSS_MARKET_SHOT") == "1":
+		call_deferred("_boss_market_shot")
+	if OS.get_environment("TQ_BOSS_FIGHT") == "1":
+		call_deferred("_boss_fight_demo")
+
+
+func _boss_fight_demo() -> void:
+	## Abre directamente el combate contra El Capo (jugable / captura).
+	await get_tree().create_timer(1.0).timeout
+	for mid in GameState.active_missions.keys():
+		var mm: Dictionary = GameState.active_missions[mid]
+		if bool(mm.get("is_boss", false)):
+			GameState.remove_mission(str(mid))
+	GameState.day_index = 2
+	GameState.boss_spawned = false
+	GameState.boss_defeated = false
+	GameState.boss_mission_id = ""
+	GameState.request_boss_spawn()
+	await get_tree().create_timer(0.5).timeout
+	var boss_mid := GameState.boss_mission_id
+	print("BOSS_FIGHT mid=", boss_mid)
+	if boss_mid == "":
+		print("BOSS_FIGHT_FAIL no boss")
+		get_tree().quit(1)
+		return
+	var p: Dictionary = GameState.patrols.get("alpha", {})
+	p["status"] = "available"
+	p.erase("_awaiting_combat")
+	GameState.set_patrol(p)
+	$UI/UIRouter.begin_fight(boss_mid)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(0.8).timeout
+	await _save_shot("boss_fight_idle")
+	# Gesto de ataque del Capo — captura a mitad del lunge
+	if CombatState.is_active():
+		var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+		if combat:
+			var wrap = combat._enemy_wrap(0)
+			if wrap:
+				var spr: TextureRect = wrap.find_child("EnemySprite", true, false)
+				if spr:
+					wrap.set_meta("anim_locked", true)
+					var atk := str(wrap.get_meta("pose_attack", ""))
+					if atk != "" and ResourceLoader.exists(atk):
+						spr.texture = load(atk)
+					var base: Vector2 = wrap.get_meta("sprite_base", spr.position)
+					var tw := create_tween()
+					tw.set_parallel(true)
+					tw.tween_property(spr, "position", base + Vector2(-110, -8), 0.18)
+					tw.tween_property(spr, "rotation_degrees", -12.0, 0.18)
+					tw.tween_property(spr, "scale", Vector2(0.88, 1.16), 0.18)
+					await tw.finished
+					await _save_shot("boss_fight_attack")
+					var tw2 := create_tween()
+					tw2.set_parallel(true)
+					tw2.tween_property(spr, "position", base, 0.2)
+					tw2.tween_property(spr, "rotation_degrees", 0.0, 0.2)
+					tw2.tween_property(spr, "scale", Vector2.ONE, 0.2)
+					await tw2.finished
+			# Daño al Capo con pose hurt
+			wrap = combat._enemy_wrap(0)
+			if wrap:
+				wrap.set_meta("anim_locked", true)
+				var hurt := str(wrap.get_meta("pose_hurt", ""))
+				var spr2: TextureRect = wrap.find_child("EnemySprite", true, false)
+				if spr2 and hurt != "" and ResourceLoader.exists(hurt):
+					spr2.texture = load(hurt)
+					spr2.modulate = Color(1.0, 0.35, 0.3)
+					var tw3 := create_tween()
+					tw3.tween_property(spr2, "position", spr2.position + Vector2(22, -10), 0.1)
+					await tw3.finished
+				CombatState.enemies[0]["hp"] = maxi(1, int(CombatState.enemies[0].get("hp", 10)) - 18)
+				# Refrescar texto HP del panel
+				for c in wrap.get_children():
+					if c is Label and "/" in c.text:
+						c.text = "%d/%d" % [int(CombatState.enemies[0]["hp"]), int(CombatState.enemies[0].get("max_hp", 94))]
+						c.add_theme_color_override("font_color", Color(1.0, 0.55, 0.4))
+					if c is ProgressBar:
+						c.value = float(CombatState.enemies[0]["hp"])
+					if c is VBoxContainer:
+						for c2 in c.get_children():
+							if c2 is Label and "/" in c2.text:
+								c2.text = "%d/%d" % [int(CombatState.enemies[0]["hp"]), int(CombatState.enemies[0].get("max_hp", 94))]
+							if c2 is ProgressBar:
+								c2.value = float(CombatState.enemies[0]["hp"])
+				await get_tree().create_timer(0.2).timeout
+				await _save_shot("boss_fight_hurt")
+				wrap.set_meta("anim_locked", false)
+	print("BOSS_FIGHT_OK")
+	if OS.get_environment("TQ_BOSS_FIGHT_QUIT") == "1":
+		get_tree().quit(0)
+
+
+func _boss_market_shot() -> void:
+	## Evidencia visual: mercado + boss día 2 en mapa/briefing.
+	print("BOSS_MARKET_SHOT begin")
+	await get_tree().create_timer(1.2).timeout
+	print("BOSS_MARKET_SHOT after wait missions=", GameState.active_missions.size())
+	var tries := 0
+	while GameState.active_missions.is_empty() and tries < 40:
+		await get_tree().create_timer(0.2).timeout
+		tries += 1
+	print("BOSS_MARKET_SHOT missions ready=", GameState.active_missions.size())
+	# Mercado con stock visible
+	GameState.credits = 40
+	GameState.credits_changed.emit(GameState.credits)
+	$UI/UIRouter.show_market("alpha")
+	await get_tree().process_frame
+	await get_tree().create_timer(0.5).timeout
+	await _save_shot("mercado_cartas")
+	# Desbloquear legendarias para segunda captura de mercado
+	GameState.boss_defeated = true
+	$UI/UIRouter.show_market("alpha")
+	await get_tree().process_frame
+	var market = $UI/UIRouter.get_node_or_null("MarketScreen")
+	if market:
+		market._filter = "legendary"
+		market._rebuild()
+		var stock: Array = CardDB.cards_for_market(true)
+		for c in stock:
+			if str(c.get("rarity", "")) == "legendary":
+				market._selected_id = str(c.get("id", ""))
+				market._refresh_detail()
+				break
+	await get_tree().create_timer(0.4).timeout
+	await _save_shot("mercado_legendarias")
+	# Boss en día 2
+	for mid in GameState.active_missions.keys():
+		var mm: Dictionary = GameState.active_missions[mid]
+		if bool(mm.get("is_boss", false)):
+			GameState.remove_mission(str(mid))
+	GameState.day_index = 2
+	GameState.boss_spawned = false
+	GameState.boss_defeated = false
+	GameState.boss_mission_id = ""
+	GameState.request_boss_spawn()
+	await get_tree().create_timer(0.5).timeout
+	$UI/UIRouter.show_map()
+	await get_tree().process_frame
+	var boss_mid := GameState.boss_mission_id
+	print("BOSS_MARKET_SHOT boss=", boss_mid, " spawned=", GameState.boss_spawned)
+	if boss_mid == "":
+		print("BOSS_MARKET_SHOT_FAIL no boss")
+		get_tree().quit(1)
+		return
+	var bmission: Dictionary = GameState.active_missions.get(boss_mid, {})
+	if bmission.has("pos"):
+		camera.global_position = bmission["pos"]
+		camera.zoom = Vector2(1.35, 1.35)
+	await get_tree().create_timer(0.45).timeout
+	await _save_shot("mapa_boss_capo")
+	$UI/UIRouter.show_mission(boss_mid)
+	await get_tree().process_frame
+	await get_tree().create_timer(0.45).timeout
+	await _save_shot("briefing_boss_capo")
+	print("BOSS_MARKET_SHOT_OK")
+	get_tree().quit(0)
+
+
+func _map_shot() -> void:
+	## Captura el mapa con marcadores tácticos de misión.
+	await get_tree().create_timer(1.4).timeout
+	var tries := 0
+	while GameState.active_missions.size() < 3 and tries < 50:
+		await get_tree().create_timer(0.25).timeout
+		tries += 1
+	$UI/UIRouter.show_map()
+	await get_tree().process_frame
+	# Encuaadra varias misiones
+	var markers := get_tree().get_nodes_in_group("mission_marker")
+	print("MAP_SHOT markers=", markers.size(), " missions=", GameState.active_missions.size())
+	if markers.is_empty():
+		print("MAP_SHOT_FAIL no markers")
+		get_tree().quit(1)
+		return
+	var center := Vector2.ZERO
+	for m in markers:
+		center += (m as Node2D).global_position
+	center /= float(markers.size())
+	camera.global_position = center
+	camera.zoom = Vector2(0.95, 0.95)
+	await get_tree().create_timer(0.5).timeout
+	await _save_shot("map_tactical_markers")
+	# Acercar a un marcador
+	var first: Node2D = markers[0]
+	camera.global_position = first.global_position
+	camera.zoom = Vector2(1.55, 1.55)
+	await get_tree().create_timer(0.35).timeout
+	await _save_shot("map_tactical_marker_close")
+	print("MAP_SHOT_OK")
+	get_tree().quit(0)
 
 
 func _combat_shot() -> void:
@@ -292,22 +486,59 @@ func _playtest() -> void:
 		errors.append("player did not move")
 	print("PLAYTEST player moved ", p0, "->", player.global_position)
 
-	# Marcadores de alerta en mapa activos
+	# Marcadores de alerta en mapa activos (máx. 3 por franja + boss opcional)
 	var markers = get_tree().get_nodes_in_group("mission_marker")
 	print("PLAYTEST markers group=", markers.size())
 	if markers.size() < 1:
 		errors.append("map alerts should appear")
+	var marker_cap := 3
+	if GameState.boss_spawned and not GameState.boss_defeated:
+		marker_cap = 4
+	if markers.size() > marker_cap:
+		errors.append("too many map missions for period")
+
+	# Ciclo día → atardecer → noche con 3 misiones
+	GameState.set_clock(10, 0)
+	GameState.period_missions_done = 0
+	for _i in 3:
+		GameState.advance_after_mission({"period": "day"})
+	print("PLAYTEST after 3 day missions tod=", GameState.time_of_day(), " clock=%02d:%02d" % [GameState.hour, GameState.minute])
+	if GameState.time_of_day() != "dusk":
+		errors.append("3 day missions should reach dusk")
+	for _i in 3:
+		GameState.advance_after_mission({"period": "dusk"})
+	print("PLAYTEST after 3 dusk missions tod=", GameState.time_of_day(), " clock=%02d:%02d" % [GameState.hour, GameState.minute])
+	if GameState.time_of_day() != "night":
+		errors.append("3 dusk missions should reach night")
+	# Noche más dura en combate
+	GameState.set_clock(22, 0)
+	await get_tree().create_timer(0.3).timeout
+	var night_mid := ""
+	for m in GameState.active_missions.values():
+		if str(m.get("period", "")) == "night" and str(m.get("status", "")) == "open":
+			night_mid = str(m["id"])
+			break
+	if night_mid == "" and not GameState.active_missions.is_empty():
+		night_mid = str(GameState.active_missions.keys()[0])
+	if night_mid != "":
+		var cfg_n := GameState.build_combat_config(night_mid, "alpha")
+		var ehp := 0
+		for e in cfg_n.get("enemies", []):
+			ehp = maxi(ehp, int(e.get("hp", 0)))
+		print("PLAYTEST night combat enemies=", cfg_n.get("enemies", []).size(), " max_hp=", ehp)
+		if cfg_n.get("enemies", []).size() < 3:
+			errors.append("night should be harder (3 enemies)")
+		if ehp < 40:
+			errors.append("night enemy hp too low")
 
 	# 8) Day/night + mission art
 	print("PLAYTEST tod=", GameState.time_of_day())
-	GameState.hour = 18
-	GameState.emit_time()
+	GameState.set_clock(18, 0)
 	await get_tree().process_frame
 	print("PLAYTEST tod dusk=", GameState.time_of_day())
 	if GameState.time_of_day() != "dusk":
 		errors.append("dusk tod failed")
-	GameState.hour = 22
-	GameState.emit_time()
+	GameState.set_clock(22, 0)
 	await get_tree().process_frame
 	print("PLAYTEST tod night=", GameState.time_of_day())
 	if GameState.time_of_day() != "night":
@@ -445,6 +676,76 @@ func _playtest() -> void:
 	if GameState.weather != "storm":
 		errors.append("weather not storm")
 	print("PLAYTEST weather=", GameState.weather, " music=", AudioDirector.music_on)
+
+	# Mercado de cartas + boss día 2
+	print("PLAYTEST catalog=", CardDB.cards.size(), " market=", CardDB.cards_for_market(false).size())
+	if CardDB.cards.size() < 40:
+		errors.append("card catalog too small")
+	if CardDB.cards_for_market(false).size() < 20:
+		errors.append("market stock too small")
+	$UI/UIRouter.show_market("alpha")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not $UI/UIRouter/MarketScreen.visible:
+		errors.append("market screen not visible")
+	else:
+		print("PLAYTEST market OK credits=", GameState.credits)
+	var before_credits := GameState.credits
+	var buy_id := ""
+	for c in CardDB.cards_for_market(false):
+		var cid := str(c.get("id", ""))
+		if CardDB.price_of(cid) <= before_credits:
+			buy_id = cid
+			break
+	var deck_before := GameState.get_patrol_deck("alpha").size()
+	if buy_id != "" and GameState.buy_card_for_patrol("alpha", buy_id):
+		if GameState.credits >= before_credits:
+			errors.append("credits not spent")
+		if GameState.get_patrol_deck("alpha").size() != deck_before + 1:
+			errors.append("market buy did not add card")
+		print("PLAYTEST bought ", buy_id, " credits=", GameState.credits)
+	else:
+		errors.append("market buy failed")
+	$UI/UIRouter.show_map()
+
+	# Forzar día 2 y boss
+	for mid in GameState.active_missions.keys():
+		var mm: Dictionary = GameState.active_missions[mid]
+		if bool(mm.get("is_boss", false)):
+			GameState.remove_mission(str(mid))
+	GameState.day_index = 1
+	GameState.boss_spawned = false
+	GameState.boss_defeated = false
+	GameState.boss_mission_id = ""
+	GameState.set_clock(22, 0)
+	await get_tree().process_frame
+	GameState.set_clock(8, 0)
+	await get_tree().create_timer(0.4).timeout
+	print("PLAYTEST day=", GameState.day_index, " boss_spawned=", GameState.boss_spawned, " mid=", GameState.boss_mission_id)
+	if GameState.day_index < 2:
+		errors.append("day did not advance to 2")
+	if not GameState.boss_spawned or GameState.boss_mission_id == "":
+		errors.append("boss not spawned on day 2")
+	else:
+		var bcfg := GameState.build_combat_config(GameState.boss_mission_id, "alpha")
+		var boss_named := false
+		for e in bcfg.get("enemies", []):
+			if str(e.get("name", "")) == "EL CAPO" or bool(e.get("is_boss", false)):
+				boss_named = true
+		print("PLAYTEST boss combat enemies=", bcfg.get("enemies", []).size(), " named=", boss_named)
+		if not boss_named:
+			errors.append("boss combat missing EL CAPO")
+		var deck_pre := GameState.get_patrol_deck("alpha").size()
+		var gained: Array = GameState.grant_boss_rewards("alpha")
+		print("PLAYTEST boss rewards=", gained)
+		if gained.size() < 2:
+			errors.append("boss should grant 2 legendaries")
+		if GameState.get_patrol_deck("alpha").size() < deck_pre + 2:
+			errors.append("legendaries not added to deck")
+		if not GameState.boss_defeated:
+			errors.append("boss_defeated flag missing")
+		if CardDB.cards_for_market(true).size() <= CardDB.cards_for_market(false).size():
+			errors.append("legendaries should unlock in market after boss")
 
 	if errors.is_empty():
 		print("PLAYTEST_OK")
