@@ -15,6 +15,9 @@ signal period_changed(period: String)
 signal day_changed(day: int)
 signal boss_available(mission_id: String)
 signal credits_changed(value: int)
+signal xp_changed(xp: int, level: int, xp_to_next: int)
+signal leveled_up(new_level: int)
+signal level_pack_pending(count: int)
 
 var station: Dictionary = {}
 var events_catalog: Array = []
@@ -25,6 +28,12 @@ var minute: int = 0
 var prestige: int = 0
 ## Créditos del mercado de cartas (se ganan con misiones).
 var credits: int = 12
+## Progresión de García: XP por enemigos derribados.
+var hero_xp: int = 0
+var hero_level: int = 1
+## Cola de sobres pendientes (cada nivel = 1 sobre de 3 cartas).
+var pending_level_packs: int = 0
+var _active_pack_choices: Array[String] = []
 var selected_mission_id: String = ""
 ## Día de campaña (1 = inicio). El boss aparece el día 2.
 var day_index: int = 1
@@ -234,6 +243,129 @@ func _on_period_transition(prev: String, now: String) -> void:
 func add_credits(delta: int) -> void:
 	credits = maxi(0, credits + delta)
 	credits_changed.emit(credits)
+
+
+func xp_to_next_level(level: int = -1) -> int:
+	var lv := level if level > 0 else hero_level
+	# Curva suave: Lv1→2 = 40, luego +22 por nivel.
+	return 40 + (lv - 1) * 22
+
+
+func add_combat_xp(amount: int, reason: String = "") -> Dictionary:
+	## Otorga XP. Puede subir varios niveles y encolar sobres.
+	var gained := maxi(0, amount)
+	var levels_up := 0
+	if gained <= 0:
+		return {"xp": 0, "levels": 0}
+	hero_xp += gained
+	while hero_xp >= xp_to_next_level():
+		hero_xp -= xp_to_next_level()
+		hero_level += 1
+		levels_up += 1
+		pending_level_packs += 1
+		leveled_up.emit(hero_level)
+		RadioBus.push("¡Nivel %d! Abre un sobre de cartas." % hero_level, "resolve")
+	xp_changed.emit(hero_xp, hero_level, xp_to_next_level())
+	if levels_up > 0:
+		level_pack_pending.emit(pending_level_packs)
+	if reason != "":
+		RadioBus.push("+%d XP (%s) · Nv.%d" % [gained, reason, hero_level], "resolve")
+	return {"xp": gained, "levels": levels_up}
+
+
+func has_pending_level_packs() -> bool:
+	return pending_level_packs > 0 or not _active_pack_choices.is_empty()
+
+
+func active_pack_open() -> bool:
+	return not _active_pack_choices.is_empty()
+
+
+func begin_level_pack() -> Array[String]:
+	## Genera (o reutiliza) 3 cartas aleatorias del sobre actual.
+	if not _active_pack_choices.is_empty():
+		return _active_pack_choices.duplicate()
+	if pending_level_packs <= 0:
+		return []
+	_active_pack_choices = _roll_pack_choices(3)
+	return _active_pack_choices.duplicate()
+
+
+func _roll_pack_choices(count: int) -> Array[String]:
+	var pools := {
+		"basica": [],
+		"magica": [],
+		"fuerza": [],
+		"legendaria": [],
+	}
+	for c in CardDB.all_cards():
+		var cid := str(c.get("id", ""))
+		if cid == "":
+			continue
+		var rar := CardDB.normalize_rarity(str(c.get("rarity", "basica")))
+		if pools.has(rar):
+			pools[rar].append(cid)
+	var odds := _pack_odds()
+	var picked: Array[String] = []
+	var guard := 0
+	while picked.size() < count and guard < 80:
+		guard += 1
+		var rar := _pick_rarity(odds)
+		var pool: Array = pools.get(rar, [])
+		if pool.is_empty():
+			continue
+		var cid2 := str(pool[_rng.randi() % pool.size()])
+		if cid2 in picked:
+			continue
+		picked.append(cid2)
+	# Relleno si faltan
+	if picked.size() < count:
+		var all_ids: Array = []
+		for c2 in CardDB.all_cards():
+			all_ids.append(str(c2.get("id", "")))
+		all_ids.shuffle()
+		for cid3 in all_ids:
+			if picked.size() >= count:
+				break
+			if cid3 != "" and cid3 not in picked:
+				picked.append(str(cid3))
+	return picked
+
+
+func _pack_odds() -> Dictionary:
+	## A más nivel, mejores rarezas. Legendarias tras boss o nivel alto.
+	var lv := hero_level
+	var legend := 0.0
+	if boss_defeated or lv >= 6:
+		legend = clampf(0.04 + float(lv - 5) * 0.015, 0.04, 0.12)
+	var fuerza := clampf(0.12 + float(lv) * 0.02, 0.12, 0.32)
+	var magica := clampf(0.28 + float(lv) * 0.01, 0.28, 0.36)
+	var basica := maxf(0.15, 1.0 - (magica + fuerza + legend))
+	return {"basica": basica, "magica": magica, "fuerza": fuerza, "legendaria": legend}
+
+
+func _pick_rarity(odds: Dictionary) -> String:
+	var roll := _rng.randf()
+	var acc := 0.0
+	for rar in ["basica", "magica", "fuerza", "legendaria"]:
+		acc += float(odds.get(rar, 0.0))
+		if roll <= acc:
+			return rar
+	return "basica"
+
+
+func claim_level_pack_card(card_id: String, patrol_id: String = "alpha") -> bool:
+	if card_id == "" or card_id not in _active_pack_choices:
+		return false
+	if CardDB.get_card(card_id).is_empty():
+		return false
+	add_card_to_deck(patrol_id, card_id)
+	_active_pack_choices.clear()
+	pending_level_packs = maxi(0, pending_level_packs - 1)
+	var def := CardDB.get_card(card_id)
+	RadioBus.push("Sobre Nv.%d: «%s» al mazo." % [hero_level, str(def.get("name", card_id))], "resolve")
+	level_pack_pending.emit(pending_level_packs)
+	return true
 
 
 func spend_credits(amount: int) -> bool:

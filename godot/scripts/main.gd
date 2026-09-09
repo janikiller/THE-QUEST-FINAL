@@ -37,6 +37,77 @@ func _ready() -> void:
 		call_deferred("_anime_cards_shot")
 	if OS.get_environment("TQ_MARKET_ROULETTE_SHOT") == "1":
 		call_deferred("_market_roulette_shot")
+	if OS.get_environment("TQ_XP_PACK_SHOT") == "1":
+		call_deferred("_xp_pack_shot")
+
+
+func _xp_pack_shot() -> void:
+	## Evidencia: XP por kills + sobre de 3 cartas al subir de nivel + catálogo ampliado.
+	await get_tree().create_timer(0.7).timeout
+	print("XP_PACK catalog=", CardDB.cards.size())
+	if CardDB.cards.size() < 100:
+		print("XP_PACK_FAIL catalog too small")
+		get_tree().quit(1)
+		return
+	# Simula kills hasta subir de nivel
+	GameState.hero_level = 1
+	GameState.hero_xp = 0
+	GameState.pending_level_packs = 0
+	GameState._active_pack_choices.clear()
+	var before_lv := GameState.hero_level
+	var res: Dictionary = GameState.add_combat_xp(GameState.xp_to_next_level())
+	print("XP_PACK grant levels=", res.get("levels", 0), " pending=", GameState.pending_level_packs)
+	if int(res.get("levels", 0)) < 1 or GameState.pending_level_packs < 1:
+		print("XP_PACK_FAIL no level up")
+		get_tree().quit(1)
+		return
+	# Combate con XP visible
+	var tries := 0
+	while GameState.active_missions.is_empty() and tries < 40:
+		await get_tree().create_timer(0.15).timeout
+		tries += 1
+	if GameState.active_missions.is_empty():
+		print("XP_PACK_FAIL no missions")
+		get_tree().quit(1)
+		return
+	var mid: String = String(GameState.active_missions.keys()[0])
+	var p: Dictionary = GameState.patrols.get("alpha", {})
+	p["status"] = "available"
+	p.erase("_awaiting_combat")
+	GameState.set_patrol(p)
+	$UI/UIRouter.show_combat(mid, "alpha")
+	await get_tree().process_frame
+	await get_tree().create_timer(0.45).timeout
+	# Fuerza un kill para mostrar XP en log/HUD
+	if CombatState.is_active() and not CombatState.enemies.is_empty():
+		var e0: Dictionary = CombatState.enemies[0]
+		e0["hp"] = 1
+		CombatState.enemies[0] = e0
+		CombatState._deal_to_enemy(0, 99)
+		CombatState.combat_updated.emit()
+	await get_tree().create_timer(0.35).timeout
+	await _save_shot("xp_combate_kill")
+	# Sobre de nivel
+	$UI/UIRouter.show_level_up("alpha")
+	await get_tree().process_frame
+	await get_tree().create_timer(0.5).timeout
+	var pack = $UI/UIRouter.get_node_or_null("LevelUpScreen")
+	if pack == null or not pack.visible:
+		print("XP_PACK_FAIL no level up screen")
+		get_tree().quit(1)
+		return
+	await _save_shot("xp_sobre_tres_cartas")
+	# Elige la primera
+	if pack.has_method("_pick") and GameState._active_pack_choices.size() > 0:
+		pack._pick(str(GameState._active_pack_choices[0]))
+	await get_tree().create_timer(0.35).timeout
+	print(
+		"XP_PACK_SHOT_OK level=", GameState.hero_level,
+		" before=", before_lv,
+		" catalog=", CardDB.cards.size(),
+		" deck=", GameState.patrol_decks.get("alpha", []).size()
+	)
+	get_tree().quit(0)
 
 
 func _market_roulette_shot() -> void:

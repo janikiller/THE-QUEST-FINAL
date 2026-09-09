@@ -12,6 +12,7 @@ signal request_back_to_map
 @onready var deck_screen: Control = $DeckScreen
 @onready var market_screen: Control = $MarketScreen
 @onready var combat_screen: Control = $CombatScreen
+@onready var level_up_screen: Control = $LevelUpScreen
 
 var _opening_mission: bool = false
 const HERO_PATROL := "alpha"
@@ -31,9 +32,14 @@ func _hide_all() -> void:
 	deck_screen.visible = false
 	market_screen.visible = false
 	combat_screen.visible = false
+	level_up_screen.visible = false
 
 
 func show_map() -> void:
+	# Si hay sobres de nivel pendientes, priorízalos.
+	if GameState.has_pending_level_packs():
+		show_level_up(HERO_PATROL)
+		return
 	_hide_all()
 	map_hud.visible = true
 	get_tree().paused = false
@@ -41,6 +47,20 @@ func show_map() -> void:
 	if world:
 		world.modulate = Color.WHITE
 	request_back_to_map.emit()
+
+
+func show_level_up(patrol_id: String = "") -> void:
+	if not GameState.has_pending_level_packs():
+		_hide_all()
+		map_hud.visible = true
+		return
+	_hide_all()
+	level_up_screen.visible = true
+	var world := get_tree().get_first_node_in_group("world_root")
+	if world:
+		world.modulate = Color(0.08, 0.1, 0.16, 1)
+	if level_up_screen.has_method("open"):
+		level_up_screen.open(patrol_id if patrol_id != "" else HERO_PATROL)
 
 
 func show_missions() -> void:

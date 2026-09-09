@@ -46,6 +46,8 @@ func _ready() -> void:
 	GameState.mission_removed.connect(func(_id): _refresh_dock())
 	GameState.period_changed.connect(func(_p): _refresh_dock())
 	GameState.credits_changed.connect(func(_v): _refresh_dock())
+	GameState.xp_changed.connect(func(_xp, _lv, _need): _refresh_dock())
+	GameState.leveled_up.connect(func(_lv): _refresh_dock())
 	GameState.day_changed.connect(func(_d): _refresh_dock())
 	RadioBus.radio_message.connect(_on_radio)
 	btn_missions.pressed.connect(_open_missions)
@@ -303,7 +305,12 @@ func _refresh_dock() -> void:
 			_:
 				_period_chip.add_theme_color_override("font_color", Color(0.95, 0.95, 0.85))
 	if _credits_chip:
-		_credits_chip.text = "CRÉDITOS %d★" % GameState.credits
+		_credits_chip.text = "NV.%d  %d/%d XP  ·  %d★" % [
+			GameState.hero_level,
+			GameState.hero_xp,
+			GameState.xp_to_next_level(),
+			GameState.credits,
+		]
 
 
 func _update_tod_hint() -> void:

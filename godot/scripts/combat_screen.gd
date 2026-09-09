@@ -367,11 +367,20 @@ func _on_end_turn() -> void:
 
 func _on_combat_ended(victory: bool) -> void:
 	result_panel.visible = true
-	result_title.text = "INTERVENCIÓN EXITOSA" if victory else "UNIDAD CAÍDA"
-	result_title.add_theme_color_override(
-		"font_color",
-		Color(0.35, 0.9, 0.55) if victory else Color(1.0, 0.4, 0.4)
-	)
+	if victory:
+		var xp := CombatState.combat_xp_gained
+		var kills := CombatState.combat_kills
+		var levels := CombatState.combat_levels_gained
+		if levels > 0:
+			result_title.text = "¡NIVEL %d!  +%d XP" % [GameState.hero_level, xp]
+		elif xp > 0:
+			result_title.text = "ÉXITO  ·  +%d XP (%d bajas)" % [xp, kills]
+		else:
+			result_title.text = "INTERVENCIÓN EXITOSA"
+		result_title.add_theme_color_override("font_color", Color(0.35, 0.9, 0.55))
+	else:
+		result_title.text = "UNIDAD CAÍDA"
+		result_title.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
 
 
 func _on_result_close() -> void:
@@ -395,7 +404,14 @@ func _refresh() -> void:
 	hp_label.text = "%d/%d" % [int(p.get("hp", 0)), int(p.get("max_hp", 50))]
 	block_label.text = str(int(p.get("block", 0)))
 	location_label.text = str(snap.get("location", "")).to_upper()
-	objective_label.text = "OBJETIVO: %s" % str(snap.get("objective", ""))
+	var xp_bit := "NV.%d  %d/%d XP" % [
+		int(snap.get("hero_level", GameState.hero_level)),
+		int(snap.get("hero_xp", GameState.hero_xp)),
+		int(snap.get("xp_to_next", GameState.xp_to_next_level())),
+	]
+	if int(snap.get("combat_xp", 0)) > 0:
+		xp_bit += "  ·  +%d este combate" % int(snap.get("combat_xp", 0))
+	objective_label.text = "OBJETIVO: %s   |   %s" % [str(snap.get("objective", "")), xp_bit]
 	log_label.text = str(snap.get("last_log", ""))
 	deck_count.text = "MAZO\n%d" % int(snap.get("draw_count", 0))
 	discard_count.text = "DESCARTES\n%d" % int(snap.get("discard_count", 0))
