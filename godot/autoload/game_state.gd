@@ -281,6 +281,10 @@ func active_pack_open() -> bool:
 	return not _active_pack_choices.is_empty()
 
 
+func peek_pack_choices() -> Array[String]:
+	return _active_pack_choices.duplicate()
+
+
 func begin_level_pack() -> Array[String]:
 	## Genera (o reutiliza) 3 cartas aleatorias del sobre actual.
 	if not _active_pack_choices.is_empty():

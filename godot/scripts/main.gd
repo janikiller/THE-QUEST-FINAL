@@ -53,7 +53,13 @@ func _xp_pack_shot() -> void:
 	GameState.hero_level = 1
 	GameState.hero_xp = 0
 	GameState.pending_level_packs = 0
-	GameState._active_pack_choices.clear()
+	# Limpia sobre activo si hubiera
+	while GameState.active_pack_open():
+		var cur: Array[String] = GameState.peek_pack_choices()
+		if cur.is_empty():
+			break
+		GameState.claim_level_pack_card(str(cur[0]), "alpha")
+	GameState.pending_level_packs = 0
 	var before_lv := GameState.hero_level
 	var res: Dictionary = GameState.add_combat_xp(GameState.xp_to_next_level())
 	print("XP_PACK grant levels=", res.get("levels", 0), " pending=", GameState.pending_level_packs)
@@ -98,8 +104,9 @@ func _xp_pack_shot() -> void:
 		return
 	await _save_shot("xp_sobre_tres_cartas")
 	# Elige la primera
-	if pack.has_method("_pick") and GameState._active_pack_choices.size() > 0:
-		pack._pick(str(GameState._active_pack_choices[0]))
+	var choices: Array[String] = GameState.peek_pack_choices()
+	if pack.has_method("_pick") and not choices.is_empty():
+		pack._pick(str(choices[0]))
 	await get_tree().create_timer(0.35).timeout
 	print(
 		"XP_PACK_SHOT_OK level=", GameState.hero_level,
