@@ -636,7 +636,7 @@ func _animate_enemy_death(panel: Control, dmg: int) -> void:
 func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	var is_boss := bool(e.get("is_boss", false))
 	var wrap := VBoxContainer.new()
-	wrap.custom_minimum_size = Vector2(240 if is_boss else 196, 400 if is_boss else 360)
+	wrap.custom_minimum_size = Vector2(260 if is_boss else 214, 420 if is_boss else 380)
 	wrap.alignment = BoxContainer.ALIGNMENT_END
 	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	wrap.add_theme_constant_override("separation", 4)
@@ -728,9 +728,9 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 		bars.add_child(blk_t)
 	wrap.add_child(bars)
 
-	var actor_w := 240.0 if is_boss else 190.0
-	var actor_h := 360.0 if is_boss else 300.0
-	var ground_y := GROUND_Y + (36.0 if is_boss else 8.0)
+	var actor_w := 260.0 if is_boss else 210.0
+	var actor_h := 380.0 if is_boss else 320.0
+	var ground_y := GROUND_Y + (40.0 if is_boss else 12.0)
 	var actor := Control.new()
 	actor.name = "ActorSlot"
 	actor.custom_minimum_size = Vector2(actor_w, actor_h)
