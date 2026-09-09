@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://bquirouter001"]
+[gd_scene load_steps=10 format=3 uid="uid://bquirouter001"]
 
 [ext_resource type="Script" path="res://scripts/ui_router.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://scenes/ui/map_hud.tscn" id="2_maphud"]
@@ -7,6 +7,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/deck_screen.tscn" id="5_deck"]
 [ext_resource type="PackedScene" path="res://scenes/ui/mission_result.tscn" id="6_result"]
 [ext_resource type="PackedScene" path="res://scenes/ui/combat_screen.tscn" id="7_combat"]
+[ext_resource type="PackedScene" path="res://scenes/ui/market_screen.tscn" id="8_market"]
+[ext_resource type="PackedScene" path="res://scenes/ui/level_up_screen.tscn" id="9_levelup"]
 
 [node name="UIRouter" type="CanvasLayer"]
 layer = 20
@@ -26,5 +28,11 @@ visible = false
 [node name="DeckScreen" parent="." instance=ExtResource("5_deck")]
 visible = false
 
+[node name="MarketScreen" parent="." instance=ExtResource("8_market")]
+visible = false
+
 [node name="CombatScreen" parent="." instance=ExtResource("7_combat")]
+visible = false
+
+[node name="LevelUpScreen" parent="." instance=ExtResource("9_levelup")]
 visible = false
