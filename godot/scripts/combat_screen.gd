@@ -484,27 +484,43 @@ func _animate_enemy_death(panel: Control, dmg: int) -> void:
 	var shadow: TextureRect = panel.find_child("Shadow", true, false)
 	if spr:
 		_spawn_dmg_number(spr, dmg)
-		_spawn_fx_at(spr, "blood", Vector2(40, 100), 0.5)
-	if actor == null:
+		_spawn_fx_at(spr, "impact", Vector2(40, 90), 0.3)
+		_spawn_fx_at(spr, "blood", Vector2(40, 100), 0.55)
+	if actor == null or spr == null:
 		await get_tree().create_timer(0.35).timeout
 		return
-	# Caída al suelo: gira y baja hasta la sombra, luego desaparece.
+	var tws := create_tween()
+	tws.tween_property(spr, "modulate", Color(1.0, 0.25, 0.25), 0.06)
+	tws.tween_property(spr, "position", spr.position + Vector2(16, -6), 0.08)
+	tws.tween_property(spr, "modulate", Color(0.7, 0.7, 0.7), 0.1)
+	await tws.finished
 	spr.pivot_offset = Vector2(spr.size.x * 0.5, spr.size.y)
+	var twb := create_tween()
+	twb.set_parallel(true)
+	twb.tween_property(spr, "scale", Vector2(1.12, 0.82), 0.12)
+	twb.tween_property(spr, "rotation_degrees", 18.0, 0.12)
+	await twb.finished
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(spr, "rotation_degrees", 82.0, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tw.tween_property(spr, "position", Vector2(18, 70), 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_property(spr, "modulate", Color(0.55, 0.55, 0.55, 1.0), 0.25)
+	tw.tween_property(spr, "rotation_degrees", 92.0, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tw.tween_property(spr, "position", Vector2(22, 88), 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(spr, "scale", Vector2(1.05, 0.7), 0.38)
+	tw.tween_property(spr, "modulate", Color(0.45, 0.45, 0.48, 1.0), 0.3)
 	if shadow:
-		tw.tween_property(shadow, "modulate:a", 0.25, 0.42)
-		tw.tween_property(shadow, "scale", Vector2(1.35, 0.7), 0.42)
+		tw.tween_property(shadow, "modulate:a", 0.2, 0.38)
+		tw.tween_property(shadow, "scale", Vector2(1.5, 0.55), 0.38)
 	await tw.finished
-	await get_tree().create_timer(0.28).timeout
+	_spawn_fx_world(spr.global_position + Vector2(40, 20), "impact", 0.25, Vector2(0.7, 0.7), Color(0.6, 0.6, 0.6))
+	var twr := create_tween()
+	twr.tween_property(spr, "position:y", spr.position.y - 8.0, 0.08)
+	twr.tween_property(spr, "position:y", spr.position.y, 0.1)
+	await twr.finished
+	await get_tree().create_timer(0.35).timeout
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
-	tw2.tween_property(panel, "modulate:a", 0.0, 0.45)
+	tw2.tween_property(panel, "modulate:a", 0.0, 0.5)
 	if shadow:
-		tw2.tween_property(shadow, "modulate:a", 0.0, 0.45)
+		tw2.tween_property(shadow, "modulate:a", 0.0, 0.5)
 	await tw2.finished
 
 
@@ -544,9 +560,13 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 
 	var name_l := Label.new()
 	name_l.text = str(e.get("name", "Sospechoso"))
+	if selected and int(e.get("hp", 0)) > 0:
+		name_l.text = "▸ " + name_l.text
+		name_l.add_theme_color_override("font_color", Color(0.55, 0.9, 1.0))
+	else:
+		name_l.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_l.add_theme_font_size_override("font_size", 12)
-	name_l.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 	wrap.add_child(name_l)
 
 	# Barras ENCIMA del cuerpo (no bajo los pies) para no flotar
@@ -618,12 +638,6 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	elif ResourceLoader.exists(str(e.get("sprite", ""))):
 		tex.texture = load(str(e.get("sprite", "")))
 	btn.add_child(tex)
-	if selected and int(e.get("hp", 0)) > 0:
-		var ring := ColorRect.new()
-		ring.color = Color(0.3, 0.85, 1.0, 0.12)
-		ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		btn.add_child(ring)
 	btn.pressed.connect(func(): CombatState.select_enemy(index))
 	actor.add_child(btn)
 	wrap.add_child(actor)
@@ -804,51 +818,94 @@ func _hero_guard_pulse() -> void:
 		await get_tree().create_timer(0.2).timeout
 		return
 	var base := _player_base_pos
+	var tw0 := create_tween()
+	tw0.tween_property(player_sprite, "scale", Vector2(1.05, 0.92), 0.08)
+	if _player_shadow:
+		tw0.parallel().tween_property(_player_shadow, "scale", Vector2(1.15, 0.88), 0.08)
+	await tw0.finished
 	var tw := create_tween()
-	tw.tween_property(_player_actor, "position", base + Vector2(-14, 0), 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_player_actor, "modulate", Color(0.6, 0.88, 1.0), 0.08)
-	_spawn_fx_at(player_sprite, "impact", Vector2(70, 120), 0.28, Color(0.5, 0.85, 1.0))
-	tw.tween_property(_player_actor, "position", base, 0.2).set_trans(Tween.TRANS_SINE)
-	tw.parallel().tween_property(_player_actor, "modulate", Color.WHITE, 0.2)
+	tw.set_parallel(true)
+	tw.tween_property(_player_actor, "position", base + Vector2(-28, 0), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(player_sprite, "modulate", Color(0.55, 0.88, 1.0), 0.12)
+	tw.tween_property(player_sprite, "scale", Vector2(0.98, 1.04), 0.18)
 	await tw.finished
+	_spawn_fx_at(player_sprite, "impact", Vector2(70, 110), 0.35, Color(0.45, 0.85, 1.0))
+	_spawn_fx_at(player_sprite, "impact", Vector2(50, 140), 0.4, Color(0.7, 0.95, 1.0))
+	await _screen_pulse(Color(0.35, 0.75, 1.0, 0.28))
+	var shield := ColorRect.new()
+	shield.color = Color(0.35, 0.75, 1.0, 0.35)
+	shield.size = Vector2(40, 40)
+	shield.pivot_offset = Vector2(20, 20)
+	shield.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shield.z_index = 92
+	_fx_layer.add_child(shield)
+	shield.global_position = player_sprite.global_position + Vector2(60, 80)
+	var tws := create_tween()
+	tws.set_parallel(true)
+	tws.tween_property(shield, "scale", Vector2(4.2, 5.0), 0.32).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tws.tween_property(shield, "modulate:a", 0.0, 0.32)
+	await tws.finished
+	if is_instance_valid(shield):
+		shield.queue_free()
+	var tw2 := create_tween()
+	tw2.set_parallel(true)
+	tw2.tween_property(_player_actor, "position", base, 0.22).set_trans(Tween.TRANS_SINE)
+	tw2.tween_property(player_sprite, "modulate", Color.WHITE, 0.22)
+	tw2.tween_property(player_sprite, "scale", Vector2.ONE, 0.22)
+	if _player_shadow:
+		tw2.tween_property(_player_shadow, "scale", Vector2.ONE, 0.22)
+	await tw2.finished
 
 
 func _hero_attack_sequence(def: Dictionary) -> void:
-	_apply_hero_pose("shoot", 0.75)
+	_apply_hero_pose("shoot", 0.9)
 	if _player_actor == null:
 		await get_tree().create_timer(0.25).timeout
 		return
 	var base := _player_base_pos
-	# Anticipación + lunge horizontal (pies en el suelo)
 	var tw0 := create_tween()
-	tw0.tween_property(_player_actor, "position", base + Vector2(-10, 2), 0.08)
+	tw0.set_parallel(true)
+	tw0.tween_property(_player_actor, "position", base + Vector2(-18, 3), 0.12).set_trans(Tween.TRANS_CUBIC)
+	tw0.tween_property(player_sprite, "rotation_degrees", -4.0, 0.12)
+	tw0.tween_property(player_sprite, "scale", Vector2(1.08, 0.9), 0.12)
 	if _player_shadow:
-		tw0.parallel().tween_property(_player_shadow, "scale", Vector2(1.12, 0.9), 0.08)
+		tw0.tween_property(_player_shadow, "scale", Vector2(1.18, 0.85), 0.12)
 	await tw0.finished
 	var tw := create_tween()
-	tw.tween_property(_player_actor, "position", base + Vector2(58, 0), 0.16).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.set_parallel(true)
+	tw.tween_property(_player_actor, "position", base + Vector2(78, -2), 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(player_sprite, "rotation_degrees", 6.0, 0.14)
+	tw.tween_property(player_sprite, "scale", Vector2(0.95, 1.08), 0.14)
 	if _player_shadow:
-		tw.parallel().tween_property(_player_shadow, "scale", Vector2(1.28, 0.82), 0.16)
+		tw.tween_property(_player_shadow, "scale", Vector2(1.35, 0.75), 0.14)
 	await tw.finished
-
-	var muzzle_pos := player_sprite.global_position + Vector2(130, 120)
-	_spawn_fx_world(muzzle_pos, "muzzle", 0.2, Vector2(1.15, 1.15))
-	await _screen_pulse(Color(1.0, 0.85, 0.35, 0.18))
-
+	var muzzle_pos := player_sprite.global_position + Vector2(135, 115)
+	_spawn_fx_world(muzzle_pos, "muzzle", 0.16, Vector2(1.35, 1.35))
+	await get_tree().create_timer(0.04).timeout
+	_spawn_fx_world(muzzle_pos + Vector2(8, -4), "muzzle", 0.14, Vector2(0.9, 0.9))
+	await _screen_pulse(Color(1.0, 0.82, 0.3, 0.26))
 	var enemy_node := _selected_enemy_sprite()
 	var hit_pos := get_viewport_rect().size * Vector2(0.72, 0.48)
 	if enemy_node and is_instance_valid(enemy_node):
 		hit_pos = enemy_node.global_position + Vector2(70, enemy_node.size.y * 0.55)
 	await _fly_tracer(muzzle_pos, hit_pos)
-	_spawn_fx_world(hit_pos, "impact", 0.28, Vector2(1.3, 1.3))
-	_spawn_fx_world(hit_pos + Vector2(8, 6), "blood", 0.35)
+	_spawn_fx_world(hit_pos, "impact", 0.28, Vector2(1.55, 1.55))
+	_spawn_fx_world(hit_pos + Vector2(12, -8), "impact", 0.22, Vector2(0.85, 0.85))
+	_spawn_fx_world(hit_pos + Vector2(6, 10), "blood", 0.4, Vector2(1.25, 1.25))
 	if enemy_node and is_instance_valid(enemy_node):
-		_hit_actor(enemy_node, maxi(1, int(def.get("damage", 8))), true)
-
+		await _hit_actor_heavy(enemy_node, maxi(1, int(def.get("damage", 8))), true)
+	var twr := create_tween()
+	twr.set_parallel(true)
+	twr.tween_property(_player_actor, "position", base + Vector2(40, 0), 0.08)
+	twr.tween_property(player_sprite, "rotation_degrees", -2.0, 0.08)
+	await twr.finished
 	var tw2 := create_tween()
-	tw2.tween_property(_player_actor, "position", base, 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw2.set_parallel(true)
+	tw2.tween_property(_player_actor, "position", base, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw2.tween_property(player_sprite, "rotation_degrees", 0.0, 0.24)
+	tw2.tween_property(player_sprite, "scale", Vector2.ONE, 0.24)
 	if _player_shadow:
-		tw2.parallel().tween_property(_player_shadow, "scale", Vector2.ONE, 0.22)
+		tw2.tween_property(_player_shadow, "scale", Vector2.ONE, 0.24)
 	await tw2.finished
 
 
@@ -878,23 +935,53 @@ func _enemy_lunge_attack(index: int) -> void:
 		return
 	var base := actor.position
 	var tw0 := create_tween()
-	tw0.tween_property(actor, "position", base + Vector2(8, 1), 0.07)
+	tw0.set_parallel(true)
+	tw0.tween_property(actor, "position", base + Vector2(14, 2), 0.1)
+	tw0.tween_property(spr, "rotation_degrees", 5.0, 0.1)
+	tw0.tween_property(spr, "scale", Vector2(1.06, 0.92), 0.1)
 	await tw0.finished
 	var tw := create_tween()
-	tw.tween_property(actor, "position", base + Vector2(-48, 0), 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.set_parallel(true)
+	tw.tween_property(actor, "position", base + Vector2(-62, -2), 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(spr, "rotation_degrees", -7.0, 0.14)
+	tw.tween_property(spr, "scale", Vector2(0.94, 1.08), 0.14)
 	if shadow:
-		tw.parallel().tween_property(shadow, "scale", Vector2(1.22, 0.82), 0.15)
+		tw.tween_property(shadow, "scale", Vector2(1.3, 0.78), 0.14)
 	await tw.finished
 	var muzzle := spr.global_position + Vector2(24, spr.size.y * 0.48)
-	_spawn_fx_world(muzzle, "muzzle", 0.18)
+	_spawn_fx_world(muzzle, "muzzle", 0.16, Vector2(1.2, 1.2))
+	await get_tree().create_timer(0.03).timeout
+	_spawn_fx_world(muzzle + Vector2(-6, 3), "muzzle", 0.12, Vector2(0.8, 0.8))
 	var target := player_sprite.global_position + Vector2(90, player_sprite.size.y * 0.55)
 	await _fly_tracer(muzzle, target)
-	_spawn_fx_world(target, "impact", 0.25, Vector2(1.15, 1.15))
+	_spawn_fx_world(target, "impact", 0.26, Vector2(1.35, 1.35))
+	_spawn_fx_world(target + Vector2(8, 6), "blood", 0.3)
 	var tw2 := create_tween()
-	tw2.tween_property(actor, "position", base, 0.18).set_trans(Tween.TRANS_SINE)
+	tw2.set_parallel(true)
+	tw2.tween_property(actor, "position", base, 0.2).set_trans(Tween.TRANS_SINE)
+	tw2.tween_property(spr, "rotation_degrees", 0.0, 0.2)
+	tw2.tween_property(spr, "scale", Vector2.ONE, 0.2)
 	if shadow:
-		tw2.parallel().tween_property(shadow, "scale", Vector2.ONE, 0.18)
+		tw2.tween_property(shadow, "scale", Vector2.ONE, 0.2)
 	await tw2.finished
+
+
+func _hit_actor_heavy(node: CanvasItem, dmg: int, knock_right: bool) -> void:
+	if not is_instance_valid(node):
+		return
+	var base: Vector2 = node.position
+	var dir := 1.0 if knock_right else -1.0
+	var tw := create_tween()
+	tw.tween_property(node, "modulate", Color(1.0, 0.2, 0.2), 0.04)
+	tw.parallel().tween_property(node, "rotation_degrees", 8.0 * dir, 0.08)
+	tw.tween_property(node, "position", base + Vector2(28 * dir, -14), 0.1).set_trans(Tween.TRANS_BACK)
+	tw.tween_property(node, "position", base + Vector2(-10 * dir, 4), 0.1)
+	tw.parallel().tween_property(node, "rotation_degrees", -3.0 * dir, 0.1)
+	tw.tween_property(node, "position", base, 0.14)
+	tw.parallel().tween_property(node, "rotation_degrees", 0.0, 0.14)
+	tw.parallel().tween_property(node, "modulate", Color.WHITE, 0.14)
+	_spawn_dmg_number(node, dmg)
+	await tw.finished
 
 
 func _enemy_wrap(index: int) -> Control:

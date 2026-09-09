@@ -292,11 +292,11 @@ func _playtest() -> void:
 		errors.append("player did not move")
 	print("PLAYTEST player moved ", p0, "->", player.global_position)
 
-	# Marcadores de alerta en mapa desactivados
+	# Marcadores de alerta en mapa activos
 	var markers = get_tree().get_nodes_in_group("mission_marker")
 	print("PLAYTEST markers group=", markers.size())
-	if markers.size() > 0:
-		errors.append("map alerts should be disabled")
+	if markers.size() < 1:
+		errors.append("map alerts should appear")
 
 	# 8) Day/night + mission art
 	print("PLAYTEST tod=", GameState.time_of_day())

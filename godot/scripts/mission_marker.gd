@@ -70,6 +70,22 @@ func _draw() -> void:
 	var bob_y := sin(_bob) * 2.0
 	var center := Vector2(0, -18 + bob_y)
 
+	# Sombra en suelo (como la patrulla)
+	draw_circle(Vector2(0, 8), 14.0, Color(0, 0, 0, 0.32))
+
+	# Luces de alerta azul/roja parpadeantes (mismo lenguaje que patrulla)
+	if _status == "open":
+		var t := sin(_bob * 4.2)
+		var blue_on := t >= 0.0
+		var blue := Color(0.15, 0.45, 1.0, 1.0)
+		var red := Color(1.0, 0.12, 0.18, 1.0)
+		var left_col := blue if blue_on else Color(0.15, 0.18, 0.25, 0.45)
+		var right_col := red if not blue_on else Color(0.15, 0.18, 0.25, 0.45)
+		draw_rect(Rect2(-9, 3, 7, 4), left_col, true)
+		draw_rect(Rect2(2, 3, 7, 4), right_col, true)
+		draw_circle(Vector2(-5, 5), 9.0, Color(left_col.r, left_col.g, left_col.b, 0.35))
+		draw_circle(Vector2(5, 5), 9.0, Color(right_col.r, right_col.g, right_col.b, 0.35))
+
 	draw_circle(Vector2(0, 4), 26.0 if _selected else 18.0, Color(accent.r, accent.g, accent.b, 0.22))
 
 	var radius := 38.0 if _selected else 32.0

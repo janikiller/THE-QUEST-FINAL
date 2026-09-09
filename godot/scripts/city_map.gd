@@ -39,6 +39,7 @@ func _ready() -> void:
 	GameState.selection_changed.connect(_on_selection_changed)
 	GameState.time_changed.connect(_on_time_changed)
 	_apply_tod(GameState.time_of_day(), true)
+	call_deferred("_sync_mission_markers")
 
 
 func _ensure_b_sprite() -> void:
@@ -137,8 +138,20 @@ func _spawn_patrol_nodes() -> void:
 
 
 func _on_mission_added(mission: Dictionary) -> void:
-	# Sin alertas en el mapa: las misiones se abren desde el menú (M).
-	pass
+	if _markers.has(mission["id"]):
+		_markers[mission["id"]].refresh(mission)
+		return
+	var marker: Node2D = MissionMarkerScene.instantiate()
+	markers_layer.add_child(marker)
+	marker.setup(mission)
+	marker.pressed.connect(_on_marker_pressed)
+	_markers[mission["id"]] = marker
+
+
+func _sync_mission_markers() -> void:
+	## Por si el spawner creó misiones antes de conectar señales.
+	for mission in GameState.active_missions.values():
+		_on_mission_added(mission)
 
 
 func _on_mission_updated(mission: Dictionary) -> void:
