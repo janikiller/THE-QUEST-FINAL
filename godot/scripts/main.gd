@@ -113,7 +113,7 @@ func _enemy_cards_shot() -> void:
 	# Deja ver el turno 2 un momento (evidencia / grabación)
 	await get_tree().create_timer(0.6).timeout
 	# Menú grande de mazo enemigo en combate
-	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 	if combat and combat.has_method("_open_enemy_card_menu"):
 		combat._open_enemy_card_menu(0)
 		await get_tree().create_timer(0.45).timeout
