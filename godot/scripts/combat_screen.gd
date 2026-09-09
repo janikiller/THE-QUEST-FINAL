@@ -1009,11 +1009,21 @@ func _make_enemy_intent_card(e: Dictionary) -> Control:
 	badge.add_child(badge_l)
 
 	var next_l := Label.new()
-	next_l.text = "SIGUIENTE"
+	match kind:
+		"block":
+			next_l.text = "DEFENSA"
+		"heal":
+			next_l.text = "CURA"
+		"flee":
+			next_l.text = "HUIDA"
+		"weaken", "vulnerable", "stun", "status":
+			next_l.text = "ESTADO"
+		_:
+			next_l.text = "ATAQUE"
 	next_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	next_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	next_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	next_l.add_theme_font_size_override("font_size", 8)
+	next_l.add_theme_font_size_override("font_size", 9)
 	next_l.add_theme_color_override("font_color", accent)
 	top.add_child(next_l)
 
