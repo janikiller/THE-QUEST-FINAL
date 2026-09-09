@@ -328,22 +328,56 @@ func _playtest() -> void:
 		errors.append("player did not move")
 	print("PLAYTEST player moved ", p0, "->", player.global_position)
 
-	# Marcadores de alerta en mapa activos
+	# Marcadores de alerta en mapa activos (máx. 3 por franja)
 	var markers = get_tree().get_nodes_in_group("mission_marker")
 	print("PLAYTEST markers group=", markers.size())
 	if markers.size() < 1:
 		errors.append("map alerts should appear")
+	if markers.size() > 3:
+		errors.append("too many map missions for period")
+
+	# Ciclo día → atardecer → noche con 3 misiones
+	GameState.set_clock(10, 0)
+	GameState.period_missions_done = 0
+	for _i in 3:
+		GameState.advance_after_mission({"period": "day"})
+	print("PLAYTEST after 3 day missions tod=", GameState.time_of_day(), " clock=%02d:%02d" % [GameState.hour, GameState.minute])
+	if GameState.time_of_day() != "dusk":
+		errors.append("3 day missions should reach dusk")
+	for _i in 3:
+		GameState.advance_after_mission({"period": "dusk"})
+	print("PLAYTEST after 3 dusk missions tod=", GameState.time_of_day(), " clock=%02d:%02d" % [GameState.hour, GameState.minute])
+	if GameState.time_of_day() != "night":
+		errors.append("3 dusk missions should reach night")
+	# Noche más dura en combate
+	GameState.set_clock(22, 0)
+	await get_tree().create_timer(0.3).timeout
+	var night_mid := ""
+	for m in GameState.active_missions.values():
+		if str(m.get("period", "")) == "night" and str(m.get("status", "")) == "open":
+			night_mid = str(m["id"])
+			break
+	if night_mid == "" and not GameState.active_missions.is_empty():
+		night_mid = str(GameState.active_missions.keys()[0])
+	if night_mid != "":
+		var cfg_n := GameState.build_combat_config(night_mid, "alpha")
+		var ehp := 0
+		for e in cfg_n.get("enemies", []):
+			ehp = maxi(ehp, int(e.get("hp", 0)))
+		print("PLAYTEST night combat enemies=", cfg_n.get("enemies", []).size(), " max_hp=", ehp)
+		if cfg_n.get("enemies", []).size() < 3:
+			errors.append("night should be harder (3 enemies)")
+		if ehp < 40:
+			errors.append("night enemy hp too low")
 
 	# 8) Day/night + mission art
 	print("PLAYTEST tod=", GameState.time_of_day())
-	GameState.hour = 18
-	GameState.emit_time()
+	GameState.set_clock(18, 0)
 	await get_tree().process_frame
 	print("PLAYTEST tod dusk=", GameState.time_of_day())
 	if GameState.time_of_day() != "dusk":
 		errors.append("dusk tod failed")
-	GameState.hour = 22
-	GameState.emit_time()
+	GameState.set_clock(22, 0)
 	await get_tree().process_frame
 	print("PLAYTEST tod night=", GameState.time_of_day())
 	if GameState.time_of_day() != "night":
