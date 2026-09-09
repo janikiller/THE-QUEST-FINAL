@@ -274,12 +274,13 @@ func grant_boss_rewards(patrol_id: String = "alpha") -> Array:
 	add_prestige(5)
 	if active_boss_id != "" and active_boss_id not in defeated_bosses:
 		defeated_bosses.append(active_boss_id)
-	boss_defeated = defeated_bosses.size() >= CombatRoster.bosses.size() and not CombatRoster.bosses.is_empty()
+	# Tras el primer boss: legendarias en mercado. La cacería de jefes sigue.
+	boss_defeated = true
 	boss_spawned = false
 	boss_mission_id = ""
 	var done_id := active_boss_id
 	active_boss_id = ""
-	RadioBus.push("Boss derrotado (%s). Quedan %d jefes." % [
+	RadioBus.push("Boss derrotado (%s). Jefes restantes: %d." % [
 		done_id if done_id != "" else "?",
 		maxi(0, CombatRoster.bosses.size() - defeated_bosses.size())
 	], "resolve")
@@ -906,10 +907,18 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 		var s: Dictionary = suspects[i]
 		var e_is_boss := is_boss and (i == 0 or bool(s.get("is_boss", false)))
 		var ehp := int(s.get("hp_bonus", 0))
-		if ehp <= 0:
-			ehp = base_hp + i * 3 + (4 if period == "night" else 0)
-		elif not e_is_boss:
-			ehp = int(s.get("hp_bonus", base_hp)) + (4 if period == "night" else 0)
+		if e_is_boss:
+			if ehp <= 0:
+				ehp = base_hp + 40
+		else:
+			if ehp <= 0:
+				ehp = base_hp + i * 3
+			if period == "night":
+				ehp += 14
+			elif period == "dusk":
+				ehp += 4
+			else:
+				ehp += i * 2
 		var ename := str(s.get("name", s.get("alias", "Sospechoso")))
 		var spr := str(s.get("full", ""))
 		var thumb := str(s.get("thumb", ""))
