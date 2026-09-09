@@ -108,8 +108,10 @@ func _enemy_cards_shot() -> void:
 	# Fuerza un turno enemigo jugando cartas
 	if CombatState.is_active():
 		CombatState.end_player_turn()
-		await get_tree().create_timer(0.9).timeout
+		await get_tree().create_timer(1.2).timeout
 	await _save_shot("enemigos_cartas_jugaron")
+	# Deja ver el turno 2 un momento (evidencia / grabación)
+	await get_tree().create_timer(1.4).timeout
 	print("ENEMY_CARDS_SHOT_OK")
 	get_tree().quit(0)
 
