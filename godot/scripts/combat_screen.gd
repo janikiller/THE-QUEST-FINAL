@@ -155,11 +155,11 @@ func _setup_player_actor() -> void:
 	player_sprite.offset_left = 0
 	player_sprite.offset_right = 0
 	player_sprite.offset_top = 0
-	player_sprite.offset_bottom = GROUND_Y - 8.0
-	player_sprite.custom_minimum_size = Vector2(200, GROUND_Y - 8.0)
+	player_sprite.offset_bottom = GROUND_Y + 4.0
+	player_sprite.custom_minimum_size = Vector2(230, GROUND_Y + 4.0)
 	player_sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	player_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	player_sprite.position = Vector2(0, 8)
+	player_sprite.position = Vector2(0, 0)
 	_player_shadow = TextureRect.new()
 	_player_shadow.name = "Shadow"
 	_player_shadow.texture = _fx_tex("shadow")
@@ -609,7 +609,7 @@ func _animate_enemy_death(panel: Control, dmg: int) -> void:
 func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	var is_boss := bool(e.get("is_boss", false))
 	var wrap := VBoxContainer.new()
-	wrap.custom_minimum_size = Vector2(210 if is_boss else 168, 380 if is_boss else 340)
+	wrap.custom_minimum_size = Vector2(240 if is_boss else 196, 400 if is_boss else 360)
 	wrap.alignment = BoxContainer.ALIGNMENT_END
 	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	wrap.add_theme_constant_override("separation", 4)
@@ -701,9 +701,9 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 		bars.add_child(blk_t)
 	wrap.add_child(bars)
 
-	var actor_w := 210.0 if is_boss else 160.0
-	var actor_h := 320.0 if is_boss else 250.0
-	var ground_y := GROUND_Y + (28.0 if is_boss else 0.0)
+	var actor_w := 240.0 if is_boss else 190.0
+	var actor_h := 360.0 if is_boss else 300.0
+	var ground_y := GROUND_Y + (36.0 if is_boss else 8.0)
 	var actor := Control.new()
 	actor.name = "ActorSlot"
 	actor.custom_minimum_size = Vector2(actor_w, actor_h)
@@ -715,10 +715,10 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shadow.modulate = Color(0, 0, 0, 0.9)
-	shadow.position = Vector2(10, ground_y - 6.0)
-	shadow.size = Vector2(actor_w - 20.0, 42 if is_boss else 36)
-	shadow.pivot_offset = Vector2((actor_w - 20.0) * 0.5, 18)
+	shadow.modulate = Color(0, 0, 0, 0.78)
+	shadow.position = Vector2(18, ground_y - 4.0)
+	shadow.size = Vector2(actor_w - 36.0, 34 if is_boss else 28)
+	shadow.pivot_offset = Vector2((actor_w - 36.0) * 0.5, 14)
 	actor.add_child(shadow)
 
 	var btn := Button.new()
@@ -727,27 +727,15 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	btn.size = Vector2(actor_w, ground_y)
 	btn.flat = true
 	btn.clip_contents = false
-	# Halo suave detrás del sprite (cariño anime)
-	var aura := ColorRect.new()
-	aura.name = "Aura"
-	aura.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	aura.position = Vector2(actor_w * 0.18, ground_y * 0.22)
-	aura.size = Vector2(actor_w * 0.64, ground_y * 0.62)
-	if is_boss:
-		aura.color = Color(1.0, 0.55, 0.15, 0.18)
-	elif selected:
-		aura.color = Color(0.35, 0.75, 1.0, 0.16)
-	else:
-		aura.color = Color(0.2, 0.35, 0.55, 0.10)
-	btn.add_child(aura)
 	var tex := TextureRect.new()
 	tex.name = "EnemySprite"
-	tex.position = Vector2(0, 4 if is_boss else 18)
-	tex.size = Vector2(actor_w, ground_y - (4.0 if is_boss else 14.0))
+	# Anclar pies cerca del suelo, sprite más grande y limpio
+	tex.position = Vector2(0, 0)
+	tex.size = Vector2(actor_w, ground_y - 8.0)
 	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tex.pivot_offset = Vector2(actor_w * 0.5, (ground_y - 14.0) * 0.75)
+	tex.pivot_offset = Vector2(actor_w * 0.5, (ground_y - 8.0) * 0.82)
 	# Prioridad: sprite propio del enemigo (boss) → pack por índice
 	var sp := str(e.get("sprite", ""))
 	if sp == "" or not (ResourceLoader.exists(sp) or FileAccess.file_exists(sp)):
