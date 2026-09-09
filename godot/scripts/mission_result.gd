@@ -182,6 +182,16 @@ func _summary_bbcode(m: Dictionary, ok: bool) -> String:
 		lines.append("[color=#5be07a]✓ Unidades sin bajas[/color]")
 		lines.append("[color=#ffcc66]~ Evidencia parcial[/color]")
 	lines.append("")
+	lines.append("[color=#f0c45a]García Nv.%d — %d/%d XP[/color]" % [
+		GameState.hero_level, GameState.hero_xp, GameState.xp_to_next_level()
+	])
+	if CombatState.combat_xp_gained > 0:
+		lines.append("[color=#9ad0ff]+%d XP este combate (%d bajas)[/color]" % [
+			CombatState.combat_xp_gained, CombatState.combat_kills
+		])
+	if GameState.pending_level_packs > 0:
+		lines.append("[color=#ffd27a]¡Sobre de nivel pendiente! Elige cartas al cerrar.[/color]")
+	lines.append("")
 	lines.append(str(m.get("outcome_report", "")))
 	return "\n".join(lines)
 
