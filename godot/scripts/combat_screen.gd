@@ -333,11 +333,11 @@ func close() -> void:
 func _style_bottom_panel() -> void:
 	var bottom := get_node_or_null("Bottom") as MarginContainer
 	if bottom:
-		# Dos filas: cartas enemigas + tu mano
-		bottom.offset_top = -400.0
+		# Altura normal del menú — no media pantalla
+		bottom.offset_top = -260.0
 	var arena := get_node_or_null("Arena") as Control
 	if arena:
-		arena.offset_bottom = -400.0
+		arena.offset_bottom = -260.0
 	var panel := get_node_or_null("Bottom/BottomPanel")
 	if panel == null:
 		return
@@ -346,61 +346,54 @@ func _style_bottom_panel() -> void:
 	sb.border_color = Color(1, 1, 1, 0.08)
 	sb.set_border_width_all(1)
 	sb.set_corner_radius_all(16)
-	sb.content_margin_left = 14
-	sb.content_margin_right = 14
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
 	sb.content_margin_top = 8
 	sb.content_margin_bottom = 8
 	panel.add_theme_stylebox_override("panel", sb)
 
 
 func _ensure_enemy_hand_ui() -> void:
-	## Menú inferior grande: fila completa ELLOS encima de TU MANO (mismo tamaño de carta).
+	## Cartas enemigas en el hueco horizontal del menú (junto a TU MANO), sin subir la altura.
 	var bottom_row := get_node_or_null("Bottom/BottomPanel/BottomRow") as HBoxContainer
 	var hand_col := get_node_or_null("Bottom/BottomPanel/BottomRow/HandCol") as VBoxContainer
-	if hand_col == null:
+	if bottom_row == null:
 		return
-	# Quitar columna lateral antigua si existía
-	if bottom_row:
-		var old_col := bottom_row.get_node_or_null("EnemyHandCol")
-		if old_col:
-			bottom_row.remove_child(old_col)
-			old_col.free()
-	if _enemy_hand_label != null and is_instance_valid(_enemy_hand_label) and _enemy_hand_label.get_parent() == hand_col:
-		pass
-	elif hand_col.get_node_or_null("EnemyHandLabel") == null:
+	# Limpiar layout apilado antiguo dentro de HandCol
+	if hand_col:
+		for child_name in ["EnemyHandLabel", "EnemyHandRow", "PlayerHandLabel"]:
+			var junk := hand_col.get_node_or_null(child_name)
+			if junk:
+				hand_col.remove_child(junk)
+				junk.free()
+	var col := bottom_row.get_node_or_null("EnemyHandCol") as VBoxContainer
+	if col == null:
+		col = VBoxContainer.new()
+		col.name = "EnemyHandCol"
+		col.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		col.add_theme_constant_override("separation", 2)
+		bottom_row.add_child(col)
+		# Entre Piles y HandCol = el hueco vacío de la izquierda
+		if hand_col:
+			bottom_row.move_child(col, hand_col.get_index())
+	_enemy_hand_label = col.get_node_or_null("EnemyHandLabel") as Label
+	if _enemy_hand_label == null:
 		_enemy_hand_label = Label.new()
 		_enemy_hand_label.name = "EnemyHandLabel"
-		_enemy_hand_label.text = "ELLOS · SIGUIENTE CARTA"
-		_enemy_hand_label.add_theme_font_size_override("font_size", 12)
+		_enemy_hand_label.text = "ELLOS"
+		_enemy_hand_label.add_theme_font_size_override("font_size", 11)
 		_enemy_hand_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.38))
 		_enemy_hand_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		hand_col.add_child(_enemy_hand_label)
-		hand_col.move_child(_enemy_hand_label, 0)
-	else:
-		_enemy_hand_label = hand_col.get_node("EnemyHandLabel") as Label
-	if hand_col.get_node_or_null("EnemyHandRow") == null:
+		col.add_child(_enemy_hand_label)
+	_enemy_hand_row = col.get_node_or_null("EnemyHandRow") as HBoxContainer
+	if _enemy_hand_row == null:
 		_enemy_hand_row = HBoxContainer.new()
 		_enemy_hand_row.name = "EnemyHandRow"
 		_enemy_hand_row.alignment = BoxContainer.ALIGNMENT_CENTER
-		_enemy_hand_row.add_theme_constant_override("separation", 12)
-		_enemy_hand_row.custom_minimum_size = Vector2(0, 200)
-		hand_col.add_child(_enemy_hand_row)
-		hand_col.move_child(_enemy_hand_row, 1)
-	else:
-		_enemy_hand_row = hand_col.get_node("EnemyHandRow") as HBoxContainer
-	if hand_col.get_node_or_null("PlayerHandLabel") == null:
-		_hand_label = Label.new()
-		_hand_label.name = "PlayerHandLabel"
-		_hand_label.text = "TU MANO"
-		_hand_label.add_theme_font_size_override("font_size", 12)
-		_hand_label.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
-		_hand_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		hand_col.add_child(_hand_label)
-		if hand_row:
-			hand_col.move_child(_hand_label, hand_row.get_index())
-	else:
-		_hand_label = hand_col.get_node("PlayerHandLabel") as Label
-	hand_col.add_theme_constant_override("separation", 4)
+		_enemy_hand_row.add_theme_constant_override("separation", 8)
+		_enemy_hand_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		col.add_child(_enemy_hand_row)
+	_hand_label = null
 
 
 func _style_end_btn() -> void:
@@ -909,10 +902,7 @@ func _rebuild_enemy_hand(snap: Dictionary) -> void:
 		_enemy_hand_row.add_child(_make_bottom_enemy_card(def, str(e.get("name", "Sospechoso")), i))
 		shown += 1
 	if _enemy_hand_label:
-		if shown == 0:
-			_enemy_hand_label.text = "ELLOS · sin intent"
-		else:
-			_enemy_hand_label.text = "ELLOS · %d cartas (clic = mazo)" % shown
+		_enemy_hand_label.text = "ELLOS" if shown > 0 else "ELLOS · —"
 	if shown == 0:
 		var empty := Label.new()
 		empty.text = "—"
@@ -926,30 +916,30 @@ func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: i
 	var is_boss := str(def.get("id", "")).begins_with("boss_")
 	var accent := _enemy_kind_accent(kind, is_boss)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(136, 200)
+	panel.custom_minimum_size = Vector2(104, 168)
 	panel.clip_contents = true
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.07, 0.045, 0.05, 0.97)
 	sb.border_color = Color(accent.r, accent.g, accent.b, 0.95)
 	sb.set_border_width_all(2)
 	sb.border_width_top = 3
-	sb.set_corner_radius_all(12)
+	sb.set_corner_radius_all(10)
 	panel.add_theme_stylebox_override("panel", sb)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_right", 8)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_bottom", 8)
+	margin.add_theme_constant_override("margin_left", 6)
+	margin.add_theme_constant_override("margin_right", 6)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_bottom", 6)
 	panel.add_child(margin)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 3)
+	v.add_theme_constant_override("separation", 2)
 	margin.add_child(v)
 
 	var owner_l := Label.new()
 	owner_l.text = owner_name
 	owner_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	owner_l.add_theme_font_size_override("font_size", 10)
+	owner_l.add_theme_font_size_override("font_size", 9)
 	owner_l.add_theme_color_override("font_color", Color(0.85, 0.7, 0.6))
 	owner_l.clip_text = true
 	v.add_child(owner_l)
@@ -966,13 +956,13 @@ func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: i
 			badge.text = "→ HUIR"
 		_:
 			badge.text = "● ATK"
-	badge.add_theme_font_size_override("font_size", 11)
+	badge.add_theme_font_size_override("font_size", 10)
 	badge.add_theme_color_override("font_color", accent)
 	badge.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(badge)
 
 	var art := TextureRect.new()
-	art.custom_minimum_size = Vector2(0, 72)
+	art.custom_minimum_size = Vector2(0, 54)
 	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
