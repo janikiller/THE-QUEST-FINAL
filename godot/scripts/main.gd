@@ -1363,12 +1363,28 @@ func _playtest() -> void:
 		if not boss_named:
 			errors.append("boss combat missing EL CAPO")
 		var deck_pre := GameState.get_patrol_deck("alpha").size()
+		GameState.active_boss_id = "boss_01_capo"
 		var gained: Array = GameState.grant_boss_rewards("alpha")
 		print("PLAYTEST boss rewards=", gained)
-		if gained.size() < 2:
-			errors.append("boss should grant 2 legendaries")
-		if GameState.get_patrol_deck("alpha").size() < deck_pre + 2:
-			errors.append("legendaries not added to deck")
+		if gained.size() != 1:
+			errors.append("boss should grant 1 unique legendary")
+		if gained.is_empty() or str(gained[0]) != "juicio_final":
+			errors.append("Capo should grant juicio_final")
+		if GameState.get_patrol_deck("alpha").size() < deck_pre + 1:
+			errors.append("legendary not added to deck")
+		# Kits únicos: Capo no comparte moves con Viuda
+		var capo_pool: Array = CardDB.enemy_pool_for_boss("boss_01_capo")
+		var viuda_pool: Array = CardDB.enemy_pool_for_boss("boss_02_viuda")
+		var shared := 0
+		for cid in capo_pool:
+			if cid in viuda_pool and str(cid).begins_with("boss_"):
+				shared += 1
+		if shared > 0:
+			errors.append("boss signature kits should be unique")
+		if "boss_capo_orden" not in capo_pool:
+			errors.append("Capo missing signature move")
+		if "boss_viuda_beso" not in viuda_pool:
+			errors.append("Viuda missing signature move")
 		if not GameState.boss_defeated:
 			errors.append("boss_defeated flag missing")
 		if GameState.boss_spawned:

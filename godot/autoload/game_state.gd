@@ -446,31 +446,36 @@ func buy_card_for_patrol(patrol_id: String, card_id: String) -> bool:
 
 
 func grant_boss_rewards(patrol_id: String = "alpha") -> Array:
-	## Otorga 2 cartas legendarias al derrotar al boss activo.
-	var pool: Array = CardDB.boss_rewards.duplicate()
-	if pool.is_empty():
-		for c in CardDB.all_cards():
-			if CardDB.is_legendary(str(c.get("rarity", ""))):
-				pool.append(str(c.get("id", "")))
-	pool.shuffle()
+	## Otorga 1 carta legendaria única del boss derrotado.
 	var gained: Array = []
-	for i in mini(2, pool.size()):
-		var cid := str(pool[i])
+	var done_id := active_boss_id
+	var boss_def: Dictionary = CombatRoster.boss_by_id(done_id) if done_id != "" else {}
+	var cid := str(boss_def.get("legendary_reward", ""))
+	if cid == "" or CardDB.get_card(cid).is_empty():
+		var pool: Array = CardDB.boss_rewards.duplicate()
+		if pool.is_empty():
+			for c in CardDB.all_cards():
+				if CardDB.is_legendary(str(c.get("rarity", ""))):
+					pool.append(str(c.get("id", "")))
+		pool.shuffle()
+		if not pool.is_empty():
+			cid = str(pool[0])
+	if cid != "" and not CardDB.get_card(cid).is_empty():
 		add_card_to_deck(patrol_id, cid)
 		gained.append(cid)
 	add_credits(18)
 	add_prestige(5)
-	if active_boss_id != "" and active_boss_id not in defeated_bosses:
-		defeated_bosses.append(active_boss_id)
+	if done_id != "" and done_id not in defeated_bosses:
+		defeated_bosses.append(done_id)
 	# Tras el primer boss: legendarias en mercado. La cacería de jefes sigue.
 	boss_defeated = true
 	boss_spawned = false
 	boss_mission_id = ""
-	var done_id := active_boss_id
 	active_boss_id = ""
-	RadioBus.push("Boss derrotado (%s). Jefes restantes: %d. Próximo en 2 noches." % [
+	var leg_name := str(CardDB.get_card(cid).get("name", cid)) if cid != "" else "?"
+	RadioBus.push("Boss derrotado (%s). Legendaria: %s. Próximo jefe en 2 noches." % [
 		done_id if done_id != "" else "?",
-		maxi(0, CombatRoster.bosses.size() - defeated_bosses.size())
+		leg_name
 	], "resolve")
 	# Siguiente boss solo en la próxima noche par (2, 4, 6…).
 	return gained
@@ -541,6 +546,8 @@ func create_boss_mission(district: Dictionary, map_pos: Vector2) -> Dictionary:
 		"full": str(boss_def.get("sprite", "")),
 		"thumb": str(boss_def.get("portrait", "")),
 		"is_boss": true,
+		"boss_id": str(boss_def.get("id", "")),
+		"signature_move": str(boss_def.get("signature_move", "")),
 		"pose_attack": str(boss_def.get("pose_attack", "")),
 		"pose_hurt": str(boss_def.get("pose_hurt", "")),
 		"hp_bonus": int(boss_def.get("hp", 100)),
@@ -1120,6 +1127,7 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 					pose_hurt = str(edef.get("pose_hurt", ""))
 				if thumb == "":
 					thumb = str(edef.get("portrait", thumb))
+		var sig_move := str(s.get("signature_move", ""))
 		if e_is_boss:
 			# Completar poses desde roster si faltan
 			var bid := str(mission.get("boss_id", s.get("id", "")))
@@ -1130,6 +1138,8 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 				pose_atk = str(bdef.get("pose_attack", pose_atk))
 				pose_hurt = str(bdef.get("pose_hurt", pose_hurt))
 				thumb = str(bdef.get("portrait", thumb))
+				if sig_move == "":
+					sig_move = str(bdef.get("signature_move", ""))
 				if int(s.get("hp_bonus", 0)) > 0:
 					ehp = int(s.get("hp_bonus", ehp))
 		if spr == "" or not (ResourceLoader.exists(spr) or FileAccess.file_exists(spr)):
@@ -1154,6 +1164,7 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 			"is_boss": e_is_boss,
 			"role": str(s.get("role", s.get("archetype", "ataque"))),
 			"boss_id": str(s.get("boss_id", s.get("id", ""))),
+			"signature_move": sig_move,
 			"card_pool": s.get("card_pool", []),
 		})
 	if enemies.is_empty():

@@ -256,7 +256,9 @@
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_01_capo_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_01_capo.png",
 			"day_min": 2,
-			"night_min": 2
+			"night_min": 2,
+			"signature_move": "boss_capo_orden",
+			"legendary_reward": "juicio_final"
 		},
 		{
 			"id": "boss_02_viuda",
@@ -271,7 +273,9 @@
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_02_viuda_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_02_viuda.png",
 			"day_min": 4,
-			"night_min": 4
+			"night_min": 4,
+			"signature_move": "boss_viuda_beso",
+			"legendary_reward": "avatar_carmesi"
 		},
 		{
 			"id": "boss_03_fantasma",
@@ -286,7 +290,9 @@
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_03_fantasma_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_03_fantasma.png",
 			"day_min": 6,
-			"night_min": 6
+			"night_min": 6,
+			"signature_move": "boss_fantasma_tiro",
+			"legendary_reward": "corte_absoluto"
 		},
 		{
 			"id": "boss_04_veneno",
@@ -301,7 +307,9 @@
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_04_veneno_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_04_veneno.png",
 			"day_min": 8,
-			"night_min": 8
+			"night_min": 8,
+			"signature_move": "boss_veneno_nube",
+			"legendary_reward": "paradoja"
 		},
 		{
 			"id": "boss_05_titan",
@@ -316,7 +324,9 @@
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_05_titan_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_05_titan.png",
 			"day_min": 10,
-			"night_min": 10
+			"night_min": 10,
+			"signature_move": "boss_titan_golpe",
+			"legendary_reward": "lluvia_meteoros"
 		},
 		{
 			"id": "boss_06_sombra",
@@ -331,7 +341,9 @@
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_06_sombra_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_06_sombra.png",
 			"day_min": 12,
-			"night_min": 12
+			"night_min": 12,
+			"signature_move": "boss_sombra_corte",
+			"legendary_reward": "rey_sombras"
 		},
 		{
 			"id": "boss_07_rey_puerto",
@@ -346,7 +358,9 @@
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_07_rey_puerto_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_07_rey_puerto.png",
 			"day_min": 14,
-			"night_min": 14
+			"night_min": 14,
+			"signature_move": "boss_rey_garfio",
+			"legendary_reward": "despertar_caos"
 		},
 		{
 			"id": "boss_08_zero",
@@ -361,7 +375,9 @@
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_08_zero_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_08_zero.png",
 			"day_min": 16,
-			"night_min": 16
+			"night_min": 16,
+			"signature_move": "boss_zero_hack",
+			"legendary_reward": "infinito"
 		},
 		{
 			"id": "boss_09_fuego",
@@ -376,7 +392,9 @@
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_09_fuego_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_09_fuego.png",
 			"day_min": 18,
-			"night_min": 18
+			"night_min": 18,
+			"signature_move": "boss_fuego_llamarada",
+			"legendary_reward": "segundo_latido"
 		},
 		{
 			"id": "boss_10_coronel",
@@ -391,7 +409,9 @@
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_10_coronel_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_10_coronel.png",
 			"day_min": 20,
-			"night_min": 20
+			"night_min": 20,
+			"signature_move": "boss_coronel_rafaga",
+			"legendary_reward": "ley_marcial"
 		}
 	],
 	"arenas": [

@@ -37,7 +37,9 @@
     "paradoja",
     "rey_sombras",
     "corte_absoluto",
-    "infinito"
+    "infinito",
+    "segundo_latido",
+    "ley_marcial"
   ],
   "market_exclude": [
     "punetazo",
@@ -604,6 +606,22 @@
       "effect": "cada carta roba 1",
       "description": "Cada carta jugada roba otra este turno.",
       "price": 16
+    },
+    {
+      "id": "ley_marcial",
+      "name": "Ley Marcial",
+      "rarity": "legendaria",
+      "cost": 3,
+      "type": "ataque",
+      "damage": 12,
+      "hits": 2,
+      "block": 10,
+      "target": "enemy",
+      "art": "res://assets/combat/anime/cards/shotgun.png",
+      "icon": "res://assets/combat/anime/cards/shotgun.png",
+      "effect": "12×2 · +10 defensa",
+      "description": "Disciplina absoluta: disparas y te atrincheras.",
+      "price": 18
     }
   ]
 }

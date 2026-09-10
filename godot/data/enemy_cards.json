@@ -161,30 +161,6 @@
       "icon": "res://assets/combat/anime/cards/smoke.png"
     },
     {
-      "id": "boss_barrage",
-      "name": "Ráfaga de Jefe",
-      "kind": "attack",
-      "damage": 6,
-      "hits": 3,
-      "target": "player",
-      "effect": "6×3 daño",
-      "description": "Descarga de élite.",
-      "art": "res://assets/combat/anime/cards/shotgun.png",
-      "icon": "res://assets/combat/anime/cards/shotgun.png"
-    },
-    {
-      "id": "boss_ironwall",
-      "name": "Muro de Hierro",
-      "kind": "block",
-      "block": 18,
-      "heal": 6,
-      "target": "self",
-      "effect": "+18 defensa · cura 6",
-      "description": "Defensa de jefe.",
-      "art": "res://assets/combat/anime/cards/barrier.png",
-      "icon": "res://assets/combat/anime/cards/barrier.png"
-    },
-    {
       "id": "boss_capo_orden",
       "name": "Orden del Capo",
       "kind": "attack",
@@ -195,6 +171,18 @@
       "description": "La ciudad obedece.",
       "art": "res://assets/combat/anime/cards/legend_badge.png",
       "icon": "res://assets/combat/anime/cards/legend_badge.png"
+    },
+    {
+      "id": "boss_capo_guarda",
+      "name": "Guardaespaldas",
+      "kind": "block",
+      "block": 16,
+      "heal": 4,
+      "target": "self",
+      "effect": "+16 defensa · cura 4",
+      "description": "Sus hombres lo cubren.",
+      "art": "res://assets/combat/anime/cards/barrier.png",
+      "icon": "res://assets/combat/anime/cards/barrier.png"
     },
     {
       "id": "boss_viuda_beso",
@@ -210,6 +198,18 @@
       "icon": "res://assets/combat/anime/cards/legend_phoenix.png"
     },
     {
+      "id": "boss_viuda_velo",
+      "name": "Velo Fúnebre",
+      "kind": "block",
+      "block": 14,
+      "weaken": 1,
+      "target": "player",
+      "effect": "+14 defensa · debilita",
+      "description": "Se envuelve en luto.",
+      "art": "res://assets/combat/anime/cards/smoke.png",
+      "icon": "res://assets/combat/anime/cards/smoke.png"
+    },
+    {
       "id": "boss_fantasma_tiro",
       "name": "Tiro Fantasma",
       "kind": "attack",
@@ -219,6 +219,18 @@
       "description": "Un solo disparo limpio.",
       "art": "res://assets/combat/anime/cards/rifle.png",
       "icon": "res://assets/combat/anime/cards/rifle.png"
+    },
+    {
+      "id": "boss_fantasma_eco",
+      "name": "Eco Silencioso",
+      "kind": "attack",
+      "damage": 9,
+      "hits": 2,
+      "target": "player",
+      "effect": "9×2 daño",
+      "description": "Dos balas fantasma.",
+      "art": "res://assets/combat/anime/cards/pistol.png",
+      "icon": "res://assets/combat/anime/cards/pistol.png"
     },
     {
       "id": "boss_veneno_nube",
@@ -234,6 +246,18 @@
       "icon": "res://assets/combat/anime/cards/smoke.png"
     },
     {
+      "id": "boss_veneno_suero",
+      "name": "Suero Negro",
+      "kind": "heal",
+      "heal": 12,
+      "block": 8,
+      "target": "self",
+      "effect": "cura 12 · +8 defensa",
+      "description": "Se inyecta su propia fórmula.",
+      "art": "res://assets/combat/anime/cards/medkit.png",
+      "icon": "res://assets/combat/anime/cards/medkit.png"
+    },
+    {
       "id": "boss_titan_golpe",
       "name": "Puño Titán",
       "kind": "attack",
@@ -244,6 +268,17 @@
       "description": "Impacto demoledor.",
       "art": "res://assets/combat/anime/cards/force_fist.png",
       "icon": "res://assets/combat/anime/cards/force_fist.png"
+    },
+    {
+      "id": "boss_titan_piel",
+      "name": "Piel de Acero",
+      "kind": "block",
+      "block": 22,
+      "target": "self",
+      "effect": "+22 defensa",
+      "description": "Casi invulnerable.",
+      "art": "res://assets/combat/anime/cards/barrier.png",
+      "icon": "res://assets/combat/anime/cards/barrier.png"
     },
     {
       "id": "boss_sombra_corte",
@@ -259,6 +294,18 @@
       "icon": "res://assets/combat/anime/cards/force_fist.png"
     },
     {
+      "id": "boss_sombra_paso",
+      "name": "Paso Fantasma",
+      "kind": "control",
+      "damage": 6,
+      "vulnerable": 2,
+      "target": "player",
+      "effect": "6 · vuln. 2",
+      "description": "Aparece a tu espalda.",
+      "art": "res://assets/combat/anime/cards/smoke.png",
+      "icon": "res://assets/combat/anime/cards/smoke.png"
+    },
+    {
       "id": "boss_rey_garfio",
       "name": "Garfio del Puerto",
       "kind": "attack",
@@ -269,6 +316,19 @@
       "description": "Embiste y se cubre.",
       "art": "res://assets/combat/anime/cards/baton.png",
       "icon": "res://assets/combat/anime/cards/baton.png"
+    },
+    {
+      "id": "boss_rey_marea",
+      "name": "Marea de Anclas",
+      "kind": "attack",
+      "damage": 5,
+      "hits": 3,
+      "stun": 1,
+      "target": "player",
+      "effect": "5×3 · stun",
+      "description": "Te aplasta con el muelle.",
+      "art": "res://assets/combat/anime/cards/cuffs.png",
+      "icon": "res://assets/combat/anime/cards/cuffs.png"
     },
     {
       "id": "boss_zero_hack",
@@ -284,6 +344,19 @@
       "icon": "res://assets/combat/anime/cards/radio.png"
     },
     {
+      "id": "boss_zero_virus",
+      "name": "Virus Zero",
+      "kind": "attack",
+      "damage": 4,
+      "hits": 4,
+      "weaken": 1,
+      "target": "player",
+      "effect": "4×4 · debilita",
+      "description": "Ráfaga digital.",
+      "art": "res://assets/combat/anime/cards/flashlight.png",
+      "icon": "res://assets/combat/anime/cards/flashlight.png"
+    },
+    {
       "id": "boss_fuego_llamarada",
       "name": "Llamarada",
       "kind": "attack",
@@ -292,6 +365,19 @@
       "target": "player",
       "effect": "18 daño · vulnerable",
       "description": "Todo arde.",
+      "art": "res://assets/combat/anime/cards/flash.png",
+      "icon": "res://assets/combat/anime/cards/flash.png"
+    },
+    {
+      "id": "boss_fuego_brasas",
+      "name": "Lluvia de Brasas",
+      "kind": "attack",
+      "damage": 6,
+      "hits": 3,
+      "vulnerable": 1,
+      "target": "player",
+      "effect": "6×3 · vulnerable",
+      "description": "Chispas por todas partes.",
       "art": "res://assets/combat/anime/cards/flash.png",
       "icon": "res://assets/combat/anime/cards/flash.png"
     },
@@ -306,6 +392,18 @@
       "description": "Disciplina de fuego.",
       "art": "res://assets/combat/anime/cards/shotgun.png",
       "icon": "res://assets/combat/anime/cards/shotgun.png"
+    },
+    {
+      "id": "boss_coronel_orden",
+      "name": "Orden de Fuego",
+      "kind": "block",
+      "block": 12,
+      "heal": 8,
+      "target": "self",
+      "effect": "+12 defensa · cura 8",
+      "description": "Reagrupa y resiste.",
+      "art": "res://assets/combat/anime/cards/shield.png",
+      "icon": "res://assets/combat/anime/cards/shield.png"
     }
   ],
   "role_pools": {
@@ -342,73 +440,70 @@
   },
   "boss_pools": {
     "boss_01_capo": [
-      "foe_shot",
-      "foe_brace",
-      "boss_barrage",
       "boss_capo_orden",
-      "boss_ironwall"
+      "boss_capo_guarda",
+      "foe_shot",
+      "foe_intimidate"
     ],
     "boss_02_viuda": [
-      "foe_slash",
-      "foe_cover",
       "boss_viuda_beso",
-      "boss_barrage",
-      "boss_ironwall"
+      "boss_viuda_velo",
+      "foe_slash",
+      "foe_cover"
     ],
     "boss_03_fantasma": [
-      "foe_snipe",
-      "foe_cover",
       "boss_fantasma_tiro",
-      "boss_barrage"
+      "boss_fantasma_eco",
+      "foe_snipe",
+      "foe_cover"
     ],
     "boss_04_veneno": [
-      "foe_poison",
-      "foe_patch",
       "boss_veneno_nube",
-      "boss_ironwall"
+      "boss_veneno_suero",
+      "foe_poison",
+      "foe_patch"
     ],
     "boss_05_titan": [
-      "foe_bash",
-      "foe_brace",
       "boss_titan_golpe",
-      "boss_ironwall"
+      "boss_titan_piel",
+      "foe_bash",
+      "foe_brace"
     ],
     "boss_06_sombra": [
-      "foe_slash",
-      "foe_smoke",
       "boss_sombra_corte",
-      "boss_barrage"
+      "boss_sombra_paso",
+      "foe_slash",
+      "foe_smoke"
     ],
     "boss_07_rey_puerto": [
-      "foe_bash",
-      "foe_cover",
       "boss_rey_garfio",
-      "boss_ironwall"
+      "boss_rey_marea",
+      "foe_bash",
+      "foe_cover"
     ],
     "boss_08_zero": [
-      "foe_intimidate",
-      "foe_cover",
       "boss_zero_hack",
-      "boss_barrage"
+      "boss_zero_virus",
+      "foe_intimidate",
+      "foe_cover"
     ],
     "boss_09_fuego": [
-      "foe_molotov",
-      "foe_brace",
       "boss_fuego_llamarada",
-      "boss_ironwall"
+      "boss_fuego_brasas",
+      "foe_molotov",
+      "foe_brace"
     ],
     "boss_10_coronel": [
-      "foe_burst",
-      "foe_brace",
       "boss_coronel_rafaga",
-      "boss_barrage",
-      "boss_ironwall"
+      "boss_coronel_orden",
+      "foe_burst",
+      "foe_brace"
     ],
     "default": [
       "foe_shot",
       "foe_brace",
-      "boss_barrage",
-      "boss_ironwall"
+      "boss_capo_orden",
+      "boss_capo_guarda"
     ]
   }
 }

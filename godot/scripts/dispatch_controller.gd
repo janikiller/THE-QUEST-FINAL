@@ -199,9 +199,9 @@ func _on_combat_ended(victory: bool) -> void:
 			var names: Array = []
 			for cid in gained:
 				names.append(str(CardDB.get_card(str(cid)).get("name", cid)))
-			report += "  |  LEGENDARIAS: " + ", ".join(names)
+			report += "  |  LEGENDARIA: " + ", ".join(names)
 			mission["outcome_report"] = report
-			RadioBus.push("Boss derrotado. Cartas legendarias al mazo.", "resolve")
+			RadioBus.push("Boss derrotado. Legendaria al mazo.", "resolve")
 
 	GameState.update_mission(mission)
 	GameState.set_mission_phase(mid, "final")

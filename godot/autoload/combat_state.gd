@@ -107,6 +107,7 @@ func start_combat(cfg: Dictionary) -> void:
 			"pose_hurt": str(e.get("pose_hurt", "")),
 			"role": str(e.get("role", e.get("archetype", "ataque"))),
 			"boss_id": str(e.get("boss_id", e.get("id", ""))),
+			"signature_move": str(e.get("signature_move", "")),
 			"card_pool": _build_enemy_pool(e),
 			"next_card": "",
 			"next_card_name": "",
@@ -525,7 +526,14 @@ func _build_enemy_pool(e: Dictionary) -> Array:
 		return (e.get("card_pool") as Array).duplicate()
 	if bool(e.get("is_boss", false)):
 		var bid := str(e.get("boss_id", e.get("id", "")))
-		return CardDB.enemy_pool_for_boss(bid)
+		var pool: Array = CardDB.enemy_pool_for_boss(bid)
+		var sig := str(e.get("signature_move", ""))
+		if sig == "" and bid != "":
+			var bdef: Dictionary = CombatRoster.boss_by_id(bid)
+			sig = str(bdef.get("signature_move", ""))
+		if sig != "" and sig not in pool:
+			pool.append(sig)
+		return pool
 	return CardDB.enemy_pool_for_role(str(e.get("role", "ataque")))
 
 
@@ -642,7 +650,14 @@ func _pick_enemy_card(index: int) -> void:
 				candidates.append(str(cid))
 		else:
 			candidates.append(str(cid))
-		if str(cid).begins_with("boss_") and hp_ratio < 0.55:
+		# Movimiento firma del boss: más peso, sobre todo bajo de vida.
+		var sig := str(e.get("signature_move", ""))
+		if is_boss and sig != "" and str(cid) == sig:
+			candidates.append(str(cid))
+			if hp_ratio < 0.55:
+				candidates.append(str(cid))
+				candidates.append(str(cid))
+		elif str(cid).begins_with("boss_") and hp_ratio < 0.55:
 			candidates.append(str(cid))
 	if candidates.is_empty():
 		candidates = ["foe_shot"]
