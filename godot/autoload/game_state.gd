@@ -130,7 +130,7 @@ func _init_patrols() -> void:
 			"target": Vector2.ZERO,
 			"progress": 0.0,
 			"report": "",
-			"protagonist": str(p.get("protagonist", p.get("name", "García"))),
+			"protagonist": str(p.get("protagonist", p.get("name", "Kick-Ass"))),
 			"max_hp": int(p.get("max_hp", 50)),
 			"energy_max": int(p.get("energy_max", 3)),
 		}
@@ -1017,7 +1017,7 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 	ensure_patrol_deck(patrol_id)
 	var deck: Array = get_patrol_deck(patrol_id).duplicate()
 
-	var hero_name := str(patrol.get("protagonist", "García"))
+	var hero_name := str(patrol.get("protagonist", "Kick-Ass"))
 	var hero := CharacterDB.police_by_name(hero_name)
 	var sprite := CombatRoster.hero_pose("idle")
 	var portrait := str(hero.get("thumb", ""))

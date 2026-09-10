@@ -16,7 +16,7 @@ func _ready() -> void:
 	add_to_group("player")
 	var hq: Array = GameState.station.get("hq_pos", [748, 470])
 	global_position = Vector2(float(hq[0]), float(hq[1]))
-	label.text = "U.P.R."
+	label.text = "KICK-ASS"
 	if body:
 		body.visible = false
 	if shadow:

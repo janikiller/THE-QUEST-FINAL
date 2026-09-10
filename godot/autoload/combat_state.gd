@@ -52,7 +52,7 @@ func start_combat(cfg: Dictionary) -> void:
 
 	var max_hp := int(cfg.get("max_hp", 50))
 	player = {
-		"name": str(cfg.get("hero_name", "García")),
+		"name": str(cfg.get("hero_name", "Kick-Ass")),
 		"hp": max_hp,
 		"max_hp": max_hp,
 		"block": 0,

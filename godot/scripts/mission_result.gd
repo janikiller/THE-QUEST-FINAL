@@ -182,7 +182,7 @@ func _summary_bbcode(m: Dictionary, ok: bool) -> String:
 		lines.append("[color=#5be07a]✓ Unidades sin bajas[/color]")
 		lines.append("[color=#ffcc66]~ Evidencia parcial[/color]")
 	lines.append("")
-	lines.append("[color=#f0c45a]García Nv.%d — %d/%d XP[/color]" % [
+	lines.append("[color=#f0c45a]Kick-Ass Nv.%d — %d/%d XP[/color]" % [
 		GameState.hero_level, GameState.hero_xp, GameState.xp_to_next_level()
 	])
 	if CombatState.combat_xp_gained > 0:

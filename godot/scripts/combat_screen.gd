@@ -292,7 +292,7 @@ func _ground_arena_layout() -> void:
 	_sync_physics_ground()
 	if player_marker:
 		player_marker.visible = true
-		player_marker.text = "GARCÍA · U.P.R. 091"
+		player_marker.text = "KICK-ASS"
 		player_marker.add_theme_color_override("font_color", Color(0.75, 0.92, 1.0))
 		player_marker.add_theme_font_size_override("font_size", 13)
 

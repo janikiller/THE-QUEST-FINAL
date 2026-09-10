@@ -83,7 +83,7 @@ func _rebuild_mode_tabs() -> void:
 	for c in _mode_row.get_children():
 		c.queue_free()
 	for entry in [
-		{"id": "mazo", "label": "TU MAZO", "hint": "Cartas de García"},
+		{"id": "mazo", "label": "TU MAZO", "hint": "Cartas de Kick-Ass"},
 		{"id": "enemigas", "label": "ENEMIGAS", "hint": "Cartas de los sospechosos"},
 	]:
 		var b := Button.new()
@@ -176,8 +176,8 @@ func _rebuild_patrols() -> void:
 	v.add_child(portrait)
 	var name_l := Label.new()
 	name_l.text = "%s\n%s\n%d cartas" % [
-		p.get("name", "García"),
-		p.get("callsign", "U.P.R. 091"),
+		p.get("name", "Kick-Ass"),
+		p.get("callsign", "KICK-ASS"),
 		GameState.get_patrol_deck(selected_patrol_id).size(),
 	]
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

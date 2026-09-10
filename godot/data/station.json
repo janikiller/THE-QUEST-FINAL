@@ -56,17 +56,17 @@
   "patrols": [
     {
       "id": "alpha",
-      "callsign": "U.P.R. 091",
-      "name": "Unidad García",
+      "callsign": "KICK-ASS",
+      "name": "Kick-Ass",
       "portrait": "res://assets/character/police/police_00.png",
       "map_icon": "res://assets/map/police_lights_marker.png",
       "specialty": "general",
       "speed": 115.0,
-      "agents": ["García"],
+      "agents": ["Kick-Ass"],
       "agent_portraits": [
         "res://assets/character/portraits/police_00_thumb.png"
       ],
-      "protagonist": "García",
+      "protagonist": "Kick-Ass",
       "max_hp": 50,
       "energy_max": 3
     }

@@ -377,7 +377,7 @@ func _refresh_detail_roulette_idle() -> void:
 	detail_meta.text = "Coste por giro: %d★" % SPIN_COST
 	detail_meta.add_theme_color_override("font_color", Color(1.0, 0.82, 0.4))
 	detail_effect.text = "Premio aleatorio según rareza."
-	detail_desc.text = "La carta ganada se añade al mazo de García."
+	detail_desc.text = "La carta ganada se añade al mazo de Kick-Ass."
 	btn_buy.disabled = true
 	btn_buy.text = "COMPRAR"
 

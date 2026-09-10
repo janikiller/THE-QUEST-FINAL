@@ -167,7 +167,7 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.78, 0.84, 0.9, 1)
 theme_override_font_sizes/font_size = 13
-text = "Gira y gana una carta aleatoria para el mazo de García"
+text = "Gira y gana una carta aleatoria para el mazo de Kick-Ass"
 horizontal_alignment = 1
 
 [node name="OddsRow" type="HBoxContainer" parent="Root/MainCol/Body/RoulettePane/RoulettePanel/RouletteMargin/RouletteV"]

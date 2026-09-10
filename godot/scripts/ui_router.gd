@@ -121,7 +121,7 @@ func begin_fight(mission_id: String = "") -> void:
 		GameState.set_patrol(patrol)
 		if dispatch and not CombatState.combat_ended.is_connected(dispatch._on_combat_ended):
 			CombatState.combat_ended.connect(dispatch._on_combat_ended)
-		RadioBus.push("García entra en combate.", "dispatch")
+		RadioBus.push("Kick-Ass entra en combate.", "dispatch")
 	show_combat(mid, pid)
 
 

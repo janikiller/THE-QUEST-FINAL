@@ -36,7 +36,7 @@ theme_override_colors/font_color = Color(0.95, 0.97, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.85)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 12
-text = "U.P.R."
+text = "KICK-ASS"
 horizontal_alignment = 1
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
