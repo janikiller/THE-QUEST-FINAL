@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://n13849b4220dac"
-path="res://.godot/imported/bg_gas_station.png-dd02e20784913ec915bd2a2fa796ec45.ctex"
+uid="uid://koi30a3baees"
+path="res://.godot/imported/bg_gas_station.png-4204e22c24fc45aeb5ae849832940b3c.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_gas_station.png"
-dest_files=["res://.godot/imported/bg_gas_station.png-dd02e20784913ec915bd2a2fa796ec45.ctex"]
+dest_files=["res://.godot/imported/bg_gas_station.png-4204e22c24fc45aeb5ae849832940b3c.ctex"]
 
 [params]
 

@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://n99d2177b935b7"
-path="res://.godot/imported/bg_trainyard.png-dd02e20784913ec915bd2a2fa796ec45.ctex"
+uid="uid://c6jlp57tdelgq"
+path="res://.godot/imported/bg_trainyard.png-68b307a32f54a9b3c4db96c6ddf19f5c.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_trainyard.png"
-dest_files=["res://.godot/imported/bg_trainyard.png-dd02e20784913ec915bd2a2fa796ec45.ctex"]
+dest_files=["res://.godot/imported/bg_trainyard.png-68b307a32f54a9b3c4db96c6ddf19f5c.ctex"]
 
 [params]
 

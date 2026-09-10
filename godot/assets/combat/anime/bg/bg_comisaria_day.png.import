@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://n5da7098c4d60a"
-path="res://.godot/imported/bg_comisaria_day.png-dd02e20784913ec915bd2a2fa796ec45.ctex"
+uid="uid://bue8ratdvscqt"
+path="res://.godot/imported/bg_comisaria_day.png-6186f2ac3ea3365791c17e9eb65d7c2c.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_comisaria_day.png"
-dest_files=["res://.godot/imported/bg_comisaria_day.png-dd02e20784913ec915bd2a2fa796ec45.ctex"]
+dest_files=["res://.godot/imported/bg_comisaria_day.png-6186f2ac3ea3365791c17e9eb65d7c2c.ctex"]
 
 [params]
 

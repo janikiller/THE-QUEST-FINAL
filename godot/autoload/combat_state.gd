@@ -23,6 +23,10 @@ var hand: Array[String] = []
 var selected_enemy: int = 0
 var mission_id: String = ""
 var location_label: String = ""
+var mission_title: String = ""
+var arena_id: String = ""
+var arena_name: String = ""
+var period: String = "night"
 var objective: String = "Detener a los sospechosos"
 var last_log: String = ""
 var combat_xp_gained: int = 0
@@ -47,8 +51,12 @@ func start_combat(cfg: Dictionary) -> void:
 	turn = 1
 	mission_id = str(cfg.get("mission_id", ""))
 	location_label = str(cfg.get("location", "Intervención"))
+	mission_title = str(cfg.get("mission_title", location_label))
+	arena_id = str(cfg.get("arena_id", ""))
+	arena_name = str(cfg.get("arena_name", location_label))
+	period = str(cfg.get("period", "night"))
 	objective = str(cfg.get("objective", "Detener a los sospechosos"))
-	last_log = "Intervención iniciada. Elige cartas."
+	last_log = "Intervención en %s. Elige cartas." % arena_name
 
 	var max_hp := int(cfg.get("max_hp", 50))
 	var start_block := int(cfg.get("start_block", 0))
@@ -150,6 +158,10 @@ func get_snapshot() -> Dictionary:
 		"discard_count": discard_pile.size(),
 		"selected_enemy": selected_enemy,
 		"location": location_label,
+		"mission_title": mission_title,
+		"arena_id": arena_id,
+		"arena_name": arena_name,
+		"period": period,
 		"objective": objective,
 		"mission_id": mission_id,
 		"last_log": last_log,

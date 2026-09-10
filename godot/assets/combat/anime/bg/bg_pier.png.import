@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://n52c35904f12cf"
-path="res://.godot/imported/bg_pier.png-dd02e20784913ec915bd2a2fa796ec45.ctex"
+uid="uid://c24ywy8n4mohk"
+path="res://.godot/imported/bg_pier.png-20000b004caf0d96f3fec70e4eb5ceec.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_pier.png"
-dest_files=["res://.godot/imported/bg_pier.png-dd02e20784913ec915bd2a2fa796ec45.ctex"]
+dest_files=["res://.godot/imported/bg_pier.png-20000b004caf0d96f3fec70e4eb5ceec.ctex"]
 
 [params]
 

@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://n6bdb2522da5dc"
-path="res://.godot/imported/bg_courtyard.png-dd02e20784913ec915bd2a2fa796ec45.ctex"
+uid="uid://cwi0erw8jnqua"
+path="res://.godot/imported/bg_courtyard.png-4c133c6dc2762fa6d7a905c8c2491866.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_courtyard.png"
-dest_files=["res://.godot/imported/bg_courtyard.png-dd02e20784913ec915bd2a2fa796ec45.ctex"]
+dest_files=["res://.godot/imported/bg_courtyard.png-4c133c6dc2762fa6d7a905c8c2491866.ctex"]
 
 [params]
 

@@ -1266,13 +1266,30 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 				objective = "NOCHE: neutralizar amenaza de alto riesgo"
 
 	var arena_path := str(mission.get("arena_path", ""))
-	if arena_path == "":
+	var arena_id := str(mission.get("arena_id", ""))
+	var arena_name := str(mission.get("location_name", ""))
+	if arena_path == "" or arena_id == "":
 		var arena: Dictionary = CombatRoster.pick_arena_for_mission(mission)
-		arena_path = str(arena.get("path", ""))
+		if arena_path == "":
+			arena_path = str(arena.get("path", ""))
+		if arena_id == "":
+			arena_id = str(arena.get("id", ""))
+		if arena_name == "":
+			arena_name = str(arena.get("name", ""))
+		if not arena.is_empty():
+			mission["arena_id"] = arena_id
+			mission["arena_path"] = arena_path
+			if str(mission.get("location_name", "")) == "":
+				mission["location_name"] = arena_name
+			active_missions[mission_id] = mission
+
+	var place := arena_name if arena_name != "" else str(mission.get("district_name", "Zona urbana"))
+	var case_title := str(mission.get("title", mission.get("district_name", "Intervención")))
 
 	return {
 		"mission_id": mission_id,
-		"location": str(mission.get("title", mission.get("district_name", "Intervención"))),
+		"location": place,
+		"mission_title": case_title,
 		"objective": objective,
 		"hero_name": hero_name,
 		"max_hp": int(patrol.get("max_hp", 50)) + level_hp_bonus() + (14 if is_boss else 0),
@@ -1286,6 +1303,8 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 		"period": period,
 		"is_boss": is_boss,
 		"arena_path": arena_path,
+		"arena_id": arena_id,
+		"arena_name": arena_name if arena_name != "" else place,
 	}
 
 

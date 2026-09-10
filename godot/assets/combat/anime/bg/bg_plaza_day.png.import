@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://n81e8bdf1cc0dd"
-path="res://.godot/imported/bg_plaza_day.png-dd02e20784913ec915bd2a2fa796ec45.ctex"
+uid="uid://bj8tvcq5i6pyh"
+path="res://.godot/imported/bg_plaza_day.png-f6efa214e8cdce5202a850f6dc574f9b.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_plaza_day.png"
-dest_files=["res://.godot/imported/bg_plaza_day.png-dd02e20784913ec915bd2a2fa796ec45.ctex"]
+dest_files=["res://.godot/imported/bg_plaza_day.png-f6efa214e8cdce5202a850f6dc574f9b.ctex"]
 
 [params]
 

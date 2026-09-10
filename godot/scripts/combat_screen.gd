@@ -89,6 +89,12 @@ var _bg_glows: Array = [] # TextureRect window pulses
 var _bg_cars: Array = [] # TextureRect car lights
 var _bg_anim_t: float = 0.0
 var _bg_lightning_t: float = -1.0
+## Atmósfera del escenario actual (lluvia/neón/niebla…).
+var _bg_mood: Dictionary = {}
+var _arena_id: String = ""
+var _arena_name: String = ""
+var _combat_period: String = "night"
+var _scenario_banner: Control
 
 
 func _hero_tex(name: String) -> Texture2D:
@@ -767,6 +773,10 @@ func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
 	_gone_enemies.clear()
 	_dying.clear()
 	_arena_path = str(cfg.get("arena_path", ""))
+	_arena_id = str(cfg.get("arena_id", ""))
+	_arena_name = str(cfg.get("arena_name", cfg.get("location", "")))
+	_combat_period = str(cfg.get("period", "night"))
+	_bg_mood = _mood_for_arena(_arena_id, _arena_name, _combat_period)
 	result_panel.visible = false
 	_prev_enemy_hp.clear()
 	_prev_player_hp = -1
@@ -791,6 +801,7 @@ func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
 	if _player_actor:
 		_player_base_pos = _player_actor.position
 		_layout_ground_shadow(_player_shadow, _player_actor, 160.0)
+	_show_scenario_banner()
 
 
 func close() -> void:
@@ -998,7 +1009,13 @@ func _refresh() -> void:
 	block_label.add_theme_font_size_override("font_size", 28)
 	block_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	block_label.add_theme_constant_override("outline_size", 3)
-	location_label.text = str(snap.get("location", "")).to_upper()
+	var place := str(snap.get("arena_name", snap.get("location", ""))).to_upper()
+	var period_bit := _period_label_es(str(snap.get("period", _combat_period)))
+	var tag_bit := str(_bg_mood.get("tag", ""))
+	if tag_bit != "":
+		location_label.text = "%s  ·  %s  ·  %s" % [place, tag_bit, period_bit]
+	else:
+		location_label.text = "%s  ·  %s" % [place, period_bit]
 	var xp_bit := "NV.%d (+%d PV)  %d/%d XP" % [
 		int(snap.get("hero_level", GameState.hero_level)),
 		GameState.level_hp_bonus(),
@@ -1097,8 +1114,201 @@ func _style_player_bars(p: Dictionary) -> void:
 		_player_block_text.add_theme_font_size_override("font_size", 14)
 
 
+
+func _period_label_es(period: String) -> String:
+	match period:
+		"day":
+			return "DÍA"
+		"dusk":
+			return "ATARDECER"
+		_:
+			return "NOCHE"
+
+
+func _mood_for_arena(arena_id: String, arena_name: String, period: String) -> Dictionary:
+	## Perfil visual por escenario: evita que todos los combates se sientan iguales.
+	var key := ("%s %s" % [arena_id, arena_name]).to_lower()
+	var rain := 0.55
+	var fog := 0.55
+	var neon := 0.35
+	var cars := 0.55
+	var siren := 0.35
+	var lightning := 0.35
+	var wet := 0.55
+	var glow := 0.45
+	var veil := Color(0.05, 0.08, 0.16, 0.18)
+	var tag := "URBANO"
+
+	if period == "day":
+		rain = 0.0
+		fog = 0.12
+		neon = 0.0
+		cars = 0.45
+		siren = 0.15
+		lightning = 0.0
+		wet = 0.08
+		glow = 0.12
+		veil = Color(0.55, 0.62, 0.78, 0.06)
+		tag = "DIURNO"
+	elif period == "dusk":
+		rain = 0.15
+		fog = 0.35
+		neon = 0.25
+		cars = 0.5
+		siren = 0.25
+		lightning = 0.08
+		wet = 0.28
+		glow = 0.4
+		veil = Color(0.35, 0.18, 0.12, 0.14)
+		tag = "ATARDECER"
+
+	if "neon" in key or "farol" in key or "lantern" in key or "market" in key and "plaza" not in key:
+		neon = maxf(neon, 0.85)
+		glow = maxf(glow, 0.8)
+		rain = maxf(rain, 0.35) if period != "day" else rain
+		tag = "NEÓN"
+		veil = Color(0.12, 0.05, 0.22, 0.16)
+	if "rain" in key or "lluvia" in key or "alley" in key or "callejon" in key or "callejón" in key:
+		rain = 0.95 if period != "day" else 0.2
+		wet = 0.9
+		lightning = 0.7 if period == "night" else lightning
+		tag = "TORMENTA"
+	if "gas" in key or "gasolin" in key:
+		glow = maxf(glow, 0.55)
+		cars = maxf(cars, 0.7)
+		tag = "GASOLINERA"
+	if "underpass" in key or "paso" in key or "subway" in key or "metro" in key:
+		rain = 0.2
+		fog = 0.85
+		cars = 0.15
+		neon = 0.25
+		lightning = 0.0
+		tag = "SÓTANO"
+		veil = Color(0.04, 0.07, 0.1, 0.28)
+	if "train" in key or "vía" in key or "via" in key or "warehouse" in key or "almacén" in key or "almacen" in key:
+		fog = maxf(fog, 0.65)
+		cars = 0.2
+		rain = minf(rain, 0.35)
+		tag = "INDUSTRIAL"
+	if "pier" in key or "muelle" in key or "harbor" in key or "puerto" in key:
+		fog = maxf(fog, 0.7)
+		rain = 0.4 if period != "day" else 0.05
+		cars = 0.1
+		neon = 0.15
+		tag = "MUELLE"
+		veil = Color(0.08, 0.14, 0.22, 0.2)
+	if "plaza" in key or "comisaria" in key or "comisaría" in key or "station" in key and "gas" not in key:
+		if period == "day":
+			rain = 0.0
+			fog = 0.08
+			neon = 0.0
+			glow = 0.1
+			tag = "PLAZA"
+			veil = Color(0.7, 0.75, 0.85, 0.05)
+		else:
+			siren = maxf(siren, 0.55)
+			tag = "COMISARÍA"
+	if "rooftop" in key or "azotea" in key or "penthouse" in key or "atico" in key or "ático" in key:
+		cars = 0.05
+		fog = 0.4
+		rain = 0.25 if period != "day" else 0.0
+		neon = maxf(neon, 0.4)
+		tag = "ALTURA"
+	if "courtyard" in key or "patio" in key or "parking" in key:
+		cars = 0.35
+		glow = maxf(glow, 0.35)
+		tag = "PATIO"
+	if "construction" in key or "obra" in key:
+		fog = maxf(fog, 0.5)
+		cars = 0.25
+		tag = "OBRAS"
+
+	return {
+		"rain": rain,
+		"fog": fog,
+		"neon": neon,
+		"cars": cars,
+		"siren": siren,
+		"lightning": lightning,
+		"wet": wet,
+		"glow": glow,
+		"veil": veil,
+		"tag": tag,
+	}
+
+
+func _show_scenario_banner() -> void:
+	if _scenario_banner and is_instance_valid(_scenario_banner):
+		_scenario_banner.queue_free()
+	var place := _arena_name if _arena_name != "" else str(CombatState.arena_name)
+	if place == "":
+		place = "Zona urbana"
+	var period_txt := _period_label_es(_combat_period)
+	var tag := str(_bg_mood.get("tag", "URBANO"))
+
+	var banner := Control.new()
+	banner.name = "ScenarioBanner"
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	banner.z_index = 40
+	banner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(banner)
+	_scenario_banner = banner
+
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.07, 0.12, 0.88)
+	sb.border_color = Color(0.35, 0.75, 0.95, 0.75)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(10)
+	sb.content_margin_left = 22
+	sb.content_margin_right = 22
+	sb.content_margin_top = 14
+	sb.content_margin_bottom = 14
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.position = Vector2(size.x * 0.5 - 220, size.y * 0.18)
+	panel.custom_minimum_size = Vector2(440, 86)
+	banner.add_child(panel)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	panel.add_child(col)
+	var top := Label.new()
+	top.text = "ESCENARIO · %s · %s" % [tag, period_txt]
+	top.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	top.add_theme_font_size_override("font_size", 13)
+	top.add_theme_color_override("font_color", Color(0.65, 0.85, 1.0))
+	col.add_child(top)
+	var title := Label.new()
+	title.text = place.to_upper()
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", Color(0.96, 0.98, 1.0))
+	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	title.add_theme_constant_override("outline_size", 4)
+	col.add_child(title)
+
+	panel.modulate.a = 0.0
+	panel.scale = Vector2(0.92, 0.92)
+	panel.pivot_offset = panel.custom_minimum_size * 0.5
+	var banner_ref: WeakRef = weakref(banner)
+	var tw := create_tween()
+	tw.tween_property(panel, "modulate:a", 1.0, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(panel, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(1.55)
+	tw.tween_property(panel, "modulate:a", 0.0, 0.55).set_trans(Tween.TRANS_SINE)
+	tw.tween_callback(func():
+		var b = banner_ref.get_ref()
+		if b != null and is_instance_valid(b):
+			b.queue_free()
+		if _scenario_banner == b:
+			_scenario_banner = null
+	)
+	RadioBus.push("Central: intervención en %s (%s)." % [place, period_txt.to_lower()], "dispatch")
+
+
 func _ensure_animated_bg() -> void:
-	## Capas vivas sobre el arena: niebla, lluvia, neones, coches y sirenas.
+	## Capas vivas según el mood del escenario (no todos los fondos llevan la misma lluvia).
 	var existing := get_node_or_null("BgAnimLayer") as Control
 	if existing:
 		existing.queue_free()
@@ -1111,109 +1321,127 @@ func _ensure_animated_bg() -> void:
 	_bg_anim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_bg_anim.z_index = 2
 	add_child(_bg_anim)
-	# Debajo del FloorPlane/actores: justo encima del ArenaBg.
 	var bg_idx := bg.get_index() if bg else 0
 	move_child(_bg_anim, mini(bg_idx + 1, get_child_count() - 1))
 
-	# Velo nocturno suave
+	if _bg_mood.is_empty():
+		_bg_mood = _mood_for_arena(_arena_id, _arena_name, _combat_period)
+
+	var rain_w := float(_bg_mood.get("rain", 0.5))
+	var fog_w := float(_bg_mood.get("fog", 0.5))
+	var neon_w := float(_bg_mood.get("neon", 0.3))
+	var cars_w := float(_bg_mood.get("cars", 0.5))
+	var siren_w := float(_bg_mood.get("siren", 0.3))
+	var glow_w := float(_bg_mood.get("glow", 0.4))
+	var veil_col: Color = _bg_mood.get("veil", Color(0.05, 0.08, 0.16, 0.18))
+
 	var veil := ColorRect.new()
 	veil.name = "NightVeil"
-	veil.color = Color(0.05, 0.08, 0.16, 0.18)
+	veil.color = veil_col
 	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_bg_anim.add_child(veil)
 
-	# Niebla en scroll (dos bandas)
-	_bg_fog = _make_bg_tex_layer("FogA", "fog_scroll", Color(1, 1, 1, 0.55))
-	_bg_fog2 = _make_bg_tex_layer("FogB", "fog_scroll", Color(0.85, 0.9, 1.0, 0.35))
-	if _bg_fog:
-		_bg_fog.position = Vector2(0, size.y * 0.22)
-		_bg_fog.size = Vector2(size.x * 1.6, size.y * 0.28)
-		_bg_anim.add_child(_bg_fog)
-	if _bg_fog2:
-		_bg_fog2.position = Vector2(-size.x * 0.3, size.y * 0.35)
-		_bg_fog2.size = Vector2(size.x * 1.8, size.y * 0.22)
-		_bg_anim.add_child(_bg_fog2)
+	if fog_w > 0.05:
+		_bg_fog = _make_bg_tex_layer("FogA", "fog_scroll", Color(1, 1, 1, 0.35 + fog_w * 0.45))
+		_bg_fog2 = _make_bg_tex_layer("FogB", "fog_scroll", Color(0.85, 0.9, 1.0, 0.18 + fog_w * 0.35))
+		if _bg_fog:
+			_bg_fog.position = Vector2(0, size.y * 0.22)
+			_bg_fog.size = Vector2(size.x * 1.6, size.y * 0.28)
+			_bg_fog.set_meta("base_a", _bg_fog.modulate.a)
+			_bg_anim.add_child(_bg_fog)
+		if _bg_fog2:
+			_bg_fog2.position = Vector2(-size.x * 0.3, size.y * 0.35)
+			_bg_fog2.size = Vector2(size.x * 1.8, size.y * 0.22)
+			_bg_fog2.set_meta("base_a", _bg_fog2.modulate.a)
+			_bg_anim.add_child(_bg_fog2)
+	else:
+		_bg_fog = null
+		_bg_fog2 = null
 
-	# Destellos de ventanas / neones
-	var glow_tex := _map_tex("window_glow")
-	var spots := [
-		Vector2(0.18, 0.22), Vector2(0.32, 0.30), Vector2(0.48, 0.18),
-		Vector2(0.62, 0.26), Vector2(0.78, 0.20), Vector2(0.88, 0.33),
-		Vector2(0.12, 0.40), Vector2(0.55, 0.36), Vector2(0.70, 0.42),
-	]
-	var colors := [
-		Color(1.0, 0.75, 0.25, 0.55), Color(0.35, 0.75, 1.0, 0.5),
-		Color(1.0, 0.35, 0.55, 0.55), Color(0.45, 1.0, 0.7, 0.45),
-		Color(1.0, 0.85, 0.35, 0.5),
-	]
-	for i in range(spots.size()):
-		var g := TextureRect.new()
-		g.name = "WinGlow%d" % i
-		g.texture = glow_tex
-		g.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		g.stretch_mode = TextureRect.STRETCH_SCALE
-		g.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var sp: Vector2 = spots[i]
-		g.position = Vector2(size.x * sp.x, size.y * sp.y)
-		g.size = Vector2(70, 70)
-		g.modulate = colors[i % colors.size()]
-		g.set_meta("phase", float(i) * 0.73)
-		g.set_meta("base_a", g.modulate.a)
-		_bg_anim.add_child(g)
-		_bg_glows.append(g)
+	if glow_w > 0.08:
+		var glow_tex := _map_tex("window_glow")
+		var spots := [
+			Vector2(0.18, 0.22), Vector2(0.32, 0.30), Vector2(0.48, 0.18),
+			Vector2(0.62, 0.26), Vector2(0.78, 0.20), Vector2(0.88, 0.33),
+			Vector2(0.12, 0.40), Vector2(0.55, 0.36), Vector2(0.70, 0.42),
+		]
+		var colors := [
+			Color(1.0, 0.75, 0.25, 0.55), Color(0.35, 0.75, 1.0, 0.5),
+			Color(1.0, 0.35, 0.55, 0.55), Color(0.45, 1.0, 0.7, 0.45),
+			Color(1.0, 0.85, 0.35, 0.5),
+		]
+		var glow_n := int(round(3 + glow_w * 6.0))
+		for i in range(mini(glow_n, spots.size())):
+			var g := TextureRect.new()
+			g.name = "WinGlow%d" % i
+			g.texture = glow_tex
+			g.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			g.stretch_mode = TextureRect.STRETCH_SCALE
+			g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var sp: Vector2 = spots[i]
+			g.position = Vector2(size.x * sp.x, size.y * sp.y)
+			g.size = Vector2(70, 70)
+			var col: Color = colors[i % colors.size()]
+			col.a *= glow_w
+			g.modulate = col
+			g.set_meta("phase", float(i) * 0.73)
+			g.set_meta("base_a", g.modulate.a)
+			_bg_anim.add_child(g)
+			_bg_glows.append(g)
 
-	# Pulso neón global
 	_bg_neon_pulse = ColorRect.new()
 	_bg_neon_pulse.name = "NeonPulse"
 	_bg_neon_pulse.color = Color(0.2, 0.6, 1.0, 0.0)
 	_bg_neon_pulse.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bg_neon_pulse.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_bg_neon_pulse.set_meta("weight", neon_w)
 	_bg_anim.add_child(_bg_neon_pulse)
 
-	# Sirenas policiales lejanas
 	_bg_siren = ColorRect.new()
 	_bg_siren.name = "SirenFlash"
 	_bg_siren.color = Color(1.0, 0.1, 0.15, 0.0)
 	_bg_siren.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bg_siren.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_bg_siren.set_meta("weight", siren_w)
 	_bg_anim.add_child(_bg_siren)
 
-	# Coches lejanos
-	var car_tex := _map_tex("car_lights")
-	for i in range(3):
-		var car := TextureRect.new()
-		car.name = "Car%d" % i
-		car.texture = car_tex
-		car.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		car.stretch_mode = TextureRect.STRETCH_SCALE
-		car.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		car.size = Vector2(160, 22)
-		car.position = Vector2(-200.0 - i * 420.0, size.y * (0.48 + i * 0.03))
-		car.modulate = Color(1, 1, 1, 0.55)
-		car.set_meta("speed", 55.0 + i * 25.0)
-		car.set_meta("lane_y", car.position.y)
-		_bg_anim.add_child(car)
-		_bg_cars.append(car)
+	if cars_w > 0.08:
+		var car_tex := _map_tex("car_lights")
+		var car_n := int(round(1 + cars_w * 2.5))
+		for i in range(car_n):
+			var car := TextureRect.new()
+			car.name = "Car%d" % i
+			car.texture = car_tex
+			car.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			car.stretch_mode = TextureRect.STRETCH_SCALE
+			car.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			car.size = Vector2(160, 22)
+			car.position = Vector2(-200.0 - i * 420.0, size.y * (0.48 + i * 0.03))
+			car.modulate = Color(1, 1, 1, 0.35 + cars_w * 0.35)
+			car.set_meta("speed", 55.0 + i * 25.0)
+			car.set_meta("lane_y", car.position.y)
+			_bg_anim.add_child(car)
+			_bg_cars.append(car)
 
-	# Lluvia
-	var rain_tex := _map_tex("rain_streak")
-	for i in range(64):
-		var drop := TextureRect.new()
-		drop.name = "Rain%d" % i
-		drop.texture = rain_tex
-		drop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		drop.stretch_mode = TextureRect.STRETCH_SCALE
-		drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		drop.size = Vector2(7, 22 + (i % 5) * 4)
-		drop.modulate = Color(0.8, 0.9, 1.0, 0.35 + (i % 4) * 0.06)
-		drop.position = Vector2(fmod(float(i * 97), maxf(size.x, 64.0)), fmod(float(i * 53), maxf(size.y * 0.7, 64.0)))
-		drop.set_meta("speed", 380.0 + float(i % 7) * 40.0)
-		drop.set_meta("drift", -35.0 - float(i % 5) * 8.0)
-		_bg_anim.add_child(drop)
-		_bg_rain.append(drop)
+	if rain_w > 0.05:
+		var rain_tex := _map_tex("rain_streak")
+		var rain_n := int(round(8 + rain_w * 56.0))
+		for i in range(rain_n):
+			var drop := TextureRect.new()
+			drop.name = "Rain%d" % i
+			drop.texture = rain_tex
+			drop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			drop.stretch_mode = TextureRect.STRETCH_SCALE
+			drop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			drop.size = Vector2(7, 22 + (i % 5) * 4)
+			drop.modulate = Color(0.8, 0.9, 1.0, (0.2 + (i % 4) * 0.05) * rain_w)
+			drop.position = Vector2(fmod(float(i * 97), maxf(size.x, 64.0)), fmod(float(i * 53), maxf(size.y * 0.7, 64.0)))
+			drop.set_meta("speed", 320.0 + float(i % 7) * 40.0 + rain_w * 80.0)
+			drop.set_meta("drift", -35.0 - float(i % 5) * 8.0)
+			_bg_anim.add_child(drop)
+			_bg_rain.append(drop)
 
-	# Brillo mojado sobre el suelo (encima del FloorPlane visualmente vía modulate tick)
 	_bg_anim_t = 0.0
 	_bg_lightning_t = -1.0
 
@@ -1249,11 +1477,13 @@ func _tick_animated_bg(delta: float) -> void:
 
 	# Niebla
 	if _bg_fog and is_instance_valid(_bg_fog):
+		var fog_base := float(_bg_fog.get_meta("base_a", 0.4))
 		_bg_fog.position.x = fmod(_bg_anim_t * 18.0, w * 0.5) - w * 0.15
-		_bg_fog.modulate.a = 0.35 + sin(_bg_anim_t * 0.35) * 0.08
+		_bg_fog.modulate.a = fog_base * (0.85 + sin(_bg_anim_t * 0.35) * 0.15)
 	if _bg_fog2 and is_instance_valid(_bg_fog2):
+		var fog2_base := float(_bg_fog2.get_meta("base_a", 0.25))
 		_bg_fog2.position.x = fmod(-_bg_anim_t * 12.0, w * 0.6) - w * 0.2
-		_bg_fog2.modulate.a = 0.22 + cos(_bg_anim_t * 0.28) * 0.06
+		_bg_fog2.modulate.a = fog2_base * (0.85 + cos(_bg_anim_t * 0.28) * 0.15)
 
 	# Ventanas / neones
 	for g in _bg_glows:
@@ -1270,16 +1500,18 @@ func _tick_animated_bg(delta: float) -> void:
 
 	# Pulso neón cyan/magenta
 	if _bg_neon_pulse and is_instance_valid(_bg_neon_pulse):
+		var neon_w2 := float(_bg_neon_pulse.get_meta("weight", float(_bg_mood.get("neon", 0.3))))
 		var n := (sin(_bg_anim_t * 1.1) * 0.5 + 0.5)
-		_bg_neon_pulse.color = Color(0.25 + n * 0.4, 0.35, 0.85, 0.04 + n * 0.06)
+		_bg_neon_pulse.color = Color(0.25 + n * 0.4, 0.35, 0.85, (0.02 + n * 0.08) * neon_w2)
 
 	# Sirenas
 	if _bg_siren and is_instance_valid(_bg_siren):
+		var siren_w2 := float(_bg_siren.get_meta("weight", float(_bg_mood.get("siren", 0.3))))
 		var s := sin(_bg_anim_t * 6.5)
 		if s > 0.0:
-			_bg_siren.color = Color(1.0, 0.12, 0.18, s * 0.10)
+			_bg_siren.color = Color(1.0, 0.12, 0.18, s * 0.12 * siren_w2)
 		else:
-			_bg_siren.color = Color(0.15, 0.35, 1.0, (-s) * 0.09)
+			_bg_siren.color = Color(0.15, 0.35, 1.0, (-s) * 0.10 * siren_w2)
 
 	# Coches
 	for car in _bg_cars:
@@ -1305,8 +1537,9 @@ func _tick_animated_bg(delta: float) -> void:
 			drop.position.y = -randf() * 80.0
 			drop.position.x = randf() * w
 
-	# Relámpago ocasional
-	if _bg_lightning_t < 0.0 and randf() < delta * 0.08:
+	# Relámpago ocasional (solo si el mood lo admite)
+	var lightning_w := float(_bg_mood.get("lightning", 0.35))
+	if _bg_lightning_t < 0.0 and lightning_w > 0.05 and randf() < delta * (0.02 + lightning_w * 0.12):
 		_bg_lightning_t = 0.18
 	if _bg_lightning_t >= 0.0:
 		_bg_lightning_t -= delta
@@ -1317,7 +1550,8 @@ func _tick_animated_bg(delta: float) -> void:
 	# Brillo mojado del FloorPlane
 	var floor := get_node_or_null("FloorPlane/WetGloss") as ColorRect
 	if floor:
-		floor.color.a = 0.05 + absf(sin(_bg_anim_t * 1.4)) * 0.05
+		var wet_w := float(_bg_mood.get("wet", 0.5))
+		floor.color.a = (0.03 + absf(sin(_bg_anim_t * 1.4)) * 0.06) * wet_w
 
 
 func _load_bg() -> void:

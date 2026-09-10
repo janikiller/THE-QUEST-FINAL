@@ -1116,7 +1116,7 @@ func _arena_variety_shot() -> void:
 			GameState.active_missions[mid] = m
 		$UI/UIRouter.show_combat(mid, "alpha")
 		await get_tree().process_frame
-		await get_tree().create_timer(0.45).timeout
+		await get_tree().create_timer(0.75).timeout
 		await _save_shot("arena_variety_%02d_%s" % [shot_i + 1, aid])
 		shot_i += 1
 		if shot_i >= 6:

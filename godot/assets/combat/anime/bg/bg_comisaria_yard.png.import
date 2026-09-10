@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://nbf7e6e848c760"
-path="res://.godot/imported/bg_comisaria_yard.png-dd02e20784913ec915bd2a2fa796ec45.ctex"
+uid="uid://cr1csnw3fvksx"
+path="res://.godot/imported/bg_comisaria_yard.png-09c5fc3a3555b0a370052a674a9d5639.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_comisaria_yard.png"
-dest_files=["res://.godot/imported/bg_comisaria_yard.png-dd02e20784913ec915bd2a2fa796ec45.ctex"]
+dest_files=["res://.godot/imported/bg_comisaria_yard.png-09c5fc3a3555b0a370052a674a9d5639.ctex"]
 
 [params]
 

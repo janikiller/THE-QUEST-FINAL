@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://n2e56fb61f7247"
-path="res://.godot/imported/bg_neon_rain.png-dd02e20784913ec915bd2a2fa796ec45.ctex"
+uid="uid://bxmde0ydgipst"
+path="res://.godot/imported/bg_neon_rain.png-05c090c7820071dac650588aabe04f84.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_neon_rain.png"
-dest_files=["res://.godot/imported/bg_neon_rain.png-dd02e20784913ec915bd2a2fa796ec45.ctex"]
+dest_files=["res://.godot/imported/bg_neon_rain.png-05c090c7820071dac650588aabe04f84.ctex"]
 
 [params]
 

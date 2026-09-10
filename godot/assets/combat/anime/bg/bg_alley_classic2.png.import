@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://n8b68127015128"
-path="res://.godot/imported/bg_alley_classic2.png-dd02e20784913ec915bd2a2fa796ec45.ctex"
+uid="uid://b12t2qu1nc032"
+path="res://.godot/imported/bg_alley_classic2.png-1d9e05e454e0616434d2bfd56ec91c30.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_alley_classic2.png"
-dest_files=["res://.godot/imported/bg_alley_classic2.png-dd02e20784913ec915bd2a2fa796ec45.ctex"]
+dest_files=["res://.godot/imported/bg_alley_classic2.png-1d9e05e454e0616434d2bfd56ec91c30.ctex"]
 
 [params]
 

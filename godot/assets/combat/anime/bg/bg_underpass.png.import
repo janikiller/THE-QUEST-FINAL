@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://n9ebf43fc9ebd1"
-path="res://.godot/imported/bg_underpass.png-dd02e20784913ec915bd2a2fa796ec45.ctex"
+uid="uid://du4r2p21hscai"
+path="res://.godot/imported/bg_underpass.png-76e30a37b357b79ab55eb413680ec837.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_underpass.png"
-dest_files=["res://.godot/imported/bg_underpass.png-dd02e20784913ec915bd2a2fa796ec45.ctex"]
+dest_files=["res://.godot/imported/bg_underpass.png-76e30a37b357b79ab55eb413680ec837.ctex"]
 
 [params]
 

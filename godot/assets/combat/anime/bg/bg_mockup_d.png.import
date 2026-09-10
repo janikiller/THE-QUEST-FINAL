@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ne252d3c7d5bca"
-path="res://.godot/imported/bg_mockup_d.png-dd02e20784913ec915bd2a2fa796ec45.ctex"
+uid="uid://cyyqkm5eikwqx"
+path="res://.godot/imported/bg_mockup_d.png-8e6f224dd49228efdd8db3c7b3cc620d.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/combat/anime/bg/bg_mockup_d.png"
-dest_files=["res://.godot/imported/bg_mockup_d.png-dd02e20784913ec915bd2a2fa796ec45.ctex"]
+dest_files=["res://.godot/imported/bg_mockup_d.png-8e6f224dd49228efdd8db3c7b3cc620d.ctex"]
 
 [params]
 
