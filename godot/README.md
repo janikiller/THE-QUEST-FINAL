@@ -1,6 +1,6 @@
 # THE QUEST FINAL — Comisaría (Godot 4.7.2)
 
-Roguelike de cartas policial: **una patrulla (García)** interviene en misiones sobre el mapa de la ciudad.
+Roguelike de cartas policial: **una patrulla (Kick-Ass)** interviene en misiones sobre el mapa de la ciudad.
 
 ## Requisitos
 
@@ -16,7 +16,7 @@ Roguelike de cartas policial: **una patrulla (García)** interviene en misiones 
 - **WASD**: mover en el mapa
 - **Clic en misión / marcador**: empieza el **combate de cartas**
 - **M**: lista de misiones
-- **I**: mazo de García
+- **I**: mazo de Kick-Ass
 - **C** clima · **N** música · **1–4** velocidad · rueda zoom
 
 ## Cómo jugar
