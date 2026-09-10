@@ -89,6 +89,12 @@ func _ground_shot() -> void:
 		return
 	var floor_ok := combat.get_node_or_null("FloorPlane") != null
 	var solid_ok := combat.get_node_or_null("FloorPlane/SolidDeck") != null
+	var anim_ok := combat.get_node_or_null("BgAnimLayer") != null
+	var rain_n := 0
+	if anim_ok:
+		for c in combat.get_node("BgAnimLayer").get_children():
+			if str(c.name).begins_with("Rain"):
+				rain_n += 1
 	var overhead := 0
 	if combat.enemies_row:
 		for panel in combat.enemies_row.get_children():
@@ -101,7 +107,7 @@ func _ground_shot() -> void:
 	if combat.bg and combat.bg.texture:
 		bg_path = str(combat.bg.texture.resource_path)
 	var expect_flip := false
-	print("GROUND_SHOT floor=", floor_ok, " solid=", solid_ok, " overhead=", overhead, " flip_h=", flipped, " bg=", bg_path)
+	print("GROUND_SHOT floor=", floor_ok, " solid=", solid_ok, " anim=", anim_ok, " rain=", rain_n, " overhead=", overhead, " flip_h=", flipped, " bg=", bg_path)
 	if combat.has_method("_ground_contact_y"):
 		var floor_n = combat.get_node_or_null("FloorPlane")
 		var pcol = combat.get_node_or_null("Arena/PlayerCol")
@@ -109,6 +115,10 @@ func _ground_shot() -> void:
 		print("GROUND_METRICS size=", combat.size, " contact=", combat._ground_contact_y(), " floor_top=", (floor_n.get_global_rect().position.y if floor_n else -1), " pcol_bottom=", (pcol.get_global_rect().end.y if pcol else -1), " sole_y=", (spr.get_global_rect().end.y if spr else -1), " sole_pad=", spr.get_meta("sole_pad", -1) if spr else -1, " plant_pos=", spr.get_meta("plant_pos", Vector2.ZERO) if spr else Vector2.ZERO)
 	if not floor_ok or not solid_ok:
 		print("GROUND_SHOT_FAIL no floor deck")
+		get_tree().quit(1)
+		return
+	if not anim_ok or rain_n < 20:
+		print("GROUND_SHOT_FAIL animated bg missing anim=", anim_ok, " rain=", rain_n)
 		get_tree().quit(1)
 		return
 	if overhead > 0:
@@ -120,6 +130,12 @@ func _ground_shot() -> void:
 		get_tree().quit(1)
 		return
 	await _save_shot("mapa_fisica_sin_cartas")
+	# Tres fotogramas del fondo animado (lluvia/neones/niebla en movimiento)
+	await _save_shot("fondo_animado_01")
+	await get_tree().create_timer(0.45).timeout
+	await _save_shot("fondo_animado_02")
+	await get_tree().create_timer(0.45).timeout
+	await _save_shot("fondo_animado_03")
 	if combat.has_method("_spawn_blood_burst"):
 		combat._spawn_blood_burst(Vector2(900, 360), 2.0)
 	if combat.has_method("_spawn_dust_puff"):
