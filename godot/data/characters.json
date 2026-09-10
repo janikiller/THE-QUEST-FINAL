@@ -1,6 +1,6 @@
 {
   "police": [
-    {"id": "police_00", "name": "García", "role": "patrulla", "full": "res://assets/character/police/police_00.png", "thumb": "res://assets/character/portraits/police_00_thumb.png", "icon": "res://assets/character/map_icons/police_00.png"},
+    {"id": "police_00", "name": "Kick-Ass", "role": "patrulla", "full": "res://assets/character/police/police_00.png", "thumb": "res://assets/character/portraits/police_00_thumb.png", "icon": "res://assets/character/map_icons/police_00.png"},
     {"id": "police_01", "name": "Torres", "role": "patrulla", "full": "res://assets/character/police/police_01.png", "thumb": "res://assets/character/portraits/police_01_thumb.png", "icon": "res://assets/character/map_icons/police_01.png"},
     {"id": "police_02", "name": "Navarro", "role": "patrulla", "full": "res://assets/character/police/police_02.png", "thumb": "res://assets/character/portraits/police_02_thumb.png", "icon": "res://assets/character/map_icons/police_02.png"},
     {"id": "police_03", "name": "Ibáñez", "role": "patrulla", "full": "res://assets/character/police/police_03.png", "thumb": "res://assets/character/portraits/police_03_thumb.png", "icon": "res://assets/character/map_icons/police_03.png"},
