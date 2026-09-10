@@ -262,7 +262,7 @@ func _rebuild_cards() -> void:
 func _make_card_tile(def: Dictionary) -> Control:
 	var cid := str(def.get("id", ""))
 	var rar := CardDB.normalize_rarity(str(def.get("rarity", "basica")))
-	var price := CardDB.price_of(cid)
+	var price := GameState.market_price(cid)
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(156, 220)
 	var sb := StyleBoxFlat.new()
@@ -356,7 +356,7 @@ func _refresh_detail() -> void:
 		btn_buy.text = "COMPRAR"
 		return
 	var def := CardDB.get_card(_selected_id)
-	var price := CardDB.price_of(_selected_id)
+	var price := GameState.market_price(_selected_id)
 	_set_tex(detail_art, str(def.get("art", def.get("icon", ""))))
 	detail_name.text = str(def.get("name", _selected_id))
 	detail_meta.text = "%s · coste %d · %d monedas" % [

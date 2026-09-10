@@ -21,7 +21,7 @@ func _ready() -> void:
 	var mode := ""
 	for key in [
 		"TQ_SMOKE", "TQ_INV", "TQ_PLAYTEST", "TQ_COMBAT_SHOT", "TQ_MAP_SHOT",
-		"TQ_BOSS_MARKET_SHOT", "TQ_BOSS_FIGHT", "TQ_BOSS_AUTOPLAY", "TQ_ROSTER_SHOT", "TQ_ANIME_CARDS_SHOT",
+		"TQ_BOSS_MARKET_SHOT", "TQ_BOSS_FIGHT", "TQ_BOSS_AUTOPLAY", "TQ_PROGRESSION_SHOT", "TQ_ROSTER_SHOT", "TQ_ANIME_CARDS_SHOT",
 		"TQ_MARKET_ROULETTE_SHOT", "TQ_XP_PACK_SHOT", "TQ_FIX_SHOT", "TQ_ENEMY_CARDS_SHOT",
 		"TQ_GROUND_SHOT",
 	]:
@@ -45,6 +45,8 @@ func _ready() -> void:
 			call_deferred("_boss_fight_demo")
 		"TQ_BOSS_AUTOPLAY":
 			call_deferred("_boss_autoplay")
+		"TQ_PROGRESSION_SHOT":
+			call_deferred("_progression_shot")
 		"TQ_ROSTER_SHOT":
 			call_deferred("_roster_shot")
 		"TQ_ANIME_CARDS_SHOT":
@@ -737,6 +739,45 @@ func _boss_fight_demo() -> void:
 		get_tree().quit(0)
 
 
+func _progression_shot() -> void:
+	## Evidencia: el nivel sube PV/bloque y el HUD muestra poder de mazo.
+	await get_tree().create_timer(0.8).timeout
+	GameState.hero_level = 1
+	GameState.hero_xp = 0
+	GameState.pending_level_packs = 0
+	var cfg1 := {
+		"max_hp": 50 + GameState.level_hp_bonus(),
+		"energy_max": 3 + GameState.level_energy_bonus(),
+		"start_block": GameState.level_start_block(),
+	}
+	print("PROGRESSION_L1 hp=", cfg1["max_hp"], " block=", cfg1["start_block"], " chip=", GameState.progression_chip())
+	var res := GameState.add_combat_xp(GameState.xp_to_next_level() + GameState.xp_to_next_level(2) + 5, "shot")
+	print("PROGRESSION_LEVELS ", res)
+	var cfg3 := {
+		"max_hp": 50 + GameState.level_hp_bonus(),
+		"energy_max": 3 + GameState.level_energy_bonus(),
+		"start_block": GameState.level_start_block(),
+	}
+	print("PROGRESSION_L", GameState.hero_level, " hp=", cfg3["max_hp"], " energy=", cfg3["energy_max"], " block=", cfg3["start_block"])
+	print("PROGRESSION_DECK ", GameState.deck_power_label("alpha"))
+	print("PROGRESSION_BOSS ", GameState.boss_night_label())
+	# Forzar UI mapa
+	var router = $UI/UIRouter
+	if router and router.has_method("show_map"):
+		router.show_map()
+	await get_tree().process_frame
+	await get_tree().create_timer(0.5).timeout
+	await _save_shot("progression_map_chip")
+	# Abrir sobre si hay
+	if GameState.has_pending_level_packs() and router and router.has_method("show_level_up"):
+		router.show_level_up("alpha")
+		await get_tree().create_timer(0.6).timeout
+		await _save_shot("progression_level_pack")
+	print("PROGRESSION_SHOT_OK level=", GameState.hero_level, " hp_bonus=", GameState.level_hp_bonus())
+	if OS.get_environment("TQ_PROGRESSION_QUIT") != "0":
+		get_tree().quit(0)
+
+
 func _boss_autoplay() -> void:
 	## Juega el combate del Capo automáticamente hasta victoria o derrota.
 	await get_tree().create_timer(1.0).timeout
@@ -767,6 +808,10 @@ func _boss_autoplay() -> void:
 	await get_tree().create_timer(0.6).timeout
 	await _save_shot("boss_autoplay_start")
 	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	var refresh_was_connected := false
+	if combat and CombatState.combat_updated.is_connected(combat._refresh):
+		CombatState.combat_updated.disconnect(combat._refresh)
+		refresh_was_connected = true
 	var turns := 0
 	while CombatState.is_active() and turns < 80:
 		turns += 1
@@ -830,6 +875,11 @@ func _boss_autoplay() -> void:
 			any_enemy = true
 	victory = int(CombatState.player.get("hp", 0)) > 0 and not any_enemy
 	print("BOSS_AUTOPLAY_RESULT ", "WIN" if victory else "DEATH", " turns=", turns, " hp=", CombatState.player.get("hp",0))
+	if combat and refresh_was_connected and not CombatState.combat_updated.is_connected(combat._refresh):
+		CombatState.combat_updated.connect(combat._refresh)
+	if combat and is_instance_valid(combat):
+		combat._busy = false
+		combat._refresh()
 	await _save_shot("boss_autoplay_end")
 	if victory:
 		GameState.active_boss_id = "boss_01_capo"

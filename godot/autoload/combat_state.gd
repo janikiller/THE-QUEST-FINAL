@@ -51,11 +51,12 @@ func start_combat(cfg: Dictionary) -> void:
 	last_log = "Intervención iniciada. Elige cartas."
 
 	var max_hp := int(cfg.get("max_hp", 50))
+	var start_block := int(cfg.get("start_block", 0))
 	player = {
 		"name": str(cfg.get("hero_name", "Kick-Ass")),
 		"hp": max_hp,
 		"max_hp": max_hp,
-		"block": 0,
+		"block": start_block,
 		"energy": int(cfg.get("energy_max", 3)),
 		"energy_max": int(cfg.get("energy_max", 3)),
 		"vulnerable": 0,
@@ -77,6 +78,10 @@ func start_combat(cfg: Dictionary) -> void:
 		"ally_power": 0,
 		"last_card_id": "",
 	}
+	if start_block > 0:
+		last_log = "Nv.%d: +%d bloque al entrar. Elige cartas." % [GameState.hero_level, start_block]
+	else:
+		last_log = "Intervención iniciada. Elige cartas."
 
 	enemies.clear()
 	var raw_enemies: Array = cfg.get("enemies", [])

@@ -303,6 +303,70 @@ func xp_to_next_level(level: int = -1) -> int:
 	return 40 + (lv - 1) * 22
 
 
+const LEVEL_HP_PER := 4
+const LEVEL_ENERGY_EVERY := 4
+const LEVEL_BLOCK_PER := 1
+const LEVEL_BLOCK_CAP := 6
+
+
+func level_hp_bonus(level: int = -1) -> int:
+	var lv := level if level > 0 else hero_level
+	return maxi(0, (lv - 1) * LEVEL_HP_PER)
+
+
+func level_energy_bonus(level: int = -1) -> int:
+	var lv := level if level > 0 else hero_level
+	return maxi(0, int((lv - 1) / LEVEL_ENERGY_EVERY))
+
+
+func level_start_block(level: int = -1) -> int:
+	var lv := level if level > 0 else hero_level
+	return mini(LEVEL_BLOCK_CAP, maxi(0, (lv - 1) * LEVEL_BLOCK_PER))
+
+
+func deck_power_summary(patrol_id: String = "alpha") -> Dictionary:
+	ensure_patrol_deck(patrol_id)
+	var counts := {"basica": 0, "magica": 0, "fuerza": 0, "legendaria": 0, "total": 0, "score": 0}
+	for cid in get_patrol_deck(patrol_id):
+		var rar := CardDB.normalize_rarity(str(CardDB.get_card(str(cid)).get("rarity", "basica")))
+		if counts.has(rar):
+			counts[rar] = int(counts[rar]) + 1
+		counts["total"] = int(counts["total"]) + 1
+	counts["score"] = (
+		int(counts["basica"]) * 1
+		+ int(counts["magica"]) * 3
+		+ int(counts["fuerza"]) * 5
+		+ int(counts["legendaria"]) * 10
+	)
+	return counts
+
+
+func deck_power_label(patrol_id: String = "alpha") -> String:
+	var d := deck_power_summary(patrol_id)
+	return "Mazo %d · B%d/M%d/F%d/L%d · poder %d" % [
+		int(d.get("total", 0)), int(d.get("basica", 0)), int(d.get("magica", 0)),
+		int(d.get("fuerza", 0)), int(d.get("legendaria", 0)), int(d.get("score", 0)),
+	]
+
+
+func progression_chip() -> String:
+	return "Nv.%d (+%d PV) · %s · %s" % [
+		hero_level, level_hp_bonus(), boss_night_label(), deck_power_label("alpha"),
+	]
+
+
+func prestige_discount() -> float:
+	return clampf(float(prestige) * 0.01, 0.0, 0.25)
+
+
+func market_price(card_id: String) -> int:
+	var base := CardDB.price_of(card_id)
+	var disc := prestige_discount()
+	if disc <= 0.0:
+		return base
+	return maxi(1, int(round(float(base) * (1.0 - disc))))
+
+
 func add_combat_xp(amount: int, reason: String = "") -> Dictionary:
 	## Otorga XP. Puede subir varios niveles y encolar sobres.
 	var gained := maxi(0, amount)
@@ -316,7 +380,10 @@ func add_combat_xp(amount: int, reason: String = "") -> Dictionary:
 		levels_up += 1
 		pending_level_packs += 1
 		leveled_up.emit(hero_level)
-		RadioBus.push("¡Nivel %d! Abre un sobre de cartas." % hero_level, "resolve")
+		RadioBus.push(
+			"¡Nivel %d! +%d PV permanentes en combate. Abre un sobre." % [hero_level, LEVEL_HP_PER],
+			"resolve"
+		)
 	xp_changed.emit(hero_xp, hero_level, xp_to_next_level())
 	if levels_up > 0:
 		level_pack_pending.emit(pending_level_packs)
@@ -435,13 +502,20 @@ func spend_credits(amount: int) -> bool:
 
 
 func buy_card_for_patrol(patrol_id: String, card_id: String) -> bool:
-	var price := CardDB.price_of(card_id)
+	var price := market_price(card_id)
 	if CardDB.get_card(card_id).is_empty():
 		return false
 	if not spend_credits(price):
 		return false
 	add_card_to_deck(patrol_id, card_id)
-	RadioBus.push("Mercado: adquirida «%s» (−%d ★)." % [str(CardDB.get_card(card_id).get("name", card_id)), price], "resolve")
+	var disc := prestige_discount()
+	var disc_txt := (" (−%d%% prestigio)" % int(disc * 100)) if disc > 0.0 else ""
+	RadioBus.push(
+		"Mercado: «%s» (−%d monedas)%s. %s" % [
+			str(CardDB.get_card(card_id).get("name", card_id)), price, disc_txt, deck_power_label(patrol_id)
+		],
+		"resolve"
+	)
 	return true
 
 
@@ -1201,8 +1275,9 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 		"location": str(mission.get("title", mission.get("district_name", "Intervención"))),
 		"objective": objective,
 		"hero_name": hero_name,
-		"max_hp": int(patrol.get("max_hp", 50)) + (14 if is_boss else 0),
-		"energy_max": int(patrol.get("energy_max", 3)) + (1 if is_boss else 0),
+		"max_hp": int(patrol.get("max_hp", 50)) + level_hp_bonus() + (14 if is_boss else 0),
+		"energy_max": int(patrol.get("energy_max", 3)) + level_energy_bonus() + (1 if is_boss else 0),
+		"start_block": level_start_block(),
 		"portrait": portrait,
 		"sprite": sprite,
 		"deck": deck,

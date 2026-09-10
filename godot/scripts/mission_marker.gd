@@ -61,7 +61,9 @@ func _apply_badge_modulate() -> void:
 	if badge == null:
 		return
 	var base := Color(1, 1, 1, 1)
-	if _status in ["dispatched", "resolving"]:
+	if _badge_key == "boss":
+		base = Color(1.0, 0.45, 0.35, 1.0)
+	elif _status in ["dispatched", "resolving"]:
 		base = Color(0.85, 0.92, 1.12, 1.0)
 	elif _status == "resolved":
 		base = Color(0.75, 1.0, 0.8, 1.0)
@@ -69,21 +71,29 @@ func _apply_badge_modulate() -> void:
 		base = Color(0.55, 0.55, 0.55, 1.0)
 	if _selected:
 		base = base.lightened(0.08)
-		badge.scale = Vector2(1.02, 1.02)
+		badge.scale = Vector2(1.08, 1.08) if _badge_key == "boss" else Vector2(1.02, 1.02)
 	else:
-		badge.scale = Vector2(0.92, 0.92)
+		badge.scale = Vector2(1.05, 1.05) if _badge_key == "boss" else Vector2(0.92, 0.92)
 	badge.modulate = base
 
 
 func _process(delta: float) -> void:
-	_pulse += delta * 2.2
+	_pulse += delta * (3.4 if _badge_key == "boss" else 2.2)
 	if badge:
-		badge.position.y = -8.0 + sin(_pulse) * 1.6
+		var bob := 3.2 if _badge_key == "boss" else 1.6
+		badge.position.y = -8.0 + sin(_pulse) * bob
+		if _badge_key == "boss":
+			var pulse_col := Color(1.0, 0.35 + 0.25 * abs(sin(_pulse)), 0.25, 1.0)
+			badge.modulate = pulse_col
 	queue_redraw()
 
 
 func _draw() -> void:
 	draw_circle(Vector2(0, 18), 16.0, Color(0, 0, 0, 0.28))
+	if _badge_key == "boss":
+		var r := 36.0 + sin(_pulse) * 4.0
+		draw_arc(Vector2(0, -8), r, 0.0, TAU, 32, Color(1.0, 0.35, 0.2, 0.55), 3.0, true)
+		draw_string(ThemeDB.fallback_font, Vector2(-22, -48), "BOSS", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 0.75, 0.35))
 	if _selected:
 		draw_circle(Vector2(0, -8), 42.0, Color(1, 1, 1, 0.08))
 
@@ -104,7 +114,7 @@ func _layout_hit() -> void:
 
 func _badge_for_mission(mission: Dictionary) -> String:
 	if bool(mission.get("is_boss", false)):
-		return "narcotrafico"
+		return "boss"
 	var cat := str(mission.get("category", "")).to_lower()
 	var eid := str(mission.get("event_id", "")).to_lower()
 	var title := str(mission.get("title", "")).to_lower()

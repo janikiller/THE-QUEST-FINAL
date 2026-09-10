@@ -320,6 +320,7 @@ func _ready() -> void:
 	CombatState.combat_updated.connect(_refresh)
 	CombatState.combat_ended.connect(_on_combat_ended)
 	CombatState.log_message.connect(_on_log)
+	CombatState.enemy_defeated.connect(_on_enemy_defeated)
 	_style_end_btn()
 	_style_bottom_panel()
 	_ensure_enemy_hand_ui()
@@ -951,12 +952,19 @@ func _on_combat_ended(victory: bool) -> void:
 		if mission.is_empty():
 			mission = GameState.last_resolved_mission()
 		var coins_hint := GameState.mission_coin_reward(mission)
+		var hp_bonus := GameState.level_hp_bonus()
+		var bits: PackedStringArray = []
 		if levels > 0:
-			result_title.text = "¡NIVEL %d!  +%d XP" % [GameState.hero_level, xp]
-		elif xp > 0:
-			result_title.text = "ÉXITO  ·  +%d XP  ·  +%d monedas" % [xp, coins_hint]
-		else:
-			result_title.text = "ÉXITO  ·  +%d monedas → Mercado" % coins_hint
+			bits.append("¡NIVEL %d!" % GameState.hero_level)
+		bits.append(("+%d XP" % xp) if xp > 0 else "ÉXITO")
+		bits.append("+%d monedas" % coins_hint)
+		if kills > 0:
+			bits.append("%d bajas" % kills)
+		if hp_bonus > 0:
+			bits.append("+%d PV de nivel" % hp_bonus)
+		if GameState.pending_level_packs > 0:
+			bits.append("SOBRE LISTO")
+		result_title.text = "  ·  ".join(bits)
 		result_title.add_theme_color_override("font_color", Color(0.35, 0.9, 0.55))
 	else:
 		result_title.text = "UNIDAD CAÍDA"
@@ -991,8 +999,9 @@ func _refresh() -> void:
 	block_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	block_label.add_theme_constant_override("outline_size", 3)
 	location_label.text = str(snap.get("location", "")).to_upper()
-	var xp_bit := "NV.%d  %d/%d XP" % [
+	var xp_bit := "NV.%d (+%d PV)  %d/%d XP" % [
 		int(snap.get("hero_level", GameState.hero_level)),
+		GameState.level_hp_bonus(),
 		int(snap.get("hero_xp", GameState.hero_xp)),
 		int(snap.get("xp_to_next", GameState.xp_to_next_level())),
 	]
@@ -3180,3 +3189,46 @@ func _rebuild_energy(snap: Dictionary) -> void:
 		sb.set_corner_radius_all(9)
 		pip.add_theme_stylebox_override("panel", sb)
 		energy_row.add_child(pip)
+
+
+func _on_enemy_defeated(enemy_index: int, xp_gained: int) -> void:
+	## Feedback inmediato de progresión al matar.
+	if xp_gained <= 0:
+		return
+	var wrap := _enemy_wrap(enemy_index)
+	var pos := Vector2(size.x * 0.72, size.y * 0.35)
+	if wrap and is_instance_valid(wrap):
+		var spr: TextureRect = wrap.find_child("EnemySprite", true, false)
+		if spr:
+			pos = spr.global_position + Vector2(spr.size.x * 0.35, 8)
+		else:
+			pos = wrap.global_position + Vector2(40, 20)
+	_spawn_float_label(pos, "+%d XP" % xp_gained, Color(0.55, 0.9, 1.0))
+	if CombatState.combat_levels_gained > 0 or GameState.pending_level_packs > 0:
+		_spawn_float_label(pos + Vector2(0, 28), "¡NIVEL!", Color(1.0, 0.85, 0.35))
+	# Pulso del chip de XP en HUD
+	if is_instance_valid(location_label):
+		var tw := create_tween()
+		tw.tween_property(location_label, "modulate", Color(0.5, 1.0, 1.0), 0.08)
+		tw.tween_property(location_label, "modulate", Color.WHITE, 0.25)
+
+
+func _spawn_float_label(global_pos: Vector2, text: String, col: Color) -> void:
+	var lab := Label.new()
+	lab.text = text
+	lab.add_theme_font_size_override("font_size", 26)
+	lab.add_theme_color_override("font_color", col)
+	lab.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	lab.add_theme_constant_override("outline_size", 5)
+	lab.z_index = 120
+	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _fx_layer:
+		_fx_layer.add_child(lab)
+	else:
+		add_child(lab)
+	lab.global_position = global_pos
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(lab, "global_position", global_pos + Vector2(0, -54), 0.75).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(lab, "modulate:a", 0.0, 0.75).set_delay(0.25)
+	tw.chain().tween_callback(lab.queue_free)

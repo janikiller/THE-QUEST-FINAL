@@ -309,11 +309,15 @@ func _refresh_dock() -> void:
 			_:
 				_period_chip.add_theme_color_override("font_color", Color(0.95, 0.95, 0.85))
 	if _credits_chip:
-		_credits_chip.text = "NV.%d  %d/%d XP  ·  %d monedas" % [
+		var deck := GameState.deck_power_summary("alpha")
+		_credits_chip.text = "NV.%d (+%d PV)  %d/%d XP  ·  %d monedas  ·  poder %d  ·  %s" % [
 			GameState.hero_level,
+			GameState.level_hp_bonus(),
 			GameState.hero_xp,
 			GameState.xp_to_next_level(),
 			GameState.credits,
+			int(deck.get("score", 0)),
+			GameState.boss_night_label(),
 		]
 
 
@@ -325,8 +329,10 @@ func _update_tod_hint() -> void:
 			label = "ATARDECER"
 		"night":
 			label = "NOCHE"
-	prestige_label.text = "★%d  %s  %s  %dx" % [
-		GameState.prestige, label, GameState.weather_label(), int(round(GameState.time_speed))
+	var disc := GameState.prestige_discount()
+	var disc_bit := (" −%d%% tienda" % int(disc * 100)) if disc > 0.0 else ""
+	prestige_label.text = "★%d%s  %s  %s  %dx" % [
+		GameState.prestige, disc_bit, label, GameState.weather_label(), int(round(GameState.time_speed))
 	]
 	btn_weather.text = GameState.weather_label()
 	_refresh_dock()
