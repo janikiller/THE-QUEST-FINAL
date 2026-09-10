@@ -1,0 +1,509 @@
+{
+  "cards": [
+    {
+      "id": "foe_shot",
+      "name": "Disparo Sucio",
+      "kind": "attack",
+      "damage": 8,
+      "target": "player",
+      "effect": "8 daño",
+      "description": "Disparo improviso.",
+      "art": "res://assets/combat/anime/cards/pistol.png",
+      "icon": "res://assets/combat/anime/cards/pistol.png"
+    },
+    {
+      "id": "foe_burst",
+      "name": "Ráfaga",
+      "kind": "attack",
+      "damage": 4,
+      "hits": 2,
+      "target": "player",
+      "effect": "4×2 daño",
+      "description": "Dos disparos rápidos.",
+      "art": "res://assets/combat/anime/cards/rifle.png",
+      "icon": "res://assets/combat/anime/cards/rifle.png"
+    },
+    {
+      "id": "foe_bash",
+      "name": "Golpe Contundente",
+      "kind": "attack",
+      "damage": 11,
+      "target": "player",
+      "effect": "11 daño",
+      "description": "Porrazo o bate.",
+      "art": "res://assets/combat/anime/cards/baton.png",
+      "icon": "res://assets/combat/anime/cards/baton.png"
+    },
+    {
+      "id": "foe_slash",
+      "name": "Cuchillada",
+      "kind": "attack",
+      "damage": 7,
+      "weaken": 1,
+      "target": "player",
+      "effect": "7 daño · debilita",
+      "description": "Corte que debilita.",
+      "art": "res://assets/combat/anime/cards/force_fist.png",
+      "icon": "res://assets/combat/anime/cards/force_fist.png"
+    },
+    {
+      "id": "foe_snipe",
+      "name": "Tiro Preciso",
+      "kind": "attack",
+      "damage": 14,
+      "target": "player",
+      "effect": "14 daño",
+      "description": "Apunta y dispara.",
+      "art": "res://assets/combat/anime/cards/rifle.png",
+      "icon": "res://assets/combat/anime/cards/rifle.png"
+    },
+    {
+      "id": "foe_cover",
+      "name": "Ponerse a Cubierto",
+      "kind": "block",
+      "block": 8,
+      "target": "self",
+      "effect": "+8 defensa",
+      "description": "Se protege.",
+      "art": "res://assets/combat/anime/cards/shield.png",
+      "icon": "res://assets/combat/anime/cards/shield.png"
+    },
+    {
+      "id": "foe_brace",
+      "name": "Aguante",
+      "kind": "block",
+      "block": 12,
+      "target": "self",
+      "effect": "+12 defensa",
+      "description": "Resiste el turno.",
+      "art": "res://assets/combat/anime/cards/barrier.png",
+      "icon": "res://assets/combat/anime/cards/barrier.png"
+    },
+    {
+      "id": "foe_patch",
+      "name": "Parche Rápido",
+      "kind": "heal",
+      "heal": 8,
+      "target": "self",
+      "effect": "cura 8",
+      "description": "Se cura a medias.",
+      "art": "res://assets/combat/anime/cards/medkit.png",
+      "icon": "res://assets/combat/anime/cards/medkit.png"
+    },
+    {
+      "id": "foe_intimidate",
+      "name": "Intimidar",
+      "kind": "control",
+      "damage": 4,
+      "vulnerable": 1,
+      "target": "player",
+      "effect": "4 daño · vulnerable",
+      "description": "Te marca como presa.",
+      "art": "res://assets/combat/anime/cards/flashlight.png",
+      "icon": "res://assets/combat/anime/cards/flashlight.png"
+    },
+    {
+      "id": "foe_smoke",
+      "name": "Humo",
+      "kind": "block",
+      "block": 6,
+      "damage": 3,
+      "target": "player",
+      "effect": "+6 defensa · 3 daño",
+      "description": "Cortina y escape corto.",
+      "art": "res://assets/combat/anime/cards/smoke.png",
+      "icon": "res://assets/combat/anime/cards/smoke.png"
+    },
+    {
+      "id": "foe_molotov",
+      "name": "Cóctel Molotov",
+      "kind": "attack",
+      "damage": 10,
+      "vulnerable": 1,
+      "target": "player",
+      "effect": "10 daño · vulnerable",
+      "description": "Fuego improvisado.",
+      "art": "res://assets/combat/anime/cards/flash.png",
+      "icon": "res://assets/combat/anime/cards/flash.png"
+    },
+    {
+      "id": "foe_chain",
+      "name": "Cadena",
+      "kind": "attack",
+      "damage": 9,
+      "stun": 1,
+      "target": "player",
+      "effect": "9 daño · stun",
+      "description": "Te enreda un turno.",
+      "art": "res://assets/combat/anime/cards/cuffs.png",
+      "icon": "res://assets/combat/anime/cards/cuffs.png"
+    },
+    {
+      "id": "foe_poison",
+      "name": "Dosis",
+      "kind": "control",
+      "damage": 5,
+      "weaken": 2,
+      "target": "player",
+      "effect": "5 daño · debilita 2",
+      "description": "Sustancia ilegal.",
+      "art": "res://assets/combat/anime/cards/medkit.png",
+      "icon": "res://assets/combat/anime/cards/medkit.png"
+    },
+    {
+      "id": "foe_flee",
+      "name": "Huir",
+      "kind": "flee",
+      "target": "self",
+      "effect": "intenta huir",
+      "description": "Sale corriendo.",
+      "art": "res://assets/combat/anime/cards/smoke.png",
+      "icon": "res://assets/combat/anime/cards/smoke.png"
+    },
+    {
+      "id": "boss_capo_orden",
+      "name": "Orden del Capo",
+      "kind": "attack",
+      "damage": 16,
+      "vulnerable": 2,
+      "target": "player",
+      "effect": "16 daño · vuln. 2",
+      "description": "La ciudad obedece.",
+      "art": "res://assets/combat/anime/cards/legend_badge.png",
+      "icon": "res://assets/combat/anime/cards/legend_badge.png"
+    },
+    {
+      "id": "boss_capo_guarda",
+      "name": "Guardaespaldas",
+      "kind": "block",
+      "block": 16,
+      "heal": 4,
+      "target": "self",
+      "effect": "+16 defensa · cura 4",
+      "description": "Sus hombres lo cubren.",
+      "art": "res://assets/combat/anime/cards/barrier.png",
+      "icon": "res://assets/combat/anime/cards/barrier.png"
+    },
+    {
+      "id": "boss_viuda_beso",
+      "name": "Beso Negro",
+      "kind": "attack",
+      "damage": 12,
+      "weaken": 2,
+      "stun": 1,
+      "target": "player",
+      "effect": "12 · debilita · stun",
+      "description": "Veneno elegante.",
+      "art": "res://assets/combat/anime/cards/legend_phoenix.png",
+      "icon": "res://assets/combat/anime/cards/legend_phoenix.png"
+    },
+    {
+      "id": "boss_viuda_velo",
+      "name": "Velo Fúnebre",
+      "kind": "block",
+      "block": 14,
+      "weaken": 1,
+      "target": "player",
+      "effect": "+14 defensa · debilita",
+      "description": "Se envuelve en luto.",
+      "art": "res://assets/combat/anime/cards/smoke.png",
+      "icon": "res://assets/combat/anime/cards/smoke.png"
+    },
+    {
+      "id": "boss_fantasma_tiro",
+      "name": "Tiro Fantasma",
+      "kind": "attack",
+      "damage": 22,
+      "target": "player",
+      "effect": "22 daño",
+      "description": "Un solo disparo limpio.",
+      "art": "res://assets/combat/anime/cards/rifle.png",
+      "icon": "res://assets/combat/anime/cards/rifle.png"
+    },
+    {
+      "id": "boss_fantasma_eco",
+      "name": "Eco Silencioso",
+      "kind": "attack",
+      "damage": 9,
+      "hits": 2,
+      "target": "player",
+      "effect": "9×2 daño",
+      "description": "Dos balas fantasma.",
+      "art": "res://assets/combat/anime/cards/pistol.png",
+      "icon": "res://assets/combat/anime/cards/pistol.png"
+    },
+    {
+      "id": "boss_veneno_nube",
+      "name": "Nube Tóxica",
+      "kind": "control",
+      "damage": 10,
+      "vulnerable": 2,
+      "weaken": 1,
+      "target": "player",
+      "effect": "10 · vuln · debilita",
+      "description": "Química letal.",
+      "art": "res://assets/combat/anime/cards/smoke.png",
+      "icon": "res://assets/combat/anime/cards/smoke.png"
+    },
+    {
+      "id": "boss_veneno_suero",
+      "name": "Suero Negro",
+      "kind": "heal",
+      "heal": 12,
+      "block": 8,
+      "target": "self",
+      "effect": "cura 12 · +8 defensa",
+      "description": "Se inyecta su propia fórmula.",
+      "art": "res://assets/combat/anime/cards/medkit.png",
+      "icon": "res://assets/combat/anime/cards/medkit.png"
+    },
+    {
+      "id": "boss_titan_golpe",
+      "name": "Puño Titán",
+      "kind": "attack",
+      "damage": 20,
+      "stun": 1,
+      "target": "player",
+      "effect": "20 daño · stun",
+      "description": "Impacto demoledor.",
+      "art": "res://assets/combat/anime/cards/force_fist.png",
+      "icon": "res://assets/combat/anime/cards/force_fist.png"
+    },
+    {
+      "id": "boss_titan_piel",
+      "name": "Piel de Acero",
+      "kind": "block",
+      "block": 22,
+      "target": "self",
+      "effect": "+22 defensa",
+      "description": "Casi invulnerable.",
+      "art": "res://assets/combat/anime/cards/barrier.png",
+      "icon": "res://assets/combat/anime/cards/barrier.png"
+    },
+    {
+      "id": "boss_sombra_corte",
+      "name": "Corte Sombra",
+      "kind": "attack",
+      "damage": 8,
+      "hits": 2,
+      "weaken": 1,
+      "target": "player",
+      "effect": "8×2 · debilita",
+      "description": "Ataque cyber.",
+      "art": "res://assets/combat/anime/cards/force_fist.png",
+      "icon": "res://assets/combat/anime/cards/force_fist.png"
+    },
+    {
+      "id": "boss_sombra_paso",
+      "name": "Paso Fantasma",
+      "kind": "control",
+      "damage": 6,
+      "vulnerable": 2,
+      "target": "player",
+      "effect": "6 · vuln. 2",
+      "description": "Aparece a tu espalda.",
+      "art": "res://assets/combat/anime/cards/smoke.png",
+      "icon": "res://assets/combat/anime/cards/smoke.png"
+    },
+    {
+      "id": "boss_rey_garfio",
+      "name": "Garfio del Puerto",
+      "kind": "attack",
+      "damage": 15,
+      "block": 6,
+      "target": "player",
+      "effect": "15 daño · +6 defensa",
+      "description": "Embiste y se cubre.",
+      "art": "res://assets/combat/anime/cards/baton.png",
+      "icon": "res://assets/combat/anime/cards/baton.png"
+    },
+    {
+      "id": "boss_rey_marea",
+      "name": "Marea de Anclas",
+      "kind": "attack",
+      "damage": 5,
+      "hits": 3,
+      "stun": 1,
+      "target": "player",
+      "effect": "5×3 · stun",
+      "description": "Te aplasta con el muelle.",
+      "art": "res://assets/combat/anime/cards/cuffs.png",
+      "icon": "res://assets/combat/anime/cards/cuffs.png"
+    },
+    {
+      "id": "boss_zero_hack",
+      "name": "Hack Total",
+      "kind": "control",
+      "damage": 8,
+      "vulnerable": 2,
+      "stun": 1,
+      "target": "player",
+      "effect": "8 · vuln · stun",
+      "description": "Tu equipo falla.",
+      "art": "res://assets/combat/anime/cards/radio.png",
+      "icon": "res://assets/combat/anime/cards/radio.png"
+    },
+    {
+      "id": "boss_zero_virus",
+      "name": "Virus Zero",
+      "kind": "attack",
+      "damage": 4,
+      "hits": 4,
+      "weaken": 1,
+      "target": "player",
+      "effect": "4×4 · debilita",
+      "description": "Ráfaga digital.",
+      "art": "res://assets/combat/anime/cards/flashlight.png",
+      "icon": "res://assets/combat/anime/cards/flashlight.png"
+    },
+    {
+      "id": "boss_fuego_llamarada",
+      "name": "Llamarada",
+      "kind": "attack",
+      "damage": 18,
+      "vulnerable": 1,
+      "target": "player",
+      "effect": "18 daño · vulnerable",
+      "description": "Todo arde.",
+      "art": "res://assets/combat/anime/cards/flash.png",
+      "icon": "res://assets/combat/anime/cards/flash.png"
+    },
+    {
+      "id": "boss_fuego_brasas",
+      "name": "Lluvia de Brasas",
+      "kind": "attack",
+      "damage": 6,
+      "hits": 3,
+      "vulnerable": 1,
+      "target": "player",
+      "effect": "6×3 · vulnerable",
+      "description": "Chispas por todas partes.",
+      "art": "res://assets/combat/anime/cards/flash.png",
+      "icon": "res://assets/combat/anime/cards/flash.png"
+    },
+    {
+      "id": "boss_coronel_rafaga",
+      "name": "Ráfaga Militar",
+      "kind": "attack",
+      "damage": 7,
+      "hits": 3,
+      "target": "player",
+      "effect": "7×3 daño",
+      "description": "Disciplina de fuego.",
+      "art": "res://assets/combat/anime/cards/shotgun.png",
+      "icon": "res://assets/combat/anime/cards/shotgun.png"
+    },
+    {
+      "id": "boss_coronel_orden",
+      "name": "Orden de Fuego",
+      "kind": "block",
+      "block": 12,
+      "heal": 8,
+      "target": "self",
+      "effect": "+12 defensa · cura 8",
+      "description": "Reagrupa y resiste.",
+      "art": "res://assets/combat/anime/cards/shield.png",
+      "icon": "res://assets/combat/anime/cards/shield.png"
+    }
+  ],
+  "role_pools": {
+    "ataque": [
+      "foe_shot",
+      "foe_burst",
+      "foe_bash",
+      "foe_cover",
+      "foe_intimidate",
+      "foe_flee"
+    ],
+    "tactica": [
+      "foe_slash",
+      "foe_shot",
+      "foe_cover",
+      "foe_smoke",
+      "foe_brace",
+      "foe_flee"
+    ],
+    "especial": [
+      "foe_poison",
+      "foe_molotov",
+      "foe_patch",
+      "foe_shot",
+      "foe_cover",
+      "foe_flee"
+    ],
+    "default": [
+      "foe_shot",
+      "foe_cover",
+      "foe_bash",
+      "foe_flee"
+    ]
+  },
+  "boss_pools": {
+    "boss_01_capo": [
+      "boss_capo_orden",
+      "boss_capo_guarda",
+      "foe_shot",
+      "foe_intimidate"
+    ],
+    "boss_02_viuda": [
+      "boss_viuda_beso",
+      "boss_viuda_velo",
+      "foe_slash",
+      "foe_cover"
+    ],
+    "boss_03_fantasma": [
+      "boss_fantasma_tiro",
+      "boss_fantasma_eco",
+      "foe_snipe",
+      "foe_cover"
+    ],
+    "boss_04_veneno": [
+      "boss_veneno_nube",
+      "boss_veneno_suero",
+      "foe_poison",
+      "foe_patch"
+    ],
+    "boss_05_titan": [
+      "boss_titan_golpe",
+      "boss_titan_piel",
+      "foe_bash",
+      "foe_brace"
+    ],
+    "boss_06_sombra": [
+      "boss_sombra_corte",
+      "boss_sombra_paso",
+      "foe_slash",
+      "foe_smoke"
+    ],
+    "boss_07_rey_puerto": [
+      "boss_rey_garfio",
+      "boss_rey_marea",
+      "foe_bash",
+      "foe_cover"
+    ],
+    "boss_08_zero": [
+      "boss_zero_hack",
+      "boss_zero_virus",
+      "foe_intimidate",
+      "foe_cover"
+    ],
+    "boss_09_fuego": [
+      "boss_fuego_llamarada",
+      "boss_fuego_brasas",
+      "foe_molotov",
+      "foe_brace"
+    ],
+    "boss_10_coronel": [
+      "boss_coronel_rafaga",
+      "boss_coronel_orden",
+      "foe_burst",
+      "foe_brace"
+    ],
+    "default": [
+      "foe_shot",
+      "foe_brace",
+      "boss_capo_orden",
+      "boss_capo_guarda"
+    ]
+  }
+}
