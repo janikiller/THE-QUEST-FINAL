@@ -670,27 +670,15 @@ func _boss_fight_demo() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await get_tree().create_timer(0.8).timeout
-	# Forzar intent del movimiento firma del Capo para evidencia visual
-	if CombatState.is_active() and not CombatState.enemies.is_empty():
-		var be: Dictionary = CombatState.enemies[0]
-		var sig := str(be.get("signature_move", "boss_capo_orden"))
-		if sig == "":
-			sig = "boss_capo_orden"
-		var cdef := CardDB.get_enemy_card(sig)
-		be["next_card"] = sig
-		be["next_card_name"] = str(cdef.get("name", sig))
-		be["next_card_effect"] = CardDB.enemy_effect_line(cdef)
-		be["intent"] = CombatState.Intent.ATTACK
-		be["intent_value"] = CardDB.enemy_card_preview_value(cdef)
-		CombatState.enemies[0] = be
-		CombatState.intents_changed.emit()
-		await get_tree().process_frame
 	await _save_shot("boss_fight_idle")
-	print("BOSS_FIGHT signature=", CombatState.enemies[0].get("next_card_name", "?") if CombatState.is_active() else "?")
 	# Gesto de ataque del Capo — captura a mitad del lunge
 	if CombatState.is_active():
 		var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 		if combat:
+			# Log del movimiento firma (kit único)
+			if not CombatState.enemies.is_empty():
+				print("BOSS_FIGHT signature=", CombatState.enemies[0].get("signature_move", "?"),
+					" next=", CombatState.enemies[0].get("next_card_name", "?"))
 			var wrap = combat._enemy_wrap(0)
 			if wrap:
 				var spr: TextureRect = wrap.find_child("EnemySprite", true, false)
