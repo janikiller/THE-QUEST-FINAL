@@ -12,6 +12,12 @@ const GROUND_Y := 252.0
 const PHYSICS_CONTACT_RATIO := 756.0 / 1080.0
 ## Hundir suelas en el bordillo (cierra el hueco visual de ~5–8px).
 const PLANT_SINK_PX := 14.0
+## Cartas de la mano: tamaño fijo que cabe en el panel inferior sin recorte.
+const HAND_CARD_W := 124.0
+const HAND_CARD_H := 198.0
+const ENEMY_HAND_CARD_W := 98.0
+const ENEMY_HAND_CARD_H := 162.0
+const BOTTOM_PANEL_H := 292.0
 
 @onready var bg: TextureRect = %ArenaBg
 @onready var title_label: Label = %TitleLabel
@@ -57,6 +63,8 @@ var _enemy_menu_enemy_index: int = -1
 var _enemy_hand_row: HBoxContainer
 var _enemy_hand_label: Label
 var _hand_label: Label
+var _hand_deal_token: int = 0
+var _enemy_deal_token: int = 0
 var _bg_anim: Control
 var _bg_fog: TextureRect
 var _bg_fog2: TextureRect
@@ -307,7 +315,7 @@ func _sync_physics_ground() -> void:
 	var floor := get_node_or_null("FloorPlane") as Control
 	if floor:
 		floor.offset_top = -(size.y - contact)
-		floor.offset_bottom = -220.0
+		floor.offset_bottom = -BOTTOM_PANEL_H + 40.0
 		floor.z_index = 1
 	var shade := get_node_or_null("GroundShade") as ColorRect
 	if shade:
@@ -641,39 +649,66 @@ func close() -> void:
 func _style_bottom_panel() -> void:
 	var bottom := get_node_or_null("Bottom") as MarginContainer
 	if bottom:
-		# Altura normal del menú — no media pantalla
-		bottom.offset_top = -260.0
+		# Altura suficiente para cartas completas + labels (sin recortes).
+		bottom.offset_top = -BOTTOM_PANEL_H
+		bottom.add_theme_constant_override("margin_left", 14)
+		bottom.add_theme_constant_override("margin_right", 14)
+		bottom.add_theme_constant_override("margin_top", 6)
+		bottom.add_theme_constant_override("margin_bottom", 10)
 	var arena := get_node_or_null("Arena") as Control
 	if arena:
-		arena.offset_bottom = -260.0
+		arena.offset_bottom = -BOTTOM_PANEL_H
 	var panel := get_node_or_null("Bottom/BottomPanel")
 	if panel == null:
 		return
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.035, 0.05, 0.08, 0.92)
-	sb.border_color = Color(1, 1, 1, 0.08)
+	sb.bg_color = Color(0.055, 0.085, 0.13, 0.97)
+	sb.border_color = Color(0.42, 0.72, 1.0, 0.32)
 	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(16)
+	sb.border_width_top = 2
+	sb.set_corner_radius_all(14)
 	sb.content_margin_left = 12
 	sb.content_margin_right = 12
 	sb.content_margin_top = 8
 	sb.content_margin_bottom = 8
 	panel.add_theme_stylebox_override("panel", sb)
+	panel.clip_contents = false
+	if deck_count:
+		deck_count.add_theme_font_size_override("font_size", 16)
+		deck_count.add_theme_color_override("font_color", Color(0.65, 0.9, 1.0))
+	if discard_count:
+		discard_count.add_theme_font_size_override("font_size", 14)
+		discard_count.add_theme_color_override("font_color", Color(0.78, 0.84, 0.92))
+	if hand_row:
+		hand_row.add_theme_constant_override("separation", 10)
+		hand_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	if log_label:
+		log_label.add_theme_color_override("font_color", Color(0.78, 0.9, 1.0))
 
 
 func _ensure_enemy_hand_ui() -> void:
-	## Cartas enemigas en el hueco horizontal del menú (junto a TU MANO), sin subir la altura.
+	## Cartas enemigas en el hueco horizontal del menú (junto a TU MANO).
 	var bottom_row := get_node_or_null("Bottom/BottomPanel/BottomRow") as HBoxContainer
 	var hand_col := get_node_or_null("Bottom/BottomPanel/BottomRow/HandCol") as VBoxContainer
 	if bottom_row == null:
 		return
 	# Limpiar layout apilado antiguo dentro de HandCol
 	if hand_col:
-		for child_name in ["EnemyHandLabel", "EnemyHandRow", "PlayerHandLabel"]:
+		for child_name in ["EnemyHandLabel", "EnemyHandRow"]:
 			var junk := hand_col.get_node_or_null(child_name)
 			if junk:
 				hand_col.remove_child(junk)
 				junk.free()
+		_hand_label = hand_col.get_node_or_null("PlayerHandLabel") as Label
+		if _hand_label == null:
+			_hand_label = Label.new()
+			_hand_label.name = "PlayerHandLabel"
+			_hand_label.text = "TU MANO"
+			_hand_label.add_theme_font_size_override("font_size", 11)
+			_hand_label.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
+			_hand_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			hand_col.add_child(_hand_label)
+			hand_col.move_child(_hand_label, 0)
 	var col := bottom_row.get_node_or_null("EnemyHandCol") as VBoxContainer
 	if col == null:
 		col = VBoxContainer.new()
@@ -701,7 +736,6 @@ func _ensure_enemy_hand_ui() -> void:
 		_enemy_hand_row.add_theme_constant_override("separation", 8)
 		_enemy_hand_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		col.add_child(_enemy_hand_row)
-	_hand_label = null
 
 
 func _style_end_btn() -> void:
@@ -1462,23 +1496,34 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 
 
 func _rebuild_hand(snap: Dictionary) -> void:
+	_hand_deal_token += 1
+	var token := _hand_deal_token
 	for c in hand_row.get_children():
 		c.queue_free()
 	var hand: Array = snap.get("hand", [])
 	var can_act: bool = int(snap.get("phase", 0)) == CombatState.Phase.PLAYER and bool(snap.get("active", false)) and not _busy
+	var wraps: Array = []
 	for card_id in hand:
 		var cid := str(card_id)
-		hand_row.add_child(_make_card(cid, can_act and CombatState.can_play_card(cid)))
+		var wrap := _make_card(cid, can_act and CombatState.can_play_card(cid))
+		hand_row.add_child(wrap)
+		wraps.append(wrap)
+	if _hand_label:
+		_hand_label.text = "TU MANO · %d" % wraps.size()
+	_animate_hand_deal(wraps, token)
 
 
 func _rebuild_enemy_hand(snap: Dictionary) -> void:
 	_ensure_enemy_hand_ui()
 	if _enemy_hand_row == null:
 		return
+	_enemy_deal_token += 1
+	var token := _enemy_deal_token
 	for c in _enemy_hand_row.get_children():
 		c.queue_free()
 	var enemies: Array = snap.get("enemies", [])
 	var shown := 0
+	var wraps: Array = []
 	for i in range(enemies.size()):
 		var e: Dictionary = enemies[i]
 		if int(e.get("hp", 0)) <= 0 or bool(e.get("detained", false)) or bool(e.get("fled", false)):
@@ -1494,32 +1539,150 @@ func _rebuild_enemy_hand(snap: Dictionary) -> void:
 				"effect": str(e.get("next_card_effect", "")),
 				"kind": "attack",
 			}
-		_enemy_hand_row.add_child(_make_bottom_enemy_card(def, str(e.get("name", "Sospechoso")), i))
+		var wrap := _make_bottom_enemy_card(def, str(e.get("name", "Sospechoso")), i)
+		_enemy_hand_row.add_child(wrap)
+		wraps.append(wrap)
 		shown += 1
 	if _enemy_hand_label:
-		_enemy_hand_label.text = "ELLOS" if shown > 0 else "ELLOS · —"
+		_enemy_hand_label.text = ("ELLOS · %d" % shown) if shown > 0 else "ELLOS · —"
 	if shown == 0:
 		var empty := Label.new()
 		empty.text = "—"
 		empty.add_theme_color_override("font_color", Color(0.5, 0.55, 0.6))
 		_enemy_hand_row.add_child(empty)
+	else:
+		_animate_enemy_hand_deal(wraps, token)
+
+
+func _animate_hand_deal(wraps: Array, token: int) -> void:
+	## Cartas salen del mazo hacia la mano (stagger).
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if token != _hand_deal_token or not is_inside_tree():
+		return
+	var deck_origin := deck_count.global_position + deck_count.size * 0.5
+	if wraps.size() > 0:
+		AudioDirector.play_sfx("whoosh", 1.15, -8.0)
+	for i in range(wraps.size()):
+		if token != _hand_deal_token:
+			return
+		var wrap: Control = wraps[i]
+		if not is_instance_valid(wrap):
+			continue
+		var panel: Control = wrap.get_meta("card_panel", wrap) as Control
+		if panel == null:
+			continue
+		wrap.set_meta("dealing", true)
+		panel.set_meta("dealing", true)
+		# Liberar anchors para animar en coords locales del wrapper.
+		panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+		panel.size = Vector2(HAND_CARD_W, HAND_CARD_H)
+		var inv := wrap.get_global_transform_with_canvas().affine_inverse()
+		var local_from: Vector2 = inv * deck_origin - Vector2(HAND_CARD_W, HAND_CARD_H) * 0.5
+		panel.position = local_from
+		panel.pivot_offset = Vector2(HAND_CARD_W, HAND_CARD_H) * 0.5
+		panel.rotation_degrees = randf_range(-14.0, 14.0)
+		panel.scale = Vector2(0.42, 0.42)
+		panel.modulate.a = 0.0
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(panel, "position", Vector2.ZERO, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "rotation_degrees", 0.0, 0.3)
+		var final_a := 0.82 if bool(wrap.get_meta("dimmed", false)) else 1.0
+		var final_mod := Color(0.7, 0.7, 0.74, final_a) if bool(wrap.get_meta("dimmed", false)) else Color(1, 1, 1, 1)
+		tw.tween_property(panel, "modulate", final_mod, 0.18)
+		AudioDirector.play_sfx("card_play", randf_range(0.95, 1.12), -6.0)
+		await get_tree().create_timer(0.045).timeout
+		# Al terminar cada tween, re-anclar (en paralelo al stagger).
+		tw.finished.connect(func():
+			if is_instance_valid(panel):
+				# Top-left fijo: permite hover lift (position.y) sin pelear con anchors.
+				panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+				panel.size = Vector2(HAND_CARD_W, HAND_CARD_H)
+				panel.position = Vector2.ZERO
+				panel.scale = Vector2.ONE
+				panel.rotation_degrees = 0.0
+				panel.set_meta("dealing", false)
+			if is_instance_valid(wrap):
+				wrap.set_meta("dealing", false)
+		)
+
+
+func _animate_enemy_hand_deal(wraps: Array, token: int) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if token != _enemy_deal_token or not is_inside_tree():
+		return
+	for i in range(wraps.size()):
+		if token != _enemy_deal_token:
+			return
+		var wrap: Control = wraps[i]
+		if not is_instance_valid(wrap):
+			continue
+		var panel: Control = wrap.get_meta("card_panel", wrap) as Control
+		if panel == null:
+			continue
+		panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+		panel.size = Vector2(ENEMY_HAND_CARD_W, ENEMY_HAND_CARD_H)
+		panel.pivot_offset = panel.size * 0.5
+		panel.position = Vector2(0, 36)
+		panel.scale = Vector2(0.7, 0.7)
+		panel.modulate.a = 0.0
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(panel, "position", Vector2.ZERO, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "scale", Vector2.ONE, 0.24)
+		tw.tween_property(panel, "modulate:a", 1.0, 0.16)
+		tw.finished.connect(func():
+			if is_instance_valid(panel):
+				panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+				panel.position = Vector2.ZERO
+				panel.scale = Vector2.ONE
+		)
+		await get_tree().create_timer(0.04).timeout
+
+
+func _card_hover(panel: Control, enter: bool) -> void:
+	if not is_instance_valid(panel) or _busy:
+		return
+	if bool(panel.get_meta("dealing", false)):
+		return
+	panel.pivot_offset = panel.size * 0.5
+	var tw := create_tween()
+	tw.set_parallel(true)
+	if enter:
+		AudioDirector.play_sfx("ui_click", 1.4, -14.0)
+		tw.tween_property(panel, "scale", Vector2(1.07, 1.07), 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "position:y", -12.0, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		tw.tween_property(panel, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "position:y", 0.0, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
 func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: int) -> Control:
-	## Carta grande en el panel inferior — mismo lenguaje visual que tu mano.
+	## Carta en el panel inferior — mismo lenguaje visual que tu mano.
 	var kind := CardDB.enemy_card_intent_kind(def)
 	var is_boss := str(def.get("id", "")).begins_with("boss_")
 	var accent := _enemy_kind_accent(kind, is_boss)
+
+	var wrap := Control.new()
+	wrap.custom_minimum_size = Vector2(ENEMY_HAND_CARD_W, ENEMY_HAND_CARD_H)
+	wrap.mouse_filter = Control.MOUSE_FILTER_PASS
+
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(104, 168)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	panel.clip_contents = true
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.07, 0.045, 0.05, 0.97)
+	sb.bg_color = Color(0.1, 0.06, 0.07, 0.98)
 	sb.border_color = Color(accent.r, accent.g, accent.b, 0.95)
 	sb.set_border_width_all(2)
 	sb.border_width_top = 3
 	sb.set_corner_radius_all(10)
 	panel.add_theme_stylebox_override("panel", sb)
+	panel.modulate.a = 0.0
+	wrap.add_child(panel)
+	wrap.set_meta("card_panel", panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 6)
@@ -1535,7 +1698,7 @@ func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: i
 	owner_l.text = owner_name
 	owner_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	owner_l.add_theme_font_size_override("font_size", 9)
-	owner_l.add_theme_color_override("font_color", Color(0.85, 0.7, 0.6))
+	owner_l.add_theme_color_override("font_color", Color(0.9, 0.75, 0.65))
 	owner_l.clip_text = true
 	v.add_child(owner_l)
 
@@ -1557,7 +1720,7 @@ func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: i
 	top.add_child(badge)
 
 	var art := TextureRect.new()
-	art.custom_minimum_size = Vector2(0, 54)
+	art.custom_minimum_size = Vector2(0, 48)
 	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -1588,7 +1751,7 @@ func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: i
 	fx.clip_text = true
 	fx.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	fx.add_theme_font_size_override("font_size", 11)
-	fx.add_theme_color_override("font_color", Color(0.8, 0.88, 0.96))
+	fx.add_theme_color_override("font_color", Color(0.82, 0.9, 0.98))
 	v.add_child(fx)
 
 	var btn := Button.new()
@@ -1599,7 +1762,7 @@ func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: i
 	var idx := enemy_index
 	btn.pressed.connect(func(): _open_enemy_card_menu(idx))
 	panel.add_child(btn)
-	return panel
+	return wrap
 
 
 func _type_accent(card_type: String) -> Color:
@@ -2065,12 +2228,19 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	var accent := CardDB.rarity_color(rarity)
 	var type_col := _type_accent(card_type)
 
+	# Wrapper fijo: el panel animado vive dentro sin romper el HBox.
+	var wrap := Control.new()
+	wrap.custom_minimum_size = Vector2(HAND_CARD_W, HAND_CARD_H)
+	wrap.mouse_filter = Control.MOUSE_FILTER_PASS
+	wrap.clip_contents = false
+
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(128, 200)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	panel.clip_contents = true
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.045, 0.06, 0.09, 0.97)
-	sb.border_color = Color(accent.r, accent.g, accent.b, 0.92 if playable else 0.3)
+	sb.bg_color = Color(0.08, 0.11, 0.16, 0.98)
+	sb.border_color = Color(accent.r, accent.g, accent.b, 0.95 if playable else 0.35)
 	sb.set_border_width_all(2)
 	sb.border_width_top = 3
 	sb.set_corner_radius_all(12)
@@ -2079,12 +2249,22 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	sb.content_margin_top = 0
 	sb.content_margin_bottom = 0
 	panel.add_theme_stylebox_override("panel", sb)
+	# Invisible hasta la animación de robo desde el mazo.
 	if not playable:
-		panel.modulate = Color(0.62, 0.62, 0.66, 0.78)
+		panel.modulate = Color(0.7, 0.7, 0.74, 0.0)
+	else:
+		panel.modulate.a = 0.0
+	wrap.add_child(panel)
+	wrap.set_meta("card_panel", panel)
+	wrap.set_meta("card_id", card_id)
+	wrap.set_meta("dealing", true)
+	wrap.set_meta("dimmed", not playable)
+	panel.set_meta("dealing", true)
 
 	var stack := Control.new()
-	stack.custom_minimum_size = Vector2(148, 232)
+	stack.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	stack.clip_contents = true
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(stack)
 
 	var frame := TextureRect.new()
@@ -2092,7 +2272,7 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	frame.stretch_mode = TextureRect.STRETCH_SCALE
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.modulate = Color(accent.r, accent.g, accent.b, 0.5)
+	frame.modulate = Color(accent.r, accent.g, accent.b, 0.55)
 	var fp := CardDB.frame_path(rarity)
 	if ResourceLoader.exists(fp):
 		frame.texture = load(fp)
@@ -2104,15 +2284,15 @@ func _make_card(card_id: String, playable: bool) -> Control:
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(margin)
 
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 4)
+	v.add_theme_constant_override("separation", 3)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(v)
@@ -2148,7 +2328,7 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	top.add_child(rar_l)
 
 	var art := TextureRect.new()
-	art.custom_minimum_size = Vector2(0, 86)
+	art.custom_minimum_size = Vector2(0, 72)
 	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -2164,14 +2344,15 @@ func _make_card(card_id: String, playable: bool) -> Control:
 
 	var text_box := PanelContainer.new()
 	text_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_box.custom_minimum_size = Vector2(0, 62)
+	text_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	text_box.custom_minimum_size = Vector2(0, 56)
 	var tsb := StyleBoxFlat.new()
-	tsb.bg_color = Color(0.02, 0.035, 0.055, 0.82)
+	tsb.bg_color = Color(0.03, 0.05, 0.08, 0.88)
 	tsb.set_corner_radius_all(8)
-	tsb.content_margin_left = 6
-	tsb.content_margin_right = 6
-	tsb.content_margin_top = 5
-	tsb.content_margin_bottom = 5
+	tsb.content_margin_left = 5
+	tsb.content_margin_right = 5
+	tsb.content_margin_top = 4
+	tsb.content_margin_bottom = 4
 	text_box.add_theme_stylebox_override("panel", tsb)
 	v.add_child(text_box)
 
@@ -2184,10 +2365,10 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_l.max_lines_visible = 2
 	name_l.clip_text = true
-	name_l.add_theme_font_size_override("font_size", 13)
+	name_l.add_theme_font_size_override("font_size", 12)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_l.add_theme_color_override("font_color", Color(0.96, 0.98, 1.0))
-	name_l.custom_minimum_size = Vector2(0, 28)
+	name_l.custom_minimum_size = Vector2(0, 26)
 	tv.add_child(name_l)
 
 	var fx := Label.new()
@@ -2195,26 +2376,31 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	fx.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	fx.max_lines_visible = 2
 	fx.clip_text = true
-	fx.add_theme_font_size_override("font_size", 12)
-	fx.add_theme_color_override("font_color", Color(0.8, 0.9, 0.98))
+	fx.add_theme_font_size_override("font_size", 11)
+	fx.add_theme_color_override("font_color", Color(0.82, 0.92, 1.0))
 	fx.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	fx.custom_minimum_size = Vector2(0, 20)
+	fx.custom_minimum_size = Vector2(0, 18)
 	tv.add_child(fx)
 
 	var btn := Button.new()
 	btn.flat = true
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	btn.pressed.connect(func(): _try_play_card(card_id, panel))
+	btn.mouse_entered.connect(func(): _card_hover(panel, true))
+	btn.mouse_exited.connect(func(): _card_hover(panel, false))
+	btn.pressed.connect(func(): _try_play_card(card_id, wrap))
 	panel.add_child(btn)
-	return panel
+	return wrap
 
 
-func _try_play_card(card_id: String, panel: Control) -> void:
+func _try_play_card(card_id: String, wrap: Control) -> void:
 	if _busy or not CombatState.can_play_card(card_id):
 		return
 	_busy = true
-	await _play_card_fx(panel, card_id)
+	var panel: Control = wrap
+	if is_instance_valid(wrap) and wrap.has_meta("card_panel"):
+		panel = wrap.get_meta("card_panel") as Control
+	await _play_card_fx(panel if panel else wrap, card_id)
 	var before_hp: Dictionary = {}
 	var snap0 := CombatState.get_snapshot()
 	for i in range(snap0.get("enemies", []).size()):
@@ -2227,9 +2413,9 @@ func _try_play_card(card_id: String, panel: Control) -> void:
 		var now := int(enemies[i].get("hp", 0))
 		var prev := int(before_hp.get(i, now))
 		if prev > 0 and now <= 0 and not bool(_gone_enemies.get(i, false)):
-			var wrap := _enemy_wrap(i)
-			if wrap:
-				await _start_enemy_death(wrap, i, prev)
+			var ewrap := _enemy_wrap(i)
+			if ewrap:
+				await _start_enemy_death(ewrap, i, prev)
 	_busy = false
 	_refresh()
 
@@ -2247,11 +2433,15 @@ func _play_card_fx(panel: Control, card_id: String) -> void:
 	var ghost := panel.duplicate()
 	_fx_layer.add_child(ghost)
 	ghost.global_position = panel.global_position
-	var target := get_viewport_rect().size * Vector2(0.5, 0.4) - Vector2(66, 99)
+	ghost.pivot_offset = ghost.size * 0.5
+	# Oculta la carta original mientras vuela el fantasma.
+	panel.modulate.a = 0.15
+	var target := get_viewport_rect().size * Vector2(0.5, 0.38) - Vector2(HAND_CARD_W * 0.5, HAND_CARD_H * 0.5)
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(ghost, "global_position", target, 0.26).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(ghost, "scale", Vector2(1.18, 1.18), 0.26)
+	tw.tween_property(ghost, "global_position", target, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(ghost, "scale", Vector2(1.22, 1.22), 0.28)
+	tw.tween_property(ghost, "rotation_degrees", randf_range(-6.0, 6.0), 0.28)
 	await tw.finished
 
 	if is_attack:
@@ -2265,7 +2455,9 @@ func _play_card_fx(panel: Control, card_id: String) -> void:
 		await _screen_pulse(Color(0.4, 0.85, 1.0, 0.22))
 
 	var tw2 := create_tween()
+	tw2.set_parallel(true)
 	tw2.tween_property(ghost, "modulate:a", 0.0, 0.16)
+	tw2.tween_property(ghost, "scale", Vector2(1.35, 1.35), 0.16)
 	await tw2.finished
 	if is_instance_valid(ghost):
 		ghost.queue_free()
