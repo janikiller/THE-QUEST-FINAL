@@ -102,6 +102,11 @@ func _ground_shot() -> void:
 		bg_path = str(combat.bg.texture.resource_path)
 	var expect_flip := false
 	print("GROUND_SHOT floor=", floor_ok, " solid=", solid_ok, " overhead=", overhead, " flip_h=", flipped, " bg=", bg_path)
+	if combat.has_method("_ground_contact_y"):
+		var floor_n = combat.get_node_or_null("FloorPlane")
+		var pcol = combat.get_node_or_null("Arena/PlayerCol")
+		var spr = combat.player_sprite
+		print("GROUND_METRICS size=", combat.size, " contact=", combat._ground_contact_y(), " floor_top=", (floor_n.get_global_rect().position.y if floor_n else -1), " pcol_bottom=", (pcol.get_global_rect().end.y if pcol else -1), " sole_y=", (spr.get_global_rect().end.y if spr else -1), " sole_pad=", spr.get_meta("sole_pad", -1) if spr else -1, " plant_pos=", spr.get_meta("plant_pos", Vector2.ZERO) if spr else Vector2.ZERO)
 	if not floor_ok or not solid_ok:
 		print("GROUND_SHOT_FAIL no floor deck")
 		get_tree().quit(1)
