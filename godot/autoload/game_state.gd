@@ -68,7 +68,7 @@ var patrol_inventories: Dictionary = {}
 ## patrol_id -> Array of card ids (mazo)
 var patrol_decks: Dictionary = {}
 var patrol_deck_gen: Dictionary = {}
-const PATROL_DECK_GEN := 5
+const PATROL_DECK_GEN := 6
 
 const SHARED_SIZE := 30
 const TRUNK_SIZE := 20
@@ -977,21 +977,21 @@ func ensure_patrol_deck(patrol_id: String) -> void:
 	var specialty := str(patrols.get(patrol_id, {}).get("specialty", "general"))
 	match specialty:
 		"organizado":
-			deck.append("frag")
-			deck.append("breach")
-			deck.append("sticky")
+			deck.append("combo_imparable")
+			deck.append("impacto_sismico")
+			deck.append("ruptura")
 		"trafico":
-			deck.append("tear")
-			deck.append("smoke")
+			deck.append("paso_fantasma")
+			deck.append("cadenas_etereas")
 		"delitos":
-			deck.append("flash")
-			deck.append("impact")
+			deck.append("llama_azul")
+			deck.append("doble_impacto")
 		"general":
-			# García U.P.R.: kit policial reforzado + firmas
-			deck.append("placa_reforzada")
-			deck.append("cacheo_duro")
-			deck.append("veredicto")
-			deck.append("fenix_azul")
+			# Kick-Ass: kit de pelea + firmas
+			deck.append("furia_desatada")
+			deck.append("marca_cazador")
+			deck.append("reflejo_mortal")
+			deck.append("sello_arcano")
 	patrol_decks[patrol_id] = deck
 	patrol_deck_gen[patrol_id] = PATROL_DECK_GEN
 

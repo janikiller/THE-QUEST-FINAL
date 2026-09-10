@@ -152,7 +152,7 @@ func _ground_shot() -> void:
 		return
 	# Mazo García regenerado con cartas reforzadas
 	var deck: Array = GameState.get_patrol_deck("alpha")
-	var need: Array = ["legend_ace", "bala_arcana", "placa_reforzada", "veredicto", "mano_de_ley"]
+	var need: Array = ["punetazo", "bloqueo", "esquiva", "segundo_latido", "furia_desatada"]
 	var missing: Array = []
 	for cid in need:
 		if not deck.has(cid):
@@ -499,7 +499,7 @@ func _anime_cards_shot() -> void:
 	await get_tree().process_frame
 	await get_tree().create_timer(0.7).timeout
 	if CombatState.is_active():
-		CombatState.hand = ["strike", "barrera_luz", "golpe_fuerza", "legend_judge", "cuff"]
+		CombatState.hand = ["punetazo", "bloqueo", "combo_imparable", "juicio_final", "esquiva"]
 		CombatState.player["energy"] = 5
 		CombatState.player["energy_max"] = 5
 	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
@@ -819,7 +819,7 @@ func _combat_shot() -> void:
 	await _save_shot("combat_turno1")
 	# Asegurar cartas de ataque y defensa en mano
 	if CombatState.is_active() and CombatState.hand.size() >= 2:
-		CombatState.hand[0] = "strike"
+		CombatState.hand[0] = "punetazo"
 		CombatState.hand[1] = "shield"
 	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 	if combat:
@@ -837,8 +837,8 @@ func _combat_shot() -> void:
 			await get_tree().create_timer(0.35).timeout
 			await _save_shot("combat_escudo")
 		# Ataque con lunge
-		if CombatState.can_play_card("strike"):
-			var def: Dictionary = CardDB.get_card("strike")
+		if CombatState.can_play_card("punetazo"):
+			var def: Dictionary = CardDB.get_card("punetazo")
 			combat._busy = true
 			combat._apply_hero_pose("shoot", 0.9)
 			if combat._player_actor:
@@ -850,7 +850,7 @@ func _combat_shot() -> void:
 			if sel >= 0 and sel < CombatState.enemies.size():
 				CombatState.enemies[sel]["hp"] = 1
 			await combat._hero_attack_sequence(def)
-			CombatState.play_card("strike")
+			CombatState.play_card("punetazo")
 			var wrap = combat._enemy_wrap(sel)
 			if wrap and int(CombatState.enemies[sel].get("hp", 1)) <= 0:
 				await combat._start_enemy_death(wrap, sel, 8)
