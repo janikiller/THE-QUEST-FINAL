@@ -129,13 +129,13 @@ func _ground_shot() -> void:
 		print("GROUND_SHOT_FAIL bad facing flip_h=", flipped, " expect=", expect_flip)
 		get_tree().quit(1)
 		return
-	# Barras de vida: ancho fijo (no estiradas a todo el row)
+	# Barras de vida: ancho fijo (gruesas y legibles, no estiradas a todo el row)
 	var bad_bars := 0
 	var bar_w_log: PackedStringArray = []
 	if combat.player_hp_bar:
 		var pw: float = float(combat.player_hp_bar.size.x)
 		bar_w_log.append("player=%.0f" % pw)
-		if pw > 220.0 or pw < 100.0:
+		if pw > 280.0 or pw < 140.0:
 			bad_bars += 1
 	if combat.enemies_row:
 		for panel in combat.enemies_row.get_children():
@@ -143,7 +143,7 @@ func _ground_shot() -> void:
 			if hb:
 				var ew: float = float(hb.size.x)
 				bar_w_log.append("enemy=%.0f" % ew)
-				if ew > 220.0 or ew < 80.0:
+				if ew > 260.0 or ew < 120.0:
 					bad_bars += 1
 	print("HP_BARS ", " ".join(bar_w_log), " bad=", bad_bars)
 	if bad_bars > 0:
