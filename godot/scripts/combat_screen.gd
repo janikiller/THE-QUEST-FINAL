@@ -7,7 +7,7 @@ const FX_DIR := "res://assets/combat/custom/fx/"
 const MAP_DIR := "res://assets/combat/custom/map/"
 const PHYSICS_ARENA := "res://assets/combat/custom/map/arena_street_physics.png"
 ## Altura del slot de actor (pies en el borde inferior).
-const GROUND_Y := 288.0
+const GROUND_Y := 318.0
 ## Línea de bordillo en arena_street_physics.png (y / 1080).
 const PHYSICS_CONTACT_RATIO := 756.0 / 1080.0
 ## Hundir suelas en el bordillo (cierra el hueco visual de ~5–8px).
@@ -19,15 +19,15 @@ const ENEMY_HAND_CARD_W := 98.0
 const ENEMY_HAND_CARD_H := 162.0
 const BOTTOM_PANEL_H := 292.0
 ## Barras de vida grandes (llenan el combate, se leen a distancia).
-const PLAYER_HP_BAR_W := 260.0
-const PLAYER_HP_BAR_H := 36.0
-const PLAYER_BLK_BAR_H := 18.0
-const ENEMY_HP_BAR_W := 210.0
-const ENEMY_HP_BAR_H := 30.0
-const BOSS_HP_BAR_W := 248.0
-const BOSS_HP_BAR_H := 34.0
-const ACTOR_W := 268.0
-const BOSS_ACTOR_W := 320.0
+const PLAYER_HP_BAR_W := 280.0
+const PLAYER_HP_BAR_H := 40.0
+const PLAYER_BLK_BAR_H := 20.0
+const ENEMY_HP_BAR_W := 228.0
+const ENEMY_HP_BAR_H := 34.0
+const BOSS_HP_BAR_W := 260.0
+const BOSS_HP_BAR_H := 38.0
+const ACTOR_W := 300.0
+const BOSS_ACTOR_W := 340.0
 
 @onready var bg: TextureRect = %ArenaBg
 @onready var title_label: Label = %TitleLabel
@@ -371,21 +371,21 @@ func _sync_physics_ground() -> void:
 	var player_col := get_node_or_null("Arena/PlayerCol")
 	if player_col:
 		# Fracciones del ancho: pelea compacta en 1280 y en 1920 (sin vacío enorme).
-		var p_left := clampf(vw * 0.16, 120.0, 380.0)
+		var p_left := clampf(vw * 0.22, 160.0, 460.0)
 		player_col.offset_left = p_left
-		player_col.offset_right = p_left + ACTOR_W + 48.0
-		player_col.offset_top = -56.0
+		player_col.offset_right = p_left + ACTOR_W + 56.0
+		player_col.offset_top = -64.0
 		player_col.offset_bottom = col_bottom
 		player_col.alignment = BoxContainer.ALIGNMENT_END
 	if enemies_row:
 		# Empieza cerca del centro (BEGIN): evita el vacío enorme a la izquierda del row.
 		var e_right := clampf(vw * 0.03, 24.0, 64.0)
 		enemies_row.offset_right = -e_right
-		enemies_row.offset_left = -vw * 0.54
-		enemies_row.offset_top = -72.0
+		enemies_row.offset_left = -vw * 0.58
+		enemies_row.offset_top = -80.0
 		enemies_row.offset_bottom = col_bottom
 		enemies_row.alignment = BoxContainer.ALIGNMENT_BEGIN
-		enemies_row.add_theme_constant_override("separation", 10)
+		enemies_row.add_theme_constant_override("separation", 14)
 
 
 func _ground_arena_layout() -> void:
