@@ -413,8 +413,8 @@
 		}
 	],
 	"hero": {
-		"idle": "res://assets/combat/anime/hero/idle.png",
-		"shoot": "res://assets/combat/anime/hero/shoot.png",
-		"hurt": "res://assets/combat/anime/hero/hurt.png"
+		"idle": "res://assets/combat/anime/hero/kickass_idle.png",
+		"shoot": "res://assets/combat/anime/hero/kickass_shoot.png",
+		"hurt": "res://assets/combat/anime/hero/kickass_hurt.png"
 	}
 }

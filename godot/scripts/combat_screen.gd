@@ -70,17 +70,30 @@ var _bg_lightning_t: float = -1.0
 
 
 func _hero_tex(name: String) -> Texture2D:
+	## Kick-Ass: siempre PNG en disco (evita ctex cacheado de García).
 	var anime := CombatRoster.hero_pose(name)
-	if anime != "" and (ResourceLoader.exists(anime) or FileAccess.file_exists(anime)):
-		return _load_combat_tex(anime)
-	var path := PACK_HERO + name + ".png"
-	return _load_combat_tex(path)
+	if anime != "" and FileAccess.file_exists(anime):
+		var img := Image.load_from_file(ProjectSettings.globalize_path(anime))
+		if img:
+			return ImageTexture.create_from_image(img)
+	var path := PACK_HERO + "kickass_" + name + ".png"
+	if FileAccess.file_exists(path):
+		var img2 := Image.load_from_file(ProjectSettings.globalize_path(path))
+		if img2:
+			return ImageTexture.create_from_image(img2)
+	# Último recurso: nombres legacy
+	return _load_combat_tex(PACK_HERO + name + ".png")
 
 
 func _load_combat_tex(path: String) -> Texture2D:
 	## Prefer imported resources (export-safe). Raw PNG fallback for editor hot-reload.
 	if path == "":
 		return null
+	# Hero Kick-Ass: forzar PNG fresco si el path lo apunta.
+	if path.find("kickass_") >= 0 and FileAccess.file_exists(path):
+		var himg := Image.load_from_file(ProjectSettings.globalize_path(path))
+		if himg:
+			return ImageTexture.create_from_image(himg)
 	if ResourceLoader.exists(path):
 		var res = load(path)
 		if res is Texture2D:

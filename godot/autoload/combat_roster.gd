@@ -114,5 +114,5 @@ func hero_pose(pose: String) -> String:
 	var path := str(hero.get(key, ""))
 	if path != "" and (ResourceLoader.exists(path) or FileAccess.file_exists(path)):
 		return path
-	# Fallback al pack anterior
-	return "res://assets/combat/custom/hero/%s.png" % key
+	# Fallback al pack Kick-Ass
+	return "res://assets/combat/custom/hero/kickass_%s.png" % key
