@@ -809,11 +809,17 @@ func _boss_autoplay() -> void:
 		print("BOSS_AUTOPLAY turn=", turns, " played=", played, " hp=", CombatState.player.get("hp",0), " capo=", (CombatState.enemies[0].get("hp",0) if CombatState.enemies.size()>0 else -1))
 		if not CombatState.is_active():
 			break
-		if combat and combat.has_method("_on_end_turn"):
-			await combat._on_end_turn()
-		else:
-			CombatState.end_player_turn()
-		await get_tree().create_timer(0.35).timeout
+		# Lógica pura: evitar hangs de tweens de ataque enemigo en autoplay.
+		if combat:
+			combat._busy = false
+			combat._dying.clear()
+			combat.end_turn_btn.disabled = false
+		CombatState.end_player_turn()
+		await get_tree().create_timer(0.25).timeout
+		if combat:
+			combat._busy = false
+			combat._refresh()
+		await get_tree().create_timer(0.15).timeout
 	var victory := CombatState.phase == CombatState.Phase.ENDED and int(CombatState.player.get("hp", 0)) > 0
 	# victory flag from ended combat
 	var any_enemy := false
