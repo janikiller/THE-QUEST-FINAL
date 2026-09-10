@@ -1041,10 +1041,12 @@ func _refresh() -> void:
 	_style_player_bars(p)
 
 	var php := int(p.get("hp", 0))
-	if _prev_player_hp >= 0 and php < _prev_player_hp and not _busy:
-		_apply_hero_pose("hurt", 0.55)
-		_hit_actor(player_sprite, _prev_player_hp - php, false)
-		_spawn_blood_burst(player_sprite.global_position + Vector2(50, 90), 1.1)
+	if _prev_player_hp >= 0 and php < _prev_player_hp:
+		# Durante animación el float ya salió en el lunge; no duplicar.
+		if not _busy:
+			_apply_hero_pose("hurt", 0.55)
+			_hit_actor(player_sprite, _prev_player_hp - php, false)
+			_spawn_blood_burst(player_sprite.global_position + Vector2(50, 90), 1.1)
 	_prev_player_hp = php
 	_prev_player_block = int(p.get("block", 0))
 
@@ -3135,8 +3137,13 @@ func _enemy_lunge_attack(index: int) -> void:
 	_spawn_fx_world(target, "impact", 0.28 if is_boss else 0.24, Vector2(1.7, 1.7) if is_boss else Vector2(1.4, 1.4))
 	_spawn_blood_burst(target, 1.7 if is_boss else 1.3)
 	if player_sprite and is_instance_valid(player_sprite):
-		# 0 dmg: solo reacción visual (el daño real lo aplica CombatState).
-		await _hit_actor_heavy(player_sprite, 0, false)
+		# Preview del intent (el HP real lo baja CombatState al resolver el turno).
+		var preview := 12 if is_boss else 7
+		var snap := CombatState.get_snapshot()
+		var enemies: Array = snap.get("enemies", [])
+		if index >= 0 and index < enemies.size():
+			preview = maxi(1, int(enemies[index].get("intent_value", preview)))
+		await _hit_actor_heavy(player_sprite, preview, false)
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
 	tw2.tween_property(spr, "position", base, ret_t).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
