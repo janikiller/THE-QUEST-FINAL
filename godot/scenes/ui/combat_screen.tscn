@@ -162,14 +162,14 @@ text = "KICK-ASS"
 
 [node name="PlayerSprite" type="TextureRect" parent="Arena/PlayerCol"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(248, 288)
+custom_minimum_size = Vector2(300, 318)
 layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
 
 [node name="PlayerHpBar" type="ProgressBar" parent="Arena/PlayerCol"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(260, 36)
+custom_minimum_size = Vector2(280, 40)
 layout_mode = 2
 size_flags_horizontal = 4
 max_value = 50.0
