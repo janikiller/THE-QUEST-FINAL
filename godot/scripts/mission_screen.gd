@@ -159,6 +159,15 @@ func _refresh() -> void:
 	_rebuild_suspects(m)
 	_refresh_patrols()
 	confirm_btn.disabled = m.get("status", "") != "open" or GameState.available_patrols().is_empty()
+	var is_boss := bool(m.get("is_boss", false))
+	action_negotiate.visible = not is_boss
+	action_negotiate.disabled = is_boss
+	if is_boss:
+		confirm_btn.text = "ENFRENTAR AL CAPO"
+		urgency.visible = true
+		urgency.text = "  BOSS DÍA %d  " % GameState.day_index
+	else:
+		confirm_btn.text = "LUCHAR"
 
 
 func _load_location_arch(m: Dictionary) -> void:
