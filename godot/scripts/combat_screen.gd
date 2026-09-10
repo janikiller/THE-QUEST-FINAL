@@ -89,11 +89,11 @@ func _load_combat_tex(path: String) -> Texture2D:
 	## Prefer imported resources (export-safe). Raw PNG fallback for editor hot-reload.
 	if path == "":
 		return null
-	# Hero Kick-Ass: forzar PNG fresco si el path lo apunta.
-	if path.find("kickass_") >= 0 and FileAccess.file_exists(path):
-		var himg := Image.load_from_file(ProjectSettings.globalize_path(path))
-		if himg:
-			return ImageTexture.create_from_image(himg)
+	# Kick-Ass / street enemies: forzar PNG fresco (evita ctex cacheado).
+	if (path.find("kickass_") >= 0 or path.find("street_pack/") >= 0 or path.find("/foes/street_") >= 0) and FileAccess.file_exists(path):
+		var fresh := Image.load_from_file(ProjectSettings.globalize_path(path))
+		if fresh:
+			return ImageTexture.create_from_image(fresh)
 	if ResourceLoader.exists(path):
 		var res = load(path)
 		if res is Texture2D:
@@ -1175,7 +1175,7 @@ func _animate_enemy_hit(panel: Control, dmg: int) -> void:
 	var idle_tex: Texture2D = spr.texture
 	var base: Vector2 = panel.get_meta("sprite_base", spr.position)
 	panel.set_meta("anim_locked", true)
-	if is_boss and hurt_path != "" and (ResourceLoader.exists(hurt_path) or FileAccess.file_exists(hurt_path)):
+	if hurt_path != "" and (ResourceLoader.exists(hurt_path) or FileAccess.file_exists(hurt_path)):
 		var ht := _load_combat_tex(hurt_path)
 		if ht:
 			spr.texture = ht
@@ -1196,6 +1196,8 @@ func _animate_enemy_hit(panel: Control, dmg: int) -> void:
 		_spawn_fx_at(spr, "impact", Vector2(40, 90), 0.3)
 		_spawn_blood_burst(spr.global_position + Vector2(50, 100), 1.15)
 		await get_tree().create_timer(0.2).timeout
+		if is_instance_valid(spr) and idle_tex:
+			spr.texture = idle_tex
 	if is_instance_valid(panel):
 		panel.set_meta("anim_locked", false)
 
@@ -1218,7 +1220,7 @@ func _animate_enemy_death(panel: Control, dmg: int) -> void:
 	var shadow: TextureRect = panel.find_child("Shadow", true, false)
 	var is_boss := bool(panel.get_meta("is_boss", false))
 	var hurt_path := str(panel.get_meta("pose_hurt", ""))
-	if spr and is_boss and hurt_path != "" and (ResourceLoader.exists(hurt_path) or FileAccess.file_exists(hurt_path)):
+	if spr and hurt_path != "" and (ResourceLoader.exists(hurt_path) or FileAccess.file_exists(hurt_path)):
 		var ht := _load_combat_tex(hurt_path)
 		if ht:
 			spr.texture = ht
@@ -2355,7 +2357,7 @@ func _enemy_lunge_attack(index: int) -> void:
 	var idle_tex: Texture2D = spr.texture
 	var base: Vector2 = wrap.get_meta("sprite_base", spr.position)
 	wrap.set_meta("anim_locked", true)
-	if is_boss and attack_path != "" and (ResourceLoader.exists(attack_path) or FileAccess.file_exists(attack_path)):
+	if attack_path != "" and (ResourceLoader.exists(attack_path) or FileAccess.file_exists(attack_path)):
 		var at := _load_combat_tex(attack_path)
 		if at:
 			spr.texture = at

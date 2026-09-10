@@ -7,9 +7,11 @@
 			"alias": "Hoodie pistolero",
 			"role": "ataque",
 			"hp": 26,
-			"sprite": "res://assets/combat/anime/foes/foe_01_hoodie.png",
-			"portrait": "res://assets/combat/anime/foes/foe_01_hoodie.png",
-			"intent_bonus": 1
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_hoodie_00_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_hoodie_00_idle.png",
+			"intent_bonus": 1,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_hoodie_00_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_hoodie_00_hurt.png"
 		},
 		{
 			"id": "foe_02_knives",
@@ -17,9 +19,11 @@
 			"alias": "Ladrona de cuchillos",
 			"role": "tactica",
 			"hp": 24,
-			"sprite": "res://assets/combat/anime/foes/foe_02_knives.png",
-			"portrait": "res://assets/combat/anime/foes/foe_02_knives.png",
-			"intent_bonus": 0
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_cap_01_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_cap_01_idle.png",
+			"intent_bonus": 0,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_cap_01_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_cap_01_hurt.png"
 		},
 		{
 			"id": "foe_03_bat",
@@ -27,9 +31,11 @@
 			"alias": "Bruto con bate",
 			"role": "ataque",
 			"hp": 34,
-			"sprite": "res://assets/combat/anime/foes/foe_03_bat.png",
-			"portrait": "res://assets/combat/anime/foes/foe_03_bat.png",
-			"intent_bonus": 1
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_tank_02_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_tank_02_idle.png",
+			"intent_bonus": 1,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_tank_02_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_tank_02_hurt.png"
 		},
 		{
 			"id": "foe_04_skate",
@@ -37,9 +43,11 @@
 			"alias": "Punk skater",
 			"role": "tactica",
 			"hp": 22,
-			"sprite": "res://assets/combat/anime/foes/foe_04_skate.png",
-			"portrait": "res://assets/combat/anime/foes/foe_04_skate.png",
-			"intent_bonus": 0
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_skull_03_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_skull_03_idle.png",
+			"intent_bonus": 0,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_skull_03_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_skull_03_hurt.png"
 		},
 		{
 			"id": "foe_05_biker",
@@ -47,9 +55,11 @@
 			"alias": "Banda de la carretera",
 			"role": "ataque",
 			"hp": 30,
-			"sprite": "res://assets/combat/anime/foes/foe_05_biker.png",
-			"portrait": "res://assets/combat/anime/foes/foe_05_biker.png",
-			"intent_bonus": 1
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_hoodie_04_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_hoodie_04_idle.png",
+			"intent_bonus": 1,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_hoodie_04_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_hoodie_04_hurt.png"
 		},
 		{
 			"id": "foe_06_hacker",
@@ -57,9 +67,11 @@
 			"alias": "Hacker de calle",
 			"role": "especial",
 			"hp": 20,
-			"sprite": "res://assets/combat/anime/foes/foe_06_hacker.png",
-			"portrait": "res://assets/combat/anime/foes/foe_06_hacker.png",
-			"intent_bonus": 0
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_cap_05_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_cap_05_idle.png",
+			"intent_bonus": 0,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_cap_05_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_cap_05_hurt.png"
 		},
 		{
 			"id": "foe_07_revolver",
@@ -67,9 +79,11 @@
 			"alias": "Tiradora dura",
 			"role": "ataque",
 			"hp": 28,
-			"sprite": "res://assets/combat/anime/foes/foe_07_revolver.png",
-			"portrait": "res://assets/combat/anime/foes/foe_07_revolver.png",
-			"intent_bonus": 1
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_tank_06_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_tank_06_idle.png",
+			"intent_bonus": 1,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_tank_06_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_tank_06_hurt.png"
 		},
 		{
 			"id": "foe_08_pickpocket",
@@ -77,9 +91,11 @@
 			"alias": "Carterista veterano",
 			"role": "tactica",
 			"hp": 18,
-			"sprite": "res://assets/combat/anime/foes/foe_08_pickpocket.png",
-			"portrait": "res://assets/combat/anime/foes/foe_08_pickpocket.png",
-			"intent_bonus": 0
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_skull_07_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_skull_07_idle.png",
+			"intent_bonus": 0,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_skull_07_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_skull_07_hurt.png"
 		},
 		{
 			"id": "foe_09_hooligan",
@@ -87,9 +103,11 @@
 			"alias": "Hooligan",
 			"role": "ataque",
 			"hp": 32,
-			"sprite": "res://assets/combat/anime/foes/foe_09_hooligan.png",
-			"portrait": "res://assets/combat/anime/foes/foe_09_hooligan.png",
-			"intent_bonus": 1
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_hoodie_08_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_hoodie_08_idle.png",
+			"intent_bonus": 1,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_hoodie_08_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_hoodie_08_hurt.png"
 		},
 		{
 			"id": "foe_10_crowbar",
@@ -97,9 +115,11 @@
 			"alias": "Obrero criminal",
 			"role": "ataque",
 			"hp": 30,
-			"sprite": "res://assets/combat/anime/foes/foe_10_crowbar.png",
-			"portrait": "res://assets/combat/anime/foes/foe_10_crowbar.png",
-			"intent_bonus": 1
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_cap_09_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_cap_09_idle.png",
+			"intent_bonus": 1,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_cap_09_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_cap_09_hurt.png"
 		},
 		{
 			"id": "foe_11_dealer",
@@ -107,9 +127,11 @@
 			"alias": "Traficante pijo",
 			"role": "especial",
 			"hp": 26,
-			"sprite": "res://assets/combat/anime/foes/foe_11_dealer.png",
-			"portrait": "res://assets/combat/anime/foes/foe_11_dealer.png",
-			"intent_bonus": 0
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_tank_10_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_tank_10_idle.png",
+			"intent_bonus": 0,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_tank_10_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_tank_10_hurt.png"
 		},
 		{
 			"id": "foe_12_sniper",
@@ -117,9 +139,11 @@
 			"alias": "Rifle de precisión",
 			"role": "ataque",
 			"hp": 24,
-			"sprite": "res://assets/combat/anime/foes/foe_12_sniper.png",
-			"portrait": "res://assets/combat/anime/foes/foe_12_sniper.png",
-			"intent_bonus": 1
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_skull_11_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_skull_11_idle.png",
+			"intent_bonus": 1,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_skull_11_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_skull_11_hurt.png"
 		},
 		{
 			"id": "foe_13_acrobat",
@@ -127,9 +151,11 @@
 			"alias": "Ladrón acróbata",
 			"role": "tactica",
 			"hp": 22,
-			"sprite": "res://assets/combat/anime/foes/foe_13_acrobat.png",
-			"portrait": "res://assets/combat/anime/foes/foe_13_acrobat.png",
-			"intent_bonus": 0
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_hoodie_12_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_hoodie_12_idle.png",
+			"intent_bonus": 0,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_hoodie_12_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_hoodie_12_hurt.png"
 		},
 		{
 			"id": "foe_14_medic",
@@ -137,9 +163,11 @@
 			"alias": "Paramédico corrupto",
 			"role": "especial",
 			"hp": 24,
-			"sprite": "res://assets/combat/anime/foes/foe_14_medic.png",
-			"portrait": "res://assets/combat/anime/foes/foe_14_medic.png",
-			"intent_bonus": 0
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_cap_13_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_cap_13_idle.png",
+			"intent_bonus": 0,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_cap_13_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_cap_13_hurt.png"
 		},
 		{
 			"id": "foe_15_clown",
@@ -147,9 +175,11 @@
 			"alias": "Máscara de caos",
 			"role": "especial",
 			"hp": 26,
-			"sprite": "res://assets/combat/anime/foes/foe_15_clown.png",
-			"portrait": "res://assets/combat/anime/foes/foe_15_clown.png",
-			"intent_bonus": 0
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_tank_14_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_tank_14_idle.png",
+			"intent_bonus": 0,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_tank_14_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_tank_14_hurt.png"
 		},
 		{
 			"id": "foe_16_handler",
@@ -157,9 +187,11 @@
 			"alias": "Encargado de jauría",
 			"role": "ataque",
 			"hp": 28,
-			"sprite": "res://assets/combat/anime/foes/foe_16_handler.png",
-			"portrait": "res://assets/combat/anime/foes/foe_16_handler.png",
-			"intent_bonus": 1
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_skull_15_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_skull_15_idle.png",
+			"intent_bonus": 1,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_skull_15_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_skull_15_hurt.png"
 		},
 		{
 			"id": "foe_17_courier",
@@ -167,9 +199,11 @@
 			"alias": "Mensajero armado",
 			"role": "tactica",
 			"hp": 22,
-			"sprite": "res://assets/combat/anime/foes/foe_17_courier.png",
-			"portrait": "res://assets/combat/anime/foes/foe_17_courier.png",
-			"intent_bonus": 0
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_hoodie_16_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_hoodie_16_idle.png",
+			"intent_bonus": 0,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_hoodie_16_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_hoodie_16_hurt.png"
 		},
 		{
 			"id": "foe_18_molotov",
@@ -177,9 +211,11 @@
 			"alias": "Punk incendiario",
 			"role": "especial",
 			"hp": 28,
-			"sprite": "res://assets/combat/anime/foes/foe_18_molotov.png",
-			"portrait": "res://assets/combat/anime/foes/foe_18_molotov.png",
-			"intent_bonus": 0
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_cap_17_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_cap_17_idle.png",
+			"intent_bonus": 0,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_cap_17_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_cap_17_hurt.png"
 		},
 		{
 			"id": "foe_19_boxer",
@@ -187,9 +223,11 @@
 			"alias": "Boxeador callejero",
 			"role": "ataque",
 			"hp": 30,
-			"sprite": "res://assets/combat/anime/foes/foe_19_boxer.png",
-			"portrait": "res://assets/combat/anime/foes/foe_19_boxer.png",
-			"intent_bonus": 1
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_tank_18_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_tank_18_idle.png",
+			"intent_bonus": 1,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_tank_18_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_tank_18_hurt.png"
 		},
 		{
 			"id": "foe_20_assassin",
@@ -197,9 +235,11 @@
 			"alias": "Asesino de pistola",
 			"role": "ataque",
 			"hp": 26,
-			"sprite": "res://assets/combat/anime/foes/foe_20_assassin.png",
-			"portrait": "res://assets/combat/anime/foes/foe_20_assassin.png",
-			"intent_bonus": 1
+			"sprite": "res://assets/combat/anime/foes/street_pack/street_skull_19_idle.png",
+			"portrait": "res://assets/combat/anime/foes/street_pack/street_skull_19_idle.png",
+			"intent_bonus": 1,
+			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_skull_19_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_skull_19_hurt.png"
 		}
 	],
 	"bosses": [

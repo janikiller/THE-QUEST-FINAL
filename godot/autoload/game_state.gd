@@ -790,6 +790,8 @@ func _attach_suspects(mission_id: String) -> void:
 			"alias": str(e.get("alias", e.get("name", "Sospechoso"))),
 			"full": str(e.get("sprite", "")),
 			"thumb": str(e.get("portrait", "")),
+			"pose_attack": str(e.get("pose_attack", "")),
+			"pose_hurt": str(e.get("pose_hurt", "")),
 			"hp_bonus": int(e.get("hp", 26)),
 			"role": str(e.get("role", "ataque")),
 			"card_pool": e.get("card_pool", []),
@@ -1075,6 +1077,19 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 		var thumb := str(s.get("thumb", ""))
 		var pose_atk := str(s.get("pose_attack", ""))
 		var pose_hurt := str(s.get("pose_hurt", ""))
+		# Completar poses desde roster (street pack) si faltan
+		var eid := str(s.get("id", ""))
+		if eid != "" and (pose_atk == "" or pose_hurt == "" or spr == ""):
+			var edef := CombatRoster.enemy_by_id(eid)
+			if not edef.is_empty():
+				if spr == "":
+					spr = str(edef.get("sprite", spr))
+				if pose_atk == "":
+					pose_atk = str(edef.get("pose_attack", ""))
+				if pose_hurt == "":
+					pose_hurt = str(edef.get("pose_hurt", ""))
+				if thumb == "":
+					thumb = str(edef.get("portrait", thumb))
 		if e_is_boss:
 			# Completar poses desde roster si faltan
 			var bid := str(mission.get("boss_id", s.get("id", "")))
@@ -1091,6 +1106,10 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 			var fallback: Array = CombatRoster.pick_enemies_for_mission(mission_id + ":%d" % i, 1)
 			if not fallback.is_empty():
 				spr = str(fallback[0].get("sprite", ""))
+				if pose_atk == "":
+					pose_atk = str(fallback[0].get("pose_attack", ""))
+				if pose_hurt == "":
+					pose_hurt = str(fallback[0].get("pose_hurt", ""))
 				if ename == "Sospechoso":
 					ename = str(fallback[0].get("name", ename))
 		enemies.append({
