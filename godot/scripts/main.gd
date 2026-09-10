@@ -612,7 +612,8 @@ func _roster_shot() -> void:
 		GameState.boss_spawned = false
 		GameState.boss_mission_id = ""
 		GameState.active_boss_id = ""
-		GameState.day_index = int(b.get("day_min", 2))
+		GameState.nights_count = int(b.get("night_min", b.get("day_min", 2)))
+		GameState.day_index = maxi(1, int(GameState.nights_count / 2))
 		GameState.defeated_bosses.clear()
 		# Marcar bosses previos como derrotados para forzar este
 		for prev in CombatRoster.bosses:
@@ -649,6 +650,7 @@ func _boss_fight_demo() -> void:
 		if bool(mm.get("is_boss", false)):
 			GameState.remove_mission(str(mid))
 	GameState.day_index = 2
+	GameState.nights_count = 2
 	GameState.boss_spawned = false
 	GameState.boss_defeated = false
 	GameState.boss_mission_id = ""
@@ -762,12 +764,13 @@ func _boss_market_shot() -> void:
 				break
 	await get_tree().create_timer(0.4).timeout
 	await _save_shot("mercado_legendarias")
-	# Boss en día 2
+	# Boss en noche 2
 	for mid in GameState.active_missions.keys():
 		var mm: Dictionary = GameState.active_missions[mid]
 		if bool(mm.get("is_boss", false)):
 			GameState.remove_mission(str(mid))
 	GameState.day_index = 2
+	GameState.nights_count = 2
 	GameState.boss_spawned = false
 	GameState.boss_defeated = false
 	GameState.boss_mission_id = ""
