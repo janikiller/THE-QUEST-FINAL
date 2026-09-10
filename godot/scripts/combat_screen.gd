@@ -65,6 +65,8 @@ var _enemy_hand_label: Label
 var _hand_label: Label
 var _hand_deal_token: int = 0
 var _enemy_deal_token: int = 0
+var _last_hand_sig: String = ""
+var _last_enemy_sig: String = ""
 var _bg_anim: Control
 var _bg_fog: TextureRect
 var _bg_fog2: TextureRect
@@ -320,8 +322,10 @@ func _sync_physics_ground() -> void:
 	var shade := get_node_or_null("GroundShade") as ColorRect
 	if shade:
 		shade.offset_top = -(size.y - contact + 8.0)
+		shade.offset_bottom = -BOTTOM_PANEL_H + 8.0
 		shade.color = Color(0.02, 0.03, 0.05, 0.55)
 		shade.z_index = 1
+		shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var arena := get_node_or_null("Arena") as Control
 	if arena == null:
 		return
@@ -619,6 +623,10 @@ func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
 	_prev_enemy_hp.clear()
 	_prev_player_hp = -1
 	_prev_player_block = 0
+	_last_hand_sig = ""
+	_last_enemy_sig = ""
+	_hand_deal_token += 1
+	_enemy_deal_token += 1
 	visible = true
 	CombatState.start_combat(cfg)
 	AudioDirector.start_combat_music()
@@ -651,6 +659,7 @@ func _style_bottom_panel() -> void:
 	if bottom:
 		# Altura suficiente para cartas completas + labels (sin recortes).
 		bottom.offset_top = -BOTTOM_PANEL_H
+		bottom.z_index = 50
 		bottom.add_theme_constant_override("margin_left", 14)
 		bottom.add_theme_constant_override("margin_right", 14)
 		bottom.add_theme_constant_override("margin_top", 6)
@@ -658,12 +667,15 @@ func _style_bottom_panel() -> void:
 	var arena := get_node_or_null("Arena") as Control
 	if arena:
 		arena.offset_bottom = -BOTTOM_PANEL_H
+	var top := get_node_or_null("TopHud") as Control
+	if top:
+		top.z_index = 50
 	var panel := get_node_or_null("Bottom/BottomPanel")
 	if panel == null:
 		return
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.055, 0.085, 0.13, 0.97)
-	sb.border_color = Color(0.42, 0.72, 1.0, 0.32)
+	sb.bg_color = Color(0.1, 0.15, 0.22, 0.94)
+	sb.border_color = Color(0.55, 0.82, 1.0, 0.5)
 	sb.set_border_width_all(1)
 	sb.border_width_top = 2
 	sb.set_corner_radius_all(14)
@@ -1502,15 +1514,23 @@ func _rebuild_hand(snap: Dictionary) -> void:
 		c.queue_free()
 	var hand: Array = snap.get("hand", [])
 	var can_act: bool = int(snap.get("phase", 0)) == CombatState.Phase.PLAYER and bool(snap.get("active", false)) and not _busy
+	var sig_parts: PackedStringArray = []
+	for card_id in hand:
+		sig_parts.append(str(card_id))
+	var sig := ",".join(sig_parts)
+	var should_deal := sig != _last_hand_sig
+	_last_hand_sig = sig
 	var wraps: Array = []
 	for card_id in hand:
 		var cid := str(card_id)
-		var wrap := _make_card(cid, can_act and CombatState.can_play_card(cid))
+		var playable := can_act and CombatState.can_play_card(cid)
+		var wrap := _make_card(cid, playable, should_deal)
 		hand_row.add_child(wrap)
 		wraps.append(wrap)
 	if _hand_label:
 		_hand_label.text = "TU MANO · %d" % wraps.size()
-	_animate_hand_deal(wraps, token)
+	if should_deal and wraps.size() > 0:
+		_animate_hand_deal(wraps, token)
 
 
 func _rebuild_enemy_hand(snap: Dictionary) -> void:
@@ -1524,6 +1544,7 @@ func _rebuild_enemy_hand(snap: Dictionary) -> void:
 	var enemies: Array = snap.get("enemies", [])
 	var shown := 0
 	var wraps: Array = []
+	var sig_parts: PackedStringArray = []
 	for i in range(enemies.size()):
 		var e: Dictionary = enemies[i]
 		if int(e.get("hp", 0)) <= 0 or bool(e.get("detained", false)) or bool(e.get("fled", false)):
@@ -1531,6 +1552,7 @@ func _rebuild_enemy_hand(snap: Dictionary) -> void:
 		var cid := str(e.get("next_card", ""))
 		if cid == "":
 			continue
+		sig_parts.append("%d:%s" % [i, cid])
 		var def: Dictionary = CardDB.get_enemy_card(cid)
 		if def.is_empty():
 			def = {
@@ -1539,10 +1561,16 @@ func _rebuild_enemy_hand(snap: Dictionary) -> void:
 				"effect": str(e.get("next_card_effect", "")),
 				"kind": "attack",
 			}
-		var wrap := _make_bottom_enemy_card(def, str(e.get("name", "Sospechoso")), i)
-		_enemy_hand_row.add_child(wrap)
-		wraps.append(wrap)
+		wraps.append({"def": def, "name": str(e.get("name", "Sospechoso")), "index": i})
 		shown += 1
+	var sig := ",".join(sig_parts)
+	var should_deal := sig != _last_enemy_sig
+	_last_enemy_sig = sig
+	var built: Array = []
+	for item in wraps:
+		var wrap := _make_bottom_enemy_card(item["def"], item["name"], int(item["index"]), should_deal)
+		_enemy_hand_row.add_child(wrap)
+		built.append(wrap)
 	if _enemy_hand_label:
 		_enemy_hand_label.text = ("ELLOS · %d" % shown) if shown > 0 else "ELLOS · —"
 	if shown == 0:
@@ -1550,8 +1578,8 @@ func _rebuild_enemy_hand(snap: Dictionary) -> void:
 		empty.text = "—"
 		empty.add_theme_color_override("font_color", Color(0.5, 0.55, 0.6))
 		_enemy_hand_row.add_child(empty)
-	else:
-		_animate_enemy_hand_deal(wraps, token)
+	elif should_deal:
+		_animate_enemy_hand_deal(built, token)
 
 
 func _animate_hand_deal(wraps: Array, token: int) -> void:
@@ -1660,7 +1688,7 @@ func _card_hover(panel: Control, enter: bool) -> void:
 		tw.tween_property(panel, "position:y", 0.0, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
-func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: int) -> Control:
+func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: int, animate: bool = true) -> Control:
 	## Carta en el panel inferior — mismo lenguaje visual que tu mano.
 	var kind := CardDB.enemy_card_intent_kind(def)
 	var is_boss := str(def.get("id", "")).begins_with("boss_")
@@ -1671,16 +1699,18 @@ func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: i
 	wrap.mouse_filter = Control.MOUSE_FILTER_PASS
 
 	var panel := PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	panel.size = Vector2(ENEMY_HAND_CARD_W, ENEMY_HAND_CARD_H)
 	panel.clip_contents = true
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.1, 0.06, 0.07, 0.98)
-	sb.border_color = Color(accent.r, accent.g, accent.b, 0.95)
+	sb.bg_color = Color(0.16, 0.09, 0.1, 1.0)
+	sb.border_color = Color(accent.r, accent.g, accent.b, 1.0)
 	sb.set_border_width_all(2)
 	sb.border_width_top = 3
 	sb.set_corner_radius_all(10)
 	panel.add_theme_stylebox_override("panel", sb)
-	panel.modulate.a = 0.0
+	if animate:
+		panel.modulate.a = 0.0
 	wrap.add_child(panel)
 	wrap.set_meta("card_panel", panel)
 
@@ -2221,7 +2251,7 @@ func _make_enemy_menu_card(def: Dictionary, is_next: bool) -> Control:
 	return wrap
 
 
-func _make_card(card_id: String, playable: bool) -> Control:
+func _make_card(card_id: String, playable: bool, animate: bool = true) -> Control:
 	var def := CardDB.get_card(card_id)
 	var card_type := str(def.get("type", ""))
 	var rarity := CardDB.normalize_rarity(str(def.get("rarity", "basica")))
@@ -2235,12 +2265,13 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	wrap.clip_contents = false
 
 	var panel := PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	panel.size = Vector2(HAND_CARD_W, HAND_CARD_H)
 	panel.clip_contents = true
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.08, 0.11, 0.16, 0.98)
-	sb.border_color = Color(accent.r, accent.g, accent.b, 0.95 if playable else 0.35)
+	sb.bg_color = Color(0.14, 0.18, 0.26, 1.0)
+	sb.border_color = Color(accent.r, accent.g, accent.b, 1.0 if playable else 0.45)
 	sb.set_border_width_all(2)
 	sb.border_width_top = 3
 	sb.set_corner_radius_all(12)
@@ -2249,17 +2280,19 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	sb.content_margin_top = 0
 	sb.content_margin_bottom = 0
 	panel.add_theme_stylebox_override("panel", sb)
-	# Invisible hasta la animación de robo desde el mazo.
-	if not playable:
-		panel.modulate = Color(0.7, 0.7, 0.74, 0.0)
-	else:
-		panel.modulate.a = 0.0
+	if animate:
+		if not playable:
+			panel.modulate = Color(0.75, 0.75, 0.78, 0.0)
+		else:
+			panel.modulate.a = 0.0
+	elif not playable:
+		panel.modulate = Color(0.75, 0.75, 0.78, 0.88)
 	wrap.add_child(panel)
 	wrap.set_meta("card_panel", panel)
 	wrap.set_meta("card_id", card_id)
-	wrap.set_meta("dealing", true)
+	wrap.set_meta("dealing", animate)
 	wrap.set_meta("dimmed", not playable)
-	panel.set_meta("dealing", true)
+	panel.set_meta("dealing", animate)
 
 	var stack := Control.new()
 	stack.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -2347,7 +2380,7 @@ func _make_card(card_id: String, playable: bool) -> Control:
 	text_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	text_box.custom_minimum_size = Vector2(0, 56)
 	var tsb := StyleBoxFlat.new()
-	tsb.bg_color = Color(0.03, 0.05, 0.08, 0.88)
+	tsb.bg_color = Color(0.05, 0.08, 0.12, 0.92)
 	tsb.set_corner_radius_all(8)
 	tsb.content_margin_left = 5
 	tsb.content_margin_right = 5
