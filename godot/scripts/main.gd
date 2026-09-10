@@ -131,9 +131,9 @@ func _ground_shot() -> void:
 		return
 	# Barras de vida: ancho fijo (no estiradas a todo el row)
 	var bad_bars := 0
-	var bar_w_log := []
+	var bar_w_log: PackedStringArray = []
 	if combat.player_hp_bar:
-		var pw := combat.player_hp_bar.size.x
+		var pw: float = float(combat.player_hp_bar.size.x)
 		bar_w_log.append("player=%.0f" % pw)
 		if pw > 220.0 or pw < 100.0:
 			bad_bars += 1
@@ -141,8 +141,9 @@ func _ground_shot() -> void:
 		for panel in combat.enemies_row.get_children():
 			var hb = panel.find_child("HpBar", true, false)
 			if hb:
-				bar_w_log.append("enemy=%.0f" % hb.size.x)
-				if hb.size.x > 220.0 or hb.size.x < 80.0:
+				var ew: float = float(hb.size.x)
+				bar_w_log.append("enemy=%.0f" % ew)
+				if ew > 220.0 or ew < 80.0:
 					bad_bars += 1
 	print("HP_BARS ", " ".join(bar_w_log), " bad=", bad_bars)
 	if bad_bars > 0:
@@ -151,7 +152,7 @@ func _ground_shot() -> void:
 		return
 	# Mazo García regenerado con cartas reforzadas
 	var deck: Array = GameState.get_patrol_deck("alpha")
-	var need := ["legend_ace", "bala_arcana", "placa_reforzada", "veredicto", "mano_de_ley"]
+	var need: Array = ["legend_ace", "bala_arcana", "placa_reforzada", "veredicto", "mano_de_ley"]
 	var missing: Array = []
 	for cid in need:
 		if not deck.has(cid):
