@@ -21,7 +21,7 @@ func _ready() -> void:
 	var mode := ""
 	for key in [
 		"TQ_SMOKE", "TQ_INV", "TQ_PLAYTEST", "TQ_COMBAT_SHOT", "TQ_MAP_SHOT",
-		"TQ_BOSS_MARKET_SHOT", "TQ_BOSS_FIGHT", "TQ_ROSTER_SHOT", "TQ_ANIME_CARDS_SHOT",
+		"TQ_BOSS_MARKET_SHOT", "TQ_BOSS_FIGHT", "TQ_BOSS_AUTOPLAY", "TQ_ROSTER_SHOT", "TQ_ANIME_CARDS_SHOT",
 		"TQ_MARKET_ROULETTE_SHOT", "TQ_XP_PACK_SHOT", "TQ_FIX_SHOT", "TQ_ENEMY_CARDS_SHOT",
 		"TQ_GROUND_SHOT",
 	]:
@@ -43,6 +43,8 @@ func _ready() -> void:
 			call_deferred("_boss_market_shot")
 		"TQ_BOSS_FIGHT":
 			call_deferred("_boss_fight_demo")
+		"TQ_BOSS_AUTOPLAY":
+			call_deferred("_boss_autoplay")
 		"TQ_ROSTER_SHOT":
 			call_deferred("_roster_shot")
 		"TQ_ANIME_CARDS_SHOT":
@@ -733,6 +735,101 @@ func _boss_fight_demo() -> void:
 	print("BOSS_FIGHT_OK")
 	if OS.get_environment("TQ_BOSS_FIGHT_QUIT") == "1":
 		get_tree().quit(0)
+
+
+func _boss_autoplay() -> void:
+	## Juega el combate del Capo automáticamente hasta victoria o derrota.
+	await get_tree().create_timer(1.0).timeout
+	for mid in GameState.active_missions.keys():
+		var mm: Dictionary = GameState.active_missions[mid]
+		if bool(mm.get("is_boss", false)):
+			GameState.remove_mission(str(mid))
+	GameState.day_index = 2
+	GameState.nights_count = 2
+	GameState.boss_spawned = false
+	GameState.boss_defeated = false
+	GameState.boss_mission_id = ""
+	GameState.active_boss_id = ""
+	GameState.request_boss_spawn()
+	await get_tree().create_timer(0.5).timeout
+	var boss_mid := GameState.boss_mission_id
+	print("BOSS_AUTOPLAY mid=", boss_mid)
+	if boss_mid == "":
+		print("BOSS_AUTOPLAY_FAIL no boss")
+		get_tree().quit(1)
+		return
+	var p: Dictionary = GameState.patrols.get("alpha", {})
+	p["status"] = "available"
+	p.erase("_awaiting_combat")
+	GameState.set_patrol(p)
+	$UI/UIRouter.begin_fight(boss_mid)
+	await get_tree().process_frame
+	await get_tree().create_timer(0.6).timeout
+	await _save_shot("boss_autoplay_start")
+	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	var turns := 0
+	while CombatState.is_active() and turns < 80:
+		turns += 1
+		if CombatState.phase != CombatState.Phase.PLAYER:
+			await get_tree().create_timer(0.2).timeout
+			continue
+		if combat:
+			combat._busy = false
+			combat._dying.clear()
+		var played := 0
+		# Prioridad: defensa si vida baja, si no daño al Capo (índice 0)
+		CombatState.select_enemy(0)
+		var hand: Array = CombatState.hand.duplicate()
+		var php := int(CombatState.player.get("hp", 0))
+		var prefer_def := php <= 40
+		var order: Array = []
+		for cid in hand:
+			var def := CardDB.get_card(str(cid))
+			var typ := str(def.get("type", ""))
+			var score := 0
+			if prefer_def and (typ == "defensa" or int(def.get("block", 0)) > 0 or bool(def.get("dodge", false)) or bool(def.get("miss_attack", false)) or str(def.get("id",""))=="provocar"):
+				score = 50 + int(def.get("block", 0))
+			elif int(def.get("next_bonus", 0)) > 0:
+				score = 40
+			elif typ == "ataque" or int(def.get("damage", 0)) > 0:
+				score = 30 + int(def.get("damage", 0))
+			else:
+				score = 10
+			order.append({"id": str(cid), "score": score})
+		order.sort_custom(func(a, b): return int(a["score"]) > int(b["score"]))
+		for item in order:
+			var cid2 := str(item["id"])
+			if not CombatState.can_play_card(cid2):
+				continue
+			CombatState.play_card(cid2, 0)
+			played += 1
+			await get_tree().create_timer(0.12).timeout
+			if not CombatState.is_active():
+				break
+		print("BOSS_AUTOPLAY turn=", turns, " played=", played, " hp=", CombatState.player.get("hp",0), " capo=", (CombatState.enemies[0].get("hp",0) if CombatState.enemies.size()>0 else -1))
+		if not CombatState.is_active():
+			break
+		if combat and combat.has_method("_on_end_turn"):
+			await combat._on_end_turn()
+		else:
+			CombatState.end_player_turn()
+		await get_tree().create_timer(0.35).timeout
+	var victory := CombatState.phase == CombatState.Phase.ENDED and int(CombatState.player.get("hp", 0)) > 0
+	# victory flag from ended combat
+	var any_enemy := false
+	for e in CombatState.enemies:
+		if int(e.get("hp", 0)) > 0 and not bool(e.get("detained", false)) and not bool(e.get("fled", false)):
+			any_enemy = true
+	victory = int(CombatState.player.get("hp", 0)) > 0 and not any_enemy
+	print("BOSS_AUTOPLAY_RESULT ", "WIN" if victory else "DEATH", " turns=", turns, " hp=", CombatState.player.get("hp",0))
+	await _save_shot("boss_autoplay_end")
+	if victory:
+		GameState.active_boss_id = "boss_01_capo"
+		var gained: Array = GameState.grant_boss_rewards("alpha")
+		print("BOSS_AUTOPLAY_REWARD ", gained)
+		await _save_shot("boss_autoplay_reward")
+	if OS.get_environment("TQ_BOSS_AUTOPLAY_QUIT") != "0":
+		get_tree().quit(0 if victory else 2)
 
 
 func _boss_market_shot() -> void:

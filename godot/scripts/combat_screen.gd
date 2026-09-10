@@ -919,12 +919,17 @@ func _on_log(text: String) -> void:
 func _on_end_turn() -> void:
 	AudioDirector.play_sfx("turn_end", 1.0, -2.0)
 	AudioDirector.play_ui_click()
-	if _busy or CombatState.phase != CombatState.Phase.PLAYER:
+	# Si una animación dejó el flag colgado, no bloquear el turno eterno.
+	if _busy:
+		_busy = false
+		_dying.clear()
+	if CombatState.phase != CombatState.Phase.PLAYER:
 		return
 	_busy = true
 	end_turn_btn.disabled = true
 	await _play_enemy_attack_sequence()
-	CombatState.end_player_turn()
+	if CombatState.is_active() and CombatState.phase == CombatState.Phase.PLAYER:
+		CombatState.end_player_turn()
 	_busy = false
 	_refresh()
 
@@ -2613,6 +2618,10 @@ func _try_play_card(card_id: String, wrap: Control) -> void:
 	if is_instance_valid(wrap) and wrap.has_meta("card_panel"):
 		panel = wrap.get_meta("card_panel") as Control
 	await _play_card_fx(panel if panel else wrap, card_id)
+	if not CombatState.is_active() or CombatState.phase != CombatState.Phase.PLAYER:
+		_busy = false
+		_refresh()
+		return
 	var before_hp: Dictionary = {}
 	var snap0 := CombatState.get_snapshot()
 	for i in range(snap0.get("enemies", []).size()):
@@ -2887,6 +2896,7 @@ func _enemy_lunge_attack(index: int) -> void:
 
 func _hit_actor_heavy(node: CanvasItem, dmg: int, knock_right: bool) -> void:
 	if not is_instance_valid(node):
+		await get_tree().process_frame
 		return
 	AudioDirector.play_sfx("hit_impact", randf_range(0.92, 1.1), -2.0)
 	_screen_shake(4.0 + minf(6.0, float(dmg) * 0.28), 0.18)
@@ -2898,11 +2908,15 @@ func _hit_actor_heavy(node: CanvasItem, dmg: int, knock_right: bool) -> void:
 	tw.tween_property(node, "rotation_degrees", 6.0 * dir, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tw.tween_property(node, "position", base + Vector2(22 * dir, -8), 0.16).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	await tw.finished
+	if not is_instance_valid(node):
+		return
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
 	tw2.tween_property(node, "position", base + Vector2(-6 * dir, 2), 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw2.tween_property(node, "rotation_degrees", -2.0 * dir, 0.14).set_trans(Tween.TRANS_SINE)
 	await tw2.finished
+	if not is_instance_valid(node):
+		return
 	var tw3 := create_tween()
 	tw3.set_parallel(true)
 	tw3.tween_property(node, "position", base, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
