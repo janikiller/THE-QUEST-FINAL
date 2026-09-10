@@ -975,19 +975,23 @@ func _missions_menu_shot() -> void:
 	if GameState.active_missions.is_empty() and GameState.has_method("create_mission_from_event"):
 		var districts: Array = GameState.station.get("districts", [])
 		var district: Dictionary = districts[0] if not districts.is_empty() else {"id": "centro", "name": "Centro"}
-		var events: Array = GameState.station.get("events", [])
-		if events.is_empty() and GameState.has_method("events_for_period"):
-			events = GameState.events_for_period(GameState.time_of_day())
-		for i in range(mini(3, maxi(1, events.size()))):
-			var ev: Dictionary = events[i] if i < events.size() else {
-				"id": "demo_%d" % i,
-				"name": ["Atraco a tienda", "Pelea en vía", "Accidente con fuga"][i % 3],
-				"category": ["delitos", "delitos", "trafico"][i % 3],
-				"severity": ["high", "medium", "low"][i % 3],
-				"xp": 60 + i * 20,
-				"durationSec": 90,
-				"file": "",
-			}
+		var events: Array = []
+		if GameState.has_method("get_dispatchable_events"):
+			events = GameState.get_dispatchable_events()
+		for i in range(3):
+			var ev: Dictionary
+			if i < events.size():
+				ev = events[i]
+			else:
+				ev = {
+					"id": "demo_%d" % i,
+					"name": ["Atraco a tienda", "Pelea en vía", "Accidente con fuga"][i % 3],
+					"category": ["delitos", "delitos", "trafico"][i % 3],
+					"severity": ["high", "medium", "low"][i % 3],
+					"xp": 60 + i * 20,
+					"durationSec": 90,
+					"file": "",
+				}
 			GameState.create_mission_from_event(ev, district, Vector2(400 + i * 120, 300 + i * 40))
 	await get_tree().create_timer(0.3).timeout
 	$UI/UIRouter.show_missions()
