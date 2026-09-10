@@ -255,7 +255,8 @@
 			"pose_attack": "res://assets/combat/anime/bosses/boss_01_capo_attack.png",
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_01_capo_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_01_capo.png",
-			"day_min": 2
+			"day_min": 2,
+			"night_min": 2
 		},
 		{
 			"id": "boss_02_viuda",
@@ -269,7 +270,8 @@
 			"pose_attack": "res://assets/combat/anime/bosses/boss_02_viuda_attack.png",
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_02_viuda_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_02_viuda.png",
-			"day_min": 3
+			"day_min": 4,
+			"night_min": 4
 		},
 		{
 			"id": "boss_03_fantasma",
@@ -283,7 +285,8 @@
 			"pose_attack": "res://assets/combat/anime/bosses/boss_03_fantasma_attack.png",
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_03_fantasma_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_03_fantasma.png",
-			"day_min": 4
+			"day_min": 6,
+			"night_min": 6
 		},
 		{
 			"id": "boss_04_veneno",
@@ -297,7 +300,8 @@
 			"pose_attack": "res://assets/combat/anime/bosses/boss_04_veneno_attack.png",
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_04_veneno_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_04_veneno.png",
-			"day_min": 5
+			"day_min": 8,
+			"night_min": 8
 		},
 		{
 			"id": "boss_05_titan",
@@ -311,7 +315,8 @@
 			"pose_attack": "res://assets/combat/anime/bosses/boss_05_titan_attack.png",
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_05_titan_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_05_titan.png",
-			"day_min": 6
+			"day_min": 10,
+			"night_min": 10
 		},
 		{
 			"id": "boss_06_sombra",
@@ -325,7 +330,8 @@
 			"pose_attack": "res://assets/combat/anime/bosses/boss_06_sombra_attack.png",
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_06_sombra_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_06_sombra.png",
-			"day_min": 7
+			"day_min": 12,
+			"night_min": 12
 		},
 		{
 			"id": "boss_07_rey_puerto",
@@ -339,7 +345,8 @@
 			"pose_attack": "res://assets/combat/anime/bosses/boss_07_rey_puerto_attack.png",
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_07_rey_puerto_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_07_rey_puerto.png",
-			"day_min": 8
+			"day_min": 14,
+			"night_min": 14
 		},
 		{
 			"id": "boss_08_zero",
@@ -353,7 +360,8 @@
 			"pose_attack": "res://assets/combat/anime/bosses/boss_08_zero_attack.png",
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_08_zero_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_08_zero.png",
-			"day_min": 9
+			"day_min": 16,
+			"night_min": 16
 		},
 		{
 			"id": "boss_09_fuego",
@@ -367,7 +375,8 @@
 			"pose_attack": "res://assets/combat/anime/bosses/boss_09_fuego_attack.png",
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_09_fuego_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_09_fuego.png",
-			"day_min": 10
+			"day_min": 18,
+			"night_min": 18
 		},
 		{
 			"id": "boss_10_coronel",
@@ -381,7 +390,8 @@
 			"pose_attack": "res://assets/combat/anime/bosses/boss_10_coronel_attack.png",
 			"pose_hurt": "res://assets/combat/anime/bosses/boss_10_coronel_hurt.png",
 			"portrait": "res://assets/combat/anime/bosses/boss_10_coronel.png",
-			"day_min": 11
+			"day_min": 20,
+			"night_min": 20
 		}
 	],
 	"arenas": [

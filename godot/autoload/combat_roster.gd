@@ -66,7 +66,8 @@ func pick_enemies_for_mission(mission_id: String, count: int) -> Array:
 	return out
 
 
-func available_bosses(day_index: int, defeated_ids: Array) -> Array:
+func available_bosses(night_index: int, defeated_ids: Array) -> Array:
+	## night_index = GameState.nights_count (boss cada 2 noches → night_min 2,4,6…).
 	var out: Array = []
 	var defeated := {}
 	for d in defeated_ids:
@@ -75,18 +76,19 @@ func available_bosses(day_index: int, defeated_ids: Array) -> Array:
 		var bid := str(b.get("id", ""))
 		if defeated.has(bid):
 			continue
-		if int(b.get("day_min", 2)) <= day_index:
+		var need := int(b.get("night_min", b.get("day_min", 2)))
+		if need <= night_index:
 			out.append(b)
 	return out
 
 
-func next_boss(day_index: int, defeated_ids: Array) -> Dictionary:
-	var pool: Array = available_bosses(day_index, defeated_ids)
+func next_boss(night_index: int, defeated_ids: Array) -> Dictionary:
+	var pool: Array = available_bosses(night_index, defeated_ids)
 	if pool.is_empty():
 		return {}
-	# Prioriza el de menor day_min (progresión emocional)
+	# Prioriza el de menor night_min (progresión)
 	pool.sort_custom(func(a, b):
-		return int(a.get("day_min", 99)) < int(b.get("day_min", 99))
+		return int(a.get("night_min", a.get("day_min", 99))) < int(b.get("night_min", b.get("day_min", 99)))
 	)
 	return pool[0].duplicate(true)
 

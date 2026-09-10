@@ -1322,18 +1322,34 @@ func _playtest() -> void:
 		if bool(mm.get("is_boss", false)):
 			GameState.remove_mission(str(mid))
 	GameState.day_index = 1
+	GameState.nights_count = 0
 	GameState.boss_spawned = false
 	GameState.boss_defeated = false
 	GameState.boss_mission_id = ""
-	GameState.set_clock(22, 0)
+	GameState.defeated_bosses.clear()
+	GameState.active_boss_id = ""
+	# Noche 1: sin boss
+	GameState.set_clock(18, 0)  # dusk
 	await get_tree().process_frame
+	GameState.set_clock(21, 0)  # night 1
+	await get_tree().create_timer(0.35).timeout
+	print("PLAYTEST night1=", GameState.nights_count, " boss=", GameState.boss_spawned)
+	if GameState.nights_count != 1:
+		errors.append("night 1 count failed")
+	if GameState.boss_spawned:
+		errors.append("boss should not spawn on night 1")
+	# Amanecer → día 2 → noche 2: boss
 	GameState.set_clock(8, 0)
-	await get_tree().create_timer(0.4).timeout
-	print("PLAYTEST day=", GameState.day_index, " boss_spawned=", GameState.boss_spawned, " mid=", GameState.boss_mission_id)
-	if GameState.day_index < 2:
-		errors.append("day did not advance to 2")
+	await get_tree().process_frame
+	GameState.set_clock(21, 0)
+	await get_tree().create_timer(0.45).timeout
+	print("PLAYTEST night2=", GameState.nights_count, " day=", GameState.day_index, " boss_spawned=", GameState.boss_spawned, " mid=", GameState.boss_mission_id)
+	if GameState.nights_count != 2:
+		errors.append("night 2 count failed")
+	if not GameState.is_boss_night():
+		errors.append("night 2 should be boss night")
 	if not GameState.boss_spawned or GameState.boss_mission_id == "":
-		errors.append("boss not spawned on day 2")
+		errors.append("boss not spawned on night 2")
 	else:
 		var bcfg := GameState.build_combat_config(GameState.boss_mission_id, "alpha")
 		var boss_named := false
@@ -1352,8 +1368,29 @@ func _playtest() -> void:
 			errors.append("legendaries not added to deck")
 		if not GameState.boss_defeated:
 			errors.append("boss_defeated flag missing")
+		if GameState.boss_spawned:
+			errors.append("next boss must wait 2 nights (should not spawn instantly)")
 		if CardDB.cards_for_market(true).size() <= CardDB.cards_for_market(false).size():
 			errors.append("legendaries should unlock in market after boss")
+		# Noche 3: sin boss; noche 4: sí
+		GameState.set_clock(8, 0)
+		await get_tree().process_frame
+		GameState.set_clock(21, 0)
+		await get_tree().create_timer(0.35).timeout
+		print("PLAYTEST night3=", GameState.nights_count, " boss=", GameState.boss_spawned)
+		if GameState.nights_count != 3:
+			errors.append("night 3 count failed")
+		if GameState.boss_spawned:
+			errors.append("boss should not spawn on night 3")
+		GameState.set_clock(8, 0)
+		await get_tree().process_frame
+		GameState.set_clock(21, 0)
+		await get_tree().create_timer(0.45).timeout
+		print("PLAYTEST night4=", GameState.nights_count, " boss=", GameState.boss_spawned, " mid=", GameState.boss_mission_id)
+		if GameState.nights_count != 4:
+			errors.append("night 4 count failed")
+		if not GameState.boss_spawned:
+			errors.append("boss should spawn on night 4")
 
 	if errors.is_empty():
 		print("PLAYTEST_OK")

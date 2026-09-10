@@ -26,16 +26,16 @@ func _process(delta: float) -> void:
 	if not _boot_spawned:
 		_boot_spawned = true
 		_ensure_period_missions(true)
-		if GameState.day_index >= GameState.BOSS_DAY and not GameState.boss_spawned:
+		if GameState.is_boss_night() and not GameState.boss_spawned:
 			_spawn_boss_if_needed()
 	if _timer <= 0.0:
 		_timer = float(GameState.station.get("spawn_interval_sec", 20.0))
 		_ensure_period_missions(false)
 
 
-func _on_day_changed(day: int) -> void:
-	if day >= GameState.BOSS_DAY:
-		_spawn_boss_if_needed()
+func _on_day_changed(_day: int) -> void:
+	# Los bosses salen de noche (cada 2), no al amanecer.
+	pass
 
 
 func _on_boss_available(_mid: String) -> void:
@@ -45,9 +45,9 @@ func _on_boss_available(_mid: String) -> void:
 func _spawn_boss_if_needed() -> void:
 	if GameState.boss_spawned:
 		return
-	if GameState.day_index < GameState.BOSS_DAY:
+	if not GameState.is_boss_night():
 		return
-	if CombatRoster.next_boss(GameState.day_index, GameState.defeated_bosses).is_empty():
+	if CombatRoster.next_boss(GameState.nights_count, GameState.defeated_bosses).is_empty():
 		return
 	if city_map == null:
 		return

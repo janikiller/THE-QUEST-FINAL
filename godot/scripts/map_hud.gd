@@ -298,6 +298,8 @@ func _refresh_dock() -> void:
 		var day_bit := "D%d" % GameState.day_index
 		if GameState.boss_spawned and not GameState.boss_defeated:
 			day_bit += " BOSS"
+		elif GameState.time_of_day() == "night":
+			day_bit += " N%d" % GameState.nights_count
 		_period_chip.text = "%s · %s" % [day_bit, period]
 		match GameState.time_of_day():
 			"dusk":

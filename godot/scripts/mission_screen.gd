@@ -165,7 +165,7 @@ func _refresh() -> void:
 	if is_boss:
 		confirm_btn.text = "ENFRENTAR AL CAPO"
 		urgency.visible = true
-		urgency.text = "  BOSS DÍA %d  " % GameState.day_index
+		urgency.text = "  BOSS NOCHE %d  " % GameState.nights_count
 	else:
 		confirm_btn.text = "LUCHAR"
 

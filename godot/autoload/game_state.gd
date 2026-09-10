@@ -35,8 +35,10 @@ var hero_level: int = 1
 var pending_level_packs: int = 0
 var _active_pack_choices: Array[String] = []
 var selected_mission_id: String = ""
-## Día de campaña (1 = inicio). El boss aparece el día 2.
+## Día de campaña (1 = inicio).
 var day_index: int = 1
+## Noches transcurridas (1 = primera noche). Boss cada BOSS_EVERY_N_NIGHTS.
+var nights_count: int = 0
 var boss_spawned: bool = false
 var boss_defeated: bool = false
 var boss_mission_id: String = ""
@@ -57,7 +59,9 @@ const PERIOD_MISSION_QUOTA := 3
 const ADVANCE_DAY_MIN := 140 ## ~2h20 → 3 misiones llevan al atardecer
 const ADVANCE_DUSK_MIN := 70 ## ~1h10 → 3 misiones llevan a la noche
 const ADVANCE_NIGHT_MIN := 220 ## ~3h40 → 3 misiones llevan al día siguiente
-const BOSS_DAY := 2
+## Primer boss en la noche 2; luego cada 2 noches (2, 4, 6…).
+const BOSS_EVERY_N_NIGHTS := 2
+const BOSS_DAY := 2 ## compat: día mínimo ≈ noche 2
 
 ## mission_id -> mission dict
 var active_missions: Dictionary = {}
@@ -235,14 +239,34 @@ func tick_minutes(amount: int = 1) -> void:
 func _on_period_transition(prev: String, now: String) -> void:
 	_last_period = now
 	period_missions_done = 0
-	# Noche → día: nuevo día de campaña
+	# Noche → día: nuevo día de campaña (sin spawn de boss; eso es de noche).
 	if prev == "night" and now == "day":
 		day_index += 1
 		day_changed.emit(day_index)
 		RadioBus.push("Amanece el día %d en la ciudad." % day_index, "dispatch")
-		if day_index >= BOSS_DAY:
+	# Entra la noche: cuenta y, cada 2 noches, alerta de boss.
+	if prev != "night" and now == "night":
+		nights_count += 1
+		RadioBus.push("Cae la noche %d." % nights_count, "dispatch")
+		if is_boss_night():
 			call_deferred("request_boss_spawn")
 	period_changed.emit(now)
+
+
+func is_boss_night() -> bool:
+	## Noches 2, 4, 6… (intervalo BOSS_EVERY_N_NIGHTS).
+	if nights_count < BOSS_EVERY_N_NIGHTS:
+		return false
+	return nights_count % BOSS_EVERY_N_NIGHTS == 0
+
+
+func boss_night_label() -> String:
+	if is_boss_night():
+		return "NOCHE %d · BOSS" % nights_count
+	var next_n := ((nights_count / BOSS_EVERY_N_NIGHTS) + 1) * BOSS_EVERY_N_NIGHTS
+	if nights_count < BOSS_EVERY_N_NIGHTS:
+		next_n = BOSS_EVERY_N_NIGHTS
+	return "Próximo boss: noche %d" % next_n
 
 
 func add_credits(delta: int) -> void:
@@ -444,42 +468,43 @@ func grant_boss_rewards(patrol_id: String = "alpha") -> Array:
 	boss_mission_id = ""
 	var done_id := active_boss_id
 	active_boss_id = ""
-	RadioBus.push("Boss derrotado (%s). Jefes restantes: %d." % [
+	RadioBus.push("Boss derrotado (%s). Jefes restantes: %d. Próximo en 2 noches." % [
 		done_id if done_id != "" else "?",
 		maxi(0, CombatRoster.bosses.size() - defeated_bosses.size())
 	], "resolve")
-	# Preparar siguiente boss si el día lo permite
-	call_deferred("request_boss_spawn")
+	# Siguiente boss solo en la próxima noche par (2, 4, 6…).
 	return gained
 
 
 func request_boss_spawn() -> void:
 	if boss_spawned:
 		return
-	if CombatRoster.next_boss(day_index, defeated_bosses).is_empty():
+	if nights_count > 0 and not is_boss_night():
+		return
+	if CombatRoster.next_boss(nights_count, defeated_bosses).is_empty():
 		return
 	boss_available.emit("")
 
 
 func create_boss_mission(district: Dictionary, map_pos: Vector2) -> Dictionary:
-	## Uno de los 10 bosses anime, segúnado por día y progresión.
+	## Uno de los 10 bosses anime; ritmo: cada 2 noches.
 	if boss_spawned:
 		return {}
-	var boss_def: Dictionary = CombatRoster.next_boss(day_index, defeated_bosses)
+	var boss_def: Dictionary = CombatRoster.next_boss(nights_count, defeated_bosses)
 	if boss_def.is_empty():
 		return {}
 	_mission_seq += 1
 	var mid := "m_boss_%d" % _mission_seq
 	var bname := str(boss_def.get("name", "BOSS"))
 	var alias := str(boss_def.get("alias", bname))
-	var arena: Dictionary = CombatRoster.pick_arena_for_mission({"id": mid, "period": time_of_day()}, boss_def)
+	var arena: Dictionary = CombatRoster.pick_arena_for_mission({"id": mid, "period": "night"}, boss_def)
 	var mission := {
 		"id": mid,
 		"event_id": str(boss_def.get("id", "boss")),
 		"title": bname,
 		"category": "organizado",
 		"severity": "critical",
-		"period": time_of_day(),
+		"period": "night",
 		"is_boss": true,
 		"boss_id": str(boss_def.get("id", "")),
 		"arena_id": str(arena.get("id", "")),
@@ -500,8 +525,8 @@ func create_boss_mission(district: Dictionary, map_pos: Vector2) -> Dictionary:
 		"assigned_patrol": "",
 		"suspects": [],
 		"created_at": "%02d:%02d" % [hour, minute],
-		"blurb": "DÍA %d — ¡BOSS! %s en %s. Escenario: %s." % [
-			day_index, alias, str(district.get("name", "la ciudad")), str(arena.get("name", "zona crítica"))
+		"blurb": "NOCHE %d — ¡BOSS! %s en %s. Escenario: %s." % [
+			nights_count, alias, str(district.get("name", "la ciudad")), str(arena.get("name", "zona crítica"))
 		],
 		"radio_log": [],
 	}
@@ -541,7 +566,7 @@ func create_boss_mission(district: Dictionary, map_pos: Vector2) -> Dictionary:
 	active_boss_id = str(boss_def.get("id", ""))
 	mission_added.emit(mission)
 	boss_available.emit(mid)
-	RadioBus.push("¡ALERTA DÍA %d! Boss en el mapa: %s." % [day_index, bname], "alert")
+	RadioBus.push("¡ALERTA NOCHE %d! Boss en el mapa: %s." % [nights_count, bname], "alert")
 	return mission
 
 

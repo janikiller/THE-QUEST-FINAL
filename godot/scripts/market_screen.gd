@@ -152,10 +152,10 @@ func _rebuild() -> void:
 	var day_txt := "Día %d · Gana monedas en combates y mejora tu mazo" % GameState.day_index
 	if GameState.boss_defeated:
 		day_txt += " · Legendarias desbloqueadas"
-	elif GameState.day_index >= GameState.BOSS_DAY:
-		day_txt += " · Boss activo en el mapa"
+	elif GameState.boss_spawned:
+		day_txt += " · Boss activo (noche %d)" % GameState.nights_count
 	else:
-		day_txt += " · Empieza fácil: compra mágicas/fuerza"
+		day_txt += " · " + GameState.boss_night_label()
 	sub.text = day_txt
 	_rebuild_filters()
 	_rebuild_odds()
