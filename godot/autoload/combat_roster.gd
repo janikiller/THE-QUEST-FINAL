@@ -5,6 +5,9 @@ var enemies: Array = []
 var bosses: Array = []
 var arenas: Array = []
 var hero: Dictionary = {}
+## Evita repetir el mismo fondo en combates seguidos.
+var _recent_arena_ids: Array = []
+const RECENT_ARENA_LIMIT := 8
 
 
 func _ready() -> void:
@@ -93,22 +96,58 @@ func next_boss(night_index: int, defeated_ids: Array) -> Dictionary:
 	return pool[0].duplicate(true)
 
 
+func _arena_matches_period(arena: Dictionary, period: String) -> bool:
+	if period == "":
+		return true
+	var periods: Array = arena.get("periods", [])
+	if not periods.is_empty():
+		return period in periods
+	return str(arena.get("period", "")) == period or str(arena.get("period", "")) == ""
+
+
+func _remember_arena(arena_id: String) -> void:
+	if arena_id == "":
+		return
+	_recent_arena_ids.erase(arena_id)
+	_recent_arena_ids.push_front(arena_id)
+	while _recent_arena_ids.size() > RECENT_ARENA_LIMIT:
+		_recent_arena_ids.pop_back()
+
+
 func pick_arena_for_mission(mission: Dictionary, boss: Dictionary = {}) -> Dictionary:
 	if not boss.is_empty():
 		var pref := arena_by_id(str(boss.get("arena", "")))
 		if not pref.is_empty():
+			_remember_arena(str(pref.get("id", "")))
 			return pref
 	if arenas.is_empty():
 		return {}
 	var period := str(mission.get("period", "night"))
-	var pool: Array = []
+	var preferred: Array = []
+	var fresh_preferred: Array = []
+	var fresh_all: Array = []
 	for a in arenas:
-		if str(a.get("period", "")) == period or period == "":
-			pool.append(a)
+		var aid := str(a.get("id", ""))
+		var recent := aid in _recent_arena_ids
+		if _arena_matches_period(a, period):
+			preferred.append(a)
+			if not recent:
+				fresh_preferred.append(a)
+		if not recent:
+			fresh_all.append(a)
+	var pool: Array = fresh_preferred
+	if pool.is_empty():
+		pool = preferred
+	if pool.is_empty():
+		pool = fresh_all
 	if pool.is_empty():
 		pool = arenas
 	var mid := str(mission.get("id", "x"))
-	return pool[absi(hash(mid + ":arena")) % pool.size()].duplicate(true)
+	# Mezcla id de misión + cuántas arenas recientes para variar entre avisos.
+	var salt := mid + ":arena:" + str(_recent_arena_ids.size()) + ":" + str(_recent_arena_ids)
+	var pick: Dictionary = pool[absi(hash(salt)) % pool.size()]
+	_remember_arena(str(pick.get("id", "")))
+	return pick.duplicate(true)
 
 
 func hero_pose(pose: String) -> String:

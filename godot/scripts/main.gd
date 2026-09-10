@@ -21,6 +21,7 @@ func _ready() -> void:
 	var mode := ""
 	for key in [
 		"TQ_SMOKE", "TQ_INV", "TQ_PLAYTEST", "TQ_COMBAT_SHOT", "TQ_MAP_SHOT", "TQ_MISSIONS_MENU_SHOT",
+		"TQ_ARENA_VARIETY_SHOT",
 		"TQ_BOSS_MARKET_SHOT", "TQ_BOSS_FIGHT", "TQ_BOSS_AUTOPLAY", "TQ_PROGRESSION_SHOT", "TQ_ROSTER_SHOT", "TQ_ANIME_CARDS_SHOT",
 		"TQ_MARKET_ROULETTE_SHOT", "TQ_XP_PACK_SHOT", "TQ_FIX_SHOT", "TQ_ENEMY_CARDS_SHOT",
 		"TQ_GROUND_SHOT",
@@ -41,6 +42,8 @@ func _ready() -> void:
 			call_deferred("_map_shot")
 		"TQ_MISSIONS_MENU_SHOT":
 			call_deferred("_missions_menu_shot")
+		"TQ_ARENA_VARIETY_SHOT":
+			call_deferred("_arena_variety_shot")
 		"TQ_BOSS_MARKET_SHOT":
 			call_deferred("_boss_market_shot")
 		"TQ_BOSS_FIGHT":
@@ -1050,6 +1053,75 @@ func _map_shot() -> void:
 	await get_tree().create_timer(0.35).timeout
 	await _save_shot("map_tactical_marker_close")
 	print("MAP_SHOT_OK")
+	get_tree().quit(0)
+
+
+func _arena_variety_shot() -> void:
+	## Demuestra varios fondos de batalla distintos sin repetición inmediata.
+	await get_tree().create_timer(1.0).timeout
+	if GameState.active_missions.is_empty():
+		var spawner = get_tree().get_first_node_in_group("mission_spawner")
+		if spawner and spawner.has_method("_ensure_period_missions"):
+			spawner.call("_ensure_period_missions", true)
+	await get_tree().create_timer(0.4).timeout
+	if GameState.active_missions.is_empty() and GameState.has_method("create_mission_from_event"):
+		var districts: Array = GameState.station.get("districts", [])
+		var district: Dictionary = districts[0] if not districts.is_empty() else {"id": "centro", "name": "Centro"}
+		var events: Array = GameState.get_dispatchable_events() if GameState.has_method("get_dispatchable_events") else []
+		for i in range(4):
+			var ev: Dictionary = events[i] if i < events.size() else {
+				"id": "arena_demo_%d" % i,
+				"name": "Intervención %d" % (i + 1),
+				"category": "delitos",
+				"severity": "medium",
+				"xp": 50,
+				"durationSec": 90,
+				"file": "",
+			}
+			GameState.create_mission_from_event(ev, district, Vector2(420 + i * 90, 320))
+	var sample_ids: Array = []
+	for a in CombatRoster.arenas:
+		sample_ids.append(str(a.get("id", "")))
+		if sample_ids.size() >= 6:
+			break
+	# También fuerza variedad con el picker anti-repetición.
+	var picked: Array = []
+	for i in range(6):
+		var arena: Dictionary = CombatRoster.pick_arena_for_mission({
+			"id": "variety_%d" % i,
+			"period": ["day", "dusk", "night"][i % 3],
+		})
+		picked.append(str(arena.get("id", "")))
+	print("ARENA_VARIETY picked=", ",".join(PackedStringArray(picked)))
+	var mission_ids: Array = GameState.active_missions.keys()
+	if mission_ids.is_empty():
+		print("ARENA_VARIETY_SHOT_FAIL no missions")
+		get_tree().quit(1)
+		return
+	var p: Dictionary = GameState.patrols.get("alpha", {})
+	p["status"] = "available"
+	p.erase("_awaiting_combat")
+	GameState.set_patrol(p)
+	var shot_i := 0
+	for aid in picked:
+		var arena: Dictionary = CombatRoster.arena_by_id(aid)
+		if arena.is_empty():
+			continue
+		var mid := str(mission_ids[shot_i % mission_ids.size()])
+		if GameState.active_missions.has(mid):
+			var m: Dictionary = GameState.active_missions[mid]
+			m["arena_id"] = str(arena.get("id", ""))
+			m["arena_path"] = str(arena.get("path", ""))
+			m["location_name"] = str(arena.get("name", ""))
+			GameState.active_missions[mid] = m
+		$UI/UIRouter.show_combat(mid, "alpha")
+		await get_tree().process_frame
+		await get_tree().create_timer(0.45).timeout
+		await _save_shot("arena_variety_%02d_%s" % [shot_i + 1, aid])
+		shot_i += 1
+		if shot_i >= 6:
+			break
+	print("ARENA_VARIETY_SHOT_OK count=", shot_i, " catalog=", CombatRoster.arenas.size())
 	get_tree().quit(0)
 
 

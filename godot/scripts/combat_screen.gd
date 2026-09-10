@@ -1321,13 +1321,15 @@ func _tick_animated_bg(delta: float) -> void:
 
 
 func _load_bg() -> void:
-	# Mapa físico propio primero → misión → roster → clásico
+	# Prioridad: arena de la misión → resto del catálogo → mapa físico → clásicos.
 	var candidates: Array = []
-	candidates.append(PHYSICS_ARENA)
 	if _arena_path != "":
 		candidates.append(_arena_path)
 	for a in CombatRoster.arenas:
-		candidates.append(str(a.get("path", "")))
+		var p := str(a.get("path", ""))
+		if p != "" and p != _arena_path:
+			candidates.append(p)
+	candidates.append(PHYSICS_ARENA)
 	candidates.append_array([
 		"res://assets/combat/bg/alley_night.jpg",
 		"res://assets/combat/bg/alley_night2.jpg",
