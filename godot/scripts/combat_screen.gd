@@ -116,6 +116,8 @@ func _hero_pose_key(pose: String) -> String:
 	match pose:
 		"shoot", "aim":
 			return "shoot"
+		"punch", "melee":
+			return "punch"
 		"hurt":
 			return "hurt"
 		_:
@@ -146,6 +148,10 @@ func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
 	match pose:
 		"shoot", "aim":
 			tex = _hero_tex("shoot")
+		"punch", "melee":
+			tex = _hero_tex("punch")
+			if tex == null:
+				tex = _hero_tex("shoot")
 		"hurt":
 			tex = _hero_tex("hurt")
 		_:
@@ -156,6 +162,32 @@ func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
 		player_sprite.texture = tex
 		_apply_hero_facing()
 		_plant_hero_sprite()
+
+
+func _card_is_melee(def: Dictionary) -> bool:
+	var id := str(def.get("id", "")).to_lower()
+	var name := str(def.get("name", "")).to_lower()
+	var blob := id + " " + name
+	for k in ["baton", "baston", "bastón", "puño", "punch", "melee", "patada", "kick", "porra"]:
+		if blob.find(k) >= 0:
+			return true
+	return false
+
+
+func _screen_shake(amount: float = 10.0, duration: float = 0.18) -> void:
+	## Sacude el root de combate (no mueve el world camera).
+	var target: Control = self
+	var base := target.position
+	var tw := create_tween()
+	var steps := 6
+	for i in range(steps):
+		var fall := 1.0 - float(i) / float(steps)
+		var off := Vector2(
+			randf_range(-amount, amount) * fall,
+			randf_range(-amount * 0.55, amount * 0.55) * fall
+		)
+		tw.tween_property(target, "position", base + off, duration / float(steps))
+	tw.tween_property(target, "position", base, 0.04)
 
 
 func _tick_hero_pose() -> void:
@@ -581,6 +613,8 @@ func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
 	_prev_player_block = 0
 	visible = true
 	CombatState.start_combat(cfg)
+	AudioDirector.start_combat_music()
+	AudioDirector.play_sfx("whoosh", 0.9, -4.0)
 	_load_bg()
 	_ensure_animated_bg()
 	_sync_physics_ground()
@@ -596,6 +630,8 @@ func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
 
 
 func close() -> void:
+	if AudioDirector.is_in_combat():
+		AudioDirector.stop_combat_music(true, false)
 	visible = false
 	var router := get_parent()
 	if router and router.has_method("show_map"):
@@ -688,6 +724,8 @@ func _on_log(text: String) -> void:
 
 
 func _on_end_turn() -> void:
+	AudioDirector.play_sfx("turn_end", 1.0, -2.0)
+	AudioDirector.play_ui_click()
 	if _busy or CombatState.phase != CombatState.Phase.PLAYER:
 		return
 	_busy = true
@@ -699,6 +737,12 @@ func _on_end_turn() -> void:
 
 
 func _on_combat_ended(victory: bool) -> void:
+	AudioDirector.stop_combat_music(victory, true)
+	if victory:
+		_screen_shake(6.0, 0.16)
+	else:
+		_screen_shake(14.0, 0.28)
+		_apply_hero_pose("hurt", 1.2)
 	result_panel.visible = true
 	if victory:
 		var xp := CombatState.combat_xp_gained
@@ -1215,6 +1259,8 @@ func _start_enemy_death(panel: Control, index: int, last_dmg: int) -> void:
 
 
 func _animate_enemy_death(panel: Control, dmg: int) -> void:
+	AudioDirector.play_sfx("death_thud", randf_range(0.9, 1.08), -1.0)
+	_screen_shake(8.0 if bool(panel.get_meta("is_boss", false)) else 5.0, 0.2)
 	var actor: Control = panel.get_node_or_null("ActorSlot")
 	var spr: TextureRect = panel.find_child("EnemySprite", true, false)
 	var shadow: TextureRect = panel.find_child("Shadow", true, false)
@@ -2196,6 +2242,7 @@ func _play_card_fx(panel: Control, card_id: String) -> void:
 	var card_type := str(def.get("type", ""))
 	var is_attack := card_type == "ataque" or int(def.get("damage", 0)) > 0
 	var is_block := card_type == "defensa" or int(def.get("block", 0)) > 0
+	AudioDirector.play_sfx("card_play", randf_range(0.94, 1.08), -1.0)
 
 	var ghost := panel.duplicate()
 	_fx_layer.add_child(ghost)
@@ -2214,6 +2261,7 @@ func _play_card_fx(panel: Control, card_id: String) -> void:
 		await _hero_guard_pulse()
 	else:
 		_apply_hero_pose("aim", 0.28)
+		AudioDirector.play_sfx("whoosh", 1.1, -3.0)
 		await _screen_pulse(Color(0.4, 0.85, 1.0, 0.22))
 
 	var tw2 := create_tween()
@@ -2228,6 +2276,7 @@ func _hero_guard_pulse() -> void:
 	if _player_actor == null:
 		await get_tree().create_timer(0.2).timeout
 		return
+	AudioDirector.play_sfx("block", randf_range(0.95, 1.08), -1.0)
 	var base := _player_base_pos
 	var tw0 := create_tween()
 	tw0.tween_property(player_sprite, "scale", Vector2(1.05, 0.92), 0.08)
@@ -2242,6 +2291,7 @@ func _hero_guard_pulse() -> void:
 	await tw.finished
 	_spawn_fx_at(player_sprite, "impact", Vector2(70, 110), 0.35, Color(0.45, 0.85, 1.0))
 	_spawn_fx_at(player_sprite, "impact", Vector2(50, 140), 0.4, Color(0.7, 0.95, 1.0))
+	_screen_shake(4.0, 0.12)
 	await _screen_pulse(Color(0.35, 0.75, 1.0, 0.28))
 	var shield := ColorRect.new()
 	shield.color = Color(0.35, 0.75, 1.0, 0.35)
@@ -2269,7 +2319,9 @@ func _hero_guard_pulse() -> void:
 
 
 func _hero_attack_sequence(def: Dictionary) -> void:
-	_apply_hero_pose("shoot", 0.9)
+	var melee := _card_is_melee(def)
+	_apply_hero_pose("punch" if melee else "shoot", 0.9)
+	AudioDirector.play_sfx("whoosh", randf_range(0.92, 1.1), -2.0)
 	if _player_actor == null:
 		await get_tree().create_timer(0.25).timeout
 		return
@@ -2296,18 +2348,29 @@ func _hero_attack_sequence(def: Dictionary) -> void:
 	# Polvo al plantar el pie en el lunge (física visual)
 	var foot := player_sprite.global_position + Vector2(player_sprite.size.x * 0.5, player_sprite.size.y - 4.0)
 	_spawn_dust_puff(foot, 1.1)
+	AudioDirector.play_sfx("foot_plant", randf_range(0.9, 1.15), -2.0)
 	var muzzle_pos := player_sprite.global_position + Vector2(player_sprite.size.x * 0.72, player_sprite.size.y * 0.42)
-	_spawn_fx_world(muzzle_pos, "muzzle", 0.18, Vector2(1.55, 1.55))
-	await get_tree().create_timer(0.03).timeout
-	_spawn_fx_world(muzzle_pos + Vector2(10, -5), "muzzle", 0.14, Vector2(1.05, 1.05))
+	if melee:
+		AudioDirector.play_sfx("punch", randf_range(0.92, 1.1), 0.0)
+		_spawn_fx_world(muzzle_pos, "impact", 0.2, Vector2(1.4, 1.4))
+	else:
+		AudioDirector.play_sfx("gunshot", randf_range(0.94, 1.06), 0.0)
+		_spawn_fx_world(muzzle_pos, "muzzle", 0.18, Vector2(1.55, 1.55))
+		await get_tree().create_timer(0.03).timeout
+		_spawn_fx_world(muzzle_pos + Vector2(10, -5), "muzzle", 0.14, Vector2(1.05, 1.05))
 	await _screen_pulse(Color(1.0, 0.72, 0.22, 0.3))
+	_screen_shake(7.0 if melee else 9.0, 0.14)
 	var enemy_node := _selected_enemy_sprite()
 	var hit_pos := get_viewport_rect().size * Vector2(0.72, 0.48)
 	if enemy_node and is_instance_valid(enemy_node):
 		hit_pos = enemy_node.global_position + Vector2(enemy_node.size.x * 0.45, enemy_node.size.y * 0.48)
-	await _fly_tracer(muzzle_pos, hit_pos)
+	if not melee:
+		await _fly_tracer(muzzle_pos, hit_pos)
+	else:
+		await get_tree().create_timer(0.04).timeout
 	_spawn_fx_world(hit_pos, "impact", 0.3, Vector2(1.7, 1.7))
 	_spawn_blood_burst(hit_pos, 1.55)
+	AudioDirector.play_sfx("hit_impact", randf_range(0.9, 1.12), -1.0)
 	if enemy_node and is_instance_valid(enemy_node):
 		_spawn_dust_puff(enemy_node.global_position + Vector2(enemy_node.size.x * 0.5, enemy_node.size.y - 2.0), 1.2)
 		await _hit_actor_heavy(enemy_node, maxi(1, int(def.get("damage", 8))), true)
@@ -2357,6 +2420,7 @@ func _enemy_lunge_attack(index: int) -> void:
 	var idle_tex: Texture2D = spr.texture
 	var base: Vector2 = wrap.get_meta("sprite_base", spr.position)
 	wrap.set_meta("anim_locked", true)
+	AudioDirector.play_sfx("whoosh", randf_range(0.85, 1.05), -1.0)
 	if attack_path != "" and (ResourceLoader.exists(attack_path) or FileAccess.file_exists(attack_path)):
 		var at := _load_combat_tex(attack_path)
 		if at:
@@ -2385,6 +2449,7 @@ func _enemy_lunge_attack(index: int) -> void:
 	if is_boss:
 		await _screen_pulse(Color(1.0, 0.55, 0.2, 0.32))
 	var muzzle := spr.global_position + Vector2(24, spr.size.y * 0.48)
+	AudioDirector.play_sfx("gunshot", randf_range(0.88, 1.05), -1.5 if not is_boss else 0.0)
 	_spawn_fx_world(muzzle, "muzzle", 0.18 if is_boss else 0.16, Vector2(1.45, 1.45) if is_boss else Vector2(1.2, 1.2))
 	await get_tree().create_timer(0.03).timeout
 	_spawn_fx_world(muzzle + Vector2(-6, 3), "muzzle", 0.12, Vector2(0.9, 0.9) if is_boss else Vector2(0.8, 0.8))
@@ -2392,6 +2457,9 @@ func _enemy_lunge_attack(index: int) -> void:
 		_spawn_fx_world(muzzle + Vector2(-14, -4), "muzzle", 0.1, Vector2(0.7, 0.7))
 	var target := player_sprite.global_position + Vector2(90, player_sprite.size.y * 0.55)
 	await _fly_tracer(muzzle, target)
+	AudioDirector.play_sfx("hit_impact", randf_range(0.9, 1.1), -1.0)
+	_screen_shake(10.0 if is_boss else 6.0, 0.16 if is_boss else 0.12)
+	_apply_hero_pose("hurt", 0.35)
 	_spawn_fx_world(target, "impact", 0.3 if is_boss else 0.26, Vector2(1.55, 1.55) if is_boss else Vector2(1.35, 1.35))
 	_spawn_blood_burst(target, 1.5 if is_boss else 1.15)
 	var tw2 := create_tween()
@@ -2411,6 +2479,8 @@ func _enemy_lunge_attack(index: int) -> void:
 func _hit_actor_heavy(node: CanvasItem, dmg: int, knock_right: bool) -> void:
 	if not is_instance_valid(node):
 		return
+	AudioDirector.play_sfx("hit_impact", randf_range(0.92, 1.1), -2.0)
+	_screen_shake(5.0 + minf(8.0, float(dmg) * 0.35), 0.12)
 	var base: Vector2 = node.position
 	var dir := 1.0 if knock_right else -1.0
 	var tw := create_tween()
@@ -2472,6 +2542,8 @@ func _spawn_fx_at(node: CanvasItem, fx_name: String, offset: Vector2, life: floa
 
 func _spawn_dust_puff(pos: Vector2, power: float = 1.0) -> void:
 	## Polvo con caída (física visual) al plantar pie / impactar suelo.
+	if power >= 1.0:
+		AudioDirector.play_sfx("foot_plant", randf_range(0.88, 1.2), -6.0)
 	if _fx_layer == null:
 		return
 	var tex := _map_tex("dust_puff")

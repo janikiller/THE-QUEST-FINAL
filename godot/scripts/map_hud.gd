@@ -53,7 +53,9 @@ func _ready() -> void:
 	btn_missions.pressed.connect(_open_missions)
 	btn_deck.pressed.connect(_open_deck)
 	btn_weather.pressed.connect(func(): GameState.cycle_weather())
-	btn_music.pressed.connect(func(): AudioDirector.toggle_music())
+	btn_music.pressed.connect(func():
+		AudioDirector.play_ui_click()
+		AudioDirector.toggle_music())
 	AudioDirector.music_toggled.connect(func(on): btn_music.text = "MÚSICA" if on else "MUTE")
 	_speed_group = ButtonGroup.new()
 	for b in [btn_speed_1, btn_speed_4, btn_speed_16, btn_speed_60]:

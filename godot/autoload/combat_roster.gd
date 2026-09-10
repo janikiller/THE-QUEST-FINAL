@@ -110,9 +110,14 @@ func pick_arena_for_mission(mission: Dictionary, boss: Dictionary = {}) -> Dicti
 
 
 func hero_pose(pose: String) -> String:
-	var key := pose if pose in ["idle", "shoot", "hurt"] else "idle"
+	var key := pose if pose in ["idle", "shoot", "hurt", "punch", "death", "walk", "run"] else "idle"
 	var path := str(hero.get(key, ""))
 	if path != "" and (ResourceLoader.exists(path) or FileAccess.file_exists(path)):
 		return path
 	# Fallback al pack Kick-Ass
-	return "res://assets/combat/custom/hero/kickass_%s.png" % key
+	var fallback := "res://assets/combat/custom/hero/kickass_%s.png" % key
+	if ResourceLoader.exists(fallback) or FileAccess.file_exists(fallback):
+		return fallback
+	if key == "punch":
+		return "res://assets/combat/custom/hero/kickass_shoot.png"
+	return "res://assets/combat/custom/hero/kickass_idle.png"
