@@ -777,11 +777,26 @@ func _boss_autoplay() -> void:
 			combat._busy = false
 			combat._dying.clear()
 		var played := 0
-		# Prioridad: defensa si vida baja, si no daño al Capo (índice 0)
-		CombatState.select_enemy(0)
+		# Matar escoltas primero (menos daño entrante), luego Capo.
+		var focus := 0
+		for ei in range(CombatState.enemies.size()):
+			var ee: Dictionary = CombatState.enemies[ei]
+			if int(ee.get("hp", 0)) <= 0:
+				continue
+			if not bool(ee.get("is_boss", false)):
+				focus = ei
+				break
+			focus = ei
+		CombatState.select_enemy(focus)
 		var hand: Array = CombatState.hand.duplicate()
 		var php := int(CombatState.player.get("hp", 0))
-		var prefer_def := php <= 40
+		var incoming := 0
+		for ee2 in CombatState.enemies:
+			if int(ee2.get("hp", 0)) <= 0:
+				continue
+			if int(ee2.get("intent", 0)) == CombatState.Intent.ATTACK:
+				incoming += int(ee2.get("intent_value", 8))
+		var prefer_def := php <= 36 or (php + int(CombatState.player.get("block", 0)) < incoming)
 		var order: Array = []
 		for cid in hand:
 			var def := CardDB.get_card(str(cid))
@@ -801,7 +816,7 @@ func _boss_autoplay() -> void:
 			var cid2 := str(item["id"])
 			if not CombatState.can_play_card(cid2):
 				continue
-			CombatState.play_card(cid2, 0)
+			CombatState.play_card(cid2, focus)
 			played += 1
 			await get_tree().create_timer(0.12).timeout
 			if not CombatState.is_active():
