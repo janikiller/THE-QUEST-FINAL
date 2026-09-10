@@ -50,6 +50,8 @@ var _closing: bool = false
 var _hero_pose: String = "idle"
 var _hero_pose_until: float = 0.0
 var _bob_t: float = 0.0
+var _wait_t: float = 0.0
+var _hero_fidget_cd: float = 1.6
 var _player_shadow: TextureRect
 var _player_actor: Control
 var _player_base_pos: Vector2 = Vector2.ZERO
@@ -156,7 +158,7 @@ func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
 		_hero_pose_until = Time.get_ticks_msec() / 1000.0 + hold_sec
 	var tex: Texture2D = null
 	match pose:
-		"shoot", "aim":
+		"shoot", "aim", "ready":
 			tex = _hero_tex("shoot")
 		"punch", "melee":
 			tex = _hero_tex("punch")
@@ -164,6 +166,10 @@ func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
 				tex = _hero_tex("shoot")
 		"hurt":
 			tex = _hero_tex("hurt")
+		"walk", "step":
+			tex = _hero_tex("walk")
+			if tex == null:
+				tex = _hero_tex("idle")
 		_:
 			tex = _hero_tex("idle")
 	if tex == null:
@@ -172,6 +178,16 @@ func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
 		player_sprite.texture = tex
 		_apply_hero_facing()
 		_plant_hero_sprite()
+
+
+func _is_waiting_for_card() -> bool:
+	## Turno del jugador, sin carta en curso: personajes deben moverse.
+	if not visible or _busy or _closing:
+		return false
+	var snap := CombatState.get_snapshot()
+	if not bool(snap.get("active", false)):
+		return false
+	return int(snap.get("phase", -1)) == CombatState.Phase.PLAYER
 
 
 func _card_is_melee(def: Dictionary) -> bool:
@@ -210,6 +226,7 @@ func _tween_actor_to(node: Node, property: String, value: Variant, duration: flo
 func _tick_hero_pose() -> void:
 	if _hero_pose == "idle":
 		return
+	# Fidgets (ready/walk) y poses de combate caducan solos.
 	if Time.get_ticks_msec() / 1000.0 >= _hero_pose_until:
 		_apply_hero_pose("idle")
 
@@ -553,36 +570,128 @@ func _ensure_player_block_bar() -> void:
 func _process(delta: float) -> void:
 	if not visible:
 		return
-	# Movimiento suave y constante aunque haya acciones (salvo actors bloqueados).
+	# Movimiento continuo (idle/fidget) salvo actors bloqueados en ataque.
 	_bob_t += delta
 	_bg_anim_t += delta
 	if not _busy:
 		_tick_hero_pose()
+		_tick_wait_fidget(delta)
 	_idle_bob_player(delta)
 	_idle_bob_enemies(delta)
 	_tick_animated_bg(delta)
 
 
+func _tick_wait_fidget(delta: float) -> void:
+	## Mientras eliges carta: cambios de pose / amenazas cortas.
+	if not _is_waiting_for_card():
+		return
+	_wait_t += delta
+	_hero_fidget_cd -= delta
+	if _hero_fidget_cd <= 0.0 and player_sprite and not bool(player_sprite.get_meta("anim_locked", false)):
+		# Alterna paso listo / mira apuntando.
+		if _hero_pose == "idle" or _hero_pose == "":
+			# Preferir mira lista; walk solo a veces (menos brusco).
+			var pick := "ready" if randf() < 0.72 else "walk"
+			_apply_hero_pose(pick, randf_range(0.55, 0.9))
+		_hero_fidget_cd = randf_range(2.2, 3.8)
+	# Enemigos: lean + flash de pose de ataque ocasional.
+	var i := 0
+	for wrap in enemies_row.get_children():
+		if not is_instance_valid(wrap):
+			continue
+		if bool(wrap.get_meta("fallen", false)) or bool(wrap.get_meta("anim_locked", false)):
+			continue
+		var cd := float(wrap.get_meta("fidget_cd", 1.2 + float(i) * 0.35))
+		cd -= delta
+		if cd <= 0.0:
+			_enemy_wait_fidget(wrap)
+			cd = randf_range(1.6, 3.0) + float(i) * 0.2
+		wrap.set_meta("fidget_cd", cd)
+		i += 1
+
+
+func _enemy_wait_fidget(wrap: Control) -> void:
+	if not is_instance_valid(wrap):
+		return
+	var spr: TextureRect = wrap.find_child("EnemySprite", true, false)
+	if spr == null or not is_instance_valid(spr):
+		return
+	var base: Vector2 = wrap.get_meta("sprite_base", spr.position)
+	wrap.set_meta("anim_locked", true)
+	# Amenaza corta: se inclina hacia Kick-Ass.
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(spr, "position", base + Vector2(-10, 0), 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(spr, "rotation_degrees", -4.0, 0.22).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(spr, "scale", Vector2(0.98, 1.03), 0.22).set_trans(Tween.TRANS_SINE)
+	await tw.finished
+	if not is_instance_valid(wrap) or not is_instance_valid(spr):
+		return
+	var attack_path := str(wrap.get_meta("pose_attack", ""))
+	var idle_path := str(wrap.get_meta("idle_sprite", ""))
+	var plant_box: Vector2 = spr.get_meta("plant_box", Vector2(210, GROUND_Y)) if spr.has_meta("plant_box") else Vector2(210, GROUND_Y)
+	var old_tex := spr.texture
+	if attack_path != "" and randf() < 0.55:
+		var at := _load_combat_tex(attack_path)
+		if at and is_instance_valid(spr):
+			spr.texture = at
+			_bottom_plant_texture(spr, plant_box)
+	await get_tree().create_timer(randf_range(0.28, 0.48)).timeout
+	if not is_instance_valid(wrap) or not is_instance_valid(spr):
+		return
+	if idle_path != "":
+		var it := _load_combat_tex(idle_path)
+		if it:
+			spr.texture = it
+			_bottom_plant_texture(spr, plant_box)
+	elif old_tex:
+		spr.texture = old_tex
+	var tw2 := create_tween()
+	tw2.set_parallel(true)
+	tw2.tween_property(spr, "position", base, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(spr, "rotation_degrees", 0.0, 0.28).set_trans(Tween.TRANS_SINE)
+	tw2.tween_property(spr, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_SINE)
+	await tw2.finished
+	if is_instance_valid(wrap):
+		wrap.set_meta("anim_locked", false)
+
+
 func _idle_bob_player(delta: float = 0.016) -> void:
 	if _player_actor == null or not is_instance_valid(_player_actor):
 		return
+	if not is_instance_valid(player_sprite):
+		return
 	if bool(player_sprite.get_meta("anim_locked", false)):
 		return
-	# Balanceo lateral suave; Y fijo (pies clavados).
-	var sway := cos(_bob_t * 0.75) * 0.4
+	var waiting := _is_waiting_for_card()
+	# En espera: respiración y cambio de peso bien visibles.
+	var sway_amp := 2.4 if waiting else 0.55
+	var breath_amp := 0.028 if waiting else 0.008
+	var rot_amp := 1.6 if waiting else 0.35
+	var sway := cos(_bob_t * (1.05 if waiting else 0.75)) * sway_amp
 	var planted: Vector2 = player_sprite.get_meta("plant_pos", Vector2.ZERO)
 	var target := planted + Vector2(sway, 0.0)
-	player_sprite.position = player_sprite.position.lerp(target, 1.0 - exp(-delta * 5.5))
-	var breath_x := 1.0 + sin(_bob_t * 1.25) * 0.008
-	player_sprite.scale = player_sprite.scale.lerp(Vector2(breath_x, 1.0), 1.0 - exp(-delta * 4.5))
+	player_sprite.position = player_sprite.position.lerp(target, 1.0 - exp(-delta * (6.5 if waiting else 5.0)))
+	var breath_x := 1.0 + sin(_bob_t * (1.7 if waiting else 1.25)) * breath_amp
+	var breath_y := 1.0 + sin(_bob_t * (1.7 if waiting else 1.25) + 0.6) * (breath_amp * 0.45)
+	# Mantener pivote en suela: escala vertical no levanta pies.
+	player_sprite.scale = player_sprite.scale.lerp(Vector2(breath_x, maxf(0.97, breath_y)), 1.0 - exp(-delta * 5.0))
+	var rot := sin(_bob_t * 0.9) * rot_amp
+	player_sprite.rotation_degrees = lerpf(player_sprite.rotation_degrees, rot, 1.0 - exp(-delta * 4.5))
+	if _player_actor and waiting:
+		var actor_sway := sin(_bob_t * 0.55) * 3.0
+		_player_actor.position = _player_actor.position.lerp(_player_base_pos + Vector2(actor_sway, 0.0), 1.0 - exp(-delta * 4.0))
+	elif _player_actor and not waiting:
+		_player_actor.position = _player_actor.position.lerp(_player_base_pos, 1.0 - exp(-delta * 5.0))
 	if _player_shadow:
 		_layout_ground_shadow(_player_shadow, _player_actor, 118.0)
-		var squash := 1.0 + sin(_bob_t * 1.25) * 0.028
+		var squash := 1.0 + sin(_bob_t * (1.7 if waiting else 1.25)) * (0.05 if waiting else 0.028)
 		_player_shadow.scale = _player_shadow.scale.lerp(Vector2(squash, 1.0), 1.0 - exp(-delta * 4.2))
 		_player_shadow.modulate.a = lerpf(_player_shadow.modulate.a, 0.88 + absf(sin(_bob_t * 1.25)) * 0.04, 1.0 - exp(-delta * 4.0))
 
 
 func _idle_bob_enemies(delta: float = 0.016) -> void:
+	var waiting := _is_waiting_for_card()
 	var i := 0
 	for wrap in enemies_row.get_children():
 		if not is_instance_valid(wrap):
@@ -596,15 +705,23 @@ func _idle_bob_enemies(delta: float = 0.016) -> void:
 			continue
 		var shadow: TextureRect = wrap.find_child("Shadow", true, false)
 		var base: Vector2 = wrap.get_meta("sprite_base", spr.position)
-		var speed := 0.7 + float(i % 3) * 0.12
+		var is_boss := bool(wrap.get_meta("is_boss", false))
+		var speed := (0.95 if waiting else 0.7) + float(i % 3) * 0.15
 		var phase := _bob_t * speed + float(i) * 0.95
-		var sway := cos(phase) * 0.35
-		var target := base + Vector2(sway, 0.0)
-		spr.position = spr.position.lerp(target, 1.0 - exp(-delta * 5.0))
-		var breath := 1.0 + sin(phase * 1.1) * 0.007
-		spr.scale = spr.scale.lerp(Vector2(breath, 1.0), 1.0 - exp(-delta * 4.0))
+		var sway_amp := (3.2 if waiting else 0.45) * (1.25 if is_boss else 1.0)
+		var sway := cos(phase) * sway_amp
+		# Empujan un poco hacia el héroe cuando esperan.
+		var lean := (-2.5 if waiting else 0.0)
+		var target := base + Vector2(sway + lean, 0.0)
+		spr.position = spr.position.lerp(target, 1.0 - exp(-delta * (6.0 if waiting else 5.0)))
+		var breath := 1.0 + sin(phase * 1.15) * (0.024 if waiting else 0.007)
+		spr.scale = spr.scale.lerp(Vector2(breath, 1.0), 1.0 - exp(-delta * 4.5))
+		var rot := sin(phase * 0.85) * (2.4 if waiting else 0.4) * (-1.0 if not is_boss else -1.2)
+		spr.rotation_degrees = lerpf(spr.rotation_degrees, rot, 1.0 - exp(-delta * 4.2))
 		if shadow:
-			shadow.modulate.a = lerpf(shadow.modulate.a, 0.78 + absf(sin(phase)) * 0.06, 1.0 - exp(-delta * 4.0))
+			var squash := 1.0 + sin(phase) * (0.06 if waiting else 0.03)
+			shadow.scale = shadow.scale.lerp(Vector2(squash, 1.0), 1.0 - exp(-delta * 4.0))
+			shadow.modulate.a = lerpf(shadow.modulate.a, 0.78 + absf(sin(phase)) * 0.08, 1.0 - exp(-delta * 4.0))
 		i += 1
 
 
@@ -618,6 +735,8 @@ func open_for_mission(mission_id: String, patrol_id: String = "alpha") -> void:
 	_hero_pose = "idle"
 	_hero_pose_until = 0.0
 	_bob_t = 0.0
+	_wait_t = 0.0
+	_hero_fidget_cd = 1.4
 	_gone_enemies.clear()
 	_dying.clear()
 	_arena_path = str(cfg.get("arena_path", ""))
@@ -1503,6 +1622,8 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	actor.add_child(btn)
 	wrap.add_child(actor)
 	wrap.set_meta("sprite_base", tex.get_meta("plant_pos", tex.position))
+	wrap.set_meta("idle_sprite", sp)
+	wrap.set_meta("fidget_cd", 1.0 + float(index) * 0.4)
 
 	if bool(e.get("detained", false)) or bool(e.get("fled", false)):
 		wrap.modulate = Color(0.55, 0.55, 0.58, 0.85)
