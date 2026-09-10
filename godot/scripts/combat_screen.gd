@@ -7,7 +7,7 @@ const FX_DIR := "res://assets/combat/custom/fx/"
 const MAP_DIR := "res://assets/combat/custom/map/"
 const PHYSICS_ARENA := "res://assets/combat/custom/map/arena_street_physics.png"
 ## Altura del slot de actor (pies en el borde inferior).
-const GROUND_Y := 252.0
+const GROUND_Y := 288.0
 ## Línea de bordillo en arena_street_physics.png (y / 1080).
 const PHYSICS_CONTACT_RATIO := 756.0 / 1080.0
 ## Hundir suelas en el bordillo (cierra el hueco visual de ~5–8px).
@@ -18,6 +18,16 @@ const HAND_CARD_H := 198.0
 const ENEMY_HAND_CARD_W := 98.0
 const ENEMY_HAND_CARD_H := 162.0
 const BOTTOM_PANEL_H := 292.0
+## Barras de vida grandes (llenan el combate, se leen a distancia).
+const PLAYER_HP_BAR_W := 236.0
+const PLAYER_HP_BAR_H := 30.0
+const PLAYER_BLK_BAR_H := 16.0
+const ENEMY_HP_BAR_W := 188.0
+const ENEMY_HP_BAR_H := 24.0
+const BOSS_HP_BAR_W := 220.0
+const BOSS_HP_BAR_H := 28.0
+const ACTOR_W := 248.0
+const BOSS_ACTOR_W := 300.0
 
 @onready var bg: TextureRect = %ArenaBg
 @onready var title_label: Label = %TitleLabel
@@ -235,7 +245,7 @@ func _plant_hero_sprite() -> void:
 	## Cuerpo completo, suelas opacas ancladas al suelo del slot.
 	if player_sprite == null:
 		return
-	var box := Vector2(210.0, GROUND_Y)
+	var box := Vector2(ACTOR_W, GROUND_Y)
 	_bottom_plant_texture(player_sprite, box)
 	if not bool(player_sprite.get_meta("anim_locked", false)):
 		var planted: Vector2 = player_sprite.get_meta("plant_pos", player_sprite.position)
@@ -359,13 +369,20 @@ func _sync_physics_ground() -> void:
 	var col_bottom := sink - arena_mid
 	var player_col := get_node_or_null("Arena/PlayerCol")
 	if player_col:
-		player_col.offset_top = -48.0
+		# Acerca a Kick-Ass al centro: menos vacío entre bandos.
+		player_col.offset_left = 150.0
+		player_col.offset_right = 150.0 + ACTOR_W + 36.0
+		player_col.offset_top = -56.0
 		player_col.offset_bottom = col_bottom
 		player_col.alignment = BoxContainer.ALIGNMENT_END
 	if enemies_row:
-		enemies_row.offset_top = -64.0
+		# Banda enemiga más cerca del héroe y más compacta.
+		enemies_row.offset_left = -560.0
+		enemies_row.offset_right = -36.0
+		enemies_row.offset_top = -72.0
 		enemies_row.offset_bottom = col_bottom
 		enemies_row.alignment = BoxContainer.ALIGNMENT_END
+		enemies_row.add_theme_constant_override("separation", 6)
 
 
 func _ground_arena_layout() -> void:
@@ -374,8 +391,10 @@ func _ground_arena_layout() -> void:
 	if player_marker:
 		player_marker.visible = true
 		player_marker.text = "KICK-ASS"
-		player_marker.add_theme_color_override("font_color", Color(0.75, 0.92, 1.0))
-		player_marker.add_theme_font_size_override("font_size", 13)
+		player_marker.add_theme_color_override("font_color", Color(0.82, 0.95, 1.0))
+		player_marker.add_theme_font_size_override("font_size", 16)
+		player_marker.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		player_marker.add_theme_constant_override("outline_size", 4)
 
 
 func _setup_player_actor() -> void:
@@ -391,7 +410,7 @@ func _setup_player_actor() -> void:
 	var idx := player_sprite.get_index()
 	_player_actor = Control.new()
 	_player_actor.name = "PlayerActor"
-	_player_actor.custom_minimum_size = Vector2(210, GROUND_Y)
+	_player_actor.custom_minimum_size = Vector2(ACTOR_W, GROUND_Y)
 	_player_actor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_player_actor.clip_contents = false
 	parent.add_child(_player_actor)
@@ -422,7 +441,7 @@ func _layout_ground_shadow(shadow: TextureRect, actor: Control, width: float) ->
 	if shadow == null or actor == null:
 		return
 	var h := 26.0
-	var aw := actor.size.x if actor.size.x > 1.0 else 210.0
+	var aw := actor.size.x if actor.size.x > 1.0 else ACTOR_W
 	shadow.size = Vector2(width + 24.0, h)
 	# Sombra sobre el bordillo, pegada a la suela (no bajo el asfalto).
 	shadow.position = Vector2((aw - width - 24.0) * 0.5, GROUND_Y - h + 4.0)
@@ -537,13 +556,15 @@ func _ensure_player_block_bar() -> void:
 	var parent := player_hp_bar.get_parent()
 	if parent == null:
 		return
-	player_hp_bar.custom_minimum_size = Vector2(168, 14)
+	player_hp_bar.custom_minimum_size = Vector2(PLAYER_HP_BAR_W, PLAYER_HP_BAR_H)
 	player_hp_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	player_hp_text.add_theme_font_size_override("font_size", 12)
+	player_hp_text.add_theme_font_size_override("font_size", 18)
 	player_hp_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	player_hp_text.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	player_hp_text.add_theme_constant_override("outline_size", 5)
 	_player_block_bar = ProgressBar.new()
 	_player_block_bar.name = "PlayerBlockBar"
-	_player_block_bar.custom_minimum_size = Vector2(168, 10)
+	_player_block_bar.custom_minimum_size = Vector2(PLAYER_HP_BAR_W, PLAYER_BLK_BAR_H)
 	_player_block_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_player_block_bar.max_value = 20
 	_player_block_bar.value = 0
@@ -553,8 +574,10 @@ func _ensure_player_block_bar() -> void:
 	_player_block_text = Label.new()
 	_player_block_text.name = "PlayerBlockText"
 	_player_block_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_player_block_text.add_theme_font_size_override("font_size", 11)
-	_player_block_text.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
+	_player_block_text.add_theme_font_size_override("font_size", 14)
+	_player_block_text.add_theme_color_override("font_color", Color(0.55, 0.88, 1.0))
+	_player_block_text.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_player_block_text.add_theme_constant_override("outline_size", 3)
 	_player_block_text.visible = false
 	parent.add_child(_player_block_text)
 	# Orden: barras arriba, sprite abajo (pies al suelo)
@@ -629,7 +652,7 @@ func _enemy_wait_fidget(wrap: Control) -> void:
 		return
 	var attack_path := str(wrap.get_meta("pose_attack", ""))
 	var idle_path := str(wrap.get_meta("idle_sprite", ""))
-	var plant_box: Vector2 = spr.get_meta("plant_box", Vector2(210, GROUND_Y)) if spr.has_meta("plant_box") else Vector2(210, GROUND_Y)
+	var plant_box: Vector2 = spr.get_meta("plant_box", Vector2(ACTOR_W, GROUND_Y)) if spr.has_meta("plant_box") else Vector2(ACTOR_W, GROUND_Y)
 	var old_tex := spr.texture
 	if attack_path != "" and randf() < 0.55:
 		var at := _load_combat_tex(attack_path)
@@ -946,7 +969,14 @@ func _refresh() -> void:
 	title_label.text = "THE QUEST FINAL"
 	turn_label.text = "PATRULLA — TURNO %d" % int(snap.get("turn", 1))
 	hp_label.text = "%d/%d" % [int(p.get("hp", 0)), int(p.get("max_hp", 50))]
+	hp_label.add_theme_font_size_override("font_size", 30)
+	hp_label.add_theme_color_override("font_color", Color(0.35, 1.0, 0.5))
+	hp_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	hp_label.add_theme_constant_override("outline_size", 4)
 	block_label.text = str(int(p.get("block", 0)))
+	block_label.add_theme_font_size_override("font_size", 28)
+	block_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	block_label.add_theme_constant_override("outline_size", 3)
 	location_label.text = str(snap.get("location", "")).to_upper()
 	var xp_bit := "NV.%d  %d/%d XP" % [
 		int(snap.get("hero_level", GameState.hero_level)),
@@ -986,7 +1016,7 @@ func _refresh() -> void:
 
 
 func _style_bar(bar: ProgressBar, fill_col: Color, h: float = 12.0, w: float = -1.0) -> void:
-	## Barra compacta y centrada (sin estirarse a todo el panel).
+	## Barra gruesa y legible sobre el asfalto oscuro.
 	if w > 0.0:
 		bar.custom_minimum_size = Vector2(w, h)
 		bar.size = Vector2(w, h)
@@ -997,15 +1027,17 @@ func _style_bar(bar: ProgressBar, fill_col: Color, h: float = 12.0, w: float = -
 	bar.show_percentage = false
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = fill_col
-	fill.set_corner_radius_all(4)
-	fill.border_color = Color(0, 0, 0, 0.35)
+	fill.set_corner_radius_all(6)
+	fill.border_color = Color(1, 1, 1, 0.28)
 	fill.set_border_width_all(1)
+	fill.shadow_color = Color(0, 0, 0, 0.45)
+	fill.shadow_size = 3
 	bar.add_theme_stylebox_override("fill", fill)
 	var bgb := StyleBoxFlat.new()
-	bgb.bg_color = Color(0.06, 0.08, 0.11, 0.92)
-	bgb.set_corner_radius_all(4)
-	bgb.border_color = Color(1, 1, 1, 0.12)
-	bgb.set_border_width_all(1)
+	bgb.bg_color = Color(0.04, 0.05, 0.08, 0.96)
+	bgb.set_corner_radius_all(6)
+	bgb.border_color = Color(1, 1, 1, 0.22)
+	bgb.set_border_width_all(2)
 	bar.add_theme_stylebox_override("background", bgb)
 
 
@@ -1016,25 +1048,28 @@ func _style_player_bars(p: Dictionary) -> void:
 	player_hp_bar.max_value = float(hp_max)
 	player_hp_bar.value = float(hp_now)
 	# Color por umbral de vida
-	var hp_col := Color(0.25, 0.82, 0.42)
+	var hp_col := Color(0.22, 0.9, 0.42)
 	var ratio := float(hp_now) / maxf(1.0, float(hp_max))
 	if ratio <= 0.35:
-		hp_col = Color(0.95, 0.28, 0.28)
+		hp_col = Color(1.0, 0.22, 0.25)
 	elif ratio <= 0.65:
-		hp_col = Color(0.95, 0.72, 0.22)
-	_style_bar(player_hp_bar, hp_col, 14.0, 168.0)
-	player_hp_text.text = "%d/%d" % [hp_now, hp_max]
-	player_hp_text.add_theme_font_size_override("font_size", 12)
-	player_hp_text.add_theme_color_override("font_color", Color(0.92, 0.96, 1.0))
+		hp_col = Color(1.0, 0.78, 0.2)
+	_style_bar(player_hp_bar, hp_col, PLAYER_HP_BAR_H, PLAYER_HP_BAR_W)
+	player_hp_text.text = "VIDA %d/%d" % [hp_now, hp_max]
+	player_hp_text.add_theme_font_size_override("font_size", 18)
+	player_hp_text.add_theme_color_override("font_color", Color(1.0, 0.98, 0.92))
+	player_hp_text.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.92))
+	player_hp_text.add_theme_constant_override("outline_size", 5)
 	var blk := int(p.get("block", 0))
 	if _player_block_bar:
 		_player_block_bar.visible = blk > 0
 		_player_block_bar.max_value = maxf(float(hp_max), float(blk))
 		_player_block_bar.value = float(blk)
-		_style_bar(_player_block_bar, Color(0.35, 0.78, 1.0), 10.0, 168.0)
+		_style_bar(_player_block_bar, Color(0.3, 0.82, 1.0), PLAYER_BLK_BAR_H, PLAYER_HP_BAR_W)
 	if _player_block_text:
 		_player_block_text.visible = blk > 0
 		_player_block_text.text = "ESCUDO %d" % blk
+		_player_block_text.add_theme_font_size_override("font_size", 14)
 
 
 func _ensure_animated_bg() -> void:
@@ -1348,10 +1383,13 @@ func _sync_enemy_stats(snap: Dictionary) -> void:
 					hp_col = Color(0.95, 0.22, 0.22)
 				elif ratio <= 0.65:
 					hp_col = Color(0.95, 0.7, 0.22)
-			_style_bar(hp_bar, hp_col, 12.0 if is_boss else 11.0, 180.0 if is_boss else 148.0)
+			_style_bar(hp_bar, hp_col, BOSS_HP_BAR_H if is_boss else ENEMY_HP_BAR_H, BOSS_HP_BAR_W if is_boss else ENEMY_HP_BAR_W)
 		var hp_txt: Label = panel.find_child("HpText", true, false) as Label
 		if hp_txt:
-			hp_txt.text = "%d/%d" % [hp_now, hp_max]
+			hp_txt.text = "VIDA %d/%d" % [hp_now, hp_max]
+			hp_txt.add_theme_font_size_override("font_size", 15 if bool(panel.get_meta("is_boss", false)) else 14)
+			hp_txt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+			hp_txt.add_theme_constant_override("outline_size", 4)
 		var blk_now := int(e.get("block", 0))
 		var blk_bar: ProgressBar = panel.find_child("BlockBar", true, false) as ProgressBar
 		if blk_bar:
@@ -1486,11 +1524,11 @@ func _animate_enemy_death(panel: Control, dmg: int) -> void:
 func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	var is_boss := bool(e.get("is_boss", false))
 	var wrap := VBoxContainer.new()
-	wrap.custom_minimum_size = Vector2(260 if is_boss else 200, 380 if is_boss else 340)
+	wrap.custom_minimum_size = Vector2(BOSS_ACTOR_W if is_boss else ACTOR_W + 12.0, 420 if is_boss else 380)
 	wrap.alignment = BoxContainer.ALIGNMENT_END
 	# No expandir: evita barras de vida estiradas a todo el ancho.
 	wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	wrap.add_theme_constant_override("separation", 4)
+	wrap.add_theme_constant_override("separation", 5)
 	wrap.set_meta("enemy_index", index)
 	wrap.set_meta("is_boss", is_boss)
 	wrap.set_meta("pose_attack", str(e.get("pose_attack", "")))
@@ -1501,16 +1539,18 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	name_l.text = str(e.get("name", "Sospechoso"))
 	if is_boss:
 		name_l.text = "★ " + name_l.text
-		name_l.add_theme_color_override("font_color", Color(1.0, 0.78, 0.32))
-		name_l.add_theme_font_size_override("font_size", 16)
+		name_l.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
+		name_l.add_theme_font_size_override("font_size", 18)
 	elif selected and int(e.get("hp", 0)) > 0:
 		name_l.text = "▸ " + name_l.text
-		name_l.add_theme_color_override("font_color", Color(0.65, 0.95, 1.0))
-		name_l.add_theme_font_size_override("font_size", 13)
+		name_l.add_theme_color_override("font_color", Color(0.7, 0.96, 1.0))
+		name_l.add_theme_font_size_override("font_size", 15)
 	else:
-		name_l.add_theme_color_override("font_color", Color(0.88, 0.92, 0.98))
-		name_l.add_theme_font_size_override("font_size", 12)
+		name_l.add_theme_color_override("font_color", Color(0.92, 0.95, 1.0))
+		name_l.add_theme_font_size_override("font_size", 14)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	name_l.add_theme_constant_override("outline_size", 3)
 	wrap.add_child(name_l)
 
 	var alias := str(e.get("alias", ""))
@@ -1518,17 +1558,18 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 		var alias_l := Label.new()
 		alias_l.text = alias
 		alias_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		alias_l.add_theme_font_size_override("font_size", 10)
-		alias_l.add_theme_color_override("font_color", Color(0.7, 0.78, 0.88, 0.9))
+		alias_l.add_theme_font_size_override("font_size", 11)
+		alias_l.add_theme_color_override("font_color", Color(0.72, 0.8, 0.9, 0.95))
 		wrap.add_child(alias_l)
 
-	# Barras ENCIMA del cuerpo, ancho fijo y centradas.
+	# Barras ENCIMA del cuerpo, ancho fijo y centradas — bien visibles.
 	var bars := VBoxContainer.new()
 	bars.name = "Bars"
 	bars.alignment = BoxContainer.ALIGNMENT_CENTER
-	bars.add_theme_constant_override("separation", 2)
+	bars.add_theme_constant_override("separation", 3)
 	bars.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var bar_w := 180.0 if is_boss else 148.0
+	var bar_w := BOSS_HP_BAR_W if is_boss else ENEMY_HP_BAR_W
+	var bar_h := BOSS_HP_BAR_H if is_boss else ENEMY_HP_BAR_H
 	var hp_now := maxi(0, int(e.get("hp", 0)))
 	var hp_max := int(e.get("max_hp", 1))
 	var hp_bar := ProgressBar.new()
@@ -1543,15 +1584,17 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 		elif ratio <= 0.65:
 			hp_col = Color(0.95, 0.7, 0.22)
 		else:
-			hp_col = Color(0.3, 0.82, 0.4)
-	_style_bar(hp_bar, hp_col, 12.0 if is_boss else 11.0, bar_w)
+			hp_col = Color(0.28, 0.88, 0.4)
+	_style_bar(hp_bar, hp_col, bar_h, bar_w)
 	bars.add_child(hp_bar)
 	var hp_t := Label.new()
 	hp_t.name = "HpText"
-	hp_t.text = "%d/%d" % [hp_now, hp_max]
+	hp_t.text = "VIDA %d/%d" % [hp_now, hp_max]
 	hp_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_t.add_theme_font_size_override("font_size", 11 if is_boss else 10)
-	hp_t.add_theme_color_override("font_color", Color(1.0, 0.88, 0.55) if is_boss else Color(0.9, 0.93, 0.98))
+	hp_t.add_theme_font_size_override("font_size", 15 if is_boss else 14)
+	hp_t.add_theme_color_override("font_color", Color(1.0, 0.9, 0.55) if is_boss else Color(1.0, 0.96, 0.92))
+	hp_t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	hp_t.add_theme_constant_override("outline_size", 4)
 	bars.add_child(hp_t)
 	var blk := int(e.get("block", 0))
 	var blk_bar := ProgressBar.new()
@@ -1559,19 +1602,21 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	blk_bar.max_value = maxf(float(hp_max), float(maxi(blk, 1)))
 	blk_bar.value = float(blk)
 	blk_bar.visible = blk > 0
-	_style_bar(blk_bar, Color(0.35, 0.78, 1.0), 8.0, bar_w)
+	_style_bar(blk_bar, Color(0.3, 0.82, 1.0), 14.0 if is_boss else 12.0, bar_w)
 	bars.add_child(blk_bar)
 	var blk_t := Label.new()
 	blk_t.name = "BlockText"
 	blk_t.text = "ESCUDO %d" % blk
 	blk_t.visible = blk > 0
 	blk_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	blk_t.add_theme_font_size_override("font_size", 9)
-	blk_t.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
+	blk_t.add_theme_font_size_override("font_size", 12)
+	blk_t.add_theme_color_override("font_color", Color(0.55, 0.88, 1.0))
+	blk_t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	blk_t.add_theme_constant_override("outline_size", 3)
 	bars.add_child(blk_t)
 	wrap.add_child(bars)
 
-	var actor_w := 260.0 if is_boss else 210.0
+	var actor_w := BOSS_ACTOR_W if is_boss else ACTOR_W
 	var ground_y := GROUND_Y + (18.0 if is_boss else 0.0)
 	var actor_h := ground_y  # sin hueco bajo los pies
 	var actor := Control.new()
