@@ -135,7 +135,7 @@ func _ground_shot() -> void:
 	if combat.player_hp_bar:
 		var pw: float = float(combat.player_hp_bar.size.x)
 		bar_w_log.append("player=%.0f" % pw)
-		if pw > 280.0 or pw < 140.0:
+		if pw > 300.0 or pw < 160.0:
 			bad_bars += 1
 	if combat.enemies_row:
 		for panel in combat.enemies_row.get_children():
@@ -143,9 +143,30 @@ func _ground_shot() -> void:
 			if hb:
 				var ew: float = float(hb.size.x)
 				bar_w_log.append("enemy=%.0f" % ew)
-				if ew > 260.0 or ew < 120.0:
+				if ew > 280.0 or ew < 140.0:
 					bad_bars += 1
 	print("HP_BARS ", " ".join(bar_w_log), " bad=", bad_bars)
+	# Layout: pelea compacta (hueco centro no debe ser la mayoría del ancho)
+	var gap_ok := true
+	var player_col_n = combat.get_node_or_null("Arena/PlayerCol")
+	if player_col_n and combat.enemies_row and combat.enemies_row.get_child_count() > 0:
+		var pr: Rect2 = player_col_n.get_global_rect()
+		var first_enemy: Control = null
+		for ch in combat.enemies_row.get_children():
+			if ch is Control and not bool(ch.get_meta("fallen", false)):
+				first_enemy = ch
+				break
+		if first_enemy:
+			var er: Rect2 = first_enemy.get_global_rect()
+			var gap := er.position.x - pr.end.x
+			var mid_ratio := gap / maxf(1.0, combat.size.x)
+			print("ARENA_GAP gap=%.0f mid_ratio=%.2f" % [gap, mid_ratio])
+			if mid_ratio > 0.28:
+				gap_ok = false
+	if not gap_ok:
+		print("GROUND_SHOT_FAIL arena too empty (characters too far apart)")
+		get_tree().quit(1)
+		return
 	if bad_bars > 0:
 		print("GROUND_SHOT_FAIL stretched hp bars")
 		get_tree().quit(1)

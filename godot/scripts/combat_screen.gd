@@ -19,15 +19,15 @@ const ENEMY_HAND_CARD_W := 98.0
 const ENEMY_HAND_CARD_H := 162.0
 const BOTTOM_PANEL_H := 292.0
 ## Barras de vida grandes (llenan el combate, se leen a distancia).
-const PLAYER_HP_BAR_W := 236.0
-const PLAYER_HP_BAR_H := 30.0
-const PLAYER_BLK_BAR_H := 16.0
-const ENEMY_HP_BAR_W := 188.0
-const ENEMY_HP_BAR_H := 24.0
-const BOSS_HP_BAR_W := 220.0
-const BOSS_HP_BAR_H := 28.0
-const ACTOR_W := 248.0
-const BOSS_ACTOR_W := 300.0
+const PLAYER_HP_BAR_W := 260.0
+const PLAYER_HP_BAR_H := 36.0
+const PLAYER_BLK_BAR_H := 18.0
+const ENEMY_HP_BAR_W := 210.0
+const ENEMY_HP_BAR_H := 30.0
+const BOSS_HP_BAR_W := 248.0
+const BOSS_HP_BAR_H := 34.0
+const ACTOR_W := 268.0
+const BOSS_ACTOR_W := 320.0
 
 @onready var bg: TextureRect = %ArenaBg
 @onready var title_label: Label = %TitleLabel
@@ -367,22 +367,25 @@ func _sync_physics_ground() -> void:
 	# Arena anclada full-rect con offsets; centro vertical en coords de pantalla.
 	var arena_mid := arena.offset_top + (size.y - arena.offset_top + arena.offset_bottom) * 0.5
 	var col_bottom := sink - arena_mid
+	var vw := maxf(size.x, 960.0)
 	var player_col := get_node_or_null("Arena/PlayerCol")
 	if player_col:
-		# Acerca a Kick-Ass al centro: menos vacío entre bandos.
-		player_col.offset_left = 150.0
-		player_col.offset_right = 150.0 + ACTOR_W + 36.0
+		# Fracciones del ancho: pelea compacta en 1280 y en 1920 (sin vacío enorme).
+		var p_left := clampf(vw * 0.16, 120.0, 380.0)
+		player_col.offset_left = p_left
+		player_col.offset_right = p_left + ACTOR_W + 48.0
 		player_col.offset_top = -56.0
 		player_col.offset_bottom = col_bottom
 		player_col.alignment = BoxContainer.ALIGNMENT_END
 	if enemies_row:
-		# Banda enemiga más cerca del héroe y más compacta.
-		enemies_row.offset_left = -560.0
-		enemies_row.offset_right = -36.0
+		# Empieza cerca del centro (BEGIN): evita el vacío enorme a la izquierda del row.
+		var e_right := clampf(vw * 0.03, 24.0, 64.0)
+		enemies_row.offset_right = -e_right
+		enemies_row.offset_left = -vw * 0.54
 		enemies_row.offset_top = -72.0
 		enemies_row.offset_bottom = col_bottom
-		enemies_row.alignment = BoxContainer.ALIGNMENT_END
-		enemies_row.add_theme_constant_override("separation", 6)
+		enemies_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+		enemies_row.add_theme_constant_override("separation", 10)
 
 
 func _ground_arena_layout() -> void:
@@ -1027,18 +1030,21 @@ func _style_bar(bar: ProgressBar, fill_col: Color, h: float = 12.0, w: float = -
 	bar.show_percentage = false
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = fill_col
-	fill.set_corner_radius_all(6)
-	fill.border_color = Color(1, 1, 1, 0.28)
-	fill.set_border_width_all(1)
-	fill.shadow_color = Color(0, 0, 0, 0.45)
-	fill.shadow_size = 3
+	fill.set_corner_radius_all(8)
+	fill.set_content_margin_all(0)
+	fill.border_color = Color(1, 1, 1, 0.35)
+	fill.set_border_width_all(2)
+	fill.shadow_color = Color(0, 0, 0, 0.55)
+	fill.shadow_size = 4
 	bar.add_theme_stylebox_override("fill", fill)
 	var bgb := StyleBoxFlat.new()
-	bgb.bg_color = Color(0.04, 0.05, 0.08, 0.96)
-	bgb.set_corner_radius_all(6)
-	bgb.border_color = Color(1, 1, 1, 0.22)
+	bgb.bg_color = Color(0.03, 0.04, 0.07, 0.97)
+	bgb.set_corner_radius_all(8)
+	bgb.set_content_margin_all(0)
+	bgb.border_color = Color(1, 1, 1, 0.3)
 	bgb.set_border_width_all(2)
 	bar.add_theme_stylebox_override("background", bgb)
+	bar.add_theme_stylebox_override("background_focus", bgb)
 
 
 func _style_player_bars(p: Dictionary) -> void:
@@ -1056,10 +1062,10 @@ func _style_player_bars(p: Dictionary) -> void:
 		hp_col = Color(1.0, 0.78, 0.2)
 	_style_bar(player_hp_bar, hp_col, PLAYER_HP_BAR_H, PLAYER_HP_BAR_W)
 	player_hp_text.text = "VIDA %d/%d" % [hp_now, hp_max]
-	player_hp_text.add_theme_font_size_override("font_size", 18)
+	player_hp_text.add_theme_font_size_override("font_size", 22)
 	player_hp_text.add_theme_color_override("font_color", Color(1.0, 0.98, 0.92))
-	player_hp_text.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.92))
-	player_hp_text.add_theme_constant_override("outline_size", 5)
+	player_hp_text.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	player_hp_text.add_theme_constant_override("outline_size", 6)
 	var blk := int(p.get("block", 0))
 	if _player_block_bar:
 		_player_block_bar.visible = blk > 0
@@ -1387,9 +1393,9 @@ func _sync_enemy_stats(snap: Dictionary) -> void:
 		var hp_txt: Label = panel.find_child("HpText", true, false) as Label
 		if hp_txt:
 			hp_txt.text = "VIDA %d/%d" % [hp_now, hp_max]
-			hp_txt.add_theme_font_size_override("font_size", 15 if bool(panel.get_meta("is_boss", false)) else 14)
-			hp_txt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-			hp_txt.add_theme_constant_override("outline_size", 4)
+			hp_txt.add_theme_font_size_override("font_size", 18 if bool(panel.get_meta("is_boss", false)) else 16)
+			hp_txt.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+			hp_txt.add_theme_constant_override("outline_size", 5)
 		var blk_now := int(e.get("block", 0))
 		var blk_bar: ProgressBar = panel.find_child("BlockBar", true, false) as ProgressBar
 		if blk_bar:
@@ -1591,10 +1597,10 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	hp_t.name = "HpText"
 	hp_t.text = "VIDA %d/%d" % [hp_now, hp_max]
 	hp_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_t.add_theme_font_size_override("font_size", 15 if is_boss else 14)
-	hp_t.add_theme_color_override("font_color", Color(1.0, 0.9, 0.55) if is_boss else Color(1.0, 0.96, 0.92))
-	hp_t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	hp_t.add_theme_constant_override("outline_size", 4)
+	hp_t.add_theme_font_size_override("font_size", 18 if is_boss else 16)
+	hp_t.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55) if is_boss else Color(1.0, 0.97, 0.92))
+	hp_t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	hp_t.add_theme_constant_override("outline_size", 5)
 	bars.add_child(hp_t)
 	var blk := int(e.get("block", 0))
 	var blk_bar := ProgressBar.new()
