@@ -231,9 +231,11 @@ func effect_line(def: Dictionary) -> String:
 	var hits := maxi(1, int(def.get("hits", 1)))
 	if dmg > 0:
 		if hits > 1:
-			bits.append("%d×%d daño" % [dmg, hits])
+			bits.append("%d×%d daño" % [hits, dmg])
 		else:
 			bits.append("%d daño" % dmg)
+	if bool(def.get("pierce", false)):
+		bits.append("ignora escudo")
 	var block := int(def.get("block", 0))
 	if block > 0:
 		bits.append("+%d bloqueo" % block)
@@ -246,6 +248,18 @@ func effect_line(def: Dictionary) -> String:
 	var stun := int(def.get("stun", 0))
 	if stun > 0 or bool(def.get("stun", false)):
 		bits.append("stun" if stun <= 1 else "stun %d" % stun)
+	if int(def.get("burn", 0)) > 0:
+		bits.append("quema")
+	if int(def.get("weaken", 0)) > 0 or bool(def.get("weaken", false)):
+		bits.append("debilita")
+	if bool(def.get("dodge", false)):
+		bits.append("esquiva")
+	if bool(def.get("free_play", false)):
+		bits.append("coste 0")
+	if bool(def.get("infinite_draw", false)):
+		bits.append("roba al jugar")
+	if int(def.get("grant_revive", 0)) > 0:
+		bits.append("revive")
 	if bool(def.get("detain", false)):
 		bits.append("detiene (0 PV)")
 	if bits.is_empty():
