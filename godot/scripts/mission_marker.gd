@@ -1,23 +1,26 @@
 extends Node2D
-## Marcador de misión: pin + delincuente en escena.
+## Marcador de misión con badges tácticos enviados por el jugador (icono + etiqueta).
 
 signal pressed(mission_id: String)
+
+const BADGE_DIR := "res://assets/map/tactical_badges/"
 
 var mission_id: String = ""
 var _selected: bool = false
 var _status: String = "open"
-var _ring_rot: float = 0.0
-var _bob: float = 0.0
-var _title: String = ""
+var _pulse: float = 0.0
+var _badge_key: String = "incidente_activo"
 
 @onready var hit: Button = $Hit
-@onready var title: Label = $Title
-@onready var suspect: Sprite2D = $Suspect
+@onready var badge: Sprite2D = $Badge
+@onready var label_panel: PanelContainer = $LabelPanel
 
 
 func _ready() -> void:
 	hit.pressed.connect(_on_pressed)
 	hit.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	if label_panel:
+		label_panel.visible = false
 
 
 func setup(mission: Dictionary) -> void:
@@ -28,114 +31,168 @@ func setup(mission: Dictionary) -> void:
 
 
 func refresh(mission: Dictionary) -> void:
-	_title = str(mission.get("title", ""))
-	title.text = _title
 	_status = str(mission.get("status", "open"))
-	var icon := str(mission.get("suspect_icon", ""))
-	if icon == "" and is_instance_valid(CharacterDB):
-		icon = CharacterDB.delinquent_icon_for_mission(mission_id)
-	if suspect:
-		if ResourceLoader.exists(icon):
-			suspect.texture = load(icon)
-			suspect.visible = _status in ["open", "dispatched", "resolving"]
-			suspect.position = Vector2(28, -6)
-			suspect.scale = Vector2(0.95, 0.95)
+	_badge_key = _badge_for_mission(mission)
+	var path := BADGE_DIR + _badge_key + ".png"
+	if badge:
+		if ResourceLoader.exists(path):
+			badge.texture = load(path) as Texture2D
+			badge.visible = true
 		else:
-			suspect.visible = false
+			# Fallback a incidente activo
+			var fb := BADGE_DIR + "incidente_activo.png"
+			if ResourceLoader.exists(fb):
+				badge.texture = load(fb) as Texture2D
+		badge.centered = true
+		badge.position = Vector2(0, -8)
+	_apply_badge_modulate()
+	_layout_hit()
 	set_selected(_selected)
 	queue_redraw()
 
 
 func set_selected(on: bool) -> void:
 	_selected = on
+	_apply_badge_modulate()
 	queue_redraw()
 
 
+func _apply_badge_modulate() -> void:
+	if badge == null:
+		return
+	var base := Color(1, 1, 1, 1)
+	if _badge_key == "boss":
+		base = Color(1.0, 0.45, 0.35, 1.0)
+	elif _status in ["dispatched", "resolving"]:
+		base = Color(0.85, 0.92, 1.12, 1.0)
+	elif _status == "resolved":
+		base = Color(0.75, 1.0, 0.8, 1.0)
+	elif _status == "failed":
+		base = Color(0.55, 0.55, 0.55, 1.0)
+	if _selected:
+		base = base.lightened(0.08)
+		badge.scale = Vector2(1.08, 1.08) if _badge_key == "boss" else Vector2(1.02, 1.02)
+	else:
+		badge.scale = Vector2(1.05, 1.05) if _badge_key == "boss" else Vector2(0.92, 0.92)
+	badge.modulate = base
+
+
 func _process(delta: float) -> void:
-	_ring_rot += delta * 0.7
-	_bob += delta * 2.4
+	_pulse += delta * (3.4 if _badge_key == "boss" else 2.2)
+	if badge:
+		var bob := 3.2 if _badge_key == "boss" else 1.6
+		badge.position.y = -8.0 + sin(_pulse) * bob
+		if _badge_key == "boss":
+			var pulse_col := Color(1.0, 0.35 + 0.25 * abs(sin(_pulse)), 0.25, 1.0)
+			badge.modulate = pulse_col
 	queue_redraw()
 
 
 func _draw() -> void:
-	var accent := Color(0.92, 0.18, 0.22)
-	match _status:
-		"dispatched", "resolving":
-			accent = Color(0.25, 0.55, 1.0)
-		"resolved":
-			accent = Color(0.25, 0.85, 0.4)
-		"failed":
-			accent = Color(0.55, 0.55, 0.55)
-
-	var bob_y := sin(_bob) * 2.0
-	var center := Vector2(0, -18 + bob_y)
-
-	# Sombra en suelo (como la patrulla)
-	draw_circle(Vector2(0, 8), 14.0, Color(0, 0, 0, 0.32))
-
-	# Luces de alerta azul/roja parpadeantes (mismo lenguaje que patrulla)
-	if _status == "open":
-		var t := sin(_bob * 4.2)
-		var blue_on := t >= 0.0
-		var blue := Color(0.15, 0.45, 1.0, 1.0)
-		var red := Color(1.0, 0.12, 0.18, 1.0)
-		var left_col := blue if blue_on else Color(0.15, 0.18, 0.25, 0.45)
-		var right_col := red if not blue_on else Color(0.15, 0.18, 0.25, 0.45)
-		draw_rect(Rect2(-9, 3, 7, 4), left_col, true)
-		draw_rect(Rect2(2, 3, 7, 4), right_col, true)
-		draw_circle(Vector2(-5, 5), 9.0, Color(left_col.r, left_col.g, left_col.b, 0.35))
-		draw_circle(Vector2(5, 5), 9.0, Color(right_col.r, right_col.g, right_col.b, 0.35))
-
-	draw_circle(Vector2(0, 4), 26.0 if _selected else 18.0, Color(accent.r, accent.g, accent.b, 0.22))
-
-	var radius := 38.0 if _selected else 32.0
-	var dashes := 20
-	for i in range(dashes):
-		if i % 2 == 0:
-			continue
-		var a0 := _ring_rot + (TAU * float(i) / float(dashes))
-		var a1 := a0 + TAU / float(dashes) * 0.65
-		_draw_arc_segment(Vector2.ZERO, radius, a0, a1, Color(accent.r, accent.g, accent.b, 0.95), 3.5)
-
-	var R := 18.0
-	var diamond := PackedVector2Array([
-		center + Vector2(0, -R),
-		center + Vector2(R, 0),
-		center + Vector2(0, R),
-		center + Vector2(-R, 0),
-	])
-	draw_colored_polygon(diamond, accent.darkened(0.12))
-	draw_polyline(diamond + PackedVector2Array([diamond[0]]), Color(1, 0.55, 0.55, 1), 3.5, true)
-	var r2 := 11.0
-	var inner := PackedVector2Array([
-		center + Vector2(0, -r2),
-		center + Vector2(r2, 0),
-		center + Vector2(0, r2),
-		center + Vector2(-r2, 0),
-	])
-	draw_colored_polygon(inner, accent.darkened(0.32))
-
-	var white := Color(1, 1, 1, 1)
-	draw_rect(Rect2(center + Vector2(-3, -10), Vector2(6, 12)), white)
-	draw_circle(center + Vector2(0, 8), 2.8, white)
-
-	var pin_top := center.y + R - 1.0
-	var pin := PackedVector2Array([
-		Vector2(-8, pin_top),
-		Vector2(8, pin_top),
-		Vector2(0, pin_top + 14),
-	])
-	draw_colored_polygon(pin, accent)
+	draw_circle(Vector2(0, 18), 16.0, Color(0, 0, 0, 0.28))
+	if _badge_key == "boss":
+		var r := 36.0 + sin(_pulse) * 4.0
+		draw_arc(Vector2(0, -8), r, 0.0, TAU, 32, Color(1.0, 0.35, 0.2, 0.55), 3.0, true)
+		draw_string(ThemeDB.fallback_font, Vector2(-22, -48), "BOSS", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 0.75, 0.35))
+	if _selected:
+		draw_circle(Vector2(0, -8), 42.0, Color(1, 1, 1, 0.08))
 
 
-func _draw_arc_segment(c: Vector2, radius: float, a0: float, a1: float, color: Color, width: float) -> void:
-	var pts := PackedVector2Array()
-	var steps := 6
-	for i in range(steps + 1):
-		var t := float(i) / float(steps)
-		var a := lerpf(a0, a1, t)
-		pts.append(c + Vector2(cos(a), sin(a)) * radius)
-	draw_polyline(pts, color, width, true)
+func _layout_hit() -> void:
+	if hit == null:
+		return
+	var tw := 150.0
+	var th := 128.0
+	if badge and badge.texture:
+		tw = float(badge.texture.get_width()) * badge.scale.x
+		th = float(badge.texture.get_height()) * badge.scale.y
+	hit.offset_left = -tw * 0.5
+	hit.offset_top = -th * 0.72
+	hit.offset_right = tw * 0.5
+	hit.offset_bottom = th * 0.38
+
+
+func _badge_for_mission(mission: Dictionary) -> String:
+	if bool(mission.get("is_boss", false)):
+		return "boss"
+	var cat := str(mission.get("category", "")).to_lower()
+	var eid := str(mission.get("event_id", "")).to_lower()
+	var title := str(mission.get("title", "")).to_lower()
+	var severity := str(mission.get("severity", "medium")).to_lower()
+	var blob := eid + " " + title
+
+	# Eventos concretos
+	if "persecucion" in blob or "huida" in blob or "fuga" in blob:
+		return "persecucion"
+	if "incendio" in blob or "explosion" in blob or "fuga_de_gas" in blob:
+		return "incendio"
+	if "drogas" in blob or "laboratorio" in blob or "narco" in blob or "contrabando" in blob:
+		return "narcotrafico"
+	if "transporte_de_armas" in blob or "redada" in blob or "casa_segura" in blob:
+		return "entrega_vigilada"
+	if "control_de_trafico" in blob or "exceso" in blob or "velocidad" in blob:
+		return "control"
+	if "seguimiento" in blob or "reunion_sospechosa" in blob:
+		return "seguimiento"
+	if "auxilio" in blob or "medico" in blob or "crisis" in blob or "intoxic" in blob or "suicid" in blob:
+		return "asistencia"
+	if "desaparecida" in blob or "perdida" in blob or "ciber" in blob or "corrupcion" in blob:
+		return "investigacion"
+	if "aeropuerto" in blob:
+		return "aeropuerto"
+	if "portuario" in blob or "costera" in blob or "marit" in blob or "inundacion" in blob:
+		return "zona_costera"
+	if "operacion_especial" in blob or "visita_oficial" in blob:
+		return "operacion_especial"
+	if "escolta" in blob or "proteccion" in blob or "desfile" in blob or "visita" in blob:
+		return "proteccion"
+	if "registro" in blob or "redada" in blob or "entrada" in blob:
+		return "registro"
+	if "vigilancia" in blob or "edificio" in blob:
+		return "vigilancia"
+	if "patrulla" in blob:
+		return "patrulla"
+
+	# Por categoría
+	match cat:
+		"delitos":
+			if severity in ["high", "critical"]:
+				return "incidente_activo"
+			return "operativo"
+		"trafico":
+			if "atropello" in blob or "vuelco" in blob or "accidente" in blob:
+				return "incidente_activo"
+			if "ebrio" in blob or "temeraria" in blob:
+				return "operativo"
+			return "patrulla"
+		"emergencias":
+			if "incendio" in blob or "explosion" in blob:
+				return "incendio"
+			return "asistencia"
+		"civiles":
+			if "agresiva" in blob or "manifestacion" in blob:
+				return "operativo"
+			if "desaparecida" in blob or "perdida" in blob:
+				return "investigacion"
+			return "asistencia"
+		"organizado":
+			if "drogas" in blob or "laboratorio" in blob or "contrabando" in blob:
+				return "narcotrafico"
+			if "seguimiento" in blob:
+				return "seguimiento"
+			return "investigacion"
+		"especiales":
+			if "aeropuerto" in blob:
+				return "aeropuerto"
+			if "portuario" in blob:
+				return "zona_costera"
+			if "operacion" in blob or "visita" in blob:
+				return "operacion_especial"
+			if "concierto" in blob or "deportivo" in blob or "feria" in blob or "festivo" in blob:
+				return "proteccion"
+			return "operacion_especial"
+		_:
+			return "incidente_activo"
 
 
 func _on_pressed() -> void:
