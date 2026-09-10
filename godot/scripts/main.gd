@@ -129,6 +129,39 @@ func _ground_shot() -> void:
 		print("GROUND_SHOT_FAIL bad facing flip_h=", flipped, " expect=", expect_flip)
 		get_tree().quit(1)
 		return
+	# Barras de vida: ancho fijo (no estiradas a todo el row)
+	var bad_bars := 0
+	var bar_w_log := []
+	if combat.player_hp_bar:
+		var pw := combat.player_hp_bar.size.x
+		bar_w_log.append("player=%.0f" % pw)
+		if pw > 220.0 or pw < 100.0:
+			bad_bars += 1
+	if combat.enemies_row:
+		for panel in combat.enemies_row.get_children():
+			var hb = panel.find_child("HpBar", true, false)
+			if hb:
+				bar_w_log.append("enemy=%.0f" % hb.size.x)
+				if hb.size.x > 220.0 or hb.size.x < 80.0:
+					bad_bars += 1
+	print("HP_BARS ", " ".join(bar_w_log), " bad=", bad_bars)
+	if bad_bars > 0:
+		print("GROUND_SHOT_FAIL stretched hp bars")
+		get_tree().quit(1)
+		return
+	# Mazo García regenerado con cartas reforzadas
+	var deck: Array = GameState.get_patrol_deck("alpha")
+	var need := ["legend_ace", "bala_arcana", "placa_reforzada", "veredicto", "mano_de_ley"]
+	var missing: Array = []
+	for cid in need:
+		if not deck.has(cid):
+			missing.append(cid)
+	print("DECK_SIZE=", deck.size(), " missing=", missing)
+	if not missing.is_empty():
+		print("GROUND_SHOT_FAIL weak starter deck missing=", missing)
+		get_tree().quit(1)
+		return
+	await _save_shot("barras_vida_cartas")
 	await _save_shot("mapa_fisica_sin_cartas")
 	# Tres fotogramas del fondo animado (lluvia/neones/niebla en movimiento)
 	await _save_shot("fondo_animado_01")

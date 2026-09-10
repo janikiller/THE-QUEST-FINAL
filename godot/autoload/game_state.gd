@@ -67,6 +67,8 @@ var patrols: Dictionary = {}
 var patrol_inventories: Dictionary = {}
 ## patrol_id -> Array of card ids (mazo)
 var patrol_decks: Dictionary = {}
+var patrol_deck_gen: Dictionary = {}
+const PATROL_DECK_GEN := 5
 
 const SHARED_SIZE := 30
 const TRUNK_SIZE := 20
@@ -963,7 +965,8 @@ func _init_decks() -> void:
 
 
 func ensure_patrol_deck(patrol_id: String) -> void:
-	if patrol_decks.has(patrol_id):
+	## Regenera el mazo si cambia la generación (mejoras del mazo de García).
+	if patrol_decks.has(patrol_id) and int(patrol_deck_gen.get(patrol_id, 0)) == PATROL_DECK_GEN:
 		return
 	var deck: Array = []
 	for cid in CardDB.starter_deck:
@@ -981,7 +984,14 @@ func ensure_patrol_deck(patrol_id: String) -> void:
 		"delitos":
 			deck.append("flash")
 			deck.append("impact")
+		"general":
+			# García U.P.R.: kit policial reforzado + firmas
+			deck.append("placa_reforzada")
+			deck.append("cacheo_duro")
+			deck.append("veredicto")
+			deck.append("fenix_azul")
 	patrol_decks[patrol_id] = deck
+	patrol_deck_gen[patrol_id] = PATROL_DECK_GEN
 
 
 func get_patrol_deck(patrol_id: String) -> Array:
