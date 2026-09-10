@@ -371,7 +371,7 @@ func _sync_physics_ground() -> void:
 	var player_col := get_node_or_null("Arena/PlayerCol")
 	if player_col:
 		# Fracciones del ancho: pelea compacta en 1280 y en 1920 (sin vacío enorme).
-		var p_left := clampf(vw * 0.22, 160.0, 460.0)
+		var p_left := clampf(vw * 0.18, 140.0, 400.0)
 		player_col.offset_left = p_left
 		player_col.offset_right = p_left + ACTOR_W + 56.0
 		player_col.offset_top = -64.0
@@ -381,7 +381,7 @@ func _sync_physics_ground() -> void:
 		# Empieza cerca del centro (BEGIN): evita el vacío enorme a la izquierda del row.
 		var e_right := clampf(vw * 0.03, 24.0, 64.0)
 		enemies_row.offset_right = -e_right
-		enemies_row.offset_left = -vw * 0.58
+		enemies_row.offset_left = -vw * 0.55
 		enemies_row.offset_top = -80.0
 		enemies_row.offset_bottom = col_bottom
 		enemies_row.alignment = BoxContainer.ALIGNMENT_BEGIN
