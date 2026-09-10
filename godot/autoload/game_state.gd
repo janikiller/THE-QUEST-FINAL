@@ -26,8 +26,8 @@ var categories: Dictionary = {}
 var hour: int = 21
 var minute: int = 0
 var prestige: int = 0
-## Créditos del mercado de cartas (se ganan con misiones).
-var credits: int = 12
+## Monedas del mercado de cartas (se ganan al ganar misiones).
+var credits: int = 0
 ## Progresión de García: XP por enemigos derribados.
 var hero_xp: int = 0
 var hero_level: int = 1
@@ -68,7 +68,7 @@ var patrol_inventories: Dictionary = {}
 ## patrol_id -> Array of card ids (mazo)
 var patrol_decks: Dictionary = {}
 var patrol_deck_gen: Dictionary = {}
-const PATROL_DECK_GEN := 6
+const PATROL_DECK_GEN := 7
 
 const SHARED_SIZE := 30
 const TRUNK_SIZE := 20
@@ -248,6 +248,29 @@ func _on_period_transition(prev: String, now: String) -> void:
 func add_credits(delta: int) -> void:
 	credits = maxi(0, credits + delta)
 	credits_changed.emit(credits)
+
+
+func coins() -> int:
+	## Alias de lectura: monedas = credits.
+	return credits
+
+
+func mission_coin_reward(mission: Dictionary) -> int:
+	## Monedas por victoria. Empieza fácil: misiones low/día pagan bien para el Mercado.
+	if mission.is_empty():
+		return 6
+	var xp := int(mission.get("xp", 50))
+	var coins_amt := 6 + int(xp / 60)
+	match str(mission.get("severity", "medium")):
+		"low":
+			coins_amt += 2
+		"high", "critical":
+			coins_amt += 1
+		_:
+			pass
+	if bool(mission.get("is_boss", false)):
+		coins_amt += 10
+	return maxi(5, coins_amt)
 
 
 func xp_to_next_level(level: int = -1) -> int:
@@ -973,25 +996,7 @@ func ensure_patrol_deck(patrol_id: String) -> void:
 	var deck: Array = []
 	for cid in CardDB.starter_deck:
 		deck.append(str(cid))
-	# Especialidad: cartas extra
-	var specialty := str(patrols.get(patrol_id, {}).get("specialty", "general"))
-	match specialty:
-		"organizado":
-			deck.append("combo_imparable")
-			deck.append("impacto_sismico")
-			deck.append("ruptura")
-		"trafico":
-			deck.append("paso_fantasma")
-			deck.append("cadenas_etereas")
-		"delitos":
-			deck.append("llama_azul")
-			deck.append("doble_impacto")
-		"general":
-			# Kick-Ass: kit de pelea + firmas
-			deck.append("furia_desatada")
-			deck.append("marca_cazador")
-			deck.append("reflejo_mortal")
-			deck.append("sello_arcano")
+	# Arranque solo con mazo normal (básicas). Cartas fuertes → Mercado con monedas.
 	patrol_decks[patrol_id] = deck
 	patrol_deck_gen[patrol_id] = PATROL_DECK_GEN
 

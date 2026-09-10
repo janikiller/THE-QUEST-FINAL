@@ -941,12 +941,17 @@ func _on_combat_ended(victory: bool) -> void:
 		var xp := CombatState.combat_xp_gained
 		var kills := CombatState.combat_kills
 		var levels := CombatState.combat_levels_gained
+		var mid := CombatState.mission_id
+		var mission: Dictionary = GameState.active_missions.get(mid, {})
+		if mission.is_empty():
+			mission = GameState.last_resolved_mission()
+		var coins_hint := GameState.mission_coin_reward(mission)
 		if levels > 0:
 			result_title.text = "¡NIVEL %d!  +%d XP" % [GameState.hero_level, xp]
 		elif xp > 0:
-			result_title.text = "ÉXITO  ·  +%d XP (%d bajas)" % [xp, kills]
+			result_title.text = "ÉXITO  ·  +%d XP  ·  +%d monedas" % [xp, coins_hint]
 		else:
-			result_title.text = "INTERVENCIÓN EXITOSA"
+			result_title.text = "ÉXITO  ·  +%d monedas → Mercado" % coins_hint
 		result_title.add_theme_color_override("font_color", Color(0.35, 0.9, 0.55))
 	else:
 		result_title.text = "UNIDAD CAÍDA"

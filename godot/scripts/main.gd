@@ -178,7 +178,7 @@ func _ground_shot() -> void:
 		return
 	# Mazo García regenerado con cartas reforzadas
 	var deck: Array = GameState.get_patrol_deck("alpha")
-	var need: Array = ["punetazo", "bloqueo", "esquiva", "segundo_latido", "furia_desatada"]
+	var need: Array = ["punetazo", "bloqueo", "esquiva", "impulso", "respirar"]
 	var missing: Array = []
 	for cid in need:
 		if not deck.has(cid):
@@ -188,6 +188,13 @@ func _ground_shot() -> void:
 		print("GROUND_SHOT_FAIL weak starter deck missing=", missing)
 		get_tree().quit(1)
 		return
+	# Mazo normal: sin cartas mágicas/fuerza/legendaria al inicio
+	for power_id in ["llama_azul", "furia_desatada", "segundo_latido", "sello_arcano"]:
+		if deck.has(power_id):
+			print("GROUND_SHOT_FAIL starter still has power card=", power_id)
+			get_tree().quit(1)
+			return
+	print("STARTER_NORMAL coins=", GameState.credits)
 	# Kick-Ass: el sprite de jugador debe ser el traje verde (no García policía)
 	if combat.player_sprite and combat.player_sprite.texture:
 		var ht: Texture2D = combat.player_sprite.texture

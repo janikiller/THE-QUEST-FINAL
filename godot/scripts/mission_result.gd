@@ -39,7 +39,11 @@ func _refresh() -> void:
 	if ok:
 		verdict.text = "MISIÓN EXITOSA"
 		verdict.add_theme_color_override("font_color", Color(0.35, 0.9, 0.5))
-		verdict_sub.text = str(m.get("outcome_report", "Objetivo cumplido."))
+		var coins_earned := int(m.get("coins_earned", 0))
+		if coins_earned > 0:
+			verdict_sub.text = "+%d monedas · %s" % [coins_earned, str(m.get("outcome_report", "Objetivo cumplido."))]
+		else:
+			verdict_sub.text = str(m.get("outcome_report", "Objetivo cumplido."))
 	else:
 		verdict.text = "MISIÓN FALLIDA"
 		verdict.add_theme_color_override("font_color", Color(1.0, 0.35, 0.38))
@@ -189,6 +193,13 @@ func _summary_bbcode(m: Dictionary, ok: bool) -> String:
 		lines.append("[color=#9ad0ff]+%d XP este combate (%d bajas)[/color]" % [
 			CombatState.combat_xp_gained, CombatState.combat_kills
 		])
+	var coins_earned := int(m.get("coins_earned", 0))
+	if ok and coins_earned > 0:
+		lines.append("[color=#ffd27a]+%d monedas  ·  total %d  →  Mercado (K)[/color]" % [
+			coins_earned, GameState.credits
+		])
+	elif ok:
+		lines.append("[color=#ffd27a]Monedas: %d  →  gástalas en el Mercado (K)[/color]" % GameState.credits)
 	if GameState.pending_level_packs > 0:
 		lines.append("[color=#ffd27a]¡Sobre de nivel pendiente! Elige cartas al cerrar.[/color]")
 	lines.append("")

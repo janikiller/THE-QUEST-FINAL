@@ -75,7 +75,7 @@ theme_override_colors/font_color = Color(1, 0.86, 0.42, 1)
 theme_override_font_sizes/font_size = 18
 horizontal_alignment = 1
 vertical_alignment = 1
-text = "★ 0"
+text = "MONEDAS  0"
 
 [node name="BtnClose" type="Button" parent="Root/MainCol/Header"]
 unique_name_in_owner = true
@@ -101,7 +101,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(200, 40)
 layout_mode = 2
 toggle_mode = true
-text = "RULETA ★"
+text = "RULETA"
 
 [node name="Body" type="HBoxContainer" parent="Root/MainCol"]
 layout_mode = 2
@@ -249,7 +249,7 @@ theme_override_constants/separation = 12
 unique_name_in_owner = true
 custom_minimum_size = Vector2(260, 56)
 layout_mode = 2
-text = "GIRAR RULETA  8★"
+text = "GIRAR RULETA  8 monedas"
 
 [node name="Side" type="PanelContainer" parent="Root/MainCol/Body"]
 unique_name_in_owner = true

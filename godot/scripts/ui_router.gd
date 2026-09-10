@@ -148,9 +148,13 @@ func resolve_talk(mission_id: String = "") -> void:
 	var snapshot: Dictionary = m.duplicate(true)
 	GameState.store_resolved_mission(snapshot)
 	GameState.add_prestige(1)
-	GameState.add_credits(3)
+	GameState.add_credits(4)
+	m["coins_earned"] = 4
+	m["outcome_report"] = str(m.get("outcome_report", "")) + "  |  +4 monedas → Mercado"
+	GameState.update_mission(m)
+	GameState.store_resolved_mission(m.duplicate(true))
 	GameState.advance_after_mission(m)
-	RadioBus.push("Salida hablando: zona estabilizada. +créditos.", "resolve")
+	RadioBus.push("Salida hablando: +4 monedas para el Mercado.", "resolve")
 	# Liberar patrulla si estaba ligada
 	for p in GameState.patrols.values():
 		if str(p.get("mission_id", "")) == mid:

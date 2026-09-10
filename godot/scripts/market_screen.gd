@@ -149,13 +149,13 @@ func _set_mode(mode: String) -> void:
 func _rebuild() -> void:
 	_refresh_credits()
 	title.text = "MERCADO U.P.R."
-	var day_txt := "Día %d" % GameState.day_index
+	var day_txt := "Día %d · Gana monedas en combates y mejora tu mazo" % GameState.day_index
 	if GameState.boss_defeated:
 		day_txt += " · Legendarias desbloqueadas"
 	elif GameState.day_index >= GameState.BOSS_DAY:
 		day_txt += " · Boss activo en el mapa"
 	else:
-		day_txt += " · Compra directa o gira la ruleta"
+		day_txt += " · Empieza fácil: compra mágicas/fuerza"
 	sub.text = day_txt
 	_rebuild_filters()
 	_rebuild_odds()
@@ -165,12 +165,12 @@ func _rebuild() -> void:
 	else:
 		_rebuild_cards()
 		_refresh_detail()
-	btn_spin.text = "GIRAR RULETA  %d★" % SPIN_COST
+	btn_spin.text = "GIRAR RULETA  %d monedas" % SPIN_COST
 	btn_spin.disabled = _spinning or GameState.credits < SPIN_COST
 
 
 func _refresh_credits() -> void:
-	credits_label.text = "★  %d" % GameState.credits
+	credits_label.text = "MONEDAS  %d" % GameState.credits
 	btn_spin.disabled = _spinning or GameState.credits < SPIN_COST
 	if _selected_id != "" and _mode == "shop":
 		_refresh_detail()
@@ -308,7 +308,7 @@ func _make_card_tile(def: Dictionary) -> Control:
 	v.add_child(name_l)
 
 	var meta := Label.new()
-	meta.text = "%s · %d★" % [CardDB.rarity_label(rar), price]
+	meta.text = "%s · %d monedas" % [CardDB.rarity_label(rar), price]
 	meta.add_theme_font_size_override("font_size", 11)
 	meta.add_theme_color_override("font_color", CardDB.rarity_color(rar))
 	v.add_child(meta)
@@ -359,7 +359,7 @@ func _refresh_detail() -> void:
 	var price := CardDB.price_of(_selected_id)
 	_set_tex(detail_art, str(def.get("art", def.get("icon", ""))))
 	detail_name.text = str(def.get("name", _selected_id))
-	detail_meta.text = "%s · coste %d · %d★" % [
+	detail_meta.text = "%s · coste %d · %d monedas" % [
 		CardDB.rarity_label(str(def.get("rarity", "basica"))),
 		int(def.get("cost", 0)),
 		price,
@@ -368,13 +368,13 @@ func _refresh_detail() -> void:
 	detail_effect.text = "[b]%s[/b]" % CardDB.effect_line(def)
 	detail_desc.text = CardDB.flavor_line(def)
 	btn_buy.disabled = GameState.credits < price
-	btn_buy.text = "COMPRAR  %d★" % price
+	btn_buy.text = "COMPRAR  %d monedas" % price
 
 
 func _refresh_detail_roulette_idle() -> void:
 	detail_art.texture = null
 	detail_name.text = "Ruleta U.P.R."
-	detail_meta.text = "Coste por giro: %d★" % SPIN_COST
+	detail_meta.text = "Coste por giro: %d monedas" % SPIN_COST
 	detail_meta.add_theme_color_override("font_color", Color(1.0, 0.82, 0.4))
 	detail_effect.text = "Premio aleatorio según rareza."
 	detail_desc.text = "La carta ganada se añade al mazo de Kick-Ass."
@@ -388,7 +388,7 @@ func _buy_selected() -> void:
 	if GameState.buy_card_for_patrol(_patrol_id, _selected_id):
 		_rebuild()
 	else:
-		RadioBus.push("Créditos insuficientes.", "alert")
+		RadioBus.push("Monedas insuficientes. Gana combates para conseguir más.", "alert")
 
 
 func _pool_by_rarity() -> Dictionary:
@@ -446,7 +446,7 @@ func _rebuild_roulette() -> void:
 			_reel_ids.append(cid)
 			reel_row.add_child(_make_reel_card(CardDB.get_card(cid)))
 	reel_row.position = Vector2(0, 0)
-	roulette_result.text = "Listo para girar · %d★" % SPIN_COST
+	roulette_result.text = "Listo para girar · %d monedas" % SPIN_COST
 	roulette_result.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 
 
@@ -564,7 +564,7 @@ func _spin_roulette() -> void:
 	detail_desc.text = CardDB.flavor_line(def)
 	roulette_result.text = "¡%s! Añadida al mazo." % str(def.get("name", prize_id))
 	roulette_result.add_theme_color_override("font_color", CardDB.rarity_color(rar))
-	RadioBus.push("Ruleta: «%s» (−%d ★)." % [str(def.get("name", prize_id)), SPIN_COST], "resolve")
+	RadioBus.push("Ruleta: «%s» (−%d monedas)." % [str(def.get("name", prize_id)), SPIN_COST], "resolve")
 
 	_spinning = false
 	btn_close.disabled = false

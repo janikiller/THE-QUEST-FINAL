@@ -14,8 +14,10 @@
   "starter_deck": [
     "punetazo",
     "punetazo",
+    "punetazo",
     "patada_baja",
     "codazo",
+    "bloqueo",
     "bloqueo",
     "bloqueo",
     "esquiva",
@@ -25,12 +27,7 @@
     "provocar",
     "agarre",
     "impulso",
-    "impulso",
-    "llama_azul",
-    "ojo_vacio",
-    "sello_arcano",
-    "combo_imparable",
-    "segundo_latido"
+    "impulso"
   ],
   "boss_rewards": [
     "despertar_caos",
