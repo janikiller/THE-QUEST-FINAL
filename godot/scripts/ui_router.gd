@@ -1,5 +1,5 @@
 extends CanvasLayer
-## Mapa / Lista / Briefing (Luchar|Hablar) / Mazo / Combate.
+## Mapa / Lista / Briefing (Luchar|Hablar) / Mazo / Mercado / Combate.
 
 signal request_open_missions
 signal request_open_mission(mission_id: String)
@@ -10,7 +10,9 @@ signal request_back_to_map
 @onready var mission_screen: Control = $MissionScreen
 @onready var mission_result: Control = $MissionResult
 @onready var deck_screen: Control = $DeckScreen
+@onready var market_screen: Control = $MarketScreen
 @onready var combat_screen: Control = $CombatScreen
+@onready var level_up_screen: Control = $LevelUpScreen
 
 var _opening_mission: bool = false
 const HERO_PATROL := "alpha"
@@ -28,10 +30,16 @@ func _hide_all() -> void:
 	mission_screen.visible = false
 	mission_result.visible = false
 	deck_screen.visible = false
+	market_screen.visible = false
 	combat_screen.visible = false
+	level_up_screen.visible = false
 
 
 func show_map() -> void:
+	# Si hay sobres de nivel pendientes, priorízalos.
+	if GameState.has_pending_level_packs():
+		show_level_up(HERO_PATROL)
+		return
 	_hide_all()
 	map_hud.visible = true
 	get_tree().paused = false
@@ -39,6 +47,20 @@ func show_map() -> void:
 	if world:
 		world.modulate = Color.WHITE
 	request_back_to_map.emit()
+
+
+func show_level_up(patrol_id: String = "") -> void:
+	if not GameState.has_pending_level_packs():
+		_hide_all()
+		map_hud.visible = true
+		return
+	_hide_all()
+	level_up_screen.visible = true
+	var world := get_tree().get_first_node_in_group("world_root")
+	if world:
+		world.modulate = Color(0.08, 0.1, 0.16, 1)
+	if level_up_screen.has_method("open"):
+		level_up_screen.open(patrol_id if patrol_id != "" else HERO_PATROL)
 
 
 func show_missions() -> void:
@@ -99,7 +121,7 @@ func begin_fight(mission_id: String = "") -> void:
 		GameState.set_patrol(patrol)
 		if dispatch and not CombatState.combat_ended.is_connected(dispatch._on_combat_ended):
 			CombatState.combat_ended.connect(dispatch._on_combat_ended)
-		RadioBus.push("García entra en combate.", "dispatch")
+		RadioBus.push("Kick-Ass entra en combate.", "dispatch")
 	show_combat(mid, pid)
 
 
@@ -109,6 +131,11 @@ func resolve_talk(mission_id: String = "") -> void:
 	var m := GameState.get_selected_mission()
 	if m.is_empty():
 		show_map()
+		return
+	# El Capo solo se cierra en combate.
+	if bool(m.get("is_boss", false)):
+		RadioBus.push("El Capo no negocia. Hay que enfrentarlo.", "alert")
+		show_mission(str(m.get("id", "")))
 		return
 	var mid := str(m.get("id", ""))
 	m["tactic"] = "negotiate"
@@ -121,7 +148,9 @@ func resolve_talk(mission_id: String = "") -> void:
 	var snapshot: Dictionary = m.duplicate(true)
 	GameState.store_resolved_mission(snapshot)
 	GameState.add_prestige(1)
-	RadioBus.push("Salida hablando: zona estabilizada.", "resolve")
+	GameState.add_credits(3)
+	GameState.advance_after_mission(m)
+	RadioBus.push("Salida hablando: zona estabilizada. +créditos.", "resolve")
 	# Liberar patrulla si estaba ligada
 	for p in GameState.patrols.values():
 		if str(p.get("mission_id", "")) == mid:
@@ -142,14 +171,24 @@ func show_mission_result(mission_id: String = "") -> void:
 		mission_result.open_for(mission_id)
 
 
-func show_deck(patrol_id: String = "") -> void:
+func show_deck(patrol_id: String = "", mode: String = "mazo") -> void:
 	_hide_all()
 	deck_screen.visible = true
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
 		world.modulate = Color(0.14, 0.18, 0.28, 1)
 	if deck_screen.has_method("open"):
-		deck_screen.open(patrol_id if patrol_id != "" else HERO_PATROL)
+		deck_screen.open(patrol_id if patrol_id != "" else HERO_PATROL, mode)
+
+
+func show_market(patrol_id: String = "") -> void:
+	_hide_all()
+	market_screen.visible = true
+	var world := get_tree().get_first_node_in_group("world_root")
+	if world:
+		world.modulate = Color(0.1, 0.14, 0.2, 1)
+	if market_screen.has_method("open"):
+		market_screen.open(patrol_id if patrol_id != "" else HERO_PATROL)
 
 
 func show_inventory(patrol_id: String = "") -> void:
@@ -162,8 +201,19 @@ func show_combat(mission_id: String, patrol_id: String = "alpha") -> void:
 	var world := get_tree().get_first_node_in_group("world_root")
 	if world:
 		world.modulate = Color(0.04, 0.05, 0.07, 1)
+	# Asegura resolución de misión al terminar (también en shots/playtest).
+	var pid := patrol_id if patrol_id != "" else HERO_PATROL
+	if GameState.patrols.has(pid):
+		var p: Dictionary = GameState.patrols[pid]
+		if str(p.get("mission_id", "")) == "" and mission_id != "":
+			p["mission_id"] = mission_id
+		p["_awaiting_combat"] = true
+		GameState.set_patrol(p)
+	var dispatch = get_tree().get_first_node_in_group("dispatch")
+	if dispatch and not CombatState.combat_ended.is_connected(dispatch._on_combat_ended):
+		CombatState.combat_ended.connect(dispatch._on_combat_ended)
 	if combat_screen.has_method("open_for_mission"):
-		combat_screen.open_for_mission(mission_id, patrol_id)
+		combat_screen.open_for_mission(mission_id, pid)
 
 
 ## Compat antigua
