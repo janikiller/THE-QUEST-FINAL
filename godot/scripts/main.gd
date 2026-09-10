@@ -20,7 +20,7 @@ func _ready() -> void:
 	# Un solo hook de playtest/shot a la vez (evita races de quit()).
 	var mode := ""
 	for key in [
-		"TQ_SMOKE", "TQ_INV", "TQ_PLAYTEST", "TQ_COMBAT_SHOT", "TQ_MAP_SHOT",
+		"TQ_SMOKE", "TQ_INV", "TQ_PLAYTEST", "TQ_COMBAT_SHOT", "TQ_MAP_SHOT", "TQ_MISSIONS_MENU_SHOT",
 		"TQ_BOSS_MARKET_SHOT", "TQ_BOSS_FIGHT", "TQ_BOSS_AUTOPLAY", "TQ_PROGRESSION_SHOT", "TQ_ROSTER_SHOT", "TQ_ANIME_CARDS_SHOT",
 		"TQ_MARKET_ROULETTE_SHOT", "TQ_XP_PACK_SHOT", "TQ_FIX_SHOT", "TQ_ENEMY_CARDS_SHOT",
 		"TQ_GROUND_SHOT",
@@ -39,6 +39,8 @@ func _ready() -> void:
 			call_deferred("_combat_shot")
 		"TQ_MAP_SHOT":
 			call_deferred("_map_shot")
+		"TQ_MISSIONS_MENU_SHOT":
+			call_deferred("_missions_menu_shot")
 		"TQ_BOSS_MARKET_SHOT":
 			call_deferred("_boss_market_shot")
 		"TQ_BOSS_FIGHT":
@@ -955,6 +957,62 @@ func _boss_market_shot() -> void:
 	await _save_shot("briefing_boss_capo")
 	print("BOSS_MARKET_SHOT_OK")
 	get_tree().quit(0)
+
+
+func _missions_menu_shot() -> void:
+	## Captura el menú de misiones rediseñado con briefing de asalto.
+	await get_tree().create_timer(1.0).timeout
+	# Asegurar avisos
+	if GameState.active_missions.is_empty():
+		var spawner = get_tree().get_first_node_in_group("mission_spawner")
+		if spawner == null and has_node("Systems/MissionSpawner"):
+			spawner = $Systems/MissionSpawner
+		if spawner and spawner.has_method("_ensure_period_missions"):
+			spawner.call("_ensure_period_missions", true)
+		elif spawner and spawner.has_method("spawn_now"):
+			spawner.spawn_now()
+	await get_tree().create_timer(0.5).timeout
+	if GameState.active_missions.is_empty() and GameState.has_method("create_mission_from_event"):
+		var districts: Array = GameState.station.get("districts", [])
+		var district: Dictionary = districts[0] if not districts.is_empty() else {"id": "centro", "name": "Centro"}
+		var events: Array = GameState.station.get("events", [])
+		if events.is_empty() and GameState.has_method("events_for_period"):
+			events = GameState.events_for_period(GameState.time_of_day())
+		for i in range(mini(3, maxi(1, events.size()))):
+			var ev: Dictionary = events[i] if i < events.size() else {
+				"id": "demo_%d" % i,
+				"name": ["Atraco a tienda", "Pelea en vía", "Accidente con fuga"][i % 3],
+				"category": ["delitos", "delitos", "trafico"][i % 3],
+				"severity": ["high", "medium", "low"][i % 3],
+				"xp": 60 + i * 20,
+				"durationSec": 90,
+				"file": "",
+			}
+			GameState.create_mission_from_event(ev, district, Vector2(400 + i * 120, 300 + i * 40))
+	await get_tree().create_timer(0.3).timeout
+	$UI/UIRouter.show_missions()
+	await get_tree().process_frame
+	await get_tree().create_timer(0.55).timeout
+	await _save_shot("missions_menu_overview")
+	var menu = $UI/UIRouter/MissionsMenu
+	if menu and menu.has_method("_filtered"):
+		var items: Array = menu._filtered()
+		print("MISSIONS_MENU count=", items.size())
+		if items.size() > 1:
+			var mid := str(items[1].get("id", ""))
+			menu._selected_id = mid
+			menu._show_detail(mid)
+			menu._highlight_rows()
+			await get_tree().create_timer(0.4).timeout
+			await _save_shot("missions_menu_detail")
+		elif items.size() == 1:
+			menu._show_detail(str(items[0].get("id", "")))
+			menu._highlight_rows()
+			await get_tree().create_timer(0.35).timeout
+			await _save_shot("missions_menu_detail")
+	print("MISSIONS_MENU_SHOT_OK")
+	if OS.get_environment("TQ_MISSIONS_MENU_QUIT") != "0":
+		get_tree().quit(0)
 
 
 func _map_shot() -> void:
