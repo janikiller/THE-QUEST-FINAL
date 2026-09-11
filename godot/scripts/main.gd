@@ -1150,11 +1150,40 @@ func _combat_shot() -> void:
 	p["status"] = "available"
 	p.erase("_awaiting_combat")
 	GameState.set_patrol(p)
+	# Evidencia: patio operativo nocturno + enemigos tácticos distintos.
+	if GameState.active_missions.has(mid):
+		var m: Dictionary = GameState.active_missions[mid]
+		var arena: Dictionary = CombatRoster.arena_by_id("bg_ops_yard")
+		if arena.is_empty():
+			arena = CombatRoster.arena_by_id("bg_zona_operativa")
+		if not arena.is_empty():
+			m["arena_id"] = str(arena.get("id", ""))
+			m["arena_path"] = str(arena.get("path", ""))
+			m["location_name"] = str(arena.get("name", ""))
+			m["period"] = "night"
+		var suspects: Array = []
+		for eid in ["foe_01_hoodie", "foe_03_bat", "foe_20_assassin"]:
+			var ed: Dictionary = CombatRoster.enemy_by_id(eid)
+			if ed.is_empty():
+				continue
+			suspects.append({
+				"id": str(ed.get("id", "")),
+				"name": str(ed.get("name", "Sospechoso")),
+				"alias": str(ed.get("alias", "")),
+				"full": str(ed.get("sprite", "")),
+				"thumb": str(ed.get("portrait", "")),
+				"hp_bonus": int(ed.get("hp", 28)),
+				"pose_attack": str(ed.get("pose_attack", "")),
+				"pose_hurt": str(ed.get("pose_hurt", "")),
+			})
+		m["suspects"] = suspects
+		GameState.active_missions[mid] = m
 	$UI/UIRouter.show_combat(mid, "alpha")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await get_tree().create_timer(0.8).timeout
 	await _save_shot("combat_turno1")
+	await _save_shot("personajes_tactica_turno1")
 	# Asegurar cartas de ataque y defensa en mano
 	if CombatState.is_active() and CombatState.hand.size() >= 2:
 		CombatState.hand[0] = "punetazo"
