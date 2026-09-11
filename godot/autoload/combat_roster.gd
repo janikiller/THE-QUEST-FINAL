@@ -14,8 +14,23 @@ func _ready() -> void:
 	var data: Dictionary = _read("res://data/combat_roster.json")
 	enemies = data.get("enemies", [])
 	bosses = data.get("bosses", [])
-	arenas = data.get("arenas", [])
+	arenas = []
+	for a in data.get("arenas", []):
+		# Los mockups de UI son referencia de estilo, no escenarios jugables.
+		if _is_ui_mockup_arena(a):
+			continue
+		arenas.append(a)
 	hero = data.get("hero", {})
+
+
+func _is_ui_mockup_arena(arena: Dictionary) -> bool:
+	var aid := str(arena.get("id", "")).to_lower()
+	var path := str(arena.get("path", "")).to_lower()
+	if "mockup" in aid or "mockup" in path:
+		return true
+	if "ui_mockup" in path or "ui_target" in path or "/reference/" in path:
+		return true
+	return false
 
 
 func _read(path: String) -> Dictionary:

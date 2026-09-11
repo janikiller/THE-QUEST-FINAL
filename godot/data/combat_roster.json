@@ -575,34 +575,6 @@
 			"period": "day",
 			"periods": ["day", "dusk"],
 			"path": "res://assets/combat/anime/bg/bg_comisaria_yard.png"
-		},
-		{
-			"id": "bg_mockup_a",
-			"name": "Distrito Industrial",
-			"period": "night",
-			"periods": ["day", "dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_mockup_a.png"
-		},
-		{
-			"id": "bg_mockup_b",
-			"name": "Avenida Central",
-			"period": "dusk",
-			"periods": ["day", "dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_mockup_b.png"
-		},
-		{
-			"id": "bg_mockup_c",
-			"name": "Barrio Residencial",
-			"period": "day",
-			"periods": ["day", "dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_mockup_c.png"
-		},
-		{
-			"id": "bg_mockup_d",
-			"name": "Zona Portuaria",
-			"period": "night",
-			"periods": ["dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_mockup_d.png"
 		}
 	],
 	"hero": {
