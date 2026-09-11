@@ -1079,19 +1079,15 @@ func _arena_variety_shot() -> void:
 				"file": "",
 			}
 			GameState.create_mission_from_event(ev, district, Vector2(420 + i * 90, 320))
-	var sample_ids: Array = []
-	for a in CombatRoster.arenas:
-		sample_ids.append(str(a.get("id", "")))
-		if sample_ids.size() >= 6:
-			break
-	# También fuerza variedad con el picker anti-repetición.
+	# Fuerza los 6 primeros del catálogo = fondos tácticos nuevos del mockup.
 	var picked: Array = []
-	for i in range(6):
-		var arena: Dictionary = CombatRoster.pick_arena_for_mission({
-			"id": "variety_%d" % i,
-			"period": ["day", "dusk", "night"][i % 3],
-		})
-		picked.append(str(arena.get("id", "")))
+	for a in CombatRoster.arenas:
+		var aid := str(a.get("id", ""))
+		if aid == "":
+			continue
+		picked.append(aid)
+		if picked.size() >= 6:
+			break
 	print("ARENA_VARIETY picked=", ",".join(PackedStringArray(picked)))
 	var mission_ids: Array = GameState.active_missions.keys()
 	if mission_ids.is_empty():
