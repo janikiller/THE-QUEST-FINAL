@@ -101,18 +101,23 @@ var _scenario_banner: Control
 
 
 func _hero_tex(name: String) -> Texture2D:
-	## Kick-Ass: siempre PNG en disco (evita ctex cacheado de García).
+	## García táctico (mockup): PNG fresco para evitar ctex viejo de Kick-Ass.
 	var anime := CombatRoster.hero_pose(name)
 	if anime != "" and FileAccess.file_exists(anime):
 		var img := Image.load_from_file(ProjectSettings.globalize_path(anime))
 		if img:
 			return ImageTexture.create_from_image(img)
-	var path := PACK_HERO + "kickass_" + name + ".png"
+	var path := PACK_HERO + "garcia_" + name + ".png"
 	if FileAccess.file_exists(path):
 		var img2 := Image.load_from_file(ProjectSettings.globalize_path(path))
 		if img2:
 			return ImageTexture.create_from_image(img2)
-	# Último recurso: nombres legacy
+	# Legacy Kick-Ass solo si no hay García.
+	var legacy := PACK_HERO + "kickass_" + name + ".png"
+	if FileAccess.file_exists(legacy):
+		var img3 := Image.load_from_file(ProjectSettings.globalize_path(legacy))
+		if img3:
+			return ImageTexture.create_from_image(img3)
 	return _load_combat_tex(PACK_HERO + name + ".png")
 
 
@@ -120,8 +125,15 @@ func _load_combat_tex(path: String) -> Texture2D:
 	## Prefer imported resources (export-safe). Raw PNG fallback for editor hot-reload.
 	if path == "":
 		return null
-	# Kick-Ass / street enemies: forzar PNG fresco (evita ctex cacheado).
-	if (path.find("kickass_") >= 0 or path.find("street_pack/") >= 0 or path.find("/foes/street_") >= 0) and FileAccess.file_exists(path):
+	# Pack táctico / García / street: forzar PNG fresco (evita ctex cacheado).
+	var force_fresh := (
+		path.find("garcia_") >= 0
+		or path.find("tactical_pack/") >= 0
+		or path.find("kickass_") >= 0
+		or path.find("street_pack/") >= 0
+		or path.find("/foes/street_") >= 0
+	)
+	if force_fresh and FileAccess.file_exists(path):
 		var fresh := Image.load_from_file(ProjectSettings.globalize_path(path))
 		if fresh:
 			return ImageTexture.create_from_image(fresh)
@@ -134,6 +146,23 @@ func _load_combat_tex(path: String) -> Texture2D:
 		if img:
 			return ImageTexture.create_from_image(img)
 	return null
+
+
+func _actor_scene_tint() -> Color:
+	## Integra sprites en la noche táctica (cool fill + warm rim feel).
+	match _combat_period:
+		"day":
+			return Color(1.0, 0.98, 0.95, 1.0)
+		"dusk":
+			return Color(1.02, 0.94, 0.88, 1.0)
+		_:
+			return Color(0.82, 0.88, 1.0, 1.0)
+
+
+func _apply_actor_scene_tint(node: CanvasItem) -> void:
+	if node == null:
+		return
+	node.modulate = _actor_scene_tint()
 
 
 func _fx_tex(name: String) -> Texture2D:
@@ -197,6 +226,8 @@ func _apply_hero_pose(pose: String, hold_sec: float = 0.0) -> void:
 		player_sprite.texture = tex
 		_apply_hero_facing()
 		_plant_hero_sprite()
+		if not _busy:
+			_apply_actor_scene_tint(player_sprite)
 
 
 func _is_waiting_for_card() -> bool:
@@ -454,23 +485,24 @@ func _setup_player_actor() -> void:
 	_player_shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_player_shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	_player_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_player_shadow.modulate = Color(0, 0, 0, 0.92)
+	_player_shadow.modulate = Color(0, 0, 0, 0.96)
 	_player_actor.add_child(_player_shadow)
 	_player_actor.move_child(_player_shadow, 0)
-	_layout_ground_shadow(_player_shadow, _player_actor, 120.0)
+	_layout_ground_shadow(_player_shadow, _player_actor, 148.0)
 	_player_base_pos = _player_actor.position
+	_apply_actor_scene_tint(player_sprite)
 
 
 func _layout_ground_shadow(shadow: TextureRect, actor: Control, width: float) -> void:
 	if shadow == null or actor == null:
 		return
-	var h := 26.0
+	var h := 30.0
 	var aw := actor.size.x if actor.size.x > 1.0 else ACTOR_W
-	shadow.size = Vector2(width + 24.0, h)
+	shadow.size = Vector2(width + 28.0, h)
 	# Sombra sobre el bordillo, pegada a la suela (no bajo el asfalto).
-	shadow.position = Vector2((aw - width - 24.0) * 0.5, GROUND_Y - h + 4.0)
-	shadow.pivot_offset = Vector2((width + 24.0) * 0.5, h * 0.55)
-	shadow.modulate = Color(0.01, 0.01, 0.02, 0.9)
+	shadow.position = Vector2((aw - width - 28.0) * 0.5, GROUND_Y - h + 6.0)
+	shadow.pivot_offset = Vector2((width + 28.0) * 0.5, h * 0.55)
+	shadow.modulate = Color(0.01, 0.01, 0.02, 0.94)
 
 
 func _ensure_floor_plane() -> void:
@@ -1925,10 +1957,10 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shadow.modulate = Color(0.02, 0.02, 0.04, 0.88)
-	shadow.position = Vector2(14, ground_y - 22.0)
-	shadow.size = Vector2(actor_w - 28.0, 40 if is_boss else 34)
-	shadow.pivot_offset = Vector2((actor_w - 28.0) * 0.5, 18)
+	shadow.modulate = Color(0.02, 0.02, 0.04, 0.94)
+	shadow.position = Vector2(10, ground_y - 24.0)
+	shadow.size = Vector2(actor_w - 20.0, 42 if is_boss else 36)
+	shadow.pivot_offset = Vector2((actor_w - 20.0) * 0.5, 18)
 	actor.add_child(shadow)
 
 	var btn := Button.new()
@@ -1951,6 +1983,7 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 		tex.texture = loaded
 	_bottom_plant_texture(tex, slot)
 	tex.flip_h = str(e.get("face", "left")) == "right"
+	_apply_actor_scene_tint(tex)
 	btn.add_child(tex)
 	btn.pressed.connect(func(): CombatState.select_enemy(index))
 	actor.add_child(btn)

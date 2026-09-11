@@ -204,13 +204,13 @@ func _ground_shot() -> void:
 			get_tree().quit(1)
 			return
 	print("STARTER_NORMAL coins=", GameState.credits)
-	# Kick-Ass: el sprite de jugador debe ser el traje verde (no García policía)
+	# García táctico: azul/navy policial (no Kick-Ass verde).
 	if combat.player_sprite and combat.player_sprite.texture:
 		var ht: Texture2D = combat.player_sprite.texture
 		var himg: Image = ht.get_image()
 		if himg:
 			var greens := 0
-			var blues := 0
+			var darks := 0
 			var step := maxi(1, himg.get_width() * himg.get_height() / 8000)
 			var i := 0
 			for y in range(himg.get_height()):
@@ -221,13 +221,14 @@ func _ground_shot() -> void:
 					var c: Color = himg.get_pixel(x, y)
 					if c.a < 0.35:
 						continue
-					if c.g > c.b + 0.05 and c.g > c.r - 0.05:
+					var lum := (c.r + c.g + c.b) / 3.0
+					if c.g > c.b + 0.12 and c.g > c.r + 0.05 and lum > 0.22:
 						greens += 1
-					elif c.b > c.g + 0.08:
-						blues += 1
-			print("HERO_COLORS green=", greens, " blue=", blues, " size=", himg.get_width(), "x", himg.get_height())
-			if greens < blues or greens < 40:
-				print("GROUND_SHOT_FAIL hero still looks like old García (not Kick-Ass green)")
+					elif lum < 0.45 and (c.b >= c.g * 0.85):
+						darks += 1
+			print("HERO_COLORS green=", greens, " dark_tactical=", darks, " size=", himg.get_width(), "x", himg.get_height())
+			if darks < 40 or greens > darks:
+				print("GROUND_SHOT_FAIL hero still looks like Kick-Ass green (want García policial)")
 				get_tree().quit(1)
 				return
 		else:
@@ -238,7 +239,7 @@ func _ground_shot() -> void:
 		print("GROUND_SHOT_FAIL no player sprite texture")
 		get_tree().quit(1)
 		return
-	await _save_shot("kickass_protagonista")
+	await _save_shot("garcia_tactica_protagonista")
 	await _save_shot("barras_vida_cartas")
 	await _save_shot("mapa_fisica_sin_cartas")
 	# Tres fotogramas del fondo animado (lluvia/neones/niebla en movimiento)

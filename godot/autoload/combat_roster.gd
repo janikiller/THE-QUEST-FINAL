@@ -170,7 +170,15 @@ func hero_pose(pose: String) -> String:
 	var path := str(hero.get(key, ""))
 	if path != "" and (ResourceLoader.exists(path) or FileAccess.file_exists(path)):
 		return path
-	# Fallback al pack Kick-Ass
+	# Pack táctico García (mockup policial).
+	var garcia := "res://assets/combat/anime/hero/garcia_%s.png" % key
+	if ResourceLoader.exists(garcia) or FileAccess.file_exists(garcia):
+		return garcia
+	if key == "punch":
+		var punch_fb := "res://assets/combat/anime/hero/garcia_shoot.png"
+		if ResourceLoader.exists(punch_fb) or FileAccess.file_exists(punch_fb):
+			return punch_fb
+	# Legacy Kick-Ass solo si falta García.
 	var fallback := "res://assets/combat/custom/hero/kickass_%s.png" % key
 	if ResourceLoader.exists(fallback) or FileAccess.file_exists(fallback):
 		return fallback

@@ -7,11 +7,12 @@
 			"alias": "Hoodie pistolero",
 			"role": "ataque",
 			"hp": 26,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_hoodie_00_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_hoodie_00_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_idle.png",
 			"intent_bonus": 1,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_hoodie_00_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_hoodie_00_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_02_knives",
@@ -19,11 +20,12 @@
 			"alias": "Ladrona de cuchillos",
 			"role": "tactica",
 			"hp": 24,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_cap_01_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_cap_01_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
 			"intent_bonus": 0,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_cap_01_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_cap_01_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_skull_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_skull_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_03_bat",
@@ -31,11 +33,12 @@
 			"alias": "Bruto con bate",
 			"role": "ataque",
 			"hp": 34,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_tank_02_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_tank_02_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_tank_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_tank_idle.png",
 			"intent_bonus": 1,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_tank_02_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_tank_02_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_tank_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_tank_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_04_skate",
@@ -43,11 +46,12 @@
 			"alias": "Punk skater",
 			"role": "tactica",
 			"hp": 22,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_skull_03_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_skull_03_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_cap_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_cap_idle.png",
 			"intent_bonus": 0,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_skull_03_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_skull_03_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_cap_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_cap_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_05_biker",
@@ -55,11 +59,12 @@
 			"alias": "Banda de la carretera",
 			"role": "ataque",
 			"hp": 30,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_hoodie_04_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_hoodie_04_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_tank_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_tank_idle.png",
 			"intent_bonus": 1,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_hoodie_04_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_hoodie_04_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_tank_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_tank_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_06_hacker",
@@ -67,11 +72,12 @@
 			"alias": "Hacker de calle",
 			"role": "especial",
 			"hp": 20,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_cap_05_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_cap_05_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
 			"intent_bonus": 0,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_cap_05_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_cap_05_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_skull_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_skull_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_07_revolver",
@@ -79,11 +85,12 @@
 			"alias": "Tiradora dura",
 			"role": "ataque",
 			"hp": 28,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_tank_06_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_tank_06_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_idle.png",
 			"intent_bonus": 1,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_tank_06_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_tank_06_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_08_pickpocket",
@@ -91,11 +98,12 @@
 			"alias": "Carterista veterano",
 			"role": "tactica",
 			"hp": 18,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_skull_07_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_skull_07_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_cap_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_cap_idle.png",
 			"intent_bonus": 0,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_skull_07_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_skull_07_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_cap_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_cap_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_09_hooligan",
@@ -103,11 +111,12 @@
 			"alias": "Hooligan",
 			"role": "ataque",
 			"hp": 32,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_hoodie_08_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_hoodie_08_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_cap_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_cap_idle.png",
 			"intent_bonus": 1,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_hoodie_08_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_hoodie_08_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_cap_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_cap_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_10_crowbar",
@@ -115,11 +124,12 @@
 			"alias": "Obrero criminal",
 			"role": "ataque",
 			"hp": 30,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_cap_09_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_cap_09_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_tank_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_tank_idle.png",
 			"intent_bonus": 1,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_cap_09_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_cap_09_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_tank_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_tank_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_11_dealer",
@@ -127,11 +137,12 @@
 			"alias": "Traficante pijo",
 			"role": "especial",
 			"hp": 26,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_tank_10_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_tank_10_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_idle.png",
 			"intent_bonus": 0,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_tank_10_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_tank_10_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_12_sniper",
@@ -139,11 +150,12 @@
 			"alias": "Rifle de precisión",
 			"role": "ataque",
 			"hp": 24,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_skull_11_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_skull_11_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
 			"intent_bonus": 1,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_skull_11_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_skull_11_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_skull_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_skull_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_13_acrobat",
@@ -151,11 +163,12 @@
 			"alias": "Ladrón acróbata",
 			"role": "tactica",
 			"hp": 22,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_hoodie_12_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_hoodie_12_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_tank_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_tank_idle.png",
 			"intent_bonus": 0,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_hoodie_12_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_hoodie_12_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_tank_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_tank_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_14_medic",
@@ -163,11 +176,12 @@
 			"alias": "Paramédico corrupto",
 			"role": "especial",
 			"hp": 24,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_cap_13_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_cap_13_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
 			"intent_bonus": 0,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_cap_13_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_cap_13_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_skull_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_skull_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_15_clown",
@@ -175,11 +189,12 @@
 			"alias": "Máscara de caos",
 			"role": "especial",
 			"hp": 26,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_tank_14_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_tank_14_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_idle.png",
 			"intent_bonus": 0,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_tank_14_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_tank_14_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_hoodie_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_16_handler",
@@ -187,11 +202,12 @@
 			"alias": "Encargado de jauría",
 			"role": "ataque",
 			"hp": 28,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_skull_15_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_skull_15_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
 			"intent_bonus": 1,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_skull_15_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_skull_15_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_skull_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_skull_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_17_courier",
@@ -199,11 +215,12 @@
 			"alias": "Mensajero armado",
 			"role": "tactica",
 			"hp": 22,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_hoodie_16_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_hoodie_16_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_cap_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_cap_idle.png",
 			"intent_bonus": 0,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_hoodie_16_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_hoodie_16_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_cap_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_cap_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_18_molotov",
@@ -211,11 +228,12 @@
 			"alias": "Punk incendiario",
 			"role": "especial",
 			"hp": 28,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_cap_17_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_cap_17_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
 			"intent_bonus": 0,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_cap_17_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_cap_17_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_skull_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_skull_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_19_boxer",
@@ -223,11 +241,12 @@
 			"alias": "Boxeador callejero",
 			"role": "ataque",
 			"hp": 30,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_tank_18_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_tank_18_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_tank_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_tank_idle.png",
 			"intent_bonus": 1,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_tank_18_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_tank_18_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_tank_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_tank_hurt.png",
+			"face": "left"
 		},
 		{
 			"id": "foe_20_assassin",
@@ -235,11 +254,12 @@
 			"alias": "Asesino de pistola",
 			"role": "ataque",
 			"hp": 26,
-			"sprite": "res://assets/combat/anime/foes/street_pack/street_skull_19_idle.png",
-			"portrait": "res://assets/combat/anime/foes/street_pack/street_skull_19_idle.png",
+			"sprite": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
+			"portrait": "res://assets/combat/anime/foes/tactical_pack/thug_skull_idle.png",
 			"intent_bonus": 1,
-			"pose_attack": "res://assets/combat/anime/foes/street_pack/street_skull_19_attack.png",
-			"pose_hurt": "res://assets/combat/anime/foes/street_pack/street_skull_19_hurt.png"
+			"pose_attack": "res://assets/combat/anime/foes/tactical_pack/thug_skull_attack.png",
+			"pose_hurt": "res://assets/combat/anime/foes/tactical_pack/thug_skull_hurt.png",
+			"face": "left"
 		}
 	],
 	"bosses": [
@@ -678,8 +698,12 @@
 		}
 	],
 	"hero": {
-		"idle": "res://assets/combat/anime/hero/kickass_idle.png",
-		"shoot": "res://assets/combat/anime/hero/kickass_shoot.png",
-		"hurt": "res://assets/combat/anime/hero/kickass_hurt.png"
+		"idle": "res://assets/combat/anime/hero/garcia_idle.png",
+		"shoot": "res://assets/combat/anime/hero/garcia_shoot.png",
+		"hurt": "res://assets/combat/anime/hero/garcia_hurt.png",
+		"punch": "res://assets/combat/anime/hero/garcia_punch.png",
+		"death": "res://assets/combat/anime/hero/garcia_death.png",
+		"walk": "res://assets/combat/anime/hero/garcia_idle.png",
+		"run": "res://assets/combat/anime/hero/garcia_idle.png"
 	}
 }
