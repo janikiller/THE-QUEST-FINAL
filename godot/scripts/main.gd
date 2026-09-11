@@ -24,7 +24,7 @@ func _ready() -> void:
 		"TQ_ARENA_VARIETY_SHOT",
 		"TQ_BOSS_MARKET_SHOT", "TQ_BOSS_FIGHT", "TQ_BOSS_AUTOPLAY", "TQ_PROGRESSION_SHOT", "TQ_ROSTER_SHOT", "TQ_ANIME_CARDS_SHOT",
 		"TQ_MARKET_ROULETTE_SHOT", "TQ_XP_PACK_SHOT", "TQ_FIX_SHOT", "TQ_ENEMY_CARDS_SHOT",
-		"TQ_GROUND_SHOT",
+		"TQ_GROUND_SHOT", "TQ_PLAY_COMBAT",
 	]:
 		if OS.get_environment(key) == "1":
 			mode = key
@@ -66,6 +66,8 @@ func _ready() -> void:
 			call_deferred("_enemy_cards_shot")
 		"TQ_GROUND_SHOT":
 			call_deferred("_ground_shot")
+		"TQ_PLAY_COMBAT":
+			call_deferred("_play_combat_live")
 		_:
 			pass
 
@@ -1132,6 +1134,91 @@ func _arena_variety_shot() -> void:
 			break
 	print("ARENA_VARIETY_SHOT_OK count=", shot_i, " catalog=", CombatRoster.arenas.size())
 	get_tree().quit(0)
+
+
+func _play_combat_live() -> void:
+	## Abre un combate jugable (sin auto-quit) para playtest de movimiento/sombras.
+	await get_tree().create_timer(1.0).timeout
+	var tries := 0
+	while GameState.active_missions.is_empty() and tries < 40:
+		await get_tree().create_timer(0.25).timeout
+		tries += 1
+	if GameState.active_missions.is_empty():
+		print("PLAY_COMBAT_FAIL no missions")
+		return
+	var mid: String = String(GameState.active_missions.keys()[0])
+	var p: Dictionary = GameState.patrols.get("alpha", {})
+	p["status"] = "available"
+	p.erase("_awaiting_combat")
+	GameState.set_patrol(p)
+	if GameState.active_missions.has(mid):
+		var m: Dictionary = GameState.active_missions[mid]
+		var arena: Dictionary = CombatRoster.arena_by_id("bg_ops_yard")
+		if arena.is_empty():
+			arena = CombatRoster.arena_by_id("bg_zona_operativa")
+		if not arena.is_empty():
+			m["arena_id"] = str(arena.get("id", ""))
+			m["arena_path"] = str(arena.get("path", ""))
+			m["location_name"] = str(arena.get("name", ""))
+			m["period"] = "night"
+		var suspects: Array = []
+		for eid in ["foe_01_hoodie", "foe_03_bat", "foe_20_assassin"]:
+			var ed: Dictionary = CombatRoster.enemy_by_id(eid)
+			if ed.is_empty():
+				continue
+			suspects.append({
+				"id": str(ed.get("id", "")),
+				"name": str(ed.get("name", "Sospechoso")),
+				"alias": str(ed.get("alias", "")),
+				"full": str(ed.get("sprite", "")),
+				"thumb": str(ed.get("portrait", "")),
+				"hp_bonus": int(ed.get("hp", 28)),
+				"pose_attack": str(ed.get("pose_attack", "")),
+				"pose_hurt": str(ed.get("pose_hurt", "")),
+			})
+		m["suspects"] = suspects
+		GameState.active_missions[mid] = m
+	$UI/UIRouter.show_combat(mid, "alpha")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(0.5).timeout
+	if CombatState.is_active() and CombatState.hand.size() >= 2:
+		CombatState.hand[0] = "punetazo"
+		CombatState.hand[1] = "bloqueo"
+		if CombatState.hand.size() >= 3:
+			CombatState.hand[2] = "punetazo"
+	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	if combat:
+		combat._refresh()
+	print("PLAY_COMBAT_READY mid=", mid)
+	# Demo jugable automática corta: ataque + defensa + turno enemigo (para ver peso/sombras).
+	await get_tree().create_timer(1.2).timeout
+	combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	if combat == null or not CombatState.is_active():
+		return
+	if CombatState.can_play_card("bloqueo"):
+		print("PLAY_COMBAT_DEMO guard")
+		combat._busy = true
+		await combat._hero_guard_pulse()
+		CombatState.play_card("bloqueo")
+		combat._busy = false
+		combat._refresh()
+		await get_tree().create_timer(0.7).timeout
+	if CombatState.can_play_card("punetazo"):
+		print("PLAY_COMBAT_DEMO punch")
+		var def: Dictionary = CardDB.get_card("punetazo")
+		combat._busy = true
+		await combat._hero_attack_sequence(def)
+		CombatState.play_card("punetazo")
+		combat._busy = false
+		combat._refresh()
+		await get_tree().create_timer(0.8).timeout
+	print("PLAY_COMBAT_DEMO end_turn")
+	if combat.has_method("_on_end_turn"):
+		await combat._on_end_turn()
+	await get_tree().create_timer(2.5).timeout
+	print("PLAY_COMBAT_DEMO_DONE")
+	# Se queda abierto.
 
 
 func _combat_shot() -> void:
