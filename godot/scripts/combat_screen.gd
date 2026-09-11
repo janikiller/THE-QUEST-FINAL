@@ -12,22 +12,25 @@ const GROUND_Y := 318.0
 const PHYSICS_CONTACT_RATIO := 756.0 / 1080.0
 ## Hundir suelas en el bordillo (cierra el hueco visual de ~5–8px).
 const PLANT_SINK_PX := 14.0
-## Cartas de la mano: tamaño fijo que cabe en el panel inferior sin recorte.
-const HAND_CARD_W := 124.0
-const HAND_CARD_H := 198.0
+## Cartas: más grandes, estilo táctico (mockup).
+const HAND_CARD_W := 148.0
+const HAND_CARD_H := 214.0
 const ENEMY_HAND_CARD_W := 98.0
 const ENEMY_HAND_CARD_H := 162.0
-const BOTTOM_PANEL_H := 292.0
-## Barras de vida grandes (llenan el combate, se leen a distancia).
-const PLAYER_HP_BAR_W := 280.0
-const PLAYER_HP_BAR_H := 40.0
-const PLAYER_BLK_BAR_H := 20.0
-const ENEMY_HP_BAR_W := 228.0
-const ENEMY_HP_BAR_H := 34.0
-const BOSS_HP_BAR_W := 260.0
-const BOSS_HP_BAR_H := 38.0
+## Bandeja inferior más baja: deja ver el escenario.
+const BOTTOM_PANEL_H := 248.0
+## Barras finas bajo los pies (mockup).
+const PLAYER_HP_BAR_W := 168.0
+const PLAYER_HP_BAR_H := 14.0
+const PLAYER_BLK_BAR_H := 10.0
+const ENEMY_HP_BAR_W := 132.0
+const ENEMY_HP_BAR_H := 12.0
+const BOSS_HP_BAR_W := 160.0
+const BOSS_HP_BAR_H := 14.0
 const ACTOR_W := 300.0
 const BOSS_ACTOR_W := 340.0
+## Intents flotantes sobre enemigos (no en bandeja inferior).
+const SHOW_BOTTOM_ENEMY_HAND := false
 
 @onready var bg: TextureRect = %ArenaBg
 @onready var title_label: Label = %TitleLabel
@@ -410,11 +413,12 @@ func _ground_arena_layout() -> void:
 	_sync_physics_ground()
 	if player_marker:
 		player_marker.visible = true
-		player_marker.text = "KICK-ASS"
-		player_marker.add_theme_color_override("font_color", Color(0.82, 0.95, 1.0))
-		player_marker.add_theme_font_size_override("font_size", 16)
-		player_marker.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-		player_marker.add_theme_constant_override("outline_size", 4)
+		player_marker.text = "▼"
+		player_marker.add_theme_color_override("font_color", Color(0.35, 0.78, 1.0))
+		player_marker.add_theme_font_size_override("font_size", 22)
+		player_marker.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		player_marker.add_theme_constant_override("outline_size", 5)
+		player_marker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
 func _setup_player_actor() -> void:
@@ -485,10 +489,10 @@ func _ensure_floor_plane() -> void:
 	add_child(floor)
 	move_child(floor, get_node("Bottom").get_index())
 
-	# Base sólida (oculta cualquier “hueco” del BG)
+	# Velo suave: deja ver el suelo del escenario (mockup).
 	var solid := ColorRect.new()
 	solid.name = "SolidDeck"
-	solid.color = Color(0.09, 0.1, 0.12, 1.0)
+	solid.color = Color(0.05, 0.06, 0.08, 0.35)
 	solid.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	solid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	floor.add_child(solid)
@@ -502,7 +506,7 @@ func _ensure_floor_plane() -> void:
 	asphalt.texture = _map_tex("floor_asphalt")
 	if asphalt.texture == null:
 		asphalt.texture = _make_asphalt_tex()
-	asphalt.modulate = Color(1, 1, 1, 1)
+	asphalt.modulate = Color(1, 1, 1, 0.28)
 	floor.add_child(asphalt)
 
 	var curb := TextureRect.new()
@@ -515,12 +519,13 @@ func _ensure_floor_plane() -> void:
 	curb.texture = _map_tex("floor_curb")
 	if curb.texture == null:
 		var rim := ColorRect.new()
-		rim.color = Color(0.9, 0.74, 0.16, 1.0)
+		rim.color = Color(0.9, 0.74, 0.16, 0.45)
 		rim.set_anchors_preset(Control.PRESET_TOP_WIDE)
-		rim.offset_bottom = 10.0
+		rim.offset_bottom = 8.0
 		rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		floor.add_child(rim)
 	else:
+		curb.modulate = Color(1, 1, 1, 0.55)
 		floor.add_child(curb)
 
 	var gloss := ColorRect.new()
@@ -826,49 +831,77 @@ func close() -> void:
 func _style_bottom_panel() -> void:
 	var bottom := get_node_or_null("Bottom") as MarginContainer
 	if bottom:
-		# Altura suficiente para cartas completas + labels (sin recortes).
 		bottom.offset_top = -BOTTOM_PANEL_H
 		bottom.z_index = 50
-		bottom.add_theme_constant_override("margin_left", 14)
-		bottom.add_theme_constant_override("margin_right", 14)
-		bottom.add_theme_constant_override("margin_top", 6)
-		bottom.add_theme_constant_override("margin_bottom", 10)
+		bottom.add_theme_constant_override("margin_left", 16)
+		bottom.add_theme_constant_override("margin_right", 16)
+		bottom.add_theme_constant_override("margin_top", 4)
+		bottom.add_theme_constant_override("margin_bottom", 8)
 	var arena := get_node_or_null("Arena") as Control
 	if arena:
-		arena.offset_bottom = -BOTTOM_PANEL_H
+		arena.offset_bottom = -BOTTOM_PANEL_H + 28.0
 	var top := get_node_or_null("TopHud") as Control
 	if top:
 		top.z_index = 50
 	var panel := get_node_or_null("Bottom/BottomPanel")
 	if panel == null:
 		return
+	# Gradiente suave: el escenario se ve; no caja opaca.
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.1, 0.15, 0.22, 0.94)
-	sb.border_color = Color(0.55, 0.82, 1.0, 0.5)
-	sb.set_border_width_all(1)
-	sb.border_width_top = 2
-	sb.set_corner_radius_all(14)
-	sb.content_margin_left = 12
-	sb.content_margin_right = 12
-	sb.content_margin_top = 8
-	sb.content_margin_bottom = 8
+	sb.bg_color = Color(0.04, 0.07, 0.12, 0.55)
+	sb.border_color = Color(0.45, 0.75, 1.0, 0.22)
+	sb.set_border_width_all(0)
+	sb.border_width_top = 1
+	sb.set_corner_radius_all(0)
+	sb.corner_radius_top_left = 18
+	sb.corner_radius_top_right = 18
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
 	panel.add_theme_stylebox_override("panel", sb)
 	panel.clip_contents = false
 	if deck_count:
-		deck_count.add_theme_font_size_override("font_size", 16)
-		deck_count.add_theme_color_override("font_color", Color(0.65, 0.9, 1.0))
+		deck_count.add_theme_font_size_override("font_size", 15)
+		deck_count.add_theme_color_override("font_color", Color(0.7, 0.92, 1.0))
+		deck_count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		deck_count.add_theme_constant_override("outline_size", 3)
 	if discard_count:
-		discard_count.add_theme_font_size_override("font_size", 14)
-		discard_count.add_theme_color_override("font_color", Color(0.78, 0.84, 0.92))
+		discard_count.add_theme_font_size_override("font_size", 13)
+		discard_count.add_theme_color_override("font_color", Color(0.8, 0.86, 0.94))
+		discard_count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+		discard_count.add_theme_constant_override("outline_size", 3)
 	if hand_row:
-		hand_row.add_theme_constant_override("separation", 10)
+		hand_row.add_theme_constant_override("separation", 12)
 		hand_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	if log_label:
-		log_label.add_theme_color_override("font_color", Color(0.78, 0.9, 1.0))
+		log_label.add_theme_color_override("font_color", Color(0.82, 0.92, 1.0, 0.9))
+		log_label.add_theme_font_size_override("font_size", 13)
 
 
 func _ensure_enemy_hand_ui() -> void:
-	## Cartas enemigas en el hueco horizontal del menú (junto a TU MANO).
+	## Cartas enemigas en bandeja (desactivado: intents van sobre cada enemigo).
+	if not SHOW_BOTTOM_ENEMY_HAND:
+		var bottom_row := get_node_or_null("Bottom/BottomPanel/BottomRow") as HBoxContainer
+		if bottom_row:
+			var old := bottom_row.get_node_or_null("EnemyHandCol")
+			if old:
+				old.visible = false
+		var hand_col := get_node_or_null("Bottom/BottomPanel/BottomRow/HandCol") as VBoxContainer
+		if hand_col:
+			_hand_label = hand_col.get_node_or_null("PlayerHandLabel") as Label
+			if _hand_label == null:
+				_hand_label = Label.new()
+				_hand_label.name = "PlayerHandLabel"
+				_hand_label.text = "TU MANO"
+				_hand_label.add_theme_font_size_override("font_size", 12)
+				_hand_label.add_theme_color_override("font_color", Color(0.65, 0.9, 1.0))
+				_hand_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				hand_col.add_child(_hand_label)
+				hand_col.move_child(_hand_label, 0)
+		_enemy_hand_row = null
+		_enemy_hand_label = null
+		return
 	var bottom_row := get_node_or_null("Bottom/BottomPanel/BottomRow") as HBoxContainer
 	var hand_col := get_node_or_null("Bottom/BottomPanel/BottomRow/HandCol") as VBoxContainer
 	if bottom_row == null:
@@ -921,17 +954,30 @@ func _ensure_enemy_hand_ui() -> void:
 
 func _style_end_btn() -> void:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.12, 0.45, 0.92)
-	sb.set_corner_radius_all(12)
-	sb.content_margin_left = 16
-	sb.content_margin_right = 16
-	sb.content_margin_top = 12
-	sb.content_margin_bottom = 12
+	sb.bg_color = Color(0.1, 0.42, 0.95)
+	sb.border_color = Color(0.55, 0.85, 1.0, 0.85)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(14)
+	sb.content_margin_left = 18
+	sb.content_margin_right = 18
+	sb.content_margin_top = 14
+	sb.content_margin_bottom = 14
+	sb.shadow_color = Color(0.2, 0.55, 1.0, 0.35)
+	sb.shadow_size = 8
 	end_turn_btn.add_theme_stylebox_override("normal", sb)
-	var h := sb.duplicate()
-	h.bg_color = Color(0.22, 0.55, 1.0)
-	end_turn_btn.add_theme_stylebox_override("hover", h)
-	end_turn_btn.add_theme_font_size_override("font_size", 14)
+	var hov := sb.duplicate()
+	hov.bg_color = Color(0.18, 0.52, 1.0)
+	hov.shadow_size = 12
+	end_turn_btn.add_theme_stylebox_override("hover", hov)
+	var dis := sb.duplicate()
+	dis.bg_color = Color(0.18, 0.22, 0.3)
+	dis.border_color = Color(0.35, 0.4, 0.48, 0.5)
+	dis.shadow_size = 0
+	end_turn_btn.add_theme_stylebox_override("disabled", dis)
+	end_turn_btn.add_theme_font_size_override("font_size", 15)
+	end_turn_btn.add_theme_color_override("font_color", Color(0.95, 0.98, 1.0))
+	end_turn_btn.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+	end_turn_btn.add_theme_color_override("font_disabled_color", Color(0.55, 0.6, 0.68))
 
 
 func _on_log(text: String) -> void:
@@ -1010,13 +1056,14 @@ func _refresh() -> void:
 	var p: Dictionary = snap.get("player", {})
 	title_label.text = "THE QUEST FINAL"
 	turn_label.text = "PATRULLA — TURNO %d" % int(snap.get("turn", 1))
-	hp_label.text = "%d/%d" % [int(p.get("hp", 0)), int(p.get("max_hp", 50))]
-	hp_label.add_theme_font_size_override("font_size", 30)
-	hp_label.add_theme_color_override("font_color", Color(0.35, 1.0, 0.5))
+	hp_label.text = "❤ %d/%d" % [int(p.get("hp", 0)), int(p.get("max_hp", 50))]
+	hp_label.add_theme_font_size_override("font_size", 26)
+	hp_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
 	hp_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	hp_label.add_theme_constant_override("outline_size", 4)
-	block_label.text = str(int(p.get("block", 0)))
-	block_label.add_theme_font_size_override("font_size", 28)
+	block_label.text = "🛡 %d" % int(p.get("block", 0))
+	block_label.add_theme_font_size_override("font_size", 24)
+	block_label.add_theme_color_override("font_color", Color(0.55, 0.88, 1.0))
 	block_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	block_label.add_theme_constant_override("outline_size", 3)
 	var place := str(snap.get("arena_name", snap.get("location", ""))).to_upper()
@@ -1026,15 +1073,15 @@ func _refresh() -> void:
 		location_label.text = "%s  ·  %s  ·  %s" % [place, tag_bit, period_bit]
 	else:
 		location_label.text = "%s  ·  %s" % [place, period_bit]
-	var xp_bit := "NV.%d (+%d PV)  %d/%d XP" % [
+	var xp_bit := "NV.%d  %d/%d XP" % [
 		int(snap.get("hero_level", GameState.hero_level)),
-		GameState.level_hp_bonus(),
 		int(snap.get("hero_xp", GameState.hero_xp)),
 		int(snap.get("xp_to_next", GameState.xp_to_next_level())),
 	]
 	if int(snap.get("combat_xp", 0)) > 0:
-		xp_bit += "  ·  +%d este combate" % int(snap.get("combat_xp", 0))
-	objective_label.text = "OBJETIVO: %s   |   %s" % [str(snap.get("objective", "")), xp_bit]
+		xp_bit += "  +%d" % int(snap.get("combat_xp", 0))
+	objective_label.text = "OBJETIVO: %s" % str(snap.get("objective", ""))
+	location_label.text = "%s  ·  %s" % [location_label.text, xp_bit]
 	log_label.text = str(snap.get("last_log", ""))
 	deck_count.text = "MAZO\n%d" % int(snap.get("draw_count", 0))
 	discard_count.text = "DESCARTES\n%d" % int(snap.get("discard_count", 0))
@@ -1067,7 +1114,7 @@ func _refresh() -> void:
 
 
 func _style_bar(bar: ProgressBar, fill_col: Color, h: float = 12.0, w: float = -1.0) -> void:
-	## Barra gruesa y legible sobre el asfalto oscuro.
+	## Barras finas bajo pies (look mockup) o compactas en HUD.
 	if w > 0.0:
 		bar.custom_minimum_size = Vector2(w, h)
 		bar.size = Vector2(w, h)
@@ -1076,13 +1123,14 @@ func _style_bar(bar: ProgressBar, fill_col: Color, h: float = 12.0, w: float = -
 	bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bar.show_percentage = false
+	var slim := h <= 16.0
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = fill_col
-	fill.set_corner_radius_all(8)
+	fill.set_corner_radius_all(4 if slim else 8)
 	fill.set_content_margin_all(0)
-	fill.border_color = Color(1, 1, 1, 0.35)
-	fill.set_border_width_all(2)
-	fill.shadow_color = Color(0, 0, 0, 0.55)
+	fill.border_color = Color(1, 1, 1, 0.22 if slim else 0.35)
+	fill.set_border_width_all(1 if slim else 2)
+	fill.shadow_color = Color(0, 0, 0, 0.45 if slim else 0.55)
 	fill.shadow_size = 4
 	bar.add_theme_stylebox_override("fill", fill)
 	var bgb := StyleBoxFlat.new()
@@ -1102,12 +1150,12 @@ func _style_player_bars(p: Dictionary) -> void:
 	player_hp_bar.max_value = float(hp_max)
 	player_hp_bar.value = float(hp_now)
 	# Color por umbral de vida
-	var hp_col := Color(0.22, 0.9, 0.42)
+	var hp_col := Color(0.9, 0.22, 0.25)
 	var ratio := float(hp_now) / maxf(1.0, float(hp_max))
 	if ratio <= 0.35:
-		hp_col = Color(1.0, 0.22, 0.25)
+		hp_col = Color(1.0, 0.18, 0.2)
 	elif ratio <= 0.65:
-		hp_col = Color(1.0, 0.78, 0.2)
+		hp_col = Color(0.95, 0.45, 0.2)
 	_style_bar(player_hp_bar, hp_col, PLAYER_HP_BAR_H, PLAYER_HP_BAR_W)
 	player_hp_text.text = "VIDA %d/%d" % [hp_now, hp_max]
 	player_hp_text.add_theme_font_size_override("font_size", 22)
@@ -1795,106 +1843,72 @@ func _animate_enemy_death(panel: Control, dmg: int) -> void:
 
 
 func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
+	## Layout mockup: intent arriba → sprite → barra fina bajo pies.
 	var is_boss := bool(e.get("is_boss", false))
 	var wrap := VBoxContainer.new()
-	wrap.custom_minimum_size = Vector2(BOSS_ACTOR_W if is_boss else ACTOR_W + 12.0, 420 if is_boss else 380)
+	wrap.custom_minimum_size = Vector2(BOSS_ACTOR_W if is_boss else ACTOR_W + 12.0, 400 if is_boss else 360)
 	wrap.alignment = BoxContainer.ALIGNMENT_END
-	# No expandir: evita barras de vida estiradas a todo el ancho.
 	wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	wrap.add_theme_constant_override("separation", 5)
+	wrap.add_theme_constant_override("separation", 4)
 	wrap.set_meta("enemy_index", index)
 	wrap.set_meta("is_boss", is_boss)
 	wrap.set_meta("pose_attack", str(e.get("pose_attack", "")))
 	wrap.set_meta("pose_hurt", str(e.get("pose_hurt", "")))
 	wrap.set_meta("idle_sprite", str(e.get("sprite", "")))
 
+	# Intent flotante (lo más importante del mockup).
+	var intent_host := PanelContainer.new()
+	intent_host.name = "IntentHost"
+	intent_host.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var isb := StyleBoxFlat.new()
+	isb.bg_color = Color(0.06, 0.08, 0.12, 0.82)
+	isb.border_color = Color(1.0, 0.45, 0.35, 0.85)
+	isb.set_border_width_all(1)
+	isb.set_corner_radius_all(8)
+	isb.content_margin_left = 8
+	isb.content_margin_right = 8
+	isb.content_margin_top = 3
+	isb.content_margin_bottom = 3
+	intent_host.add_theme_stylebox_override("panel", isb)
+	intent_host.add_child(_build_enemy_intent_content(e, index))
+	# Recolorea borde según tipo de intent.
+	var kind := "attack"
+	var cid := str(e.get("next_card", ""))
+	if cid != "":
+		var cdef: Dictionary = CardDB.get_enemy_card(cid) if CardDB.has_method("get_enemy_card") else {}
+		kind = str(cdef.get("kind", e.get("next_card_kind", "attack")))
+	else:
+		var iid := int(e.get("intent", 0))
+		if iid == CombatState.Intent.BLOCK:
+			kind = "block"
+		elif iid == CombatState.Intent.FLEE:
+			kind = "flee"
+	isb.border_color = _enemy_kind_accent(kind, is_boss)
+	wrap.add_child(intent_host)
+
+	# Nombre compacto (sin alias clutter).
 	var name_l := Label.new()
 	name_l.text = str(e.get("name", "Sospechoso"))
 	if is_boss:
 		name_l.text = "★ " + name_l.text
 		name_l.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
-		name_l.add_theme_font_size_override("font_size", 18)
-	elif selected and int(e.get("hp", 0)) > 0:
-		name_l.text = "▸ " + name_l.text
-		name_l.add_theme_color_override("font_color", Color(0.7, 0.96, 1.0))
 		name_l.add_theme_font_size_override("font_size", 15)
+	elif selected and int(e.get("hp", 0)) > 0:
+		name_l.add_theme_color_override("font_color", Color(0.75, 0.96, 1.0))
+		name_l.add_theme_font_size_override("font_size", 13)
 	else:
-		name_l.add_theme_color_override("font_color", Color(0.92, 0.95, 1.0))
-		name_l.add_theme_font_size_override("font_size", 14)
+		name_l.add_theme_color_override("font_color", Color(0.9, 0.93, 0.98, 0.92))
+		name_l.add_theme_font_size_override("font_size", 12)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	name_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	name_l.add_theme_constant_override("outline_size", 3)
 	wrap.add_child(name_l)
 
-	var alias := str(e.get("alias", ""))
-	if alias != "":
-		var alias_l := Label.new()
-		alias_l.text = alias
-		alias_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		alias_l.add_theme_font_size_override("font_size", 11)
-		alias_l.add_theme_color_override("font_color", Color(0.72, 0.8, 0.9, 0.95))
-		wrap.add_child(alias_l)
-
-	# Barras ENCIMA del cuerpo, ancho fijo y centradas — bien visibles.
-	var bars := VBoxContainer.new()
-	bars.name = "Bars"
-	bars.alignment = BoxContainer.ALIGNMENT_CENTER
-	bars.add_theme_constant_override("separation", 3)
-	bars.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var bar_w := BOSS_HP_BAR_W if is_boss else ENEMY_HP_BAR_W
-	var bar_h := BOSS_HP_BAR_H if is_boss else ENEMY_HP_BAR_H
-	var hp_now := maxi(0, int(e.get("hp", 0)))
-	var hp_max := int(e.get("max_hp", 1))
-	var hp_bar := ProgressBar.new()
-	hp_bar.name = "HpBar"
-	hp_bar.max_value = float(hp_max)
-	hp_bar.value = float(hp_now)
-	var hp_col := Color(0.95, 0.4, 0.2) if is_boss else Color(0.9, 0.28, 0.3)
-	var ratio := float(hp_now) / maxf(1.0, float(hp_max))
-	if not is_boss:
-		if ratio <= 0.35:
-			hp_col = Color(0.95, 0.22, 0.22)
-		elif ratio <= 0.65:
-			hp_col = Color(0.95, 0.7, 0.22)
-		else:
-			hp_col = Color(0.28, 0.88, 0.4)
-	_style_bar(hp_bar, hp_col, bar_h, bar_w)
-	bars.add_child(hp_bar)
-	var hp_t := Label.new()
-	hp_t.name = "HpText"
-	hp_t.text = "VIDA %d/%d" % [hp_now, hp_max]
-	hp_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_t.add_theme_font_size_override("font_size", 18 if is_boss else 16)
-	hp_t.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55) if is_boss else Color(1.0, 0.97, 0.92))
-	hp_t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
-	hp_t.add_theme_constant_override("outline_size", 5)
-	bars.add_child(hp_t)
-	var blk := int(e.get("block", 0))
-	var blk_bar := ProgressBar.new()
-	blk_bar.name = "BlockBar"
-	blk_bar.max_value = maxf(float(hp_max), float(maxi(blk, 1)))
-	blk_bar.value = float(blk)
-	blk_bar.visible = blk > 0
-	_style_bar(blk_bar, Color(0.3, 0.82, 1.0), 14.0 if is_boss else 12.0, bar_w)
-	bars.add_child(blk_bar)
-	var blk_t := Label.new()
-	blk_t.name = "BlockText"
-	blk_t.text = "ESCUDO %d" % blk
-	blk_t.visible = blk > 0
-	blk_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	blk_t.add_theme_font_size_override("font_size", 12)
-	blk_t.add_theme_color_override("font_color", Color(0.55, 0.88, 1.0))
-	blk_t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	blk_t.add_theme_constant_override("outline_size", 3)
-	bars.add_child(blk_t)
-	wrap.add_child(bars)
-
 	var actor_w := BOSS_ACTOR_W if is_boss else ACTOR_W
 	var ground_y := GROUND_Y + (18.0 if is_boss else 0.0)
-	var actor_h := ground_y  # sin hueco bajo los pies
 	var actor := Control.new()
 	actor.name = "ActorSlot"
-	actor.custom_minimum_size = Vector2(actor_w, actor_h)
+	actor.custom_minimum_size = Vector2(actor_w, ground_y)
 	actor.clip_contents = false
 
 	var shadow := TextureRect.new()
@@ -1905,7 +1919,7 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	shadow.stretch_mode = TextureRect.STRETCH_SCALE
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shadow.modulate = Color(0.02, 0.02, 0.04, 0.92)
+	shadow.modulate = Color(0.02, 0.02, 0.04, 0.88)
 	shadow.position = Vector2(14, ground_y - 22.0)
 	shadow.size = Vector2(actor_w - 28.0, 40 if is_boss else 34)
 	shadow.pivot_offset = Vector2((actor_w - 28.0) * 0.5, 18)
@@ -1919,10 +1933,8 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	btn.clip_contents = false
 	var tex := TextureRect.new()
 	tex.name = "EnemySprite"
-	# Pies anclados al suelo (aspect completo, sin crop COVERED)
 	var slot := Vector2(actor_w, ground_y)
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Prioridad: sprite propio del enemigo (boss) → pack por índice
 	var sp := str(e.get("sprite", ""))
 	if sp == "" or not (ResourceLoader.exists(sp) or FileAccess.file_exists(sp)):
 		sp = PACK_FOE + "enemy_%d.png" % (index % 7)
@@ -1932,13 +1944,50 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	if loaded:
 		tex.texture = loaded
 	_bottom_plant_texture(tex, slot)
-	# Convención: assets enemigo miran a la IZQUIERDA (hacia García).
-	# Si algún enemigo viene con face=right, se espeja.
 	tex.flip_h = str(e.get("face", "left")) == "right"
 	btn.add_child(tex)
 	btn.pressed.connect(func(): CombatState.select_enemy(index))
 	actor.add_child(btn)
 	wrap.add_child(actor)
+
+	# Barras FINAS bajo los pies (mockup).
+	var bars := VBoxContainer.new()
+	bars.name = "Bars"
+	bars.alignment = BoxContainer.ALIGNMENT_CENTER
+	bars.add_theme_constant_override("separation", 2)
+	bars.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var bar_w := BOSS_HP_BAR_W if is_boss else ENEMY_HP_BAR_W
+	var bar_h := BOSS_HP_BAR_H if is_boss else ENEMY_HP_BAR_H
+	var hp_now := maxi(0, int(e.get("hp", 0)))
+	var hp_max := int(e.get("max_hp", 1))
+	var hp_bar := ProgressBar.new()
+	hp_bar.name = "HpBar"
+	hp_bar.max_value = float(hp_max)
+	hp_bar.value = float(hp_now)
+	var hp_col := Color(0.92, 0.22, 0.22)
+	if is_boss:
+		hp_col = Color(0.95, 0.35, 0.18)
+	_style_bar(hp_bar, hp_col, bar_h, bar_w)
+	bars.add_child(hp_bar)
+	var hp_t := Label.new()
+	hp_t.name = "HpText"
+	hp_t.text = "%d/%d" % [hp_now, hp_max]
+	hp_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hp_t.add_theme_font_size_override("font_size", 12 if is_boss else 11)
+	hp_t.add_theme_color_override("font_color", Color(1.0, 0.95, 0.92))
+	hp_t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	hp_t.add_theme_constant_override("outline_size", 4)
+	bars.add_child(hp_t)
+	var blk := int(e.get("block", 0))
+	var blk_bar := ProgressBar.new()
+	blk_bar.name = "BlockBar"
+	blk_bar.max_value = maxf(float(hp_max), float(maxi(blk, 1)))
+	blk_bar.value = float(blk)
+	blk_bar.visible = blk > 0
+	_style_bar(blk_bar, Color(0.3, 0.82, 1.0), 8.0, bar_w)
+	bars.add_child(blk_bar)
+	wrap.add_child(bars)
+
 	wrap.set_meta("sprite_base", tex.get_meta("plant_pos", tex.position))
 	wrap.set_meta("idle_sprite", sp)
 	wrap.set_meta("fidget_cd", 1.0 + float(index) * 0.4)
@@ -1946,6 +1995,7 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	if bool(e.get("detained", false)) or bool(e.get("fled", false)):
 		wrap.modulate = Color(0.55, 0.55, 0.58, 0.85)
 	return wrap
+
 
 
 func _rebuild_hand(snap: Dictionary) -> void:
@@ -1976,7 +2026,7 @@ func _rebuild_hand(snap: Dictionary) -> void:
 
 func _rebuild_enemy_hand(snap: Dictionary) -> void:
 	_ensure_enemy_hand_ui()
-	if _enemy_hand_row == null:
+	if not SHOW_BOTTOM_ENEMY_HAND or _enemy_hand_row == null:
 		return
 	_enemy_deal_token += 1
 	var token := _enemy_deal_token
@@ -2377,7 +2427,7 @@ func _make_enemy_intent_card(e: Dictionary, enemy_index: int = -1) -> Control:
 	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	frame.stretch_mode = TextureRect.STRETCH_SCALE
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.modulate = Color(accent.r, accent.g, accent.b, 0.55)
+	frame.modulate = Color(accent.r, accent.g, accent.b, 0.22)
 	var fp := CardDB.frame_path(rarity)
 	if ResourceLoader.exists(fp):
 		frame.texture = load(fp)
@@ -2710,12 +2760,17 @@ func _make_card(card_id: String, playable: bool, animate: bool = true) -> Contro
 	panel.size = Vector2(HAND_CARD_W, HAND_CARD_H)
 	panel.clip_contents = true
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	var border_col := type_col
+	if rarity in ["especial", "legendaria", "legendary"]:
+		border_col = Color(1.0, 0.82, 0.28)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.14, 0.18, 0.26, 1.0)
-	sb.border_color = Color(accent.r, accent.g, accent.b, 1.0 if playable else 0.45)
+	sb.bg_color = Color(0.08, 0.11, 0.18, 0.96)
+	sb.border_color = Color(border_col.r, border_col.g, border_col.b, 1.0 if playable else 0.4)
 	sb.set_border_width_all(2)
 	sb.border_width_top = 3
-	sb.set_corner_radius_all(12)
+	sb.set_corner_radius_all(10)
+	sb.shadow_color = Color(border_col.r, border_col.g, border_col.b, 0.35 if playable else 0.0)
+	sb.shadow_size = 8 if playable else 0
 	sb.content_margin_left = 0
 	sb.content_margin_right = 0
 	sb.content_margin_top = 0
@@ -2776,12 +2831,12 @@ func _make_card(card_id: String, playable: bool, animate: bool = true) -> Contro
 	v.add_child(top)
 
 	var cost_bg := PanelContainer.new()
-	cost_bg.custom_minimum_size = Vector2(26, 26)
+	cost_bg.custom_minimum_size = Vector2(28, 28)
 	var csb := StyleBoxFlat.new()
-	csb.bg_color = Color(type_col.r * 0.35, type_col.g * 0.35, type_col.b * 0.4, 0.95)
-	csb.border_color = accent
-	csb.set_border_width_all(1)
-	csb.set_corner_radius_all(13)
+	csb.bg_color = Color(0.06, 0.1, 0.16, 0.98)
+	csb.border_color = type_col
+	csb.set_border_width_all(2)
+	csb.set_corner_radius_all(6)
 	cost_bg.add_theme_stylebox_override("panel", csb)
 	top.add_child(cost_bg)
 	var cost := Label.new()
@@ -2792,17 +2847,36 @@ func _make_card(card_id: String, playable: bool, animate: bool = true) -> Contro
 	cost.add_theme_color_override("font_color", Color(0.92, 0.97, 1.0))
 	cost_bg.add_child(cost)
 
-	var rar_l := Label.new()
-	rar_l.text = CardDB.rarity_label(rarity)
-	rar_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rar_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	rar_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	rar_l.add_theme_font_size_override("font_size", 10)
-	rar_l.add_theme_color_override("font_color", accent)
-	top.add_child(rar_l)
+	var type_l := Label.new()
+	var type_tag := card_type.to_upper()
+	match card_type:
+		"ataque":
+			type_tag = "ATAQUE"
+		"defensa":
+			type_tag = "DEFENSA"
+		"habilidad", "skill":
+			type_tag = "HABILIDAD"
+		"especial", "special":
+			type_tag = "ESPECIAL"
+		"utilidad", "utility":
+			type_tag = "UTILIDAD"
+		"control":
+			type_tag = "CONTROL"
+		"cura", "heal":
+			type_tag = "CURA"
+		_:
+			if type_tag == "":
+				type_tag = "CARTA"
+	type_l.text = type_tag
+	type_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	type_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	type_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	type_l.add_theme_font_size_override("font_size", 10)
+	type_l.add_theme_color_override("font_color", type_col)
+	top.add_child(type_l)
 
 	var art := TextureRect.new()
-	art.custom_minimum_size = Vector2(0, 72)
+	art.custom_minimum_size = Vector2(0, 86)
 	art.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -3451,10 +3525,19 @@ func _rebuild_energy(snap: Dictionary) -> void:
 	var mx := int(p.get("energy_max", 3))
 	for i in range(mx):
 		var pip := Panel.new()
-		pip.custom_minimum_size = Vector2(18, 18)
+		pip.custom_minimum_size = Vector2(22, 22)
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.35, 0.82, 1.0) if i < cur else Color(0.12, 0.16, 0.22)
-		sb.set_corner_radius_all(9)
+		if i < cur:
+			sb.bg_color = Color(0.35, 0.85, 1.0)
+			sb.border_color = Color(0.75, 0.95, 1.0, 0.95)
+			sb.set_border_width_all(2)
+			sb.shadow_color = Color(0.3, 0.8, 1.0, 0.55)
+			sb.shadow_size = 6
+		else:
+			sb.bg_color = Color(0.1, 0.14, 0.2, 0.9)
+			sb.border_color = Color(0.35, 0.45, 0.55, 0.7)
+			sb.set_border_width_all(1)
+		sb.set_corner_radius_all(11)
 		pip.add_theme_stylebox_override("panel", sb)
 		energy_row.add_child(pip)
 
