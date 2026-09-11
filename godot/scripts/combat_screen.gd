@@ -7,7 +7,7 @@ const FX_DIR := "res://assets/combat/custom/fx/"
 const MAP_DIR := "res://assets/combat/custom/map/"
 const PHYSICS_ARENA := "res://assets/combat/custom/map/arena_street_physics.png"
 ## Altura del slot de actor (pies en el borde inferior).
-const GROUND_Y := 318.0
+const GROUND_Y := 340.0
 ## Línea de bordillo en arena_street_physics.png (y / 1080).
 const PHYSICS_CONTACT_RATIO := 756.0 / 1080.0
 ## Hundir suelas en el bordillo (cierra el hueco visual de ~5–8px).
@@ -27,8 +27,8 @@ const ENEMY_HP_BAR_W := 132.0
 const ENEMY_HP_BAR_H := 12.0
 const BOSS_HP_BAR_W := 160.0
 const BOSS_HP_BAR_H := 14.0
-const ACTOR_W := 300.0
-const BOSS_ACTOR_W := 340.0
+const ACTOR_W := 320.0
+const BOSS_ACTOR_W := 360.0
 ## Intents flotantes sobre enemigos (no en bandeja inferior).
 const SHOW_BOTTOM_ENEMY_HAND := false
 

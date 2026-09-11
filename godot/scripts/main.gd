@@ -434,6 +434,18 @@ func _xp_pack_shot() -> void:
 	p["status"] = "available"
 	p.erase("_awaiting_combat")
 	GameState.set_patrol(p)
+	# Fuerza escenario nocturno táctico para evidencia de personajes.
+	if GameState.active_missions.has(mid):
+		var m: Dictionary = GameState.active_missions[mid]
+		var arena: Dictionary = CombatRoster.arena_by_id("bg_ops_yard")
+		if arena.is_empty():
+			arena = CombatRoster.arena_by_id("bg_zona_operativa")
+		if not arena.is_empty():
+			m["arena_id"] = str(arena.get("id", ""))
+			m["arena_path"] = str(arena.get("path", ""))
+			m["location_name"] = str(arena.get("name", ""))
+			m["period"] = "night"
+			GameState.active_missions[mid] = m
 	$UI/UIRouter.show_combat(mid, "alpha")
 	await get_tree().process_frame
 	await get_tree().create_timer(0.45).timeout
