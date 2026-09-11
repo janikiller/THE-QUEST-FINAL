@@ -265,7 +265,7 @@
 			"name": "LA VIUDA",
 			"alias": "Matriarca elegante",
 			"archetype": "organizado",
-			"arena": "bg_penthouse",
+			"arena": "bg_ops_yard",
 			"hp": 95,
 			"damage": 14,
 			"sprite": "res://assets/combat/anime/bosses/boss_02_viuda.png",
@@ -282,7 +282,7 @@
 			"name": "EL FANTASMA",
 			"alias": "Francotirador fantasma",
 			"archetype": "letal",
-			"arena": "bg_rooftop",
+			"arena": "bg_loading_dock",
 			"hp": 90,
 			"damage": 18,
 			"sprite": "res://assets/combat/anime/bosses/boss_03_fantasma.png",
@@ -333,7 +333,7 @@
 			"name": "LA SOMBRA",
 			"alias": "Asesina cyber",
 			"archetype": "letal",
-			"arena": "bg_neon_alley",
+			"arena": "bg_tactical_alley",
 			"hp": 98,
 			"damage": 17,
 			"sprite": "res://assets/combat/anime/bosses/boss_06_sombra.png",
@@ -367,7 +367,7 @@
 			"name": "HACKER ZERO",
 			"alias": "Cerebro digital",
 			"archetype": "especial",
-			"arena": "bg_subway",
+			"arena": "bg_underpass_ops",
 			"hp": 88,
 			"damage": 14,
 			"sprite": "res://assets/combat/anime/bosses/boss_08_zero.png",
@@ -416,165 +416,265 @@
 	],
 	"arenas": [
 		{
-			"id": "bg_street_physics",
-			"name": "Calle Asfalto",
+			"id": "bg_zona_operativa",
+			"name": "Zona Operativa",
 			"period": "night",
-			"periods": ["day", "dusk", "night"],
-			"path": "res://assets/combat/custom/map/arena_street_physics.png"
+			"periods": [
+				"dusk",
+				"night"
+			],
+			"tags": [
+				"tactical",
+				"police",
+				"industrial"
+			],
+			"path": "res://assets/combat/anime/bg/bg_zona_operativa.png"
 		},
 		{
-			"id": "bg_neon_alley",
-			"name": "Calle Neón",
+			"id": "bg_ops_yard",
+			"name": "Patio Operativo",
 			"period": "night",
-			"periods": ["dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_neon_alley.png"
+			"periods": [
+				"dusk",
+				"night"
+			],
+			"tags": [
+				"tactical",
+				"police",
+				"industrial"
+			],
+			"path": "res://assets/combat/anime/bg/bg_ops_yard.png"
+		},
+		{
+			"id": "bg_tactical_alley",
+			"name": "Callejón Táctico",
+			"period": "night",
+			"periods": [
+				"dusk",
+				"night"
+			],
+			"tags": [
+				"tactical",
+				"alley",
+				"police"
+			],
+			"path": "res://assets/combat/anime/bg/bg_tactical_alley.png"
+		},
+		{
+			"id": "bg_loading_dock",
+			"name": "Muelle de Carga",
+			"period": "night",
+			"periods": [
+				"day",
+				"dusk",
+				"night"
+			],
+			"tags": [
+				"tactical",
+				"warehouse",
+				"industrial"
+			],
+			"path": "res://assets/combat/anime/bg/bg_loading_dock.png"
+		},
+		{
+			"id": "bg_underpass_ops",
+			"name": "Paso Inferior Ops",
+			"period": "night",
+			"periods": [
+				"dusk",
+				"night"
+			],
+			"tags": [
+				"tactical",
+				"street",
+				"industrial"
+			],
+			"path": "res://assets/combat/anime/bg/bg_underpass_ops.png"
 		},
 		{
 			"id": "bg_warehouse",
-			"name": "Almacén",
+			"name": "Almacén Interior",
 			"period": "night",
-			"periods": ["day", "dusk", "night"],
+			"periods": [
+				"dusk",
+				"night"
+			],
+			"tags": [
+				"warehouse",
+				"industrial"
+			],
 			"path": "res://assets/combat/anime/bg/bg_warehouse.png"
-		},
-		{
-			"id": "bg_rooftop",
-			"name": "Azotea",
-			"period": "dusk",
-			"periods": ["day", "dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_rooftop.png"
-		},
-		{
-			"id": "bg_subway",
-			"name": "Metro",
-			"period": "night",
-			"periods": ["day", "dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_subway.png"
-		},
-		{
-			"id": "bg_harbor",
-			"name": "Puerto",
-			"period": "night",
-			"periods": ["day", "dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_harbor.png"
-		},
-		{
-			"id": "bg_penthouse",
-			"name": "Ático",
-			"period": "night",
-			"periods": ["dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_penthouse.png"
-		},
-		{
-			"id": "bg_parking",
-			"name": "Parking",
-			"period": "night",
-			"periods": ["day", "dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_parking.png"
-		},
-		{
-			"id": "bg_construction",
-			"name": "Obras",
-			"period": "dusk",
-			"periods": ["day", "dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_construction.png"
-		},
-		{
-			"id": "bg_market",
-			"name": "Mercado Nocturno",
-			"period": "night",
-			"periods": ["dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_market.png"
-		},
-		{
-			"id": "bg_station",
-			"name": "Garaje Comisaría",
-			"period": "day",
-			"periods": ["day", "dusk"],
-			"path": "res://assets/combat/anime/bg/bg_station.png"
-		},
-		{
-			"id": "bg_neon_rain",
-			"name": "Neón Bajo Lluvia",
-			"period": "night",
-			"periods": ["dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_neon_rain.png"
-		},
-		{
-			"id": "bg_gas_station",
-			"name": "Gasolinera",
-			"period": "dusk",
-			"periods": ["day", "dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_gas_station.png"
-		},
-		{
-			"id": "bg_underpass",
-			"name": "Paso Inferior",
-			"period": "night",
-			"periods": ["day", "dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_underpass.png"
-		},
-		{
-			"id": "bg_trainyard",
-			"name": "Playas de Vías",
-			"period": "night",
-			"periods": ["dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_trainyard.png"
-		},
-		{
-			"id": "bg_lantern_market",
-			"name": "Barrio de Faroles",
-			"period": "night",
-			"periods": ["dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_lantern_market.png"
-		},
-		{
-			"id": "bg_pier",
-			"name": "Muelle",
-			"period": "night",
-			"periods": ["day", "dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_pier.png"
-		},
-		{
-			"id": "bg_courtyard",
-			"name": "Patio Interior",
-			"period": "night",
-			"periods": ["dusk", "night"],
-			"path": "res://assets/combat/anime/bg/bg_courtyard.png"
-		},
-		{
-			"id": "bg_plaza_day",
-			"name": "Plaza Municipal",
-			"period": "day",
-			"periods": ["day", "dusk"],
-			"path": "res://assets/combat/anime/bg/bg_plaza_day.png"
 		},
 		{
 			"id": "bg_alley_classic",
 			"name": "Callejón Oscuro",
 			"period": "night",
-			"periods": ["dusk", "night"],
+			"periods": [
+				"night"
+			],
+			"tags": [
+				"alley"
+			],
 			"path": "res://assets/combat/anime/bg/bg_alley_classic.png"
 		},
 		{
-			"id": "bg_alley_classic2",
-			"name": "Callejón Empapado",
+			"id": "bg_street_physics",
+			"name": "Calle Asfalto",
 			"period": "night",
-			"periods": ["night"],
-			"path": "res://assets/combat/anime/bg/bg_alley_classic2.png"
+			"periods": [
+				"dusk",
+				"night"
+			],
+			"tags": [
+				"street"
+			],
+			"path": "res://assets/combat/custom/map/arena_street_physics.png"
+		},
+		{
+			"id": "bg_underpass",
+			"name": "Paso Inferior",
+			"period": "night",
+			"periods": [
+				"dusk",
+				"night"
+			],
+			"tags": [
+				"street",
+				"industrial"
+			],
+			"path": "res://assets/combat/anime/bg/bg_underpass.png"
+		},
+		{
+			"id": "bg_parking",
+			"name": "Parking",
+			"period": "night",
+			"periods": [
+				"dusk",
+				"night"
+			],
+			"tags": [
+				"street",
+				"industrial"
+			],
+			"path": "res://assets/combat/anime/bg/bg_parking.png"
+		},
+		{
+			"id": "bg_gas_station",
+			"name": "Gasolinera",
+			"period": "dusk",
+			"periods": [
+				"dusk",
+				"night"
+			],
+			"tags": [
+				"street"
+			],
+			"path": "res://assets/combat/anime/bg/bg_gas_station.png"
+		},
+		{
+			"id": "bg_construction",
+			"name": "Obras",
+			"period": "dusk",
+			"periods": [
+				"dusk",
+				"night"
+			],
+			"tags": [
+				"industrial"
+			],
+			"path": "res://assets/combat/anime/bg/bg_construction.png"
+		},
+		{
+			"id": "bg_trainyard",
+			"name": "Playas de Vías",
+			"period": "night",
+			"periods": [
+				"night"
+			],
+			"tags": [
+				"industrial"
+			],
+			"path": "res://assets/combat/anime/bg/bg_trainyard.png"
+		},
+		{
+			"id": "bg_harbor",
+			"name": "Puerto",
+			"period": "night",
+			"periods": [
+				"dusk",
+				"night"
+			],
+			"tags": [
+				"industrial"
+			],
+			"path": "res://assets/combat/anime/bg/bg_harbor.png"
+		},
+		{
+			"id": "bg_station",
+			"name": "Garaje Comisaría",
+			"period": "day",
+			"periods": [
+				"day",
+				"dusk"
+			],
+			"tags": [
+				"police",
+				"day"
+			],
+			"path": "res://assets/combat/anime/bg/bg_station.png"
 		},
 		{
 			"id": "bg_comisaria_day",
 			"name": "Fachada Comisaría",
 			"period": "day",
-			"periods": ["day", "dusk"],
+			"periods": [
+				"day",
+				"dusk"
+			],
+			"tags": [
+				"police",
+				"day"
+			],
 			"path": "res://assets/combat/anime/bg/bg_comisaria_day.png"
 		},
 		{
 			"id": "bg_comisaria_yard",
 			"name": "Patio Comisaría",
 			"period": "day",
-			"periods": ["day", "dusk"],
+			"periods": [
+				"day",
+				"dusk"
+			],
+			"tags": [
+				"police",
+				"day"
+			],
 			"path": "res://assets/combat/anime/bg/bg_comisaria_yard.png"
+		},
+		{
+			"id": "bg_plaza_day",
+			"name": "Plaza Municipal",
+			"period": "day",
+			"periods": [
+				"day"
+			],
+			"tags": [
+				"day"
+			],
+			"path": "res://assets/combat/anime/bg/bg_plaza_day.png"
+		},
+		{
+			"id": "bg_courtyard",
+			"name": "Patio Interior",
+			"period": "day",
+			"periods": [
+				"day",
+				"dusk"
+			],
+			"tags": [
+				"day"
+			],
+			"path": "res://assets/combat/anime/bg/bg_courtyard.png"
 		}
 	],
 	"hero": {

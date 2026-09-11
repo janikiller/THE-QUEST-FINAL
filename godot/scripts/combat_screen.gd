@@ -1624,7 +1624,13 @@ func _load_bg() -> void:
 		if p != "" and p != _arena_path:
 			candidates.append(p)
 	candidates.append(PHYSICS_ARENA)
+	# Fallbacks al estilo táctico nocturno (mockup), no day/plaza/fantasy.
 	candidates.append_array([
+		"res://assets/combat/anime/bg/bg_zona_operativa.png",
+		"res://assets/combat/anime/bg/bg_ops_yard.png",
+		"res://assets/combat/anime/bg/bg_tactical_alley.png",
+		"res://assets/combat/anime/bg/bg_loading_dock.png",
+		"res://assets/combat/from_mockup/bg.jpg",
 		"res://assets/combat/bg/alley_night.jpg",
 		"res://assets/combat/bg/alley_night2.jpg",
 		"res://assets/combat/bg/combat_arena.jpg",
