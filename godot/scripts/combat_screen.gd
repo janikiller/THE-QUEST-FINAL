@@ -825,6 +825,22 @@ func _enemy_wait_fidget(wrap: Control) -> void:
 		wrap.set_meta("anim_locked", false)
 
 
+func _smooth01(t: float) -> float:
+	t = clampf(t, 0.0, 1.0)
+	return t * t * (3.0 - 2.0 * t)
+
+
+func _smooth_in_out(t: float) -> float:
+	## Más suave que cubic: evita el “tic” robótico entre fases.
+	t = clampf(t, 0.0, 1.0)
+	return t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+
+
+func _bezier2(a: Vector2, b: Vector2, c: Vector2, t: float) -> Vector2:
+	var u := 1.0 - t
+	return u * u * a + 2.0 * u * t * b + t * t * c
+
+
 func _idle_bob_player(delta: float = 0.016) -> void:
 	if _player_actor == null or not is_instance_valid(_player_actor):
 		return
@@ -834,25 +850,26 @@ func _idle_bob_player(delta: float = 0.016) -> void:
 		_track_player_contact_shadow()
 		return
 	var waiting := _is_waiting_for_card()
-	var sway_amp := 3.2 if waiting else 1.1
-	var breath_amp := 0.018 if waiting else 0.008
-	var rot_amp := 1.8 if waiting else 0.55
-	var phase := _bob_t * (0.85 if waiting else 0.62)
-	var sway := sin(phase) * sway_amp
+	# Fases desfasadas: el peso, el torso y la respiración no van a tempo robot.
+	var sway_amp := 2.4 if waiting else 0.85
+	var breath_amp := 0.014 if waiting else 0.006
+	var rot_amp := 1.25 if waiting else 0.4
+	var phase := _bob_t * (0.72 if waiting else 0.52)
+	var sway := sin(phase) * sway_amp + sin(phase * 0.37 + 1.1) * sway_amp * 0.22
 	var planted: Vector2 = player_sprite.get_meta("plant_pos", player_sprite.position)
-	var crouch := absf(sin(phase)) * (1.5 if waiting else 0.55)
-	var target := planted + Vector2(sway, crouch * 0.12)
-	player_sprite.position = player_sprite.position.lerp(target, 1.0 - exp(-delta * 5.5))
-	var breath_x := 1.0 + sin(_bob_t * 1.35) * breath_amp
-	var breath_y := 1.0 - absf(sin(_bob_t * 1.35)) * (breath_amp * 0.75)
-	player_sprite.scale = player_sprite.scale.lerp(Vector2(breath_x, maxf(0.96, breath_y)), 1.0 - exp(-delta * 5.0))
-	var rot := sin(_bob_t * 0.72) * rot_amp
-	player_sprite.rotation_degrees = lerpf(player_sprite.rotation_degrees, rot, 1.0 - exp(-delta * 4.2))
+	var crouch := absf(sin(phase * 0.92 + 0.4)) * (1.1 if waiting else 0.4)
+	var target := planted + Vector2(sway, crouch * 0.1)
+	player_sprite.position = player_sprite.position.lerp(target, 1.0 - exp(-delta * 3.6))
+	var breath_x := 1.0 + sin(_bob_t * 1.05 + 0.6) * breath_amp
+	var breath_y := 1.0 - absf(sin(_bob_t * 1.05 + 0.6)) * (breath_amp * 0.7)
+	player_sprite.scale = player_sprite.scale.lerp(Vector2(breath_x, maxf(0.97, breath_y)), 1.0 - exp(-delta * 3.2))
+	var rot := sin(_bob_t * 0.58 + 0.25) * rot_amp + sin(_bob_t * 1.4) * rot_amp * 0.15
+	player_sprite.rotation_degrees = lerpf(player_sprite.rotation_degrees, rot, 1.0 - exp(-delta * 2.8))
 	if waiting:
-		var actor_sway := sin(_bob_t * 0.48) * 4.0
-		_player_actor.position = _player_actor.position.lerp(_player_base_pos + Vector2(actor_sway, 0.0), 1.0 - exp(-delta * 3.8))
+		var actor_sway := sin(_bob_t * 0.4 + 0.2) * 3.0
+		_player_actor.position = _player_actor.position.lerp(_player_base_pos + Vector2(actor_sway, 0.0), 1.0 - exp(-delta * 2.6))
 	else:
-		_player_actor.position = _player_actor.position.lerp(_player_base_pos, 1.0 - exp(-delta * 5.0))
+		_player_actor.position = _player_actor.position.lerp(_player_base_pos, 1.0 - exp(-delta * 3.4))
 	_track_player_contact_shadow()
 
 
@@ -875,19 +892,19 @@ func _idle_bob_enemies(delta: float = 0.016) -> void:
 			_track_enemy_contact_shadow(wrap, spr, shadow, base)
 			i += 1
 			continue
-		var speed := (0.9 if waiting else 0.65) + float(i % 3) * 0.12
-		var phase := _bob_t * speed + float(i) * 0.95
-		var sway_amp := (3.4 if waiting else 0.7) * (1.2 if is_boss else 1.0)
-		var sway := cos(phase) * sway_amp
-		var lean := (-3.0 if waiting else 0.0)
-		var crouch := absf(sin(phase * 1.1)) * (1.2 if waiting else 0.4)
-		var target := base + Vector2(sway + lean, crouch * 0.1)
-		spr.position = spr.position.lerp(target, 1.0 - exp(-delta * (5.8 if waiting else 5.0)))
-		var breath := 1.0 + sin(phase * 1.1) * (0.016 if waiting else 0.006)
-		var breath_y := 1.0 - absf(sin(phase * 1.1)) * (0.012 if waiting else 0.004)
-		spr.scale = spr.scale.lerp(Vector2(breath, maxf(0.96, breath_y)), 1.0 - exp(-delta * 4.5))
-		var rot := sin(phase * 0.8) * (2.2 if waiting else 0.45) * -1.0
-		spr.rotation_degrees = lerpf(spr.rotation_degrees, rot, 1.0 - exp(-delta * 4.0))
+		var speed := (0.78 if waiting else 0.55) + float(i % 3) * 0.09
+		var phase := _bob_t * speed + float(i) * 1.15
+		var sway_amp := (2.6 if waiting else 0.55) * (1.15 if is_boss else 1.0)
+		var sway := cos(phase) * sway_amp + sin(phase * 0.45 + float(i)) * sway_amp * 0.2
+		var lean := (-2.2 if waiting else 0.0)
+		var crouch := absf(sin(phase * 0.95 + 0.3)) * (0.95 if waiting else 0.32)
+		var target := base + Vector2(sway + lean, crouch * 0.08)
+		spr.position = spr.position.lerp(target, 1.0 - exp(-delta * (3.8 if waiting else 3.2)))
+		var breath := 1.0 + sin(phase * 0.95 + 0.5) * (0.012 if waiting else 0.005)
+		var breath_y := 1.0 - absf(sin(phase * 0.95 + 0.5)) * (0.009 if waiting else 0.0035)
+		spr.scale = spr.scale.lerp(Vector2(breath, maxf(0.97, breath_y)), 1.0 - exp(-delta * 3.0))
+		var rot := (sin(phase * 0.65) * (1.6 if waiting else 0.35) + sin(phase * 1.3) * 0.25) * -1.0
+		spr.rotation_degrees = lerpf(spr.rotation_degrees, rot, 1.0 - exp(-delta * 2.6))
 		_track_enemy_contact_shadow(wrap, spr, shadow, base)
 		i += 1
 
@@ -3142,21 +3159,23 @@ func _hero_guard_pulse() -> void:
 	AudioDirector.play_sfx("block", randf_range(0.95, 1.08), -1.0)
 	var base := _player_base_pos
 	player_sprite.set_meta("anim_locked", true)
-	# Carga de peso: baja el centro, planta y después cede.
+	# Carga fluida: el torso llega un poco después que los pies.
 	var tw0 := create_tween()
 	tw0.set_parallel(true)
-	tw0.tween_property(player_sprite, "scale", Vector2(1.06, 0.92), 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw0.tween_property(_player_actor, "position", base + Vector2(-8, 4), 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw0.tween_property(_player_actor, "position", base + Vector2(-10, 5), 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw0.tween_property(player_sprite, "scale", Vector2(1.05, 0.93), 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw0.tween_property(player_sprite, "rotation_degrees", -3.0, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw0.finished
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(_player_actor, "position", base + Vector2(-26, 2), 0.32).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(player_sprite, "modulate", Color(0.55, 0.88, 1.0), 0.24).set_trans(Tween.TRANS_SINE)
-	tw.tween_property(player_sprite, "scale", Vector2(0.97, 1.04), 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_player_actor, "position", base + Vector2(-24, 2), 0.36).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	tw.tween_property(player_sprite, "modulate", Color(0.55, 0.88, 1.0), 0.3).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(player_sprite, "scale", Vector2(0.98, 1.03), 0.38).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(player_sprite, "rotation_degrees", -1.0, 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw.finished
 	_spawn_fx_at(player_sprite, "impact", Vector2(70, 110), 0.35, Color(0.45, 0.85, 1.0))
 	_spawn_fx_at(player_sprite, "impact", Vector2(50, 140), 0.4, Color(0.7, 0.95, 1.0))
-	_screen_shake(3.0, 0.16)
+	_screen_shake(2.5, 0.14)
 	await _screen_pulse(Color(0.35, 0.75, 1.0, 0.28))
 	var shield := ColorRect.new()
 	shield.color = Color(0.35, 0.75, 1.0, 0.35)
@@ -3168,59 +3187,66 @@ func _hero_guard_pulse() -> void:
 	shield.global_position = player_sprite.global_position + Vector2(60, 80)
 	var tws := create_tween()
 	tws.set_parallel(true)
-	tws.tween_property(shield, "scale", Vector2(4.2, 5.0), 0.38).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tws.tween_property(shield, "modulate:a", 0.0, 0.38).set_trans(Tween.TRANS_SINE)
+	tws.tween_property(shield, "scale", Vector2(4.2, 5.0), 0.42).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	tws.tween_property(shield, "modulate:a", 0.0, 0.42).set_trans(Tween.TRANS_SINE)
 	await tws.finished
 	if is_instance_valid(shield):
 		shield.queue_free()
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
-	tw2.tween_property(_player_actor, "position", base, 0.38).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	tw2.tween_property(player_sprite, "modulate", Color.WHITE, 0.32).set_trans(Tween.TRANS_SINE)
-	tw2.tween_property(player_sprite, "scale", Vector2.ONE, 0.38).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw2.tween_property(_player_actor, "position", base, 0.46).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw2.tween_property(player_sprite, "modulate", Color.WHITE, 0.4).set_trans(Tween.TRANS_SINE)
+	tw2.tween_property(player_sprite, "scale", Vector2.ONE, 0.48).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw2.tween_property(player_sprite, "rotation_degrees", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw2.finished
 	player_sprite.set_meta("anim_locked", false)
 
 
 func _hero_attack_sequence(def: Dictionary) -> void:
 	var melee := _card_is_melee(def)
-	_apply_hero_pose("punch" if melee else "shoot", 0.85)
+	_apply_hero_pose("punch" if melee else "shoot", 0.9)
 	AudioDirector.play_sfx("whoosh", randf_range(0.95, 1.15), -1.0)
 	if _player_actor == null:
 		await get_tree().create_timer(0.12).timeout
 		return
 	player_sprite.set_meta("anim_locked", true)
 	var base := _player_base_pos
-	# 1) Anticipación: carga de peso atrás + squash.
+	var from := _player_actor.position
+	var rot0 := player_sprite.rotation_degrees
+	var sc0 := player_sprite.scale
+	# 1) Anticipación suave (carga, no snap).
+	var coil := base + Vector2(-28, 5)
 	var tw0 := create_tween()
 	tw0.set_parallel(true)
-	tw0.tween_property(_player_actor, "position", base + Vector2(-34, 6), 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw0.tween_property(player_sprite, "rotation_degrees", -12.0, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw0.tween_property(player_sprite, "scale", Vector2(1.14, 0.84), 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw0.tween_property(_player_actor, "position", coil, 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw0.tween_property(player_sprite, "rotation_degrees", rot0 - 8.0, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw0.tween_property(player_sprite, "scale", Vector2(1.08, 0.9), 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw0.finished
-	# 2) Despegue: suelta el peso y arranca el arco.
-	var tw_push := create_tween()
-	tw_push.set_parallel(true)
-	tw_push.tween_property(_player_actor, "position", base + Vector2(18, -10), 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw_push.tween_property(player_sprite, "scale", Vector2(0.94, 1.08), 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw_push.tween_property(player_sprite, "rotation_degrees", -2.0, 0.08).set_trans(Tween.TRANS_QUAD)
-	await tw_push.finished
-	# 3) Embestida con arco (inercia): el cuerpo viaja y la sombra se diluye al elevarse.
-	var tw := create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(_player_actor, "position", base + Vector2(118, -22), 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tw.tween_property(player_sprite, "rotation_degrees", 10.0, 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tw.tween_property(player_sprite, "scale", Vector2(0.88, 1.16), 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	await tw.finished
-	# 4) Plantado: cae, aplasta y ancla la sombra al suelo.
+	# 2) Un solo arco continuo (bezier) + secondary motion desfasado.
+	var apex := base + Vector2(58, -20)
+	var land := base + Vector2(108, 3)
+	var dur := 0.34
+	var tw_arc := create_tween()
+	tw_arc.set_parallel(true)
+	tw_arc.tween_method(func(t: float) -> void:
+		if not is_instance_valid(_player_actor):
+			return
+		var s := _smooth_in_out(t)
+		_player_actor.position = _bezier2(coil, apex, land, s)
+	, 0.0, 1.0, dur)
+	# Rotación y scale van un poco detrás (overlapping).
+	tw_arc.tween_property(player_sprite, "rotation_degrees", 7.0, dur * 0.72).set_delay(dur * 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw_arc.tween_property(player_sprite, "scale", Vector2(0.93, 1.1), dur * 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await tw_arc.finished
+	# 3) Plantado blando (sin BACK agresivo).
 	var tw_plant := create_tween()
 	tw_plant.set_parallel(true)
-	tw_plant.tween_property(_player_actor, "position", base + Vector2(112, 5), 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw_plant.tween_property(player_sprite, "scale", Vector2(1.12, 0.86), 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw_plant.tween_property(player_sprite, "rotation_degrees", 4.0, 0.09).set_trans(Tween.TRANS_QUAD)
+	tw_plant.tween_property(_player_actor, "position", land + Vector2(2, 2), 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw_plant.tween_property(player_sprite, "scale", Vector2(1.08, 0.9), 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw_plant.tween_property(player_sprite, "rotation_degrees", 2.5, 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw_plant.finished
 	var foot := player_sprite.global_position + Vector2(player_sprite.size.x * 0.5, player_sprite.size.y - 4.0)
-	_spawn_dust_puff(foot, 1.35)
+	_spawn_dust_puff(foot, 1.2)
 	AudioDirector.play_sfx("foot_plant", randf_range(0.95, 1.2), 0.0)
 	var muzzle_pos := player_sprite.global_position + Vector2(player_sprite.size.x * 0.72, player_sprite.size.y * 0.42)
 	if melee:
@@ -3231,33 +3257,33 @@ func _hero_attack_sequence(def: Dictionary) -> void:
 		_spawn_fx_world(muzzle_pos, "muzzle", 0.18, Vector2(1.65, 1.65))
 		await get_tree().create_timer(0.03).timeout
 		_spawn_fx_world(muzzle_pos + Vector2(10, -5), "muzzle", 0.12, Vector2(1.1, 1.1))
-	_screen_pulse(Color(1.0, 0.55, 0.15, 0.32))
-	_screen_shake(14.0 if melee else 16.0, 0.16)
+	_screen_pulse(Color(1.0, 0.55, 0.15, 0.28))
+	_screen_shake(11.0 if melee else 13.0, 0.14)
 	var enemy_node := _selected_enemy_sprite()
 	var hit_pos := get_viewport_rect().size * Vector2(0.72, 0.48)
 	if enemy_node and is_instance_valid(enemy_node):
 		hit_pos = enemy_node.global_position + Vector2(enemy_node.size.x * 0.45, enemy_node.size.y * 0.48)
 	if not melee:
 		await _fly_tracer(muzzle_pos, hit_pos)
-	await _hitstop(0.055 if melee else 0.045)
+	await _hitstop(0.045 if melee else 0.035)
 	_spawn_fx_world(hit_pos, "impact", 0.28, Vector2(1.85, 1.85))
 	_spawn_blood_burst(hit_pos, 1.75)
 	AudioDirector.play_sfx("hit_impact", randf_range(0.85, 1.05), 1.0)
 	if enemy_node and is_instance_valid(enemy_node):
-		_spawn_dust_puff(enemy_node.global_position + Vector2(enemy_node.size.x * 0.5, enemy_node.size.y - 2.0), 1.45)
+		_spawn_dust_puff(enemy_node.global_position + Vector2(enemy_node.size.x * 0.5, enemy_node.size.y - 2.0), 1.35)
 		await _hit_actor_heavy(enemy_node, maxi(1, int(def.get("damage", 8))), true)
-	# 5) Recoil con inercia + retorno asentado.
+	# 4) Recoil + settle con follow-through.
 	var twr := create_tween()
 	twr.set_parallel(true)
-	twr.tween_property(_player_actor, "position", base + Vector2(36, 3), 0.11).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	twr.tween_property(player_sprite, "rotation_degrees", -6.0, 0.11).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	twr.tween_property(player_sprite, "scale", Vector2(1.05, 0.95), 0.11).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	twr.tween_property(_player_actor, "position", base + Vector2(28, 2), 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	twr.tween_property(player_sprite, "rotation_degrees", -4.0, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	twr.tween_property(player_sprite, "scale", Vector2(1.03, 0.97), 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await twr.finished
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
-	tw2.tween_property(_player_actor, "position", base, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	tw2.tween_property(player_sprite, "rotation_degrees", 0.0, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw2.tween_property(player_sprite, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(_player_actor, "position", base, 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw2.tween_property(player_sprite, "rotation_degrees", 0.0, 0.36).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(player_sprite, "scale", Vector2.ONE, 0.34).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw2.finished
 	player_sprite.set_meta("anim_locked", false)
 
@@ -3274,7 +3300,7 @@ func _play_enemy_attack_sequence() -> void:
 		if int(e.get("intent", 0)) != CombatState.Intent.ATTACK:
 			continue
 		await _enemy_lunge_attack(i)
-	await get_tree().create_timer(0.06).timeout
+	await get_tree().create_timer(0.08).timeout
 
 
 func _enemy_lunge_attack(index: int) -> void:
@@ -3295,41 +3321,42 @@ func _enemy_lunge_attack(index: int) -> void:
 		var at := _load_combat_tex(attack_path)
 		if at:
 			spr.texture = at
-	# Anticipación: carga atrás, planta.
-	var wind := Vector2(28, 5) if is_boss else Vector2(18, 4)
-	var leap := Vector2(-132, -28) if is_boss else Vector2(-92, -18)
-	var plant := Vector2(-148, 4) if is_boss else Vector2(-102, 3)
-	var wind_t := 0.16 if is_boss else 0.12
-	var leap_t := 0.15 if is_boss else 0.12
-	var plant_t := 0.09 if is_boss else 0.07
-	var ret_t := 0.24 if is_boss else 0.2
+	var wind := Vector2(22, 4) if is_boss else Vector2(14, 3)
+	var apex := Vector2(-70, -24) if is_boss else Vector2(-48, -16)
+	var plant := Vector2(-138, 3) if is_boss else Vector2(-96, 2)
+	var wind_t := 0.2 if is_boss else 0.16
+	var leap_t := 0.3 if is_boss else 0.26
+	var plant_t := 0.14 if is_boss else 0.12
+	var ret_t := 0.34 if is_boss else 0.28
+	# Wind-up suave.
 	var tw0 := create_tween()
 	tw0.set_parallel(true)
-	tw0.tween_property(spr, "position", base + wind, wind_t).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw0.tween_property(spr, "rotation_degrees", 10.0 if is_boss else 7.0, wind_t).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw0.tween_property(spr, "scale", Vector2(1.14, 0.84) if is_boss else Vector2(1.1, 0.88), wind_t).set_trans(Tween.TRANS_CUBIC)
+	tw0.tween_property(spr, "position", base + wind, wind_t).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw0.tween_property(spr, "rotation_degrees", 7.0 if is_boss else 5.0, wind_t + 0.04).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw0.tween_property(spr, "scale", Vector2(1.1, 0.9) if is_boss else Vector2(1.07, 0.92), wind_t + 0.02).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw0.finished
-	if is_boss:
-		var twp := create_tween()
-		twp.tween_property(spr, "position", base + wind + Vector2(6, 1), 0.06).set_trans(Tween.TRANS_SINE)
-		await twp.finished
-	# Arco de embestida (pierde contacto).
+	var coil := spr.position
+	# Arco continuo + overlapping.
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(spr, "position", base + leap, leap_t).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tw.tween_property(spr, "rotation_degrees", -14.0 if is_boss else -9.0, leap_t).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tw.tween_property(spr, "scale", Vector2(0.86, 1.16) if is_boss else Vector2(0.9, 1.12), leap_t).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_method(func(t: float) -> void:
+		if not is_instance_valid(spr):
+			return
+		var s := _smooth_in_out(t)
+		spr.position = _bezier2(coil, base + apex, base + plant, s)
+	, 0.0, 1.0, leap_t)
+	tw.tween_property(spr, "rotation_degrees", -10.0 if is_boss else -6.5, leap_t * 0.75).set_delay(leap_t * 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(spr, "scale", Vector2(0.9, 1.1) if is_boss else Vector2(0.93, 1.08), leap_t * 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tw.finished
-	# Plantado al llegar.
 	var tw_land := create_tween()
 	tw_land.set_parallel(true)
-	tw_land.tween_property(spr, "position", base + plant, plant_t).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw_land.tween_property(spr, "scale", Vector2(1.12, 0.86) if is_boss else Vector2(1.08, 0.9), plant_t).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw_land.tween_property(spr, "rotation_degrees", -4.0 if is_boss else -2.0, plant_t).set_trans(Tween.TRANS_QUAD)
+	tw_land.tween_property(spr, "position", base + plant + Vector2(-2, 1), plant_t).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw_land.tween_property(spr, "scale", Vector2(1.08, 0.9) if is_boss else Vector2(1.05, 0.93), plant_t + 0.02).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw_land.tween_property(spr, "rotation_degrees", -2.5 if is_boss else -1.5, plant_t + 0.04).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw_land.finished
-	_spawn_dust_puff(spr.global_position + Vector2(spr.size.x * 0.45, spr.size.y - 2.0), 1.2 if is_boss else 1.0)
+	_spawn_dust_puff(spr.global_position + Vector2(spr.size.x * 0.45, spr.size.y - 2.0), 1.1 if is_boss else 0.9)
 	if is_boss:
-		_screen_pulse(Color(1.0, 0.4, 0.15, 0.34))
+		_screen_pulse(Color(1.0, 0.4, 0.15, 0.3))
 	var muzzle := spr.global_position + Vector2(24, spr.size.y * 0.48)
 	AudioDirector.play_sfx("gunshot", randf_range(0.88, 1.05), 0.5 if not is_boss else 2.0)
 	_spawn_fx_world(muzzle, "muzzle", 0.18 if is_boss else 0.15, Vector2(1.55, 1.55) if is_boss else Vector2(1.25, 1.25))
@@ -3339,9 +3366,9 @@ func _enemy_lunge_attack(index: int) -> void:
 		_spawn_fx_world(muzzle + Vector2(-14, -4), "muzzle", 0.1, Vector2(0.75, 0.75))
 	var target := player_sprite.global_position + Vector2(90, player_sprite.size.y * 0.55)
 	await _fly_tracer(muzzle, target)
-	await _hitstop(0.06 if is_boss else 0.045)
+	await _hitstop(0.05 if is_boss else 0.035)
 	AudioDirector.play_sfx("hit_impact", randf_range(0.85, 1.05), 1.5)
-	_screen_shake(18.0 if is_boss else 12.0, 0.18 if is_boss else 0.14)
+	_screen_shake(14.0 if is_boss else 10.0, 0.16 if is_boss else 0.12)
 	_apply_hero_pose("hurt", 0.35)
 	_spawn_fx_world(target, "impact", 0.28 if is_boss else 0.24, Vector2(1.7, 1.7) if is_boss else Vector2(1.4, 1.4))
 	_spawn_blood_burst(target, 1.7 if is_boss else 1.3)
@@ -3354,9 +3381,9 @@ func _enemy_lunge_attack(index: int) -> void:
 		await _hit_actor_heavy(player_sprite, preview, false)
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
-	tw2.tween_property(spr, "position", base, ret_t).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	tw2.tween_property(spr, "rotation_degrees", 0.0, ret_t).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw2.tween_property(spr, "scale", Vector2.ONE, ret_t).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(spr, "position", base, ret_t).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw2.tween_property(spr, "rotation_degrees", 0.0, ret_t + 0.04).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(spr, "scale", Vector2.ONE, ret_t + 0.02).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw2.finished
 	if idle_tex:
 		spr.texture = idle_tex
@@ -3371,35 +3398,40 @@ func _hit_actor_heavy(node: CanvasItem, dmg: int, knock_right: bool) -> void:
 		await get_tree().process_frame
 		return
 	AudioDirector.play_sfx("hit_impact", randf_range(0.88, 1.08), 0.5)
-	_screen_shake(8.0 + minf(10.0, float(dmg) * 0.45), 0.14)
+	_screen_shake(6.0 + minf(8.0, float(dmg) * 0.4), 0.12)
 	var base: Vector2 = node.position
 	var dir := 1.0 if knock_right else -1.0
 	var base_scale: Vector2 = node.scale
-	# Impacto: arco de despegue + plantado (no teletransporte seco).
+	var peak := base + Vector2(34.0 * dir, -16.0)
+	var settle := base + Vector2(18.0 * dir, 3.0)
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(node, "modulate", Color(1.0, 0.22, 0.22), 0.04).set_trans(Tween.TRANS_QUAD)
-	tw.tween_property(node, "rotation_degrees", 14.0 * dir, 0.11).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(node, "position", base + Vector2(42 * dir, -22), 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(node, "scale", base_scale * Vector2(1.18, 0.78), 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(node, "modulate", Color(1.0, 0.28, 0.28), 0.05).set_trans(Tween.TRANS_SINE)
+	tw.tween_method(func(t: float) -> void:
+		if not is_instance_valid(node):
+			return
+		node.position = _bezier2(base, peak, settle, _smooth_in_out(t))
+	, 0.0, 1.0, 0.22)
+	tw.tween_property(node, "rotation_degrees", 9.0 * dir, 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(node, "scale", base_scale * Vector2(1.1, 0.88), 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw.finished
 	if not is_instance_valid(node):
 		return
 	_spawn_dmg_number(node, dmg)
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
-	tw2.tween_property(node, "position", base + Vector2(28 * dir, 5), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw2.tween_property(node, "rotation_degrees", -5.0 * dir, 0.1).set_trans(Tween.TRANS_QUAD)
-	tw2.tween_property(node, "scale", base_scale * Vector2(0.92, 1.1), 0.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(node, "position", settle + Vector2(-4.0 * dir, 1.0), 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(node, "rotation_degrees", -3.0 * dir, 0.14).set_trans(Tween.TRANS_SINE)
+	tw2.tween_property(node, "scale", base_scale * Vector2(0.96, 1.05), 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw2.finished
 	if not is_instance_valid(node):
 		return
 	var tw3 := create_tween()
 	tw3.set_parallel(true)
-	tw3.tween_property(node, "position", base, 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw3.tween_property(node, "rotation_degrees", 0.0, 0.18).set_trans(Tween.TRANS_CUBIC)
-	tw3.tween_property(node, "scale", base_scale, 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw3.tween_property(node, "modulate", Color.WHITE, 0.16).set_trans(Tween.TRANS_QUAD)
+	tw3.tween_property(node, "position", base, 0.26).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw3.tween_property(node, "rotation_degrees", 0.0, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw3.tween_property(node, "scale", base_scale, 0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw3.tween_property(node, "modulate", Color.WHITE, 0.24).set_trans(Tween.TRANS_SINE)
 	await tw3.finished
 
 
