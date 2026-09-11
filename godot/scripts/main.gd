@@ -1187,7 +1187,7 @@ func _combat_shot() -> void:
 	# Asegurar cartas de ataque y defensa en mano
 	if CombatState.is_active() and CombatState.hand.size() >= 2:
 		CombatState.hand[0] = "punetazo"
-		CombatState.hand[1] = "shield"
+		CombatState.hand[1] = "bloqueo"
 	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 	if combat:
 		combat._refresh()
@@ -1195,23 +1195,37 @@ func _combat_shot() -> void:
 	combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 	if combat and CombatState.is_active():
 		# Defensa primero -> barra de escudo
-		if CombatState.can_play_card("shield"):
+		if CombatState.can_play_card("bloqueo"):
 			combat._busy = true
 			await combat._hero_guard_pulse()
-			CombatState.play_card("shield")
+			CombatState.play_card("bloqueo")
 			combat._busy = false
 			combat._refresh()
 			await get_tree().create_timer(0.35).timeout
 			await _save_shot("combat_escudo")
-		# Ataque con lunge
+		# Ataque: capturar arco (sombra diluida) y plantado (sombra aplastada).
 		if CombatState.can_play_card("punetazo"):
 			var def: Dictionary = CardDB.get_card("punetazo")
 			combat._busy = true
 			combat._apply_hero_pose("shoot", 0.9)
-			if combat._player_actor:
-				combat._player_actor.position = combat._player_base_pos + Vector2(58, 0)
-			await get_tree().process_frame
-			await _save_shot("combat_ataque_lunge")
+			if combat._player_actor and combat.player_sprite:
+				combat.player_sprite.set_meta("anim_locked", true)
+				# Arco: cuerpo elevado → sombra más larga y suave.
+				combat._player_actor.position = combat._player_base_pos + Vector2(96, -22)
+				combat.player_sprite.scale = Vector2(0.9, 1.14)
+				combat.player_sprite.rotation_degrees = 8.0
+				combat._track_player_contact_shadow()
+				await get_tree().process_frame
+				await get_tree().process_frame
+				await _save_shot("combat_ataque_arco")
+				# Plantado: peso al suelo → sombra ancha y densa.
+				combat._player_actor.position = combat._player_base_pos + Vector2(112, 6)
+				combat.player_sprite.scale = Vector2(1.14, 0.84)
+				combat.player_sprite.rotation_degrees = 3.0
+				combat._track_player_contact_shadow()
+				await get_tree().process_frame
+				await get_tree().process_frame
+				await _save_shot("combat_ataque_lunge")
 			# Forzar kill del seleccionado para demo de caída
 			var sel := int(CombatState.get_snapshot().get("selected_enemy", 0))
 			if sel >= 0 and sel < CombatState.enemies.size():

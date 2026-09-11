@@ -525,14 +525,14 @@ func _bind_contact_shadow(shadow: TextureRect, actor: Control, width: float, gro
 		gy = actor.custom_minimum_size.y if actor.custom_minimum_size.y > 1.0 else GROUND_Y
 	shadow.set_meta("base_w", width)
 	shadow.set_meta("base_h", h)
-	shadow.set_meta("base_alpha", 0.82)
+	shadow.set_meta("base_alpha", 0.9)
 	shadow.set_meta("ground_y", gy)
 	shadow.set_meta("slot_w", aw)
 	shadow.size = Vector2(width + 40.0, h)
 	shadow.position = Vector2((aw - width - 40.0) * 0.5, gy - h + 10.0)
 	shadow.pivot_offset = Vector2((width + 40.0) * 0.5, h * 0.66)
 	shadow.scale = Vector2.ONE
-	shadow.modulate = Color(0.02, 0.03, 0.05, 0.82)
+	shadow.modulate = Color(0.015, 0.02, 0.04, 0.9)
 
 
 func _layout_ground_shadow(shadow: TextureRect, actor: Control, width: float) -> void:
@@ -546,15 +546,16 @@ func _sync_contact_shadow(shadow: TextureRect, _body: CanvasItem = null, lift_px
 		return
 	var base_w := float(shadow.get_meta("base_w", 156.0))
 	var base_h := float(shadow.get_meta("base_h", 36.0))
-	var base_a := float(shadow.get_meta("base_alpha", 0.82))
+	var base_a := float(shadow.get_meta("base_alpha", 0.9))
 	var gy := float(shadow.get_meta("ground_y", GROUND_Y))
 	var lift := clampf(lift_px, 0.0, 110.0)
 	var lift_n := lift / 110.0
-	var plant_n := clampf(plant_px / 18.0, 0.0, 1.0)
-	var light_bias := -12.0 # luz cálida desde la derecha (mockup)
-	var squash_x := 1.0 + lean_x * 0.0035 + lift_n * 0.42 + plant_n * 0.32
-	var squash_y := maxf(0.36, 1.0 - lift_n * 0.62) * maxf(0.55, 1.0 - plant_n * 0.38)
-	var alpha := base_a * (1.0 - lift_n * 0.62) + plant_n * 0.14
+	var plant_n := clampf(plant_px / 14.0, 0.0, 1.0)
+	var light_bias := -14.0 # luz cálida desde la derecha (mockup)
+	# Más contraste: al elevarse se diluye/alarga; al plantar se aplasta y oscurece.
+	var squash_x := 1.0 + lean_x * 0.0045 + lift_n * 0.55 + plant_n * 0.42
+	var squash_y := maxf(0.28, 1.0 - lift_n * 0.72) * maxf(0.48, 1.0 - plant_n * 0.45)
+	var alpha := base_a * (1.0 - lift_n * 0.72) + plant_n * 0.18
 	var parent_aw := float(shadow.get_meta("slot_w", ACTOR_W))
 	if shadow.get_parent() is Control:
 		var pctl := shadow.get_parent() as Control
@@ -566,10 +567,10 @@ func _sync_contact_shadow(shadow: TextureRect, _body: CanvasItem = null, lift_px
 	shadow.pivot_offset = Vector2((base_w + 40.0) * 0.5, base_h * 0.66)
 	shadow.scale = Vector2(squash_x, squash_y)
 	shadow.position = Vector2(
-		(parent_aw - base_w - 40.0) * 0.5 + lean_x * 0.58 + light_bias * (1.0 - lift_n * 0.4),
-		gy - base_h + 10.0 + lift * 0.06 + plant_px * 0.12
+		(parent_aw - base_w - 40.0) * 0.5 + lean_x * 0.62 + light_bias * (1.0 - lift_n * 0.45),
+		gy - base_h + 10.0 + lift * 0.05 + plant_px * 0.15
 	)
-	shadow.modulate = Color(0.02, 0.03, 0.05, clampf(alpha, 0.14, 0.94))
+	shadow.modulate = Color(0.015, 0.02, 0.04, clampf(alpha, 0.1, 0.96))
 
 
 func _track_player_contact_shadow() -> void:
