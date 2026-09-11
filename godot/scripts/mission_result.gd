@@ -39,7 +39,11 @@ func _refresh() -> void:
 	if ok:
 		verdict.text = "MISIÓN EXITOSA"
 		verdict.add_theme_color_override("font_color", Color(0.35, 0.9, 0.5))
-		verdict_sub.text = str(m.get("outcome_report", "Objetivo cumplido."))
+		var coins_earned := int(m.get("coins_earned", 0))
+		if coins_earned > 0:
+			verdict_sub.text = "+%d monedas · %s" % [coins_earned, str(m.get("outcome_report", "Objetivo cumplido."))]
+		else:
+			verdict_sub.text = str(m.get("outcome_report", "Objetivo cumplido."))
 	else:
 		verdict.text = "MISIÓN FALLIDA"
 		verdict.add_theme_color_override("font_color", Color(1.0, 0.35, 0.38))
@@ -181,6 +185,30 @@ func _summary_bbcode(m: Dictionary, ok: bool) -> String:
 		lines.append("[color=#ff5a5a]✗ Sospechoso localizado[/color]")
 		lines.append("[color=#5be07a]✓ Unidades sin bajas[/color]")
 		lines.append("[color=#ffcc66]~ Evidencia parcial[/color]")
+	lines.append("")
+	lines.append("[b][color=#ffd27a]══ RECOMPENSAS ══[/color][/b]")
+	lines.append("[color=#f0c45a]Kick-Ass Nv.%d — %d/%d XP  ·  +%d PV de nivel[/color]" % [
+		GameState.hero_level, GameState.hero_xp, GameState.xp_to_next_level(), GameState.level_hp_bonus()
+	])
+	if CombatState.combat_xp_gained > 0:
+		lines.append("[color=#9ad0ff]+%d XP este combate (%d bajas)[/color]" % [
+			CombatState.combat_xp_gained, CombatState.combat_kills
+		])
+	var coins_earned := int(m.get("coins_earned", 0))
+	if ok and coins_earned > 0:
+		lines.append("[color=#ffd27a]+%d monedas  ·  total %d  →  Mercado (K)[/color]" % [
+			coins_earned, GameState.credits
+		])
+	elif ok:
+		lines.append("[color=#ffd27a]Monedas: %d  →  gástalas en el Mercado (K)[/color]" % GameState.credits)
+	if ok:
+		lines.append("[color=#c9b6ff]Prestigio ★%d[/color]" % GameState.prestige)
+		lines.append("[color=#9ad0ff]%s[/color]" % GameState.boss_night_label())
+		lines.append("[color=#b8f0c8]%s[/color]" % GameState.deck_power_label("alpha"))
+	if GameState.pending_level_packs > 0:
+		lines.append("[color=#ffd27a]¡Sobre de nivel pendiente! Elige cartas al cerrar.[/color]")
+	if ok and bool(m.get("is_boss", false)):
+		lines.append("[color=#ff8ad4]★ BOSS CAÍDO — legendaria al mazo[/color]")
 	lines.append("")
 	lines.append(str(m.get("outcome_report", "")))
 	return "\n".join(lines)
