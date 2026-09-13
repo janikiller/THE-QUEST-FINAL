@@ -6,6 +6,7 @@
   "description": "THE QUEST FINAL — RPG policial narrativo con inventario, 5 habilidades e historia ramificada",
   "scripts": {
     "start": "python3 -m http.server 8080",
-    "preview": "python3 -m http.server 8080"
+    "preview": "python3 -m http.server 8080",
+    "survival": "python3 -m http.server 8080 --directory ."
   }
 }
