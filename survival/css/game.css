@@ -291,6 +291,19 @@ body {
   color: var(--sand);
 }
 
+.inv-slot.inv-equip {
+  border-top: 2px solid rgba(125, 206, 160, 0.45);
+}
+
+.inv-slot.inv-gear strong {
+  color: #c8b07a;
+}
+
+.inv-slot.inv-cap {
+  min-width: 4.2rem;
+  opacity: 0.9;
+}
+
 .toast {
   position: absolute;
   top: 4.5rem;

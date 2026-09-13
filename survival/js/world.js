@@ -39,15 +39,90 @@ export const LOOT = {
   SCRAP: "scrap",
   WOOD: "wood",
   MED: "med",
+  // Equipo estilo Project Zomboid
+  BAG: "bag",
+  BAG_BIG: "bag_big",
+  BAT: "bat",
+  CROWBAR: "crowbar",
+  KNIFE: "knife",
+  JACKET: "jacket",
 };
 
 const LOOT_DEFS = {
-  [LOOT.FOOD]: { label: "Latas", gather: "latas de comida" },
-  [LOOT.WATER]: { label: "Agua", gather: "botella de agua" },
-  [LOOT.SCRAP]: { label: "Chatarra", gather: "chatarra" },
-  [LOOT.WOOD]: { label: "Tablas", gather: "tablas" },
-  [LOOT.MED]: { label: "Botiquín", gather: "botiquín" },
+  [LOOT.FOOD]: { label: "Latas", gather: "latas de comida", kind: "stack", weight: 1 },
+  [LOOT.WATER]: { label: "Agua", gather: "botella de agua", kind: "stack", weight: 1 },
+  [LOOT.SCRAP]: { label: "Chatarra", gather: "chatarra", kind: "stack", weight: 1 },
+  [LOOT.WOOD]: { label: "Tablas", gather: "tablas", kind: "stack", weight: 1 },
+  [LOOT.MED]: { label: "Botiquín", gather: "botiquín", kind: "stack", weight: 1 },
+  [LOOT.BAG]: {
+    label: "Mochila",
+    gather: "una mochila",
+    kind: "equip",
+    slot: "bag",
+    capacity: 8,
+    weight: 1,
+  },
+  [LOOT.BAG_BIG]: {
+    label: "Mochila grande",
+    gather: "una mochila grande",
+    kind: "equip",
+    slot: "bag",
+    capacity: 14,
+    weight: 1,
+  },
+  [LOOT.BAT]: {
+    label: "Bate",
+    gather: "un bate de béisbol",
+    kind: "equip",
+    slot: "hand",
+    damage: 48,
+    range: 1.55,
+    attackCd: 0.52,
+    stamina: 11,
+    weight: 1,
+  },
+  [LOOT.CROWBAR]: {
+    label: "Palanca",
+    gather: "una palanca",
+    kind: "equip",
+    slot: "hand",
+    damage: 40,
+    range: 1.45,
+    attackCd: 0.45,
+    stamina: 9,
+    weight: 1,
+  },
+  [LOOT.KNIFE]: {
+    label: "Cuchillo",
+    gather: "un cuchillo",
+    kind: "equip",
+    slot: "hand",
+    damage: 28,
+    range: 1.2,
+    attackCd: 0.28,
+    stamina: 5,
+    weight: 1,
+  },
+  [LOOT.JACKET]: {
+    label: "Chaqueta",
+    gather: "una chaqueta",
+    kind: "equip",
+    slot: "body",
+    biteMult: 0.7,
+    capacity: 2,
+    weight: 1,
+  },
 };
+
+export const BASE_CAPACITY = 10;
+
+export function itemDef(id) {
+  return LOOT_DEFS[id] || null;
+}
+
+export function isEquipItem(id) {
+  return LOOT_DEFS[id]?.kind === "equip";
+}
 
 /** Muebles interiores. searchable = se registran con E. */
 export const FURNITURE = {
@@ -83,12 +158,14 @@ const CONTAINER_LOOT = {
     { id: LOOT.SCRAP, w: 2 },
     { id: LOOT.WOOD, w: 2 },
     { id: LOOT.WATER, w: 1 },
+    { id: LOOT.BAG, w: 1 },
     { empty: true, w: 2 },
   ],
   crate: [
     { id: LOOT.SCRAP, w: 3 },
     { id: LOOT.WOOD, w: 3 },
     { id: LOOT.FOOD, w: 1 },
+    { id: LOOT.CROWBAR, w: 1 },
     { empty: true, w: 2 },
   ],
   cabinet: [
@@ -96,12 +173,15 @@ const CONTAINER_LOOT = {
     { id: LOOT.MED, w: 2 },
     { id: LOOT.WOOD, w: 1 },
     { id: LOOT.SCRAP, w: 2 },
+    { id: LOOT.JACKET, w: 1 },
+    { id: LOOT.BAG, w: 1 },
     { empty: true, w: 2 },
   ],
   drawer: [
     { id: LOOT.SCRAP, w: 3 },
     { id: LOOT.MED, w: 2 },
     { id: LOOT.FOOD, w: 1 },
+    { id: LOOT.KNIFE, w: 1 },
     { empty: true, w: 3 },
   ],
   fridge: [
@@ -114,24 +194,29 @@ const CONTAINER_LOOT = {
     { id: LOOT.WOOD, w: 2 },
     { id: LOOT.MED, w: 2 },
     { id: LOOT.FOOD, w: 1 },
+    { id: LOOT.BAT, w: 1 },
+    { id: LOOT.BAG_BIG, w: 1 },
     { empty: true, w: 2 },
   ],
   desk: [
     { id: LOOT.SCRAP, w: 2 },
     { id: LOOT.MED, w: 1 },
     { id: LOOT.FOOD, w: 1 },
+    { id: LOOT.KNIFE, w: 1 },
     { empty: true, w: 3 },
   ],
   nightstand: [
     { id: LOOT.MED, w: 2 },
     { id: LOOT.FOOD, w: 1 },
     { id: LOOT.SCRAP, w: 1 },
+    { id: LOOT.KNIFE, w: 1 },
     { empty: true, w: 3 },
   ],
   counter: [
     { id: LOOT.FOOD, w: 3 },
     { id: LOOT.WATER, w: 2 },
     { id: LOOT.SCRAP, w: 1 },
+    { id: LOOT.BAT, w: 1 },
     { empty: true, w: 2 },
   ],
 };
@@ -518,15 +603,19 @@ function paveQuay(tiles, size, bx, by, props, noise) {
 }
 
 function pickLoot(r) {
-  if (r < 0.03) return LOOT.MED;
-  if (r < 0.055) return LOOT.FOOD;
-  if (r < 0.08) return LOOT.WATER;
-  if (r < 0.1) return LOOT.SCRAP;
+  if (r < 0.012) return LOOT.BAG;
+  if (r < 0.02) return LOOT.KNIFE;
+  if (r < 0.028) return LOOT.JACKET;
+  if (r < 0.045) return LOOT.MED;
+  if (r < 0.07) return LOOT.FOOD;
+  if (r < 0.095) return LOOT.WATER;
+  if (r < 0.12) return LOOT.SCRAP;
   return LOOT.WOOD;
 }
 
 function putLoot(map, x, y, id) {
-  map.set(`${x},${y}`, { id, amount: 1 + ((x + y) % 2) });
+  const amount = LOOT_DEFS[id]?.kind === "equip" ? 1 : 1 + ((x + y) % 2);
+  map.set(`${x},${y}`, { id, amount });
 }
 
 function findSpawn(tiles, size, noise) {
@@ -821,7 +910,7 @@ export function searchFurniture(furn) {
     }
   }
   if (pick.empty) return { empty: true, label };
-  const amount = 1 + ((Math.random() * 2) | 0);
+  const amount = LOOT_DEFS[pick.id]?.kind === "equip" ? 1 : 1 + ((Math.random() * 2) | 0);
   return { empty: false, id: pick.id, amount, label };
 }
 

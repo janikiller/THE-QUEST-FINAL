@@ -1,5 +1,5 @@
 import { generateWorld } from "./world.js";
-import { createGame, updateGame, dayPhase, inventorySlots } from "./game.js";
+import { createGame, updateGame, dayPhase, inventorySlots, waveStatus } from "./game.js";
 import { createRenderer } from "./render.js";
 
 const boot = document.getElementById("boot");
@@ -89,7 +89,7 @@ function syncHud(g) {
   const seed = g.world.seed.toString(36).slice(0, 5);
   const weather = phase.weatherLabel ? ` · ${phase.weatherLabel}` : "";
   clockEl.textContent = `${phase.name}${weather} · Niebla Norte #${seed}`;
-  if (killsEl) killsEl.textContent = `${g.kills} bajas`;
+  if (killsEl) killsEl.textContent = `${g.kills} bajas · ${waveStatus(g)}`;
 
   if (buildEl) {
     if (g.buildMode) {
@@ -106,7 +106,7 @@ function syncHud(g) {
   }
 
   inventoryEl.innerHTML = inventorySlots(g)
-    .map((s) => `<div class="inv-slot"><strong>${s.n}</strong>${s.label}</div>`)
+    .map((s) => `<div class="inv-slot inv-${s.kind}"><strong>${s.n}</strong>${s.label}</div>`)
     .join("");
 
   if (g.toastT > 0 && g.toast) {
