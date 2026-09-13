@@ -1156,11 +1156,14 @@ func _on_end_turn() -> void:
 
 func _on_combat_ended(victory: bool) -> void:
 	AudioDirector.stop_combat_music(victory, true)
+	result_panel.visible = false
 	if victory:
 		_screen_shake(6.0, 0.16)
+		await _play_arrest_finale()
 	else:
 		_screen_shake(14.0, 0.28)
 		_apply_hero_pose("hurt", 1.2)
+		await get_tree().create_timer(0.35).timeout
 	result_panel.visible = true
 	if victory:
 		var xp := CombatState.combat_xp_gained
@@ -1173,12 +1176,13 @@ func _on_combat_ended(victory: bool) -> void:
 		var coins_hint := GameState.mission_coin_reward(mission)
 		var hp_bonus := GameState.level_hp_bonus()
 		var bits: PackedStringArray = []
+		bits.append("DETENCIÓN COMPLETADA")
 		if levels > 0:
 			bits.append("¡NIVEL %d!" % GameState.hero_level)
 		bits.append(("+%d XP" % xp) if xp > 0 else "ÉXITO")
 		bits.append("+%d monedas" % coins_hint)
 		if kills > 0:
-			bits.append("%d bajas" % kills)
+			bits.append("%d detenidos" % kills)
 		if hp_bonus > 0:
 			bits.append("+%d PV de nivel" % hp_bonus)
 		if GameState.pending_level_packs > 0:
@@ -1188,6 +1192,134 @@ func _on_combat_ended(victory: bool) -> void:
 	else:
 		result_title.text = "UNIDAD CAÍDA"
 		result_title.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+
+
+func _play_arrest_finale() -> void:
+	## Cierre corto integrado en el combate: sin stickers ni banners.
+	## 1) atenúa la mano  2) el sospechoso queda en custodia  3) radio  4) al panel.
+	_busy = true
+	if end_turn_btn:
+		end_turn_btn.disabled = true
+	await _arrest_dim_hand(true)
+
+	var snap := CombatState.get_snapshot()
+	var enemies: Array = snap.get("enemies", [])
+	var secured := 0
+	for i in range(enemies.size()):
+		var e: Dictionary = enemies[i]
+		if bool(e.get("fled", false)):
+			continue
+		if int(e.get("hp", 0)) > 0 and not bool(e.get("detained", false)):
+			continue
+		var wrap := _enemy_wrap(i)
+		if wrap == null or not is_instance_valid(wrap):
+			continue
+		# Asegura flag para el badge nativo DETENIDO.
+		if not bool(e.get("detained", false)):
+			e["detained"] = true
+			if i < CombatState.enemies.size():
+				CombatState.enemies[i] = e
+		await _settle_suspect_in_custody(wrap, i, str(e.get("name", "Sospechoso")))
+		secured += 1
+		if enemies.size() > 1:
+			await get_tree().create_timer(0.12).timeout
+
+	if secured <= 0:
+		for i2 in range(enemies.size()):
+			var wrap2 := _enemy_wrap(i2)
+			if wrap2:
+				await _settle_suspect_in_custody(wrap2, i2, str(enemies[i2].get("name", "Sospechoso")))
+				secured = 1
+				break
+
+	var mark := Control.new()
+	mark.name = "ArrestMark"
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mark.size = Vector2.ZERO
+	if _fx_layer:
+		_fx_layer.add_child(mark)
+
+	RadioBus.announce_resolve(
+		"ALPHA-1",
+		true,
+		"%d en custodia. Situación controlada" % maxi(secured, 1)
+	)
+	log_label.text = "Custodia asegurada · %d detenido(s)." % maxi(secured, 1)
+	AudioDirector.play_sfx("ui_click", 0.75, -10.0)
+	await get_tree().create_timer(0.85).timeout
+	await _arrest_dim_hand(false)
+	_busy = false
+
+
+func _arrest_dim_hand(dim: bool) -> void:
+	## Solo la mano/energía: el escenario sigue legible.
+	var targets: Array = []
+	if hand_row:
+		targets.append(hand_row)
+	if end_turn_btn:
+		targets.append(end_turn_btn)
+	if energy_row:
+		targets.append(energy_row)
+	if deck_count:
+		targets.append(deck_count)
+	if discard_count:
+		targets.append(discard_count)
+	if _enemy_hand_row:
+		targets.append(_enemy_hand_row)
+	if targets.is_empty():
+		return
+	var a := 0.28 if dim else 1.0
+	var tw := create_tween()
+	tw.set_parallel(true)
+	for n in targets:
+		if is_instance_valid(n):
+			tw.tween_property(n, "modulate:a", a, 0.25).set_trans(Tween.TRANS_SINE)
+	await tw.finished
+
+
+func _settle_suspect_in_custody(wrap: Control, enemy_index: int, enemy_name: String) -> void:
+	if not is_instance_valid(wrap):
+		return
+	var spr: TextureRect = wrap.find_child("EnemySprite", true, false) as TextureRect
+	var anchor: Control = spr if spr else wrap
+	var base_pos := anchor.position
+	var base_scale := anchor.scale
+
+	# Pose de rendición: frío, más bajo, sin FX encima.
+	var hurt_path := str(wrap.get_meta("pose_hurt", ""))
+	if hurt_path != "" and spr and (ResourceLoader.exists(hurt_path) or FileAccess.file_exists(hurt_path)):
+		var ht := _load_combat_tex(hurt_path)
+		if ht:
+			spr.texture = ht
+	wrap.set_meta("anim_locked", true)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(anchor, "modulate", Color(0.66, 0.72, 0.8, 0.92), 0.4).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(anchor, "position", base_pos + Vector2(0, 14), 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(anchor, "scale", base_scale * Vector2(0.98, 0.92), 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	await tw.finished
+
+	# Badge nativo encima del enemigo (mismo sistema que intents).
+	var host := wrap.find_child("IntentHost", true, false) as Control
+	if host:
+		var e: Dictionary = {}
+		if enemy_index >= 0 and enemy_index < CombatState.enemies.size():
+			e = CombatState.enemies[enemy_index].duplicate(true)
+		e["detained"] = true
+		e["hp"] = mini(0, int(e.get("hp", 0)))
+		_refresh_enemy_intent_host(host, e, enemy_index)
+		# Pulso suave del badge, sin pop exagerado.
+		host.pivot_offset = host.size * 0.5
+		host.scale = Vector2(0.92, 0.92)
+		host.modulate.a = 0.0
+		var twb := create_tween()
+		twb.set_parallel(true)
+		twb.tween_property(host, "modulate:a", 1.0, 0.2).set_trans(Tween.TRANS_SINE)
+		twb.tween_property(host, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		await twb.finished
+
+	log_label.text = "%s — en custodia." % enemy_name
+	await get_tree().create_timer(0.2).timeout
 
 
 func _on_result_close() -> void:
@@ -2620,7 +2752,7 @@ func _refresh_enemy_intent_host(host: Control, e: Dictionary, enemy_index: int =
 func _build_enemy_intent_content(e: Dictionary, enemy_index: int = -1) -> Control:
 	## Sin cartas flotantes sobre el cuerpo: solo badge compacto + clic al mazo.
 	if bool(e.get("detained", false)):
-		return _enemy_intent_status("DETENIDO", Color(0.4, 0.9, 0.55))
+		return _enemy_intent_status("EN CUSTODIA", Color(0.7, 0.84, 0.92))
 	if bool(e.get("fled", false)):
 		return _enemy_intent_status("HUYÓ", Color(0.8, 0.8, 0.85))
 	if int(e.get("hp", 0)) <= 0:
@@ -3506,6 +3638,10 @@ func _play_card_fx(panel: Control, card_id: String) -> void:
 	elif is_block:
 		_apply_hero_pose("aim", 0.45)
 		await _hero_guard_pulse()
+	elif bool(def.get("detain", false)):
+		_apply_hero_pose("aim", 0.35)
+		AudioDirector.play_sfx("whoosh", 0.9, -8.0)
+		await get_tree().create_timer(0.22).timeout
 	else:
 		_apply_hero_pose("aim", 0.28)
 		AudioDirector.play_sfx("whoosh", 1.1, -3.0)
