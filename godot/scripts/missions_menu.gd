@@ -539,6 +539,9 @@ func _foe_count(m: Dictionary) -> int:
 	var suspects: Array = m.get("suspects", [])
 	if not suspects.is_empty():
 		return suspects.size()
+	# Duelo de jefe: solo el boss (sin escoltas).
+	if bool(m.get("is_boss", false)) and bool(m.get("solo_boss", true)):
+		return 1
 	var period := str(m.get("period", ""))
 	if bool(m.get("is_boss", false)) or period == "night" or str(m.get("severity", "")) in ["high", "critical"]:
 		return 3
