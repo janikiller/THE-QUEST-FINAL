@@ -1065,7 +1065,7 @@ function placeRug(decor, x, y, w, h, color, variant = 0) {
 const GRAFFITI_TAGS = ["CRESPO", "NIEBLA", "XX", "VIVOS?", "SUR", "FUERA", "RATAS", "Ω", "FN", "OUT"];
 const POSTER_COLORS = ["#8a3030", "#2a4a6a", "#5a3a68", "#3a5a38", "#6a4a20"];
 
-/** Detalles de fachada: graffiti, carteles, enredaderas, suciedad, ventanas tapiadas. */
+/** Exterior junto a fachada: suciedad, enredaderas, basura, plantas y árboles (no cuadros). */
 function decorateFacadeWalls({
   props, x0, y0, x1, y1, doorX, doorY, side,
   style, noise, bx, by, name,
@@ -1081,15 +1081,14 @@ function decorateFacadeWalls({
   }
 
   let graffitiOnBuilding = 0;
-  let artOnBuilding = 0;
   for (const e of edges) {
     if (e.x === doorX && e.y === doorY) continue;
     const n = noise.noise2(e.x * 0.37 + bx, e.y * 0.41 + by);
     const n2 = noise.noise2(e.x * 0.9, e.y * 0.7 + 3);
     const corner = (e.x === x0 || e.x === x1) && (e.y === y0 || e.y === y1);
 
-    // Suciedad / filtraciones (manchas orgánicas, no marcos)
-    if (n2 > 0.45) {
+    // Suciedad / filtraciones en el muro exterior
+    if (n2 > 0.4) {
       props.push({
         type: "wallGrime",
         x: e.x + 0.5,
@@ -1099,8 +1098,8 @@ function decorateFacadeWalls({
       });
     }
 
-    // Enredadera: esquinas y algunos muros húmedos
-    if (corner || n > 0.72) {
+    // Enredadera en esquinas y muros húmedos
+    if (corner || n > 0.68) {
       props.push({
         type: "vine",
         x: e.x + 0.5,
@@ -1111,8 +1110,8 @@ function decorateFacadeWalls({
       });
     }
 
-    // Graffiti: pocos tags cortos por edificio
-    if (graffitiOnBuilding < 2 && n > 0.68 && n2 > 0.4) {
+    // Graffiti callejero (fuera), no cuadros
+    if (graffitiOnBuilding < 2 && n > 0.7 && n2 > 0.45) {
       const tag = GRAFFITI_TAGS[((e.x * 13 + e.y * 7 + bx) >>> 0) % GRAFFITI_TAGS.length];
       props.push({
         type: "graffiti",
@@ -1124,59 +1123,52 @@ function decorateFacadeWalls({
       });
       graffitiOnBuilding++;
     }
-
-    // Carteles / avisos
-    if (n < 0.12 && n2 > 0.5) {
-      props.push({
-        type: "poster",
-        x: e.x + 0.5,
-        y: e.y + 0.4,
-        wall: e.wall,
-        color: POSTER_COLORS[((e.x + e.y) >>> 0) % POSTER_COLORS.length],
-        torn: n2 > 0.55,
-      });
-    }
-
-    // Cuadro / arte colgado (1–2 por fachada)
-    if (
-      artOnBuilding < 2 &&
-      (style === "residential" || style === "shop" || style === "block" || style === "tower") &&
-      n > 0.75 && n2 < 0.5
-    ) {
-      props.push({
-        type: "wallArt",
-        x: e.x + 0.5,
-        y: e.y + 0.35,
-        wall: e.wall,
-        motif: (e.x + e.y * 3) % 4,
-      });
-      artOnBuilding++;
-    }
   }
 
-  // Macetas / hierbajos junto a la fachada (no solo en la puerta)
-  for (let i = 0; i < 3; i++) {
-    if (noise.noise2(bx + i * 2, by + 9) < 0.4) continue;
+  // Basura, escombros y hierbajos FUERA del edificio
+  for (let i = 0; i < 5; i++) {
+    if (noise.noise2(bx + i * 1.7, by + 11) < 0.32) continue;
     const e = edges[((bx * 5 + by * 3 + i * 11) >>> 0) % edges.length];
     if (e.x === doorX && e.y === doorY) continue;
-    props.push({
-      type: "planter",
-      x: e.x + 0.5 + (e.wall === "w" ? -0.35 : e.wall === "e" ? 0.35 : 0),
-      y: e.y + 0.5 + (e.wall === "n" ? -0.35 : e.wall === "s" ? 0.35 : 0),
-      tone: noise.noise2(e.x, e.y) > 0.5 ? 2 : 1, // 2 = seco/muerto
-      wild: true,
-    });
+    const ox = e.wall === "w" ? -0.55 : e.wall === "e" ? 0.55 : ((i % 2) ? 0.2 : -0.15);
+    const oy = e.wall === "n" ? -0.55 : e.wall === "s" ? 0.55 : ((i % 2) ? 0.15 : -0.2);
+    const roll = noise.noise2(e.x + i, e.y + bx);
+    if (roll > 0.62) {
+      props.push({ type: "trash", x: e.x + 0.5 + ox, y: e.y + 0.5 + oy });
+    } else if (roll > 0.38) {
+      props.push({ type: "debris", x: e.x + 0.5 + ox, y: e.y + 0.5 + oy, tone: (e.x + e.y + i) % 3 });
+    } else {
+      props.push({
+        type: "planter",
+        x: e.x + 0.5 + ox * 0.7,
+        y: e.y + 0.5 + oy * 0.7,
+        tone: noise.noise2(e.x, e.y) > 0.5 ? 2 : 1,
+        wild: true,
+      });
+    }
   }
 
-  // Árbol pequeño pegado a esquina a veces
-  if (noise.noise2(bx + 4, by + 4) > 0.72) {
+  // Árbol / mata seca en esquina exterior
+  if (noise.noise2(bx + 4, by + 4) > 0.55) {
     props.push({
       type: "tree",
-      x: x0 - 0.15,
-      y: y0 - 0.1,
-      r: 9 + noise.noise2(bx, by) * 6,
+      x: x0 - 0.35,
+      y: y0 - 0.25,
+      r: 10 + noise.noise2(bx, by) * 7,
       tone: 2,
     });
+  }
+  if (noise.noise2(bx + 7, by + 2) > 0.78) {
+    props.push({
+      type: "tree",
+      x: x1 + 0.35,
+      y: y1 + 0.3,
+      r: 8 + noise.noise2(bx + 1, by) * 5,
+      tone: 2,
+    });
+  }
+  if (noise.noise2(bx + 1, by + 8) > 0.6) {
+    props.push({ type: "dumpster", x: x1 + 0.7, y: ((y0 + y1) / 2), color: "#3a3a42" });
   }
 }
 
@@ -1385,6 +1377,65 @@ function decorateInterior({
           break;
         }
       }
+    }
+
+    // Arte / cuadros / carteles DENTRO, pegados a las paredes interiores
+    decorateIndoorWallArt({
+      props, ix0, iy0, ix1, iy1, doorX, doorY,
+      style, accent, noise, bx, by,
+    });
+  }
+}
+
+/** Cuadros y carteles en paredes interiores (no en la calle). */
+function decorateIndoorWallArt({
+  props, ix0, iy0, ix1, iy1, doorX, doorY,
+  style, accent, noise, bx, by,
+}) {
+  const spots = [];
+  for (let x = ix0; x <= ix1; x++) {
+    if (!(x === doorX && iy0 === doorY)) spots.push({ x, y: iy0, wall: "n", ox: 0, oy: -0.22 });
+    if (!(x === doorX && iy1 === doorY)) spots.push({ x, y: iy1, wall: "s", ox: 0, oy: 0.22 });
+  }
+  for (let y = iy0 + 1; y < iy1; y++) {
+    if (!(ix0 === doorX && y === doorY)) spots.push({ x: ix0, y, wall: "w", ox: -0.22, oy: 0 });
+    if (!(ix1 === doorX && y === doorY)) spots.push({ x: ix1, y, wall: "e", ox: 0.22, oy: 0 });
+  }
+
+  let artCount = 0;
+  let posterCount = 0;
+  const artBudget = style === "warehouse" ? 1 : style === "shop" ? 2 : 3;
+  const posterBudget = style === "shop" ? 3 : 2;
+
+  for (const s of spots) {
+    const n = noise.noise2(s.x * 0.51 + bx, s.y * 0.47 + by + 4);
+    const n2 = noise.noise2(s.x * 0.8 + 2, s.y * 0.7 + by);
+
+    if (artCount < artBudget && n > 0.55 && n2 < 0.7) {
+      props.push({
+        type: "wallArt",
+        x: s.x + 0.5 + s.ox,
+        y: s.y + 0.5 + s.oy,
+        wall: s.wall,
+        motif: (s.x + s.y * 3 + bx) % 4,
+        indoor: true,
+        frame: accent || "#c8b898",
+      });
+      artCount++;
+      continue;
+    }
+
+    if (posterCount < posterBudget && n < 0.28 && n2 > 0.4) {
+      props.push({
+        type: "poster",
+        x: s.x + 0.5 + s.ox,
+        y: s.y + 0.5 + s.oy,
+        wall: s.wall,
+        color: POSTER_COLORS[((s.x + s.y + by) >>> 0) % POSTER_COLORS.length],
+        torn: n2 > 0.65,
+        indoor: true,
+      });
+      posterCount++;
     }
   }
 }
