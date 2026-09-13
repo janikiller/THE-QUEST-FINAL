@@ -11,6 +11,7 @@ const ZOOM_MAX := Vector2(1.8, 1.8)
 
 
 func _ready() -> void:
+	_fit_window_to_screen()
 	world.add_to_group("world_root")
 	city_map.show_district_overlays = false
 	city_map.mission_clicked.connect(_on_mission_clicked)
@@ -70,6 +71,34 @@ func _ready() -> void:
 			call_deferred("_play_combat_live")
 		_:
 			pass
+
+
+func _fit_window_to_screen() -> void:
+	## Encaja la ventana en el área usable del monitor (evita que se salga de pantalla).
+	var screen := DisplayServer.window_get_current_screen()
+	var usable := DisplayServer.screen_get_usable_rect(screen)
+	if usable.size.x < 64 or usable.size.y < 64:
+		return
+	var win := get_window()
+	if win == null:
+		return
+	win.mode = Window.MODE_WINDOWED
+	var max_w := int(usable.size.x * 0.96)
+	var max_h := int(usable.size.y * 0.96)
+	# Preferir 16:9 dentro del monitor; cae a lo que quepa.
+	var tw := mini(max_w, int(round(float(max_h) * 16.0 / 9.0)))
+	var th := int(round(float(tw) * 9.0 / 16.0))
+	if th > max_h:
+		th = max_h
+		tw = int(round(float(th) * 16.0 / 9.0))
+	tw = clampi(tw, mini(960, max_w), max_w)
+	th = clampi(th, mini(540, max_h), max_h)
+	win.size = Vector2i(tw, th)
+	win.position = Vector2i(
+		usable.position.x + int((usable.size.x - tw) * 0.5),
+		usable.position.y + int((usable.size.y - th) * 0.5)
+	)
+	print("WINDOW_FIT size=", win.size, " pos=", win.position, " usable=", usable)
 
 
 func _ground_shot() -> void:
@@ -1357,6 +1386,15 @@ func _on_mission_clicked(mission_id: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
+		var win := get_window()
+		if win != null:
+			if win.mode == Window.MODE_FULLSCREEN or win.mode == Window.MODE_EXCLUSIVE_FULLSCREEN:
+				_fit_window_to_screen()
+			else:
+				win.mode = Window.MODE_FULLSCREEN
+			get_viewport().set_input_as_handled()
+		return
 	if not $UI/UIRouter/MapHud.visible:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
