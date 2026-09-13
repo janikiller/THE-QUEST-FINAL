@@ -53,12 +53,28 @@ const LOOT_DEFS = {
 export const FURNITURE = {
   table: { label: "Mesa", searchable: false },
   bed: { label: "Cama", searchable: false },
+  chair: { label: "Silla", searchable: false },
+  sofa: { label: "Sofá", searchable: false },
+  desk: { label: "Escritorio", searchable: true },
+  nightstand: { label: "Mesita", searchable: true },
+  counter: { label: "Mostrador", searchable: true },
+  sink: { label: "Fregadero", searchable: false },
+  stove: { label: "Cocina", searchable: false },
+  plant: { label: "Planta", searchable: false },
   shelf: { label: "Estantería", searchable: true },
   crate: { label: "Cajón", searchable: true },
   cabinet: { label: "Armario", searchable: true },
   drawer: { label: "Cómoda", searchable: true },
   fridge: { label: "Nevera", searchable: true },
   locker: { label: "Taquilla", searchable: true },
+};
+
+const RUG_PALETTES = {
+  residential: ["#7a3a3a", "#3a4a6a", "#4a5a3a", "#6a4a3a", "#4a3a5a"],
+  shop: ["#5a3a28", "#3a4a48", "#6a4a28", "#4a3a3a"],
+  warehouse: ["#3a3a38", "#4a4840", "#3a4038"],
+  tower: ["#3a4558", "#4a4858", "#3a4a4a"],
+  block: ["#5a4040", "#3a4a52", "#4a4838"],
 };
 
 const CONTAINER_LOOT = {
@@ -100,6 +116,24 @@ const CONTAINER_LOOT = {
     { id: LOOT.FOOD, w: 1 },
     { empty: true, w: 2 },
   ],
+  desk: [
+    { id: LOOT.SCRAP, w: 2 },
+    { id: LOOT.MED, w: 1 },
+    { id: LOOT.FOOD, w: 1 },
+    { empty: true, w: 3 },
+  ],
+  nightstand: [
+    { id: LOOT.MED, w: 2 },
+    { id: LOOT.FOOD, w: 1 },
+    { id: LOOT.SCRAP, w: 1 },
+    { empty: true, w: 3 },
+  ],
+  counter: [
+    { id: LOOT.FOOD, w: 3 },
+    { id: LOOT.WATER, w: 2 },
+    { id: LOOT.SCRAP, w: 1 },
+    { empty: true, w: 2 },
+  ],
 };
 
 export const BUILD = {
@@ -128,6 +162,7 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   const buildings = [];
   const props = [];
   const interiors = new Map(); // "x,y" -> { type, searched }
+  const decor = new Map(); // "x,y" -> { kind: "rug"|"mat", color, variant }
 
   tiles.fill(TILE.SIDEWALK);
 
@@ -170,7 +205,7 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       if (roll < 0.16) pavePark(tiles, size, bx, by, props, noise);
       else if (roll < 0.26) paveParking(tiles, size, bx, by, props, noise);
       else if (roll < 0.34) paveAlley(tiles, size, bx, by, props, noise);
-      else carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, props, noise, seed);
+      else carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, decor, props, noise, seed);
     }
   }
 
@@ -295,7 +330,7 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   props.sort((a, b) => a.y - b.y);
 
   const spawn = findSpawn(tiles, size, noise);
-  return { size, seed, tiles, loot, doors, buildings, props, interiors, spawn, noise, canalY };
+  return { size, seed, tiles, loot, doors, buildings, props, interiors, decor, spawn, noise, canalY };
 }
 
 function blockBounds(bx, by, size) {
@@ -317,7 +352,7 @@ function paveSidewalkRing(tiles, size, bx, by) {
   return { x0, y0, x1, y1 };
 }
 
-function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, props, noise, seed) {
+function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, decor, props, noise, seed) {
   const ring = paveSidewalkRing(tiles, size, bx, by);
   // Edificio inset 1 tile (deja acera)
   const x0 = ring.x0 + 1;
@@ -335,10 +370,16 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, pro
   else if (styleRoll < 0.22) style = "shop";
   else if (styleRoll < 0.4) style = "warehouse";
   else if (styleRoll < 0.62) style = "residential";
-  // Matiz de fachada por manzana para que no se vean clonadas
   const tint = ((noise.noise2(bx * 0.17, by * 0.19) * 24) | 0) - 12;
   const awning = AWNING[((bx * 3 + by * 5 + seed) >>> 0) % AWNING.length];
   const facadeTinted = shadeHex(facade, tint);
+  const floorStyle =
+    style === "warehouse" ? "concrete" :
+    style === "shop" ? "tile" :
+    style === "tower" ? "office" :
+    "wood";
+  const rugPalette = RUG_PALETTES[style] || RUG_PALETTES.block;
+  const accent = rugPalette[((bx * 7 + by * 3 + seed) >>> 0) % rugPalette.length];
 
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
@@ -358,42 +399,11 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, pro
   tiles[dy * size + dx] = TILE.DOOR;
   doors.set(`${dx},${dy}`, { hp: 50 });
 
-  // Muebles interiores (armarios, cómodas, neveras… buscables con E)
-  for (let y = y0 + 1; y < y1; y++) {
-    for (let x = x0 + 1; x < x1; x++) {
-      if (tiles[y * size + x] !== TILE.FLOOR) continue;
-      const againstWall =
-        tiles[(y - 1) * size + x] === TILE.WALL ||
-        tiles[(y + 1) * size + x] === TILE.WALL ||
-        tiles[y * size + (x - 1)] === TILE.WALL ||
-        tiles[y * size + (x + 1)] === TILE.WALL;
-      const r = noise.noise2(x * 1.3, y * 1.3);
-      let type = null;
-      if (style === "warehouse") {
-        if (againstWall && r < 0.24) type = r < 0.11 ? "locker" : "shelf";
-        else if (r < 0.12) type = "crate";
-        else if (r < 0.17) type = "shelf";
-      } else if (style === "shop") {
-        if (againstWall && r < 0.22) type = r < 0.09 ? "fridge" : r < 0.16 ? "cabinet" : "shelf";
-        else if (r < 0.1) type = "shelf";
-        else if (r < 0.15) type = "table";
-        else if (r < 0.18) type = "crate";
-      } else if (style === "residential") {
-        if (againstWall && r < 0.2) type = r < 0.07 ? "fridge" : r < 0.14 ? "cabinet" : "drawer";
-        else if (r < 0.08) type = "bed";
-        else if (r < 0.12) type = "table";
-        else if (r < 0.15) type = "shelf";
-        else if (againstWall && r < 0.22) type = "cabinet";
-      } else {
-        if (againstWall && r < 0.18) type = r < 0.07 ? "cabinet" : r < 0.12 ? "drawer" : "shelf";
-        else if (r < 0.07) type = "table";
-        else if (r < 0.11) type = "shelf";
-        else if (r < 0.14) type = "bed";
-        else if (r < 0.16) type = "crate";
-      }
-      if (type) placeFurniture(interiors, x, y, type);
-    }
-  }
+  decorateInterior({
+    tiles, size, interiors, decor,
+    x0, y0, x1, y1, doorX: dx, doorY: dy, side,
+    style, accent, noise, bx, by,
+  });
 
   // Mobiliario urbano en acera
   if (noise.noise2(bx + 2, by + 2) > 0.45) {
@@ -402,13 +412,15 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, pro
   if (noise.noise2(bx + 5, by + 1) > 0.55) {
     props.push({ type: "sign", x: dx + (side === 2 ? -0.7 : side === 3 ? 0.7 : 0), y: dy + (side === 0 ? -0.7 : side === 1 ? 0.7 : 0), label: name.split(" ")[0] });
   }
-  // Porche / toldo delante de la puerta (tiendas y cafés más grandes)
   props.push({ type: "awning", x: dx + 0.5, y: dy + 0.5, side, color: awning, wide: style === "shop" });
   if (style === "residential" && noise.noise2(bx + 8, by) > 0.4) {
     props.push({ type: "planter", x: dx + (side >= 2 ? 0 : side === 0 ? 0.2 : -0.2) + 0.5, y: dy + (side < 2 ? 0 : 0.2) + 0.5, tone: 1 });
   }
 
-  buildings.push({ x0, y0, x1, y1, doorX: dx, doorY: dy, facade: facadeTinted, name, floors, style, awning });
+  buildings.push({
+    x0, y0, x1, y1, doorX: dx, doorY: dy,
+    facade: facadeTinted, name, floors, style, awning, floorStyle, accent,
+  });
 }
 
 function pavePark(tiles, size, bx, by, props, noise) {
@@ -581,6 +593,192 @@ export function buildingAt(world, x, y) {
 
 function placeFurniture(interiors, x, y, type) {
   interiors.set(`${x},${y}`, { type, searched: false });
+}
+
+function placeDecor(decor, x, y, kind, color, variant = 0) {
+  decor.set(`${x},${y}`, { kind, color, variant });
+}
+
+function canPlace(tiles, size, interiors, x, y, x0, y0, x1, y1) {
+  if (x <= x0 || x >= x1 || y <= y0 || y >= y1) return false;
+  if (tiles[y * size + x] !== TILE.FLOOR) return false;
+  if (interiors.has(`${x},${y}`)) return false;
+  return true;
+}
+
+function tryPlace(tiles, size, interiors, x, y, type, x0, y0, x1, y1) {
+  if (!canPlace(tiles, size, interiors, x, y, x0, y0, x1, y1)) return false;
+  placeFurniture(interiors, x, y, type);
+  return true;
+}
+
+function placeRug(decor, x, y, w, h, color, variant = 0) {
+  for (let dy = 0; dy < h; dy++) {
+    for (let dx = 0; dx < w; dx++) {
+      placeDecor(decor, x + dx, y + dy, "rug", color, variant);
+    }
+  }
+}
+
+/**
+ * Decora el interior con un layout coherente según el estilo del edificio.
+ * No es ruido aleatorio: camas con mesita y alfombra, cocina, zona de estar, etc.
+ */
+function decorateInterior({
+  tiles, size, interiors, decor,
+  x0, y0, x1, y1, doorX, doorY, side,
+  style, accent, noise, bx, by,
+}) {
+  const ix0 = x0 + 1;
+  const iy0 = y0 + 1;
+  const ix1 = x1 - 1;
+  const iy1 = y1 - 1;
+  if (ix1 < ix0 || iy1 < iy0) return;
+
+  const midX = ((ix0 + ix1) / 2) | 0;
+  const midY = ((iy0 + iy1) / 2) | 0;
+  // Esquina opuesta a la puerta = zona íntima / fondo
+  const farX = side === 2 ? ix1 : side === 3 ? ix0 : midX;
+  const farY = side === 0 ? iy1 : side === 1 ? iy0 : midY;
+  const nearDoorX = side === 2 ? ix0 : side === 3 ? ix1 : midX;
+  const nearDoorY = side === 0 ? iy0 : side === 1 ? iy1 : midY;
+  // Esquinas libres
+  const cA = { x: ix0, y: iy0 };
+  const cB = { x: ix1, y: iy0 };
+  const cC = { x: ix0, y: iy1 };
+  const cD = { x: ix1, y: iy1 };
+  const corners = [cA, cB, cC, cD].filter((c) => !(c.x === doorX && c.y === doorY));
+
+  const put = (x, y, type) => tryPlace(tiles, size, interiors, x, y, type, x0, y0, x1, y1);
+
+  if (style === "residential") {
+    // Dormitorio en la esquina más lejos de la puerta
+    const bedCorner = corners.reduce((best, c) => {
+      const d = Math.abs(c.x - doorX) + Math.abs(c.y - doorY);
+      const bd = Math.abs(best.x - doorX) + Math.abs(best.y - doorY);
+      return d > bd ? c : best;
+    }, corners[0]);
+    put(bedCorner.x, bedCorner.y, "bed");
+    // Mesita junto a la cama
+    if (!put(bedCorner.x + 1, bedCorner.y, "nightstand")) put(bedCorner.x, bedCorner.y + (bedCorner.y < midY ? 1 : -1), "nightstand");
+    // Alfombra bajo/junto a la cama (2×2)
+    const rugX = Math.min(ix1 - 1, Math.max(ix0, bedCorner.x - (bedCorner.x > midX ? 1 : 0)));
+    const rugY = Math.min(iy1 - 1, Math.max(iy0, bedCorner.y - (bedCorner.y > midY ? 1 : 0)));
+    placeRug(decor, rugX, rugY, 2, 2, accent, 1);
+
+    // Armario en pared lateral
+    const wardrobeY = bedCorner.y === iy0 ? iy0 : bedCorner.y === iy1 ? iy1 : iy0;
+    put(bedCorner.x === ix0 ? ix1 : ix0, wardrobeY, "cabinet");
+
+    // Zona de estar: mesa + sillas + alfombra central
+    placeRug(decor, midX - (midX > ix0 ? 0 : 0), midY, Math.min(2, ix1 - midX + 1), Math.min(2, iy1 - midY + 1), accent, 0);
+    put(midX, midY, "table");
+    put(midX + 1, midY, "chair");
+    put(midX, midY + 1, "chair");
+
+    // Cómoda / sofá en pared libre
+    put(ix0 === bedCorner.x ? ix1 : ix0, midY, "drawer");
+    {
+      const sofaY = iy0 === bedCorner.y ? iy1 : iy0;
+      const sofaX = midX;
+      if (!put(sofaX, sofaY, "sofa")) put(sofaX === ix0 ? ix1 : ix0, sofaY, "sofa");
+    }
+
+    // Cocina cerca de la puerta: nevera + fregadero + cocina
+    if (side === 0 || side === 1) {
+      put(Math.max(ix0, Math.min(ix1, doorX - 1)), nearDoorY, "fridge");
+      put(Math.min(ix1, Math.max(ix0, doorX + 1)), nearDoorY, "sink");
+      if (ix1 - ix0 >= 3) put(Math.min(ix1, Math.max(ix0, doorX + 2)), nearDoorY, "stove");
+    } else {
+      put(nearDoorX, Math.max(iy0, Math.min(iy1, doorY - 1)), "fridge");
+      put(nearDoorX, Math.min(iy1, Math.max(iy0, doorY + 1)), "sink");
+      if (iy1 - iy0 >= 3) put(nearDoorX, Math.min(iy1, Math.max(iy0, doorY + 2)), "stove");
+    }
+    // Felpudo en la entrada
+    const matX = side === 2 ? ix0 : side === 3 ? ix1 : doorX;
+    const matY = side === 0 ? iy0 : side === 1 ? iy1 : doorY;
+    if (tiles[matY * size + matX] === TILE.FLOOR) placeDecor(decor, matX, matY, "mat", "#5a4a3a", 0);
+
+    // Planta en esquina libre
+    for (const c of corners) {
+      if (put(c.x, c.y, "plant")) break;
+    }
+  } else if (style === "shop") {
+    // Felpudo entrada + mostrador frente a la puerta
+    const matX = side === 2 ? ix0 : side === 3 ? ix1 : doorX;
+    const matY = side === 0 ? iy0 : side === 1 ? iy1 : doorY;
+    if (tiles[matY * size + matX] === TILE.FLOOR) placeDecor(decor, matX, matY, "mat", "#4a3a28", 0);
+
+    if (side === 0 || side === 1) {
+      put(midX, midY, "counter");
+      put(midX - 1, midY, "counter");
+      put(midX + 1, midY, "counter");
+    } else {
+      put(midX, midY, "counter");
+      put(midX, midY - 1, "counter");
+      put(midX, midY + 1, "counter");
+    }
+
+    // Estanterías en la pared del fondo
+    if (side === 0) {
+      for (let x = ix0; x <= ix1; x++) if ((x + bx) % 2 === 0) put(x, iy1, "shelf");
+    } else if (side === 1) {
+      for (let x = ix0; x <= ix1; x++) if ((x + bx) % 2 === 0) put(x, iy0, "shelf");
+    } else if (side === 2) {
+      for (let y = iy0; y <= iy1; y++) if ((y + by) % 2 === 0) put(ix1, y, "shelf");
+    } else {
+      for (let y = iy0; y <= iy1; y++) if ((y + by) % 2 === 0) put(ix0, y, "shelf");
+    }
+
+    put(ix0, iy0 === matY ? iy1 : iy0, "fridge");
+    put(ix1, iy0 === matY ? iy1 : iy0, "crate");
+    placeRug(decor, midX, Math.max(iy0, midY - 1), 1, 1, accent, 2);
+    put(ix1, midY, "plant");
+  } else if (style === "warehouse") {
+    // Taquillas en una pared
+    for (let y = iy0; y <= iy1; y++) {
+      if ((y + bx) % 2 === 0) put(ix0, y, "locker");
+    }
+    // Estanterías opuestas
+    for (let y = iy0; y <= iy1; y++) {
+      if ((y + by) % 2 === 1) put(ix1, y, "shelf");
+    }
+    // Cajones en fila
+    for (let x = ix0 + 1; x <= ix1 - 1; x++) {
+      if ((x + y0) % 2 === 0) put(x, midY, "crate");
+    }
+    put(midX, iy0, "table");
+    put(midX + 1, iy0, "chair");
+    // Esteras de goma
+    placeDecor(decor, midX, midY, "mat", "#3a3a36", 1);
+    placeDecor(decor, nearDoorX === midX ? ix0 + 1 : nearDoorX, nearDoorY === midY ? iy0 + 1 : nearDoorY, "mat", "#3a3a36", 1);
+  } else if (style === "tower") {
+    // Oficina: escritorio, silla, alfombra, estantería, planta
+    placeRug(decor, midX - (midX > ix0 ? 0 : 0), midY - (midY > iy0 ? 0 : 0), Math.min(2, ix1 - ix0), Math.min(2, iy1 - iy0), accent, 0);
+    put(midX, midY, "desk");
+    if (midY + 1 <= iy1) put(midX, midY + 1, "chair");
+    else if (midY - 1 >= iy0) put(midX, midY - 1, "chair");
+    if (midX + 1 <= ix1) put(midX + 1, midY, "chair");
+    else if (midX - 1 >= ix0) put(midX - 1, midY, "chair");
+    put(ix0, iy0, "shelf");
+    put(ix1, iy0, "cabinet");
+    put(ix0, iy1, "plant");
+    put(ix1, iy1, "locker");
+    if (tiles[nearDoorY * size + nearDoorX] === TILE.FLOOR) placeDecor(decor, nearDoorX, nearDoorY, "mat", "#3a4050", 0);
+  } else {
+    // Bloque mixto: salón sencillo
+    placeRug(decor, midX, midY, Math.min(2, ix1 - midX + 1), Math.min(2, iy1 - midY + 1), accent, 1);
+    put(farX, farY, "bed");
+    put(farX === ix0 ? farX + 1 : farX - 1, farY, "nightstand");
+    put(ix0, midY, "sofa");
+    put(midX, midY, "table");
+    put(midX + 1, midY, "chair");
+    put(ix1, iy0, "cabinet");
+    put(ix1, iy1, "fridge");
+    put(ix0, iy0 === farY ? iy1 : iy0, "plant");
+    put(ix0, iy1 === farY ? iy0 : iy1, "drawer");
+    if (tiles[nearDoorY * size + nearDoorX] === TILE.FLOOR) placeDecor(decor, nearDoorX, nearDoorY, "mat", "#5a4038", 0);
+  }
 }
 
 export function furnitureType(furn) {
