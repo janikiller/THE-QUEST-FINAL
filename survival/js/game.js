@@ -11,7 +11,7 @@ import {
   buildingAt,
 } from "./world.js";
 
-const DAY_LEN = 200;
+const DAY_LEN = 160;
 
 export function createGame(world) {
   const game = {
@@ -30,7 +30,8 @@ export function createGame(world) {
       hurtFlash: 0,
     },
     zombies: [],
-    time: 0.3 * DAY_LEN,
+    // Empieza hacia el atardecer para llegar a la noche pronto
+    time: 0.52 * DAY_LEN,
     dayLen: DAY_LEN,
     toast: "",
     toastT: 0,
@@ -43,6 +44,14 @@ export function createGame(world) {
     kills: 0,
     noisePulse: 0,
     lastBuilding: null,
+    weather: {
+      kind: "rain",
+      intensity: 0.55,
+      nextChange: 14 + Math.random() * 10,
+      thunder: 0,
+      wind: 0.7,
+      label: "Lluvia",
+    },
   };
   seedZombies(game, 30);
   return game;
@@ -50,11 +59,25 @@ export function createGame(world) {
 
 export function dayPhase(game) {
   const t = (game.time % game.dayLen) / game.dayLen;
-  if (t < 0.2) return { name: "Amanecer", light: 0.55 + t * 2, night: false };
-  if (t < 0.5) return { name: "Día", light: 1, night: false };
-  if (t < 0.65) return { name: "Atardecer", light: 0.72, night: false };
-  if (t < 0.78) return { name: "Anochecer", light: 0.38, night: true };
-  return { name: "Noche", light: 0.14, night: true };
+  let phase;
+  if (t < 0.18) phase = { name: "Amanecer", light: 0.45 + t * 2.8, night: false };
+  else if (t < 0.48) phase = { name: "Día", light: 1, night: false };
+  else if (t < 0.6) phase = { name: "Atardecer", light: 0.78 - (t - 0.48) * 1.5, night: false };
+  else if (t < 0.72) phase = { name: "Anochecer", light: 0.42 - (t - 0.6) * 1.8, night: true };
+  else phase = { name: "Noche", light: 0.1, night: true };
+
+  // Clima oscurece el cielo
+  const w = game.weather;
+  if (w.kind === "cloudy") phase.light *= 0.88;
+  if (w.kind === "rain") phase.light *= 0.72;
+  if (w.kind === "storm") phase.light *= 0.55;
+  if (w.thunder > 0) phase.light = Math.min(1, phase.light + w.thunder * 0.85);
+  phase.weather = w.kind;
+  phase.rain = w.intensity;
+  phase.wind = w.wind;
+  phase.thunder = w.thunder;
+  phase.weatherLabel = w.label;
+  return phase;
 }
 
 export function setToast(game, msg) {
@@ -65,8 +88,9 @@ export function setToast(game, msg) {
 export function updateGame(game, dt) {
   if (game.dead) return;
   const p = game.player;
-  const phase = dayPhase(game);
   game.time += dt;
+  updateWeather(game, dt);
+  const phase = dayPhase(game);
   if (game.toastT > 0) game.toastT -= dt;
   game.noisePulse = Math.max(0, game.noisePulse - dt);
 
@@ -157,6 +181,49 @@ export function updateGame(game, dt) {
 
 function pressed(game, key) {
   return game.justPressed.has(key);
+}
+
+function updateWeather(game, dt) {
+  const w = game.weather;
+  w.thunder = Math.max(0, w.thunder - dt * 3.2);
+  w.nextChange -= dt;
+
+  // En tormenta: truenos periódicos
+  if (w.kind === "storm" && w.thunder <= 0 && Math.random() < dt * 0.35) {
+    w.thunder = 0.18 + Math.random() * 0.22;
+    if (Math.random() < 0.45) setToast(game, "⚡ Un trueno parte la noche.");
+  } else if (w.kind === "rain" && w.thunder <= 0 && Math.random() < dt * 0.04) {
+    w.thunder = 0.08 + Math.random() * 0.1;
+  }
+
+  // Intensidad y viento suaves
+  const target =
+    w.kind === "clear" ? 0 :
+    w.kind === "cloudy" ? 0.25 :
+    w.kind === "rain" ? 0.7 :
+    1;
+  w.intensity += (target - w.intensity) * Math.min(1, dt * 1.4);
+  w.wind += ((w.kind === "storm" ? 1.4 : w.kind === "rain" ? 0.8 : 0.25) - w.wind) * Math.min(1, dt);
+
+  // De noche las tormentas son más frecuentes
+  if (w.nextChange > 0) return;
+  w.nextChange = 18 + Math.random() * 28;
+  const roll = Math.random();
+  const night = ((game.time % game.dayLen) / game.dayLen) >= 0.6;
+  let next = w.kind;
+  if (w.kind === "clear") next = roll < (night ? 0.7 : 0.5) ? "cloudy" : "clear";
+  else if (w.kind === "cloudy") next = roll < (night ? 0.55 : 0.35) ? "rain" : roll < 0.75 ? "cloudy" : "clear";
+  else if (w.kind === "rain") next = roll < (night ? 0.55 : 0.3) ? "storm" : roll < 0.7 ? "rain" : "cloudy";
+  else next = roll < 0.45 ? "rain" : "cloudy";
+
+  w.kind = next;
+  w.label =
+    next === "clear" ? "Despejado" :
+    next === "cloudy" ? "Nublado" :
+    next === "rain" ? "Lluvia" :
+    "Tormenta";
+  if (next === "storm") setToast(game, "La tormenta cae sobre Niebla Norte.");
+  else if (next === "rain") setToast(game, "Empieza a llover sobre el asfalto.");
 }
 
 function tryMove(game, nx, ny) {

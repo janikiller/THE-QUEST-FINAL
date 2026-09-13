@@ -87,7 +87,8 @@ function syncHud(g) {
 
   const phase = dayPhase(g);
   const seed = g.world.seed.toString(36).slice(0, 5);
-  clockEl.textContent = `${phase.name} · Niebla Norte #${seed}`;
+  const weather = phase.weatherLabel ? ` · ${phase.weatherLabel}` : "";
+  clockEl.textContent = `${phase.name}${weather} · Niebla Norte #${seed}`;
   if (killsEl) killsEl.textContent = `${g.kills} bajas`;
 
   if (buildEl) {
