@@ -108,10 +108,10 @@ class Game:
 
         self.inv: Dict[str, int] = {
             "food": 1, "water": 1, "scrap": 2, "wood": 2, "med": 1,
-            "shirt": 1, "bat": 1, "pistol": 1, "ammo_9mm": 8,
+            "shirt": 1, "bag": 1, "bat": 1, "pistol": 1, "ammo_9mm": 18,
         }
         self.equip: Dict[str, Optional[str]] = {
-            "hand": "bat", "body": "shirt", "bag": None, "light": None,
+            "hand": "bat", "body": "shirt", "bag": "bag", "light": None,
         }
         self.gear_phase = "clothes"
         self.build_mode = ""
