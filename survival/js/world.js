@@ -816,6 +816,12 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, dec
     props.push({ type: "planter", x: dx + (side >= 2 ? 0 : side === 0 ? 0.2 : -0.2) + 0.5, y: dy + (side < 2 ? 0 : 0.2) + 0.5, tone: 1 });
   }
 
+
+  decorateFacadeWalls({
+    props, x0, y0, x1, y1, doorX: dx, doorY: dy, side,
+    style, noise, bx, by, name,
+  });
+
   buildings.push({
     x0, y0, x1, y1, doorX: dx, doorY: dy,
     facade: facadeTinted, name, floors, style, awning, floorStyle, accent,
@@ -1055,6 +1061,116 @@ function placeRug(decor, x, y, w, h, color, variant = 0) {
  * Decora el interior con un layout coherente según el estilo del edificio.
  * No es ruido aleatorio: camas con mesita y alfombra, cocina, zona de estar, etc.
  */
+
+const GRAFFITI_TAGS = ["CRESPO", "NIEBLA", "NO HAY SALIDA", "XX", "VIVOS?", "SUR", "¡FUERA!", "RATAS", "Ω"];
+const POSTER_COLORS = ["#8a3030", "#2a4a6a", "#5a3a68", "#3a5a38", "#6a4a20"];
+
+/** Detalles de fachada: graffiti, carteles, enredaderas, suciedad, ventanas tapiadas. */
+function decorateFacadeWalls({
+  props, x0, y0, x1, y1, doorX, doorY, side,
+  style, noise, bx, by, name,
+}) {
+  const edges = [];
+  for (let x = x0; x <= x1; x++) {
+    edges.push({ x, y: y0, wall: "n" });
+    edges.push({ x, y: y1, wall: "s" });
+  }
+  for (let y = y0 + 1; y < y1; y++) {
+    edges.push({ x: x0, y, wall: "w" });
+    edges.push({ x: x1, y, wall: "e" });
+  }
+
+  for (const e of edges) {
+    if (e.x === doorX && e.y === doorY) continue;
+    const n = noise.noise2(e.x * 0.37 + bx, e.y * 0.41 + by);
+    const n2 = noise.noise2(e.x * 0.9, e.y * 0.7 + 3);
+
+    // Suciedad / filtraciones
+    if (n2 > 0.2) {
+      props.push({
+        type: "wallGrime",
+        x: e.x + 0.5,
+        y: e.y + 0.5,
+        wall: e.wall,
+        tone: (e.x + e.y) % 3,
+      });
+    }
+
+    // Enredadera en esquinas y muros húmedos
+    if (n > 0.55 || ((e.x === x0 || e.x === x1) && (e.y === y0 || e.y === y1) && n > 0.28)) {
+      props.push({
+        type: "vine",
+        x: e.x + 0.5,
+        y: e.y + 0.5,
+        wall: e.wall,
+        growth: 0.5 + n * 0.55,
+        dead: n2 > 0.55,
+      });
+    }
+
+    // Graffiti
+    if (n > 0.58 && n2 > 0.32) {
+      const tag = GRAFFITI_TAGS[((e.x * 13 + e.y * 7 + bx) >>> 0) % GRAFFITI_TAGS.length];
+      props.push({
+        type: "graffiti",
+        x: e.x + 0.5,
+        y: e.y + 0.45,
+        wall: e.wall,
+        text: tag,
+        color: n2 > 0.7 ? "#c040a0" : n2 > 0.5 ? "#40a0c8" : "#d0c040",
+      });
+    }
+
+    // Carteles / avisos
+    if (n < 0.22 && n2 > 0.35) {
+      props.push({
+        type: "poster",
+        x: e.x + 0.5,
+        y: e.y + 0.4,
+        wall: e.wall,
+        color: POSTER_COLORS[((e.x + e.y) >>> 0) % POSTER_COLORS.length],
+        torn: n2 > 0.55,
+      });
+    }
+
+    // Cuadro / arte colgado
+    if ((style === "residential" || style === "shop" || style === "block" || style === "tower") && n > 0.42 && n2 < 0.62) {
+      props.push({
+        type: "wallArt",
+        x: e.x + 0.5,
+        y: e.y + 0.35,
+        wall: e.wall,
+        motif: (e.x + e.y * 3) % 4,
+      });
+    }
+  }
+
+  // Macetas / hierbajos junto a la fachada (no solo en la puerta)
+  for (let i = 0; i < 3; i++) {
+    if (noise.noise2(bx + i * 2, by + 9) < 0.4) continue;
+    const e = edges[((bx * 5 + by * 3 + i * 11) >>> 0) % edges.length];
+    if (e.x === doorX && e.y === doorY) continue;
+    props.push({
+      type: "planter",
+      x: e.x + 0.5 + (e.wall === "w" ? -0.35 : e.wall === "e" ? 0.35 : 0),
+      y: e.y + 0.5 + (e.wall === "n" ? -0.35 : e.wall === "s" ? 0.35 : 0),
+      tone: noise.noise2(e.x, e.y) > 0.5 ? 2 : 1, // 2 = seco/muerto
+      wild: true,
+    });
+  }
+
+  // Árbol pequeño pegado a esquina a veces
+  if (noise.noise2(bx + 4, by + 4) > 0.72) {
+    props.push({
+      type: "tree",
+      x: x0 - 0.15,
+      y: y0 - 0.1,
+      r: 9 + noise.noise2(bx, by) * 6,
+      tone: 2,
+    });
+  }
+}
+
 function decorateInterior({
   tiles, size, interiors, decor, props,
   x0, y0, x1, y1, doorX, doorY, side,

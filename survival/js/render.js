@@ -115,6 +115,12 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     .filter(({ px, py }) => px > -70 && py > -70 && px < w + 70 && py < h + 70)
     .sort((a, b) => a.p.y - b.p.y);
   for (const { p, px, py } of visibleProps) {
+    // Props de muro se quedan en el centro del tile de fachada (no en la acera).
+    // No dibujar graffiti/enredadera de fachada sobre el suelo interior.
+    if (playerIndoor && inside && p.wall &&
+        p.x >= inside.x0 && p.x <= inside.x1 + 1 && p.y >= inside.y0 && p.y <= inside.y1 + 1) {
+      continue;
+    }
     drawProp(ctx, p, px, py, phase);
   }
 
@@ -606,10 +612,25 @@ function drawGround(ctx, game, tile, tx, ty, px, py, phase) {
     return;
   }
   if (tile === TILE.WALL) {
-    // Las paredes se ven bajo el tejado; dibujar base de fachada
+    // Base de fachada + suciedad / grietas
     const b = buildingAt(game.world, tx + 0.5, ty + 0.5);
     ctx.fillStyle = b?.facade || "#4a4540";
     ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
+    ctx.fillStyle = "rgba(0,0,0,0.16)";
+    ctx.fillRect(px + 2, py + 6, 4, 28);
+    ctx.fillRect(px + 30, py + 10, 3, 20);
+    if (((tx * 5 + ty * 9) % 7) === 0) {
+      ctx.strokeStyle = "rgba(15,12,10,0.4)";
+      ctx.beginPath();
+      ctx.moveTo(px + 10, py + 4);
+      ctx.lineTo(px + 14, py + 22);
+      ctx.lineTo(px + 12, py + 40);
+      ctx.stroke();
+    }
+    if (((tx + ty * 3) % 5) === 0) {
+      ctx.fillStyle = "rgba(40, 60, 30, 0.22)";
+      ctx.fillRect(px + 18, py + 28, 12, 10);
+    }
     return;
   }
   if (tile === TILE.DOOR) {
@@ -1446,34 +1467,53 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
     ctx.stroke();
   }
 
-  // Ventanas: casi todas apagadas; solo alguna aislada brilla
+  // Ventanas escasas + muros con carácter (o detalle interior si estás dentro)
   const pushWin = (wx, wy, lit) => {
     drawWindow(ctx, wx, wy, lit, style);
     if (lit) litWindows.push({ x: wx + 7, y: wy + 8 });
   };
+  // ~7% ventanas reales, ~14% tapiadas, el resto muro con carácter
+  const wallRoll = (x, y, salt) => ((x * 17 + y * 31 + b.x0 * 5 + salt) >>> 0) % 14;
 
   for (let x = b.x0 + 1; x < b.x1; x++) {
     const wx = x * TILE_PX - camX + 12;
-    const litTop = phase.night && ((x * 3 + b.y0 * 5) % 13) === 0;
-    const litBot = phase.night && ((x * 5 + b.y1 * 3) % 17) === 1;
-    if (style === "residential") {
-      ctx.fillStyle = shade(b.facade, -32);
-      ctx.fillRect(wx - 2, py + 24, 18, 4);
-      ctx.strokeStyle = "#9aa0a8";
-      ctx.beginPath();
-      ctx.moveTo(wx - 1, py + 18);
-      ctx.lineTo(wx - 1, py + 24);
-      ctx.moveTo(wx + 15, py + 18);
-      ctx.lineTo(wx + 15, py + 24);
-      ctx.stroke();
+    for (const [wy, salt, edge] of [[py + 10, 1, "n"], [py + bh - t + 10, 4, "s"]]) {
+      const roll = wallRoll(x, b.y0 + salt, salt);
+      if (entered) {
+        drawInteriorWallFace(ctx, wx, wy, b, roll, x + salt);
+        continue;
+      }
+      if (roll === 0) {
+        const lit = phase.night && ((x + b.y0 + salt) % 7) === 0;
+        if (style === "residential") {
+          ctx.fillStyle = shade(b.facade, -32);
+          ctx.fillRect(wx - 2, wy + 14, 18, 4);
+        }
+        pushWin(wx, wy, lit);
+      } else if (roll === 1 || roll === 2) {
+        drawBoardedWindow(ctx, wx, wy, style);
+      } else {
+        drawBareWallDetail(ctx, wx, wy, b, roll, x, salt);
+      }
     }
-    pushWin(wx, py + 10, litTop);
-    pushWin(wx, py + bh - t + 10, litBot);
   }
   for (let y = b.y0 + 1; y < b.y1; y++) {
-    const wy = y * TILE_PX - camY + 10;
-    pushWin(px + 12, wy, phase.night && ((y * 3 + b.x0) % 13) === 0);
-    pushWin(px + bw - t + 12, wy, phase.night && ((y * 5 + b.x1) % 17) === 3);
+    for (const [wx, salt] of [[px + 12, 2], [px + bw - t + 12, 7]]) {
+      const wy = y * TILE_PX - camY + 10;
+      const roll = wallRoll(b.x0 + salt, y, salt);
+      if (entered) {
+        drawInteriorWallFace(ctx, wx, wy, b, roll, y + salt);
+        continue;
+      }
+      if (roll === 0) {
+        const lit = phase.night && ((y + b.x0) % 7) === 0;
+        pushWin(wx, wy, lit);
+      } else if (roll === 1 || roll === 2) {
+        drawBoardedWindow(ctx, wx, wy, style);
+      } else {
+        drawBareWallDetail(ctx, wx, wy, b, roll, y, salt);
+      }
+    }
   }
 
   if (!entered) {
@@ -1617,6 +1657,119 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
   ctx.fillText(String((b.x0 + b.y0) % 90 + 10), doorPx + TILE_PX / 2, doorPy + 7);
 }
 
+
+
+function drawInteriorWallFace(ctx, x, y, b, roll, seed) {
+  // Zócalo / pared interior
+  ctx.fillStyle = shade(b.facade || "#5a4a3a", 18);
+  ctx.fillRect(x - 2, y, 18, 20);
+  ctx.fillStyle = "rgba(0,0,0,0.12)";
+  ctx.fillRect(x - 2, y + 16, 18, 4);
+  // Suciedad
+  ctx.fillStyle = "rgba(40, 30, 20, 0.2)";
+  ctx.fillRect(x, y + 4, 3, 12);
+  if (roll >= 7) {
+    // Cuadro interior
+    ctx.fillStyle = "#2a2018";
+    ctx.fillRect(x + 1, y + 2, 12, 14);
+    ctx.fillStyle = "#c8b898";
+    ctx.fillRect(x + 2, y + 3, 10, 12);
+    const cols = ["#6a4040", "#40506a", "#4a6040", "#5a4060"];
+    ctx.fillStyle = cols[seed % 4];
+    ctx.fillRect(x + 3, y + 4, 8, 10);
+  } else if (roll === 5 || roll === 6) {
+    // Mancha / humedad
+    ctx.fillStyle = "rgba(30, 50, 30, 0.25)";
+    ctx.beginPath();
+    ctx.ellipse(x + 8, y + 12, 6, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (roll <= 2) {
+    // Ventana interior tapiada / con cortina
+    ctx.fillStyle = "rgba(20, 28, 38, 0.7)";
+    ctx.fillRect(x + 1, y + 2, 12, 14);
+    ctx.fillStyle = "rgba(90, 70, 50, 0.55)";
+    ctx.fillRect(x + 2, y + 3, 4, 12);
+    ctx.fillStyle = "rgba(70, 55, 40, 0.45)";
+    ctx.fillRect(x + 8, y + 3, 4, 12);
+  }
+}
+
+function drawBoardedWindow(ctx, x, y, style = "block") {
+  const w = style === "warehouse" ? 18 : 14;
+  const h = style === "warehouse" ? 12 : 16;
+  ctx.fillStyle = "rgba(20, 18, 16, 0.75)";
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = "#5a4634";
+  ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+  ctx.strokeStyle = "rgba(30, 22, 14, 0.7)";
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + 2);
+  ctx.lineTo(x + w - 2, y + h - 2);
+  ctx.moveTo(x + w - 2, y + 2);
+  ctx.lineTo(x + 2, y + h - 2);
+  ctx.moveTo(x + w / 2, y + 1);
+  ctx.lineTo(x + w / 2, y + h - 1);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.fillRect(x + 3, y + h - 4, w - 6, 2);
+}
+
+function drawBareWallDetail(ctx, x, y, b, roll, seed, salt) {
+  // Suciedad / filtración
+  ctx.fillStyle = "rgba(20, 16, 12, 0.22)";
+  ctx.fillRect(x + 1, y + 2, 12, 18);
+  ctx.fillStyle = "rgba(40, 32, 24, 0.18)";
+  ctx.beginPath();
+  ctx.ellipse(x + 8, y + 16, 6, 4, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (roll === 6) {
+    // Cartel rasgado
+    const cols = ["#7a3030", "#2a4860", "#5a3860", "#3a5838"];
+    ctx.fillStyle = cols[(seed + salt) % cols.length];
+    ctx.fillRect(x + 1, y + 3, 12, 14);
+    ctx.fillStyle = "rgba(240, 220, 180, 0.35)";
+    ctx.fillRect(x + 3, y + 5, 8, 3);
+    ctx.fillStyle = shade(b.facade, -20);
+    ctx.beginPath();
+    ctx.moveTo(x + 10, y + 14);
+    ctx.lineTo(x + 13, y + 17);
+    ctx.lineTo(x + 8, y + 17);
+    ctx.fill();
+  } else if (roll === 7) {
+    // Cuadro / arte
+    ctx.fillStyle = "#2a2218";
+    ctx.fillRect(x, y + 2, 14, 16);
+    ctx.fillStyle = "#c8b090";
+    ctx.fillRect(x + 1, y + 3, 12, 14);
+    const motifs = ["#6a3a3a", "#3a4a6a", "#4a5a3a", "#5a3a5a"];
+    ctx.fillStyle = motifs[(seed * 3 + salt) % 4];
+    ctx.fillRect(x + 3, y + 5, 8, 10);
+    ctx.fillStyle = "rgba(255,255,255,0.15)";
+    ctx.fillRect(x + 4, y + 6, 3, 3);
+  } else if (roll === 8) {
+    // Graffiti rápido en el muro
+    ctx.fillStyle = "rgba(200, 70, 160, 0.55)";
+    ctx.font = `700 9px ${FONT_UI}`;
+    const tags = ["XX", "SUR", "NO", "Ω", "FN"];
+    ctx.fillText(tags[(seed + salt) % tags.length], x + 1, y + 12);
+    ctx.strokeStyle = "rgba(60, 180, 220, 0.4)";
+    ctx.beginPath();
+    ctx.arc(x + 8, y + 8, 5, 0.2, 5);
+    ctx.stroke();
+  } else {
+    // Grietas + musgo
+    ctx.strokeStyle = "rgba(10, 8, 6, 0.45)";
+    ctx.beginPath();
+    ctx.moveTo(x + 4, y + 2);
+    ctx.lineTo(x + 6, y + 10);
+    ctx.lineTo(x + 3, y + 16);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(40, 70, 35, 0.35)";
+    ctx.fillRect(x + 8, y + 12, 5, 7);
+  }
+}
+
 function drawWindow(ctx, x, y, lit, style = "block") {
   const w = style === "warehouse" ? 18 : 14;
   const h = style === "warehouse" ? 12 : 16;
@@ -1626,7 +1779,7 @@ function drawWindow(ctx, x, y, lit, style = "block") {
     ctx.arc(x + w / 2, y + h / 2, 14, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.fillStyle = lit ? "rgba(255, 220, 140, 0.95)" : "rgba(22, 34, 48, 0.85)";
+  ctx.fillStyle = lit ? "rgba(255, 220, 140, 0.95)" : "rgba(28, 26, 24, 0.92)";
   ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = lit ? "rgba(255, 200, 120, 0.55)" : "rgba(0,0,0,0.4)";
   ctx.strokeRect(x, y, w, h);
@@ -1903,11 +2056,110 @@ function drawProp(ctx, p, px, py, phase) {
       ctx.stroke();
     }
   } else if (p.type === "graffiti") {
-    ctx.fillStyle = "rgba(180,60,140,0.55)";
-    ctx.font = `700 11px ${FONT_UI}`;
-    ctx.fillText(p.text || "NIEBLA", px - 16, py);
-    ctx.fillStyle = "rgba(60,160,200,0.45)";
-    ctx.fillText(p.text ? "" : "norte", px - 10, py + 10);
+    const col = p.color || "#c040a0";
+    ctx.save();
+    ctx.translate(px, py);
+    if (p.wall === "e") ctx.rotate(0.12);
+    if (p.wall === "w") ctx.rotate(-0.12);
+    if (p.wall === "n") ctx.rotate(-0.04);
+    if (p.wall === "s") ctx.rotate(0.05);
+    // Halo de spray
+    ctx.fillStyle = "rgba(0,0,0,0.2)";
+    ctx.fillRect(-18, -10, 36, 22);
+    ctx.fillStyle = col;
+    ctx.globalAlpha = 0.92;
+    ctx.font = `800 14px ${FONT_UI}`;
+    ctx.textAlign = "center";
+    ctx.fillText(p.text || "NIEBLA", 0, 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.22)";
+    ctx.lineWidth = 1;
+    ctx.strokeText(p.text || "NIEBLA", 0, 2);
+    if (!p.text || p.text.length < 7) {
+      ctx.fillStyle = "#40a0c8";
+      ctx.globalAlpha = 0.7;
+      ctx.font = `700 9px ${FONT_UI}`;
+      ctx.fillText("norte", 3, 12);
+    }
+    // Goteo de spray
+    ctx.fillStyle = col;
+    ctx.globalAlpha = 0.45;
+    ctx.fillRect(-3, 4, 2, 10);
+    ctx.fillRect(6, 3, 2, 7);
+    ctx.restore();
+  } else if (p.type === "poster") {
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.fillRect(px - 9, py - 12, 18, 24);
+    ctx.fillStyle = p.color || "#6a3030";
+    ctx.fillRect(px - 8, py - 11, 16, 22);
+    ctx.fillStyle = "rgba(240,220,180,0.45)";
+    ctx.fillRect(px - 6, py - 9, 12, 5);
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.fillRect(px - 6, py - 2, 12, 8);
+    ctx.fillStyle = "rgba(220,200,160,0.25)";
+    ctx.fillRect(px - 5, py + 7, 10, 2);
+    if (p.torn) {
+      ctx.fillStyle = shade(p.color || "#6a3030", -40);
+      ctx.beginPath();
+      ctx.moveTo(px + 4, py + 6);
+      ctx.lineTo(px + 8, py + 11);
+      ctx.lineTo(px - 1, py + 11);
+      ctx.fill();
+    }
+  } else if (p.type === "wallArt") {
+    ctx.fillStyle = "#1a1510";
+    ctx.fillRect(px - 10, py - 12, 20, 22);
+    ctx.fillStyle = "#d8c8a8";
+    ctx.fillRect(px - 9, py - 11, 18, 20);
+    const motifs = ["#6a3a3a", "#3a4a6a", "#4a5a3a", "#5a3a5a"];
+    ctx.fillStyle = motifs[(p.motif || 0) % 4];
+    ctx.fillRect(px - 7, py - 9, 14, 16);
+    if ((p.motif || 0) % 2 === 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.22)";
+      ctx.beginPath();
+      ctx.arc(px - 1, py - 2, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,0.2)";
+      ctx.fillRect(px - 5, py + 4, 10, 2);
+    } else {
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.beginPath();
+      ctx.moveTo(px - 5, py + 3);
+      ctx.lineTo(px + 5, py - 5);
+      ctx.lineTo(px + 2, py + 5);
+      ctx.stroke();
+    }
+  } else if (p.type === "vine") {
+    const dead = p.dead;
+    const g = p.growth || 0.7;
+    ctx.strokeStyle = dead ? "#5a4a30" : "#1e4a22";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(px, py + 14);
+    ctx.quadraticCurveTo(px - 7 * g, py + 4, px - 2, py - 12 * g);
+    ctx.quadraticCurveTo(px + 6 * g, py - 2, px + 4, py - 18 * g);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px - 1, py + 8);
+    ctx.quadraticCurveTo(px + 8 * g, py + 2, px + 5, py - 10 * g);
+    ctx.stroke();
+    ctx.fillStyle = dead ? "rgba(90,70,40,0.6)" : "rgba(45,120,42,0.82)";
+    for (let i = 0; i < 7; i++) {
+      const ly = py + 10 - i * 4.5 * g;
+      const lx = px + ((i % 2) ? 5 : -6) * g;
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, 4, 2.4, i * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (p.type === "wallGrime") {
+    ctx.fillStyle = p.tone === 2 ? "rgba(30, 45, 28, 0.35)" : "rgba(45, 32, 20, 0.38)";
+    ctx.beginPath();
+    ctx.ellipse(px, py + 6, 16, 10, 0.12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(18, 14, 10, 0.28)";
+    ctx.fillRect(px - 4, py - 12, 5, 20);
+    ctx.fillRect(px + 6, py - 8, 3, 14);
+    ctx.fillStyle = "rgba(50, 70, 35, 0.2)";
+    ctx.fillRect(px - 10, py + 8, 20, 6);
   } else if (p.type === "railing") {
     ctx.strokeStyle = p.broken ? "#4a3a30" : "#5a5248";
     ctx.lineWidth = 2;
@@ -1959,21 +2211,35 @@ function drawProp(ctx, p, px, py, phase) {
   } else if (p.type === "planter") {
     ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.fillRect(px - 10, py + 4, 20, 6);
-    ctx.fillStyle = "#6a4a32";
+    ctx.fillStyle = p.wild ? "#4a3a28" : "#6a4a32";
     ctx.fillRect(px - 11, py - 2, 22, 10);
     ctx.fillStyle = "#3a2818";
     ctx.fillRect(px - 9, py - 4, 18, 4);
-    ctx.fillStyle = p.tone ? "#4a7a3a" : "#3a6a48";
-    ctx.beginPath();
-    ctx.arc(px - 4, py - 6, 5, 0, Math.PI * 2);
-    ctx.arc(px + 4, py - 7, 6, 0, Math.PI * 2);
-    ctx.arc(px, py - 10, 4, 0, Math.PI * 2);
-    ctx.fill();
-    if (p.tone) {
-      ctx.fillStyle = "#c05060";
+    if (p.tone === 2) {
+      ctx.strokeStyle = "#6a5a38";
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(px + 3, py - 9, 1.5, 0, Math.PI * 2);
+      ctx.moveTo(px, py - 2);
+      ctx.lineTo(px - 6, py - 13);
+      ctx.moveTo(px, py - 3);
+      ctx.lineTo(px + 7, py - 12);
+      ctx.moveTo(px, py - 2);
+      ctx.lineTo(px + 1, py - 15);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = p.wild ? "#356a2e" : (p.tone ? "#4a7a3a" : "#3a6a48");
+      ctx.beginPath();
+      ctx.arc(px - 4, py - 6, 5, 0, Math.PI * 2);
+      ctx.arc(px + 4, py - 7, 6, 0, Math.PI * 2);
+      ctx.arc(px, py - 10, 4, 0, Math.PI * 2);
       ctx.fill();
+      if (p.wild) {
+        ctx.strokeStyle = "#2a5020";
+        ctx.beginPath();
+        ctx.moveTo(px + 6, py - 4);
+        ctx.lineTo(px + 11, py - 12);
+        ctx.stroke();
+      }
     }
   } else if (p.type === "busStop") {
     ctx.fillStyle = "rgba(0,0,0,0.25)";
