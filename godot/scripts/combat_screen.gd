@@ -1195,175 +1195,341 @@ func _on_combat_ended(victory: bool) -> void:
 
 
 func _play_arrest_finale() -> void:
-	## Cierre cinematográfico: esposas → DETENIDO → radio → sello.
+	## Cierre cinematográfico: letterbox → asegurar → tipografía → radio.
 	_busy = true
 	if end_turn_btn:
 		end_turn_btn.disabled = true
-	AudioDirector.play_sfx("whoosh", 0.85, -4.0)
-	await _screen_pulse(Color(0.2, 0.55, 1.0, 0.35))
-	await get_tree().create_timer(0.12).timeout
+	await _arrest_dim_ui(true)
+	await _arrest_letterbox(true)
+	AudioDirector.play_sfx("whoosh", 0.85, -10.0)
+	await _arrest_soft_wash(Color(0.08, 0.16, 0.28, 0.16), 0.4)
 
 	var snap := CombatState.get_snapshot()
 	var enemies: Array = snap.get("enemies", [])
-	var cuffed := 0
+	var targets: Array = []
 	for i in range(enemies.size()):
 		var e: Dictionary = enemies[i]
 		if bool(e.get("fled", false)):
 			continue
-		# Cualquier enemigo caído/detenido recibe el sello visual.
 		if int(e.get("hp", 0)) > 0 and not bool(e.get("detained", false)):
 			continue
 		var wrap := _enemy_wrap(i)
-		if wrap == null or not is_instance_valid(wrap):
-			continue
-		await _stamp_enemy_cuffs(wrap, str(e.get("name", "Sospechoso")))
-		cuffed += 1
-		await get_tree().create_timer(0.18).timeout
-
-	if cuffed <= 0:
-		# Fallback: sella al primer wrap visible.
+		if wrap and is_instance_valid(wrap):
+			targets.append({"wrap": wrap, "name": str(e.get("name", "Sospechoso"))})
+	if targets.is_empty():
 		for i2 in range(enemies.size()):
 			var wrap2 := _enemy_wrap(i2)
 			if wrap2:
-				await _stamp_enemy_cuffs(wrap2, str(enemies[i2].get("name", "Sospechoso")))
-				cuffed = 1
+				targets.append({"wrap": wrap2, "name": str(enemies[i2].get("name", "Sospechoso"))})
 				break
+
+	var cuffed := 0
+	for t in targets:
+		await _secure_suspect(t["wrap"], str(t["name"]))
+		cuffed += 1
+		if targets.size() > 1:
+			await get_tree().create_timer(0.2).timeout
 
 	RadioBus.announce_resolve(
 		"ALPHA-1",
 		true,
-		"%d sospechoso(s) esposado(s). Intervención cerrada" % maxi(cuffed, 1)
+		"%d en custodia. Situación controlada" % maxi(cuffed, 1)
 	)
-	await _show_arrest_banner(cuffed)
+	await _show_arrest_title_card(cuffed)
+	await _arrest_letterbox(false)
+	await _arrest_dim_ui(false)
 	_busy = false
 
 
-func _stamp_enemy_cuffs(wrap: Control, enemy_name: String) -> void:
+func _arrest_dim_ui(dim: bool) -> void:
+	var targets: Array = []
+	if hand_row:
+		targets.append(hand_row)
+	if end_turn_btn:
+		targets.append(end_turn_btn)
+	if energy_row:
+		targets.append(energy_row)
+	if deck_count:
+		targets.append(deck_count)
+	if discard_count:
+		targets.append(discard_count)
+	if _enemy_hand_row:
+		targets.append(_enemy_hand_row)
+	var a := 0.18 if dim else 1.0
+	if targets.is_empty():
+		return
+	var tw := create_tween()
+	tw.set_parallel(true)
+	for n in targets:
+		if is_instance_valid(n):
+			tw.tween_property(n, "modulate:a", a, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	await tw.finished
+
+
+func _arrest_letterbox(show_bars: bool) -> void:
+	if _fx_layer == null:
+		return
+	var existing := _fx_layer.get_node_or_null("ArrestLetterbox")
+	if not show_bars:
+		if existing:
+			var tw := create_tween()
+			tw.set_parallel(true)
+			for c in existing.get_children():
+				tw.tween_property(c, "modulate:a", 0.0, 0.3)
+			await tw.finished
+			if is_instance_valid(existing):
+				existing.queue_free()
+		return
+	if existing:
+		return
+	var box := Control.new()
+	box.name = "ArrestLetterbox"
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	box.z_index = 110
+	_fx_layer.add_child(box)
+	var h := get_viewport_rect().size.y * 0.075
+	for top in [true, false]:
+		var bar := ColorRect.new()
+		bar.color = Color(0.015, 0.03, 0.055, 1.0)
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.set_anchors_preset(Control.PRESET_TOP_WIDE if top else Control.PRESET_BOTTOM_WIDE)
+		bar.offset_left = 0.0
+		bar.offset_right = 0.0
+		if top:
+			bar.offset_top = 0.0
+			bar.offset_bottom = h
+		else:
+			bar.offset_top = -h
+			bar.offset_bottom = 0.0
+		bar.modulate.a = 0.0
+		box.add_child(bar)
+	var tw2 := create_tween()
+	tw2.set_parallel(true)
+	for c2 in box.get_children():
+		tw2.tween_property(c2, "modulate:a", 1.0, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	await tw2.finished
+
+
+func _arrest_soft_wash(color: Color, duration: float = 0.3) -> void:
+	if _fx_layer == null:
+		return
+	var wash := ColorRect.new()
+	wash.color = Color(color.r, color.g, color.b, 1.0)
+	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	wash.z_index = 105
+	wash.modulate.a = 0.0
+	_fx_layer.add_child(wash)
+	var peak := clampf(color.a * 1.15, 0.08, 0.28)
+	var tw := create_tween()
+	tw.tween_property(wash, "modulate:a", peak, duration * 0.4).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(wash, "modulate:a", 0.0, duration * 0.6).set_trans(Tween.TRANS_SINE)
+	await tw.finished
+	if is_instance_valid(wash):
+		wash.queue_free()
+
+
+func _load_cuff_texture() -> Texture2D:
+	var cuff_path := "res://assets/character/handcuffs.png"
+	if not ResourceLoader.exists(cuff_path):
+		cuff_path = "res://assets/combat/custom/cards/cuffs.png"
+	if ResourceLoader.exists(cuff_path):
+		return load(cuff_path) as Texture2D
+	if FileAccess.file_exists(cuff_path):
+		var img := Image.load_from_file(cuff_path)
+		if img:
+			return ImageTexture.create_from_image(img)
+	return null
+
+
+func _secure_suspect(wrap: Control, enemy_name: String) -> void:
 	if not is_instance_valid(wrap) or _fx_layer == null:
 		return
 	var spr: TextureRect = wrap.find_child("EnemySprite", true, false) as TextureRect
 	var anchor: Control = spr if spr else wrap
-	# Flash táctico azul/rojo
-	await _screen_pulse(Color(0.15, 0.45, 1.0, 0.22))
-	AudioDirector.play_sfx("ui_click", 0.7, -6.0)
+	var base_pos := anchor.position
+	var base_scale := anchor.scale
 
+	# Cuerpo: frío, quieto, un poco hundido. Sin neón.
+	var tw_body := create_tween()
+	tw_body.set_parallel(true)
+	tw_body.tween_property(anchor, "modulate", Color(0.58, 0.68, 0.78, 0.95), 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw_body.tween_property(anchor, "position", base_pos + Vector2(0, 12), 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw_body.tween_property(anchor, "scale", base_scale * Vector2(0.97, 0.93), 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	await tw_body.finished
+
+	# Destello circular suave en las muñecas.
+	var wrist := anchor.global_position + anchor.size * Vector2(0.5, 0.78)
+	var glow := TextureRect.new()
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	glow.stretch_mode = TextureRect.STRETCH_SCALE
+	var glow_path := "res://assets/combat/custom/fx/soft_glow.png"
+	if ResourceLoader.exists(glow_path):
+		glow.texture = load(glow_path)
+	elif FileAccess.file_exists(glow_path):
+		var gimg := Image.load_from_file(glow_path)
+		if gimg:
+			glow.texture = ImageTexture.create_from_image(gimg)
+	glow.custom_minimum_size = Vector2(48, 48)
+	glow.size = Vector2(48, 48)
+	glow.pivot_offset = glow.size * 0.5
+	glow.z_index = 118
+	glow.modulate = Color(0.75, 0.88, 1.0, 0.0)
+	_fx_layer.add_child(glow)
+	glow.global_position = wrist - glow.size * 0.5
+	glow.scale = Vector2(0.35, 0.35)
+	AudioDirector.play_sfx("ui_click", 0.6, -12.0)
+	var tw_glow := create_tween()
+	tw_glow.set_parallel(true)
+	tw_glow.tween_property(glow, "modulate:a", 0.7, 0.1)
+	tw_glow.tween_property(glow, "scale", Vector2(1.85, 1.85), 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw_glow.tween_property(glow, "modulate:a", 0.0, 0.45).set_delay(0.1).set_trans(Tween.TRANS_SINE)
+	await tw_glow.finished
+	if is_instance_valid(glow):
+		glow.queue_free()
+
+	# Esposas pequeñas cerca de las muñecas — detalle, no sticker.
 	var cuffs := TextureRect.new()
 	cuffs.name = "ArrestCuffs"
 	cuffs.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cuffs.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	cuffs.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	cuffs.custom_minimum_size = Vector2(96, 96)
-	cuffs.size = Vector2(96, 96)
+	cuffs.custom_minimum_size = Vector2(38, 28)
+	cuffs.size = Vector2(38, 28)
 	cuffs.z_index = 120
-	var cuff_path := "res://assets/character/handcuffs.png"
-	if not ResourceLoader.exists(cuff_path):
-		cuff_path = "res://assets/combat/custom/cards/cuffs.png"
-	if ResourceLoader.exists(cuff_path):
-		cuffs.texture = load(cuff_path)
-	elif FileAccess.file_exists(cuff_path):
-		var img := Image.load_from_file(cuff_path)
-		if img:
-			cuffs.texture = ImageTexture.create_from_image(img)
+	cuffs.texture = _load_cuff_texture()
 	_fx_layer.add_child(cuffs)
-	var gp := anchor.global_position + anchor.size * Vector2(0.35, 0.55) - Vector2(48, 48)
-	cuffs.global_position = gp + Vector2(0, 40)
-	cuffs.modulate = Color(1, 1, 1, 0)
-	cuffs.scale = Vector2(1.6, 1.6)
+	var gp := wrist - cuffs.size * 0.5 + Vector2(0, 2)
+	cuffs.global_position = gp + Vector2(0, 8)
 	cuffs.pivot_offset = cuffs.size * 0.5
-	var tw := create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(cuffs, "global_position", gp, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(cuffs, "modulate:a", 1.0, 0.16)
-	tw.tween_property(cuffs, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	await tw.finished
+	cuffs.modulate = Color(0.9, 0.95, 1.0, 0.0)
+	cuffs.scale = Vector2(0.7, 0.7)
+	cuffs.rotation_degrees = -8.0
+	var tw_cuffs := create_tween()
+	tw_cuffs.set_parallel(true)
+	tw_cuffs.tween_property(cuffs, "global_position", gp, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw_cuffs.tween_property(cuffs, "modulate:a", 0.88, 0.2).set_trans(Tween.TRANS_SINE)
+	tw_cuffs.tween_property(cuffs, "scale", Vector2.ONE, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw_cuffs.tween_property(cuffs, "rotation_degrees", 0.0, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	await tw_cuffs.finished
 
-	# Tint verde de “asegurado”
-	if is_instance_valid(anchor):
-		var twc := create_tween()
-		twc.tween_property(anchor, "modulate", Color(0.55, 1.0, 0.7), 0.2)
-		await twc.finished
-
+	# Pill tipográfico bajo el cuerpo.
+	var pill := PanelContainer.new()
+	pill.name = "ArrestTag"
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.z_index = 121
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.08, 0.12, 0.78)
+	sb.border_color = Color(0.55, 0.8, 0.95, 0.4)
+	sb.set_border_width_all(1)
+	sb.set_corner_radius_all(9)
+	sb.content_margin_left = 11
+	sb.content_margin_right = 11
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 3
+	pill.add_theme_stylebox_override("panel", sb)
 	var tag := Label.new()
 	tag.text = "DETENIDO"
-	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tag.add_theme_font_size_override("font_size", 22)
-	tag.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55))
-	tag.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
-	tag.add_theme_constant_override("outline_size", 6)
-	tag.z_index = 121
-	_fx_layer.add_child(tag)
-	tag.global_position = gp + Vector2(-10, -36)
-	tag.modulate.a = 0.0
-	tag.scale = Vector2(1.4, 1.4)
-	var twt := create_tween()
-	twt.set_parallel(true)
-	twt.tween_property(tag, "modulate:a", 1.0, 0.12)
-	twt.tween_property(tag, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	await twt.finished
-	log_label.text = "%s — esposado." % enemy_name
-	# Deja cuffs+tag un momento; se limpian con el cierre de combate.
-	await get_tree().create_timer(0.25).timeout
+	tag.add_theme_font_size_override("font_size", 12)
+	tag.add_theme_color_override("font_color", Color(0.82, 0.93, 1.0, 0.95))
+	tag.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.45))
+	tag.add_theme_constant_override("outline_size", 1)
+	pill.add_child(tag)
+	_fx_layer.add_child(pill)
+	pill.reset_size()
+	var pill_sz := pill.get_combined_minimum_size()
+	if pill_sz.x < 84:
+		pill_sz.x = 84
+	pill.size = pill_sz
+	var pill_pos := wrist + Vector2(-pill_sz.x * 0.5, 18)
+	pill.global_position = pill_pos + Vector2(0, 8)
+	pill.modulate.a = 0.0
+	var tw_pill := create_tween()
+	tw_pill.set_parallel(true)
+	tw_pill.tween_property(pill, "modulate:a", 1.0, 0.22).set_trans(Tween.TRANS_SINE)
+	tw_pill.tween_property(pill, "global_position", pill_pos, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	await tw_pill.finished
+	log_label.text = "%s en custodia." % enemy_name
+	await get_tree().create_timer(0.32).timeout
 
 
-func _show_arrest_banner(cuffed_count: int) -> void:
+func _show_arrest_title_card(cuffed_count: int) -> void:
 	if _fx_layer == null:
 		return
-	var banner := PanelContainer.new()
-	banner.name = "ArrestBanner"
-	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	banner.z_index = 130
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.04, 0.1, 0.18, 0.92)
-	sb.border_color = Color(0.35, 0.85, 1.0, 0.95)
-	sb.set_border_width_all(3)
-	sb.set_corner_radius_all(14)
-	sb.content_margin_left = 28
-	sb.content_margin_right = 28
-	sb.content_margin_top = 16
-	sb.content_margin_bottom = 16
-	sb.shadow_color = Color(0.2, 0.6, 1.0, 0.4)
-	sb.shadow_size = 16
-	banner.add_theme_stylebox_override("panel", sb)
-	var v := VBoxContainer.new()
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.add_theme_constant_override("separation", 4)
-	banner.add_child(v)
+	# Tipografía limpia: velo + líneas + título. Sin caja neón.
+	var card := Control.new()
+	card.name = "ArrestBanner"
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.z_index = 130
+	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_fx_layer.add_child(card)
+
+	var veil := ColorRect.new()
+	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	veil.color = Color(0.02, 0.05, 0.09, 0.0)
+	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	card.add_child(veil)
+
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	card.add_child(center)
+
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 12)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(col)
+
+	var rule_top := ColorRect.new()
+	rule_top.custom_minimum_size = Vector2(96, 1)
+	rule_top.color = Color(0.75, 0.9, 1.0, 0.5)
+	rule_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(rule_top)
+
 	var title := Label.new()
 	title.text = "DETENCIÓN COMPLETADA"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 34)
-	title.add_theme_color_override("font_color", Color(0.75, 0.95, 1.0))
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	title.add_theme_constant_override("outline_size", 5)
-	v.add_child(title)
+	title.add_theme_color_override("font_color", Color(0.95, 0.98, 1.0, 0.98))
+	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.55))
+	title.add_theme_constant_override("outline_size", 2)
+	col.add_child(title)
+
 	var sub := Label.new()
-	sub.text = "%d en custodia · situación controlada" % maxi(cuffed_count, 1)
+	sub.text = "%d en custodia  ·  situación controlada" % maxi(cuffed_count, 1)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.add_theme_font_size_override("font_size", 16)
-	sub.add_theme_color_override("font_color", Color(0.55, 0.9, 0.65))
-	v.add_child(sub)
-	_fx_layer.add_child(banner)
-	banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	banner.position = get_viewport_rect().size * 0.5 - Vector2(220, 60)
-	banner.modulate.a = 0.0
-	banner.scale = Vector2(0.82, 0.82)
-	banner.pivot_offset = Vector2(220, 60)
-	AudioDirector.play_sfx("card_play", 0.8, -2.0)
+	sub.add_theme_font_size_override("font_size", 14)
+	sub.add_theme_color_override("font_color", Color(0.65, 0.84, 0.94, 0.88))
+	col.add_child(sub)
+
+	var rule_bot := ColorRect.new()
+	rule_bot.custom_minimum_size = Vector2(96, 1)
+	rule_bot.color = Color(0.75, 0.9, 1.0, 0.4)
+	rule_bot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(rule_bot)
+
+	col.modulate.a = 0.0
+	# CenterContainer ignores child position; fade only.
+	AudioDirector.play_sfx("card_play", 0.7, -8.0)
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(banner, "modulate:a", 1.0, 0.18)
-	tw.tween_property(banner, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(veil, "color:a", 0.32, 0.38).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(col, "modulate:a", 1.0, 0.42).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(rule_top, "custom_minimum_size:x", 160.0, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(rule_bot, "custom_minimum_size:x", 160.0, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	await tw.finished
-	await _screen_pulse(Color(0.3, 0.9, 0.55, 0.28))
-	await get_tree().create_timer(0.85).timeout
+	await get_tree().create_timer(1.0).timeout
 	var tw2 := create_tween()
 	tw2.set_parallel(true)
-	tw2.tween_property(banner, "modulate:a", 0.0, 0.28)
-	tw2.tween_property(banner, "position:y", banner.position.y - 30.0, 0.28)
+	tw2.tween_property(col, "modulate:a", 0.0, 0.34).set_trans(Tween.TRANS_SINE)
+	tw2.tween_property(veil, "color:a", 0.0, 0.34)
 	await tw2.finished
-	if is_instance_valid(banner):
-		banner.queue_free()
+	if is_instance_valid(card):
+		card.queue_free()
 
 
 func _on_result_close() -> void:
@@ -3684,13 +3850,37 @@ func _play_card_fx(panel: Control, card_id: String) -> void:
 		await _hero_guard_pulse()
 	elif bool(def.get("detain", false)):
 		_apply_hero_pose("aim", 0.4)
-		AudioDirector.play_sfx("whoosh", 0.9, -3.0)
-		await _screen_pulse(Color(0.2, 0.55, 1.0, 0.28))
+		AudioDirector.play_sfx("whoosh", 0.9, -6.0)
+		await _arrest_soft_wash(Color(0.2, 0.45, 0.75, 0.14), 0.28)
 		var idx := int(CombatState.selected_enemy)
 		var ewrap := _enemy_wrap(idx)
-		if ewrap:
-			# Preview de esposas al jugar la carta (el sello final llega en la victoria).
-			await _stamp_enemy_cuffs(ewrap, str(def.get("name", "Detención")))
+		if ewrap and _fx_layer:
+			var spr2: TextureRect = ewrap.find_child("EnemySprite", true, false) as TextureRect
+			var anc: Control = spr2 if spr2 else ewrap
+			var flash := TextureRect.new()
+			flash.texture = _load_cuff_texture()
+			flash.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			flash.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			flash.custom_minimum_size = Vector2(34, 26)
+			flash.size = Vector2(34, 26)
+			flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			flash.z_index = 120
+			_fx_layer.add_child(flash)
+			var gp2 := anc.global_position + anc.size * Vector2(0.5, 0.78) - flash.size * 0.5
+			flash.global_position = gp2
+			flash.pivot_offset = flash.size * 0.5
+			flash.modulate.a = 0.0
+			flash.scale = Vector2(0.8, 0.8)
+			var twp := create_tween()
+			twp.set_parallel(true)
+			twp.tween_property(flash, "modulate:a", 0.85, 0.12)
+			twp.tween_property(flash, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			await twp.finished
+			var twp2 := create_tween()
+			twp2.tween_property(flash, "modulate:a", 0.0, 0.2)
+			await twp2.finished
+			if is_instance_valid(flash):
+				flash.queue_free()
 	else:
 		_apply_hero_pose("aim", 0.28)
 		AudioDirector.play_sfx("whoosh", 1.1, -3.0)
