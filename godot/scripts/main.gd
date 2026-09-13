@@ -832,7 +832,7 @@ func _progression_shot() -> void:
 
 
 func _arrest_finale_demo() -> void:
-	## Evidencia: victoria → esposas → DETENIDO → banner DETENCIÓN COMPLETADA.
+	## Evidencia: victoria → badge EN CUSTODIA (UI nativa) → panel de resultado.
 	await get_tree().create_timer(0.8).timeout
 	print("ARREST_FINALE begin")
 	var tries := 0
@@ -856,7 +856,6 @@ func _arrest_finale_demo() -> void:
 	GameState.set_patrol(p)
 	if GameState.active_missions.has(mid):
 		var m: Dictionary = GameState.active_missions[mid]
-		# Forzar 1 sospechoso (sin autofill a 2) para una detención clara.
 		m["solo_boss"] = false
 		m["severity"] = "low"
 		m["period"] = "day"
@@ -885,11 +884,10 @@ func _arrest_finale_demo() -> void:
 		get_tree().quit(1)
 		return
 	await _save_shot("arrest_idle")
-	# Un golpe visible y luego cierre forzado para enseñar la cinemática completa.
 	if CombatState.hand.size() > 0:
 		CombatState.hand[0] = "punetazo"
 		combat._refresh()
-		await get_tree().create_timer(0.35).timeout
+		await get_tree().create_timer(0.3).timeout
 		if CombatState.can_play_card("punetazo"):
 			var def: Dictionary = CardDB.get_card("punetazo")
 			combat._busy = true
@@ -897,17 +895,15 @@ func _arrest_finale_demo() -> void:
 			CombatState.play_card("punetazo")
 			combat._busy = false
 			combat._refresh()
-			await get_tree().create_timer(0.45).timeout
-	# Derriba y dispara victoria → _play_arrest_finale
+			await get_tree().create_timer(0.35).timeout
 	for i in range(CombatState.enemies.size()):
 		var e: Dictionary = CombatState.enemies[i]
 		e["hp"] = 0
 		CombatState.enemies[i] = e
 	print("ARREST_FINALE force_win enemies=", CombatState.enemies.size())
 	CombatState._check_end_conditions()
-	# Espera esposas / banner / panel de resultado.
-	var saw_cuffs := false
-	var saw_banner := false
+	var saw_custody := false
+	var saw_mark := false
 	var saw_result := false
 	for _t in range(90):
 		await get_tree().create_timer(0.1).timeout
@@ -915,31 +911,33 @@ func _arrest_finale_demo() -> void:
 			combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 		if combat == null:
 			continue
-		var cuffs := combat.find_child("ArrestCuffs", true, false)
-		var banner := combat.find_child("ArrestBanner", true, false)
-		if cuffs and not saw_cuffs:
-			saw_cuffs = true
-			await _save_shot("arrest_cuffs")
-			print("ARREST_FINALE saw_cuffs")
-		if banner and not saw_banner:
-			saw_banner = true
-			await _save_shot("arrest_banner")
-			print("ARREST_FINALE saw_banner")
+		if not saw_custody:
+			# Badge nativo EN CUSTODIA (IntentLabel u otra label del wrap).
+			for node in combat.find_children("*", "Label", true, false):
+				if node is Label and "CUSTODIA" in str(node.text).to_upper():
+					saw_custody = true
+					await _save_shot("arrest_custody")
+					print("ARREST_FINALE saw_custody text=", node.text)
+					break
+		var mark := combat.find_child("ArrestMark", true, false)
+		if mark and not saw_mark:
+			saw_mark = true
+			if not saw_custody:
+				saw_custody = true
+				await _save_shot("arrest_custody")
+			print("ARREST_FINALE saw_mark")
 		if combat.result_panel and combat.result_panel.visible and not saw_result:
 			saw_result = true
 			await _save_shot("arrest_result")
 			print("ARREST_FINALE saw_result title=", combat.result_title.text if combat.result_title else "")
 			break
-		if saw_cuffs and saw_banner and saw_result:
+		if saw_custody and saw_result:
 			break
-	print(
-		"ARREST_FINALE_OK cuffs=", saw_cuffs,
-		" banner=", saw_banner,
-		" result=", saw_result
-	)
-	await get_tree().create_timer(0.6).timeout
+	print("ARREST_FINALE_OK custody=", saw_custody, " mark=", saw_mark, " result=", saw_result)
+	await get_tree().create_timer(0.5).timeout
 	if OS.get_environment("TQ_ARREST_FINALE_QUIT") != "0":
-		get_tree().quit(0 if (saw_cuffs or saw_banner or saw_result) else 1)
+		get_tree().quit(0 if (saw_custody or saw_result) else 1)
+
 
 
 func _survival_run() -> void:
