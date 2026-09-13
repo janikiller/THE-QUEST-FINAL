@@ -1,5 +1,15 @@
 import { generateWorld } from "./world.js";
-import { createGame, updateGame, dayPhase, inventorySlots, waveStatus } from "./game.js";
+import {
+  createGame,
+  updateGame,
+  dayPhase,
+  inventorySlots,
+  hotbarSlots,
+  equipPanel,
+  equipHotbarSlot,
+  waveStatus,
+  setToast,
+} from "./game.js";
 import { createRenderer } from "./render.js";
 
 const boot = document.getElementById("boot");
@@ -7,9 +17,13 @@ const death = document.getElementById("death");
 const gameRoot = document.getElementById("game");
 const startBtn = document.getElementById("start-btn");
 const retryBtn = document.getElementById("retry-btn");
+const controlsBtn = document.getElementById("controls-btn");
+const controlsPanel = document.getElementById("controls-panel");
 const clockEl = document.getElementById("clock");
 const toastEl = document.getElementById("toast");
 const inventoryEl = document.getElementById("inventory");
+const hotbarEl = document.getElementById("hotbar");
+const equipEl = document.getElementById("equip-panel");
 const deathReason = document.getElementById("death-reason");
 const buildEl = document.getElementById("build-mode");
 const killsEl = document.getElementById("kills");
@@ -26,9 +40,22 @@ let renderer = null;
 let last = 0;
 let raf = 0;
 
+controlsBtn?.addEventListener("click", () => {
+  const open = controlsPanel.hasAttribute("hidden");
+  if (open) {
+    controlsPanel.removeAttribute("hidden");
+    controlsBtn.setAttribute("aria-expanded", "true");
+  } else {
+    controlsPanel.setAttribute("hidden", "");
+    controlsBtn.setAttribute("aria-expanded", "false");
+  }
+});
+
 function start() {
   const world = generateWorld(96);
   game = createGame(world);
+  // Un bate al empezar para probar hotbar estilo PZ
+  game.player.inv.bat = (game.player.inv.bat || 0) + 1;
   window.__crespo = game;
   boot.hidden = true;
   death.hidden = true;
@@ -42,6 +69,7 @@ function start() {
   }
 
   bindKeys(game);
+  bindHudClicks();
   last = performance.now();
   cancelAnimationFrame(raf);
   raf = requestAnimationFrame(loop);
@@ -50,7 +78,10 @@ function start() {
 function bindKeys(g) {
   const down = (e) => {
     const k = e.key.toLowerCase();
-    if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k) || k.length === 1) {
+    if (
+      [" ", "arrowup", "arrowdown", "arrowleft", "arrowright", "enter"].includes(k) ||
+      k.length === 1
+    ) {
       e.preventDefault();
     }
     if (!g.keys.has(k)) g.justPressed.add(k);
@@ -59,6 +90,22 @@ function bindKeys(g) {
   const up = (e) => g.keys.delete(e.key.toLowerCase());
   window.onkeydown = down;
   window.onkeyup = up;
+}
+
+function bindHudClicks() {
+  hotbarEl.onclick = (e) => {
+    const btn = e.target.closest("[data-hot]");
+    if (!btn || !game) return;
+    equipHotbarSlot(game, Number(btn.dataset.hot));
+  };
+  equipEl.onclick = (e) => {
+    const btn = e.target.closest("[data-equip]");
+    if (!btn || !game) return;
+    if (btn.dataset.equip === "hand" && game.player.equip.hand) {
+      game.player.equip.hand = null;
+      setToast(game, "Mano primaria libre.");
+    }
+  };
 }
 
 function loop(now) {
@@ -96,14 +143,35 @@ function syncHud(g) {
       buildEl.hidden = false;
       buildEl.textContent =
         g.buildMode === "wall"
-          ? "Modo: BARRICADA (B)"
+          ? "Modo: BARRICADA (Enter)"
           : g.buildMode === "door"
-            ? "Modo: PUERTA (B)"
-            : "Modo: MARCAR BASE (B)";
+            ? "Modo: PUERTA (Enter)"
+            : "Modo: MARCAR BASE (Enter)";
     } else {
       buildEl.hidden = true;
     }
   }
+
+  hotbarEl.innerHTML = hotbarSlots(g)
+    .map(
+      (s) => `<button type="button" class="hot-slot${s.active ? " active" : ""}${s.empty ? " empty" : ""}" data-hot="${s.index}">
+        <span class="hot-key">${s.key}</span>
+        <span class="hot-icon">${s.icon || "·"}</span>
+        <span class="hot-label">${s.label || "—"}</span>
+      </button>`
+    )
+    .join("");
+
+  equipEl.innerHTML = equipPanel(g)
+    .map(
+      (s) => `<button type="button" class="equip-slot${s.empty ? " empty" : ""}${s.primary ? " primary" : ""}" data-equip="${s.slot}">
+        <span class="slot-tag">${s.tag}</span>
+        <span class="slot-icon">${s.icon}</span>
+        <span class="slot-name">${s.label}</span>
+        <span class="slot-stat">${s.stat || ""}</span>
+      </button>`
+    )
+    .join("");
 
   inventoryEl.innerHTML = inventorySlots(g)
     .map((s) => `<div class="inv-slot inv-${s.kind}"><strong>${s.n}</strong>${s.label}</div>`)

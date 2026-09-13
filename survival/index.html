@@ -6,17 +6,28 @@
   <title>CRESPO — Niebla Norte</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/game.css" />
 </head>
 <body>
   <div id="boot">
-    <div class="boot-inner">
-      <p class="boot-brand">CRESPO</p>
-      <h1>Niebla Norte</h1>
-      <p class="boot-lead">Ciudad muerta de verdad: calles, edificios, mochilas y oleadas de zombis cada vez más fuertes.</p>
-      <button id="start-btn" type="button">Entrar en la ciudad</button>
-      <p class="boot-hint">WASD · E saquear / registrar · T equipar · Q atacar · R consumir · 1/2/3 + B construir · Espacio correr</p>
+    <div class="menu-shell">
+      <div class="menu-hero">
+        <p class="boot-brand">CRESPO</p>
+        <h1>Niebla Norte</h1>
+        <p class="boot-lead">La ciudad no perdona. Equipa, saquea y aguanta las oleadas.</p>
+      </div>
+      <nav class="menu-panel" aria-label="Menú principal">
+        <button id="start-btn" type="button" class="menu-btn menu-btn-primary">Nueva partida</button>
+        <button id="controls-btn" type="button" class="menu-btn" aria-expanded="false">Controles</button>
+        <div id="controls-panel" class="controls-panel" hidden>
+          <p><kbd>WASD</kbd> mover · <kbd>Espacio</kbd> correr</p>
+          <p><kbd>1-5</kbd> arma en hotbar · <kbd>Q</kbd> atacar</p>
+          <p><kbd>E</kbd> saquear / registrar · <kbd>R</kbd> consumir</p>
+          <p><kbd>T</kbd> ropa / mochila · <kbd>B</kbd> ciclo construcción</p>
+        </div>
+        <p class="menu-foot">Build barricadas · Sobrevive a la noche</p>
+      </nav>
     </div>
   </div>
 
@@ -38,20 +49,32 @@
         <div class="bar" data-stat="stamina"><span>Fuerza</span><i id="bar-stamina"></i></div>
       </aside>
 
+      <!-- Equipo estilo Project Zomboid -->
+      <aside class="equip-panel" id="equip-panel" aria-label="Equipo"></aside>
+
       <div class="build-banner" id="build-mode" hidden>Modo construcción</div>
-      <div class="inventory" id="inventory"></div>
+
+      <div class="hotbar-wrap">
+        <div class="hotbar" id="hotbar" aria-label="Hotbar de armas"></div>
+        <div class="inv-strip" id="inventory" aria-label="Inventario"></div>
+      </div>
+
       <p class="toast" id="toast" hidden></p>
       <canvas id="minimap" width="148" height="148" aria-label="Minimapa"></canvas>
-      <p class="help">T equipar · E registrar · Q atacar · 1/2/3 + B construir · Oleadas cada vez más fuertes</p>
+      <p class="help">1-5 arma · Q atacar · E saquear · T ropa/mochila · B construir</p>
     </div>
   </div>
 
   <div id="death" hidden>
-    <div class="death-inner">
-      <p class="boot-brand">CRESPO</p>
-      <h2>Niebla Norte te reclamó</h2>
-      <p id="death-reason">Sin fuerzas.</p>
-      <button id="retry-btn" type="button">Otra ciudad</button>
+    <div class="menu-shell death-shell">
+      <div class="menu-hero">
+        <p class="boot-brand">CRESPO</p>
+        <h2>Niebla Norte te reclamó</h2>
+        <p id="death-reason" class="boot-lead">Sin fuerzas.</p>
+      </div>
+      <nav class="menu-panel">
+        <button id="retry-btn" type="button" class="menu-btn menu-btn-primary">Otra ciudad</button>
+      </nav>
     </div>
   </div>
 

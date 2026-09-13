@@ -4,6 +4,7 @@ import {
   LOOT,
   BUILD,
   BASE_CAPACITY,
+  WEAPON_HOTBAR,
   canWalk,
   tileAt,
   setTile,
@@ -17,12 +18,16 @@ import {
 
 const DAY_LEN = 160;
 const DEFAULT_WEAPON = {
-  label: "Tubería",
-  damage: 30,
-  range: 1.35,
-  attackCd: 0.4,
-  stamina: 8,
+  label: "Manos",
+  damage: 18,
+  range: 1.15,
+  attackCd: 0.35,
+  stamina: 5,
+  icon: "✊",
 };
+
+const BUILD_CYCLE = [null, "wall", "door", "claim"];
+
 
 export function createGame(world) {
   const game = {
@@ -71,7 +76,7 @@ export function createGame(world) {
     },
   };
   seedZombies(game, 4);
-  setToast(game, "Oleada 1 en camino. Busca mochila y arma (T para equipar).");
+  setToast(game, "Oleada 1 en camino. Armas en hotbar 1-5 · T ropa/mochila.");
   return game;
 }
 
@@ -131,19 +136,22 @@ export function updateGame(game, dt) {
   p.attackCd = Math.max(0, p.attackCd - dt);
   p.hurtFlash = Math.max(0, p.hurtFlash - dt);
 
-  if (pressed(game, "1")) {
-    game.buildMode = "wall";
-    setToast(game, "Construir: barricada (B delante)");
+  if (pressed(game, "b")) {
+    const cur = BUILD_CYCLE.indexOf(game.buildMode);
+    const next = BUILD_CYCLE[(cur + 1) % BUILD_CYCLE.length];
+    game.buildMode = next;
+    if (!next) setToast(game, "Construcción cancelada.");
+    else if (next === "wall") setToast(game, "Modo barricada — Enter para colocar.");
+    else if (next === "door") setToast(game, "Modo puerta — Enter para colocar.");
+    else setToast(game, "Modo base — Enter para marcar.");
   }
-  if (pressed(game, "2")) {
-    game.buildMode = "door";
-    setToast(game, "Construir: puerta (B delante)");
-  }
-  if (pressed(game, "3")) {
-    game.buildMode = "claim";
-    setToast(game, "Marcar base bajo tus pies (B)");
-  }
+  if (pressed(game, "enter") && game.buildMode && p.gatherCd <= 0) build(game);
   if (pressed(game, "0") || pressed(game, "escape")) game.buildMode = null;
+
+  // Hotbar de armas estilo Project Zomboid (1-5)
+  for (let i = 1; i <= 5; i++) {
+    if (pressed(game, String(i))) equipHotbarSlot(game, i - 1);
+  }
 
   let mx = 0;
   let my = 0;
@@ -191,8 +199,8 @@ export function updateGame(game, dt) {
   if (pressed(game, "e") && p.gatherCd <= 0) interact(game);
   if ((pressed(game, "q") || pressed(game, "f")) && p.attackCd <= 0) melee(game);
   if (pressed(game, "r") && p.gatherCd <= 0) consume(game);
-  if (pressed(game, "b") && p.gatherCd <= 0 && game.buildMode) build(game);
-  if (pressed(game, "t")) tryEquip(game);
+  if (pressed(game, "enter") && p.gatherCd <= 0 && game.buildMode) build(game);
+  if (pressed(game, "t")) tryEquipGear(game);
 
   game.justPressed.clear();
 
@@ -628,23 +636,97 @@ function equippedWeapon(p) {
   const def = itemDef(p.equip.hand);
   if (def?.slot === "hand") {
     return {
+      id: p.equip.hand,
       label: def.label,
       damage: def.damage ?? DEFAULT_WEAPON.damage,
       range: def.range ?? DEFAULT_WEAPON.range,
       attackCd: def.attackCd ?? DEFAULT_WEAPON.attackCd,
       stamina: def.stamina ?? DEFAULT_WEAPON.stamina,
+      icon: def.icon || "⚔",
     };
   }
-  return { ...DEFAULT_WEAPON };
+  return { id: null, ...DEFAULT_WEAPON };
 }
 
-function tryEquip(game) {
+/** Armas en inventario, en orden de hotbar (máx 5). */
+export function hotbarSlots(game) {
   const p = game.player;
-  const order = [
-    LOOT.BAG_BIG, LOOT.BAG,
-    LOOT.BAT, LOOT.CROWBAR, LOOT.KNIFE,
-    LOOT.JACKET,
+  const owned = WEAPON_HOTBAR.filter((id) => (p.inv[id] || 0) > 0);
+  const slots = [];
+  for (let i = 0; i < 5; i++) {
+    const id = owned[i] || null;
+    const def = id ? itemDef(id) : null;
+    slots.push({
+      index: i,
+      key: String(i + 1),
+      id,
+      label: def?.label || "",
+      icon: def?.icon || "",
+      active: id && p.equip.hand === id,
+      empty: !id,
+    });
+  }
+  return slots;
+}
+
+export function equipPanel(game) {
+  const p = game.player;
+  const weapon = equippedWeapon(p);
+  const body = itemDef(p.equip.body);
+  const bag = itemDef(p.equip.bag);
+  return [
+    {
+      slot: "hand",
+      tag: "Primaria",
+      id: p.equip.hand,
+      label: weapon.label,
+      icon: weapon.icon || "✊",
+      stat: p.equip.hand ? `${weapon.damage} dmg` : "sin arma",
+      empty: !p.equip.hand,
+      primary: true,
+    },
+    {
+      slot: "body",
+      tag: "Ropa",
+      id: p.equip.body,
+      label: body?.label || "—",
+      icon: body?.icon || "·",
+      stat: body?.biteMult ? `mordida ×${body.biteMult}` : "",
+      empty: !p.equip.body,
+    },
+    {
+      slot: "bag",
+      tag: "Mochila",
+      id: p.equip.bag,
+      label: bag?.label || "—",
+      icon: bag?.icon || "·",
+      stat: bag?.capacity ? `+${bag.capacity} carga` : "",
+      empty: !p.equip.bag,
+    },
   ];
+}
+
+export function equipHotbarSlot(game, index) {
+  const slots = hotbarSlots(game);
+  const slot = slots[index];
+  if (!slot?.id) {
+    setToast(game, `Hotbar ${index + 1} vacío.`);
+    return;
+  }
+  const p = game.player;
+  if (p.equip.hand === slot.id) {
+    p.equip.hand = null;
+    setToast(game, `Guardas ${slot.label.toLowerCase()} (mano libre).`);
+    return;
+  }
+  p.equip.hand = slot.id;
+  setToast(game, `Arma primaria: ${slot.label}.`);
+}
+
+/** T solo cicla ropa / mochila (las armas van por hotbar 1-5). */
+function tryEquipGear(game) {
+  const p = game.player;
+  const order = [LOOT.BAG_BIG, LOOT.BAG, LOOT.JACKET];
   for (const id of order) {
     if ((p.inv[id] || 0) <= 0) continue;
     const def = itemDef(id);
@@ -654,7 +736,7 @@ function tryEquip(game) {
     p.equip[def.slot] = id;
     if (invUsed(p) > invCapacity(p)) {
       p.equip[def.slot] = prev;
-      setToast(game, "Demasiada carga para ese cambio de equipo.");
+      setToast(game, "Demasiada carga para ese cambio.");
       return;
     }
     p.gatherCd = 0.15;
@@ -662,11 +744,6 @@ function tryEquip(game) {
     return;
   }
 
-  if (p.equip.hand) {
-    setToast(game, `Guardas ${itemDef(p.equip.hand).label.toLowerCase()}.`);
-    p.equip.hand = null;
-    return;
-  }
   if (p.equip.body) {
     setToast(game, `Te quitas ${itemDef(p.equip.body).label.toLowerCase()}.`);
     p.equip.body = null;
@@ -683,7 +760,7 @@ function tryEquip(game) {
     setToast(game, `Dejas ${itemDef(bag).label.toLowerCase()}.`);
     return;
   }
-  setToast(game, "Nada que equipar. Saquea armarios (E).");
+  setToast(game, "Nada de ropa/mochila. Armas: teclas 1-5.");
 }
 
 export function inventorySlots(game) {
@@ -694,40 +771,11 @@ export function inventorySlots(game) {
     n: p.inv[id] || 0,
     kind: "stack",
   }));
-  const gearIds = [LOOT.BAG, LOOT.BAG_BIG, LOOT.BAT, LOOT.CROWBAR, LOOT.KNIFE, LOOT.JACKET];
-  const gear = gearIds
-    .filter((id) => (p.inv[id] || 0) > 0)
-    .map((id) => ({
-      id,
-      label: lootLabel(id),
-      n: p.inv[id],
-      kind: "gear",
-    }));
-  const equipSlots = [
-    {
-      id: "hand",
-      label: p.equip.hand ? lootLabel(p.equip.hand) : "Mano",
-      n: p.equip.hand ? "E" : "·",
-      kind: "equip",
-    },
-    {
-      id: "body",
-      label: p.equip.body ? lootLabel(p.equip.body) : "Cuerpo",
-      n: p.equip.body ? "E" : "·",
-      kind: "equip",
-    },
-    {
-      id: "bag",
-      label: p.equip.bag ? lootLabel(p.equip.bag) : "Mochila",
-      n: p.equip.bag ? "E" : "·",
-      kind: "equip",
-    },
-  ];
   const cap = {
     id: "cap",
     label: "Carga",
     n: `${invUsed(p)}/${invCapacity(p)}`,
     kind: "cap",
   };
-  return [...stacks, ...gear, ...equipSlots, cap];
+  return [...stacks, cap];
 }

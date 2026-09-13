@@ -1718,12 +1718,34 @@ function drawLoot(ctx, id, px, py, time) {
     ctx.strokeStyle = "#c8a060";
     ctx.lineWidth = 1.5;
     ctx.strokeRect(-8, -6, 16, 14);
-  } else if (id === "bat" || id === "crowbar") {
-    ctx.strokeStyle = id === "bat" ? "#8a5a28" : "#7a8088";
-    ctx.lineWidth = 3.5;
+  } else if (id === "bat" || id === "crowbar" || id === "axe" || id === "hammer") {
+    ctx.strokeStyle =
+      id === "bat" ? "#8a5a28" :
+      id === "axe" ? "#6a7078" :
+      id === "hammer" ? "#7a6848" :
+      "#7a8088";
+    ctx.lineWidth = id === "axe" ? 4 : 3.5;
     ctx.beginPath();
     ctx.moveTo(-9, 6);
     ctx.lineTo(9, -8);
+    ctx.stroke();
+    if (id === "axe") {
+      ctx.fillStyle = "#8a9098";
+      ctx.beginPath();
+      ctx.moveTo(4, -10);
+      ctx.lineTo(12, -6);
+      ctx.lineTo(8, -2);
+      ctx.fill();
+    }
+  } else if (id === "pan") {
+    ctx.strokeStyle = "#6a7078";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, -1, 7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(6, 2);
+    ctx.lineTo(12, 8);
     ctx.stroke();
   } else if (id === "knife") {
     ctx.fillStyle = "#c8d0d8";
@@ -1823,14 +1845,30 @@ function drawPlayer(ctx, px, py, player, time) {
   ctx.arc(2, -20, 3.5, 0, Math.PI * 2);
   ctx.arc(4, -16, 2.7, 0, Math.PI * 2);
   ctx.fill();
-  // Arma en mano
+  // Arma en mano (primaria PZ)
   const hand = player.equip?.hand;
-  ctx.strokeStyle = hand === "bat" ? "#8a5a28" : hand === "crowbar" ? "#8a9098" : hand === "knife" ? "#c8d0d8" : "#8a9098";
-  ctx.lineWidth = hand === "knife" ? 2 : 3;
+  const handColor =
+    hand === "bat" ? "#8a5a28" :
+    hand === "axe" ? "#6a7078" :
+    hand === "hammer" ? "#7a6848" :
+    hand === "pan" ? "#8a9098" :
+    hand === "crowbar" ? "#8a9098" :
+    hand === "knife" ? "#c8d0d8" :
+    "#8a9098";
+  ctx.strokeStyle = handColor;
+  ctx.lineWidth = hand === "knife" ? 2 : hand === "axe" ? 3.5 : 3;
   ctx.beginPath();
   ctx.moveTo(7, -2);
-  ctx.lineTo(hand === "knife" ? 12 : 15, hand === "knife" ? -4 : -8);
-  ctx.stroke();
+  if (hand === "pan") {
+    ctx.lineTo(12, -2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(15, -4, 4, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    ctx.lineTo(hand === "knife" ? 12 : 15, hand === "knife" ? -4 : -8);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
