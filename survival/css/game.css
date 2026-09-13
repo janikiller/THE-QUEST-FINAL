@@ -36,9 +36,9 @@ body {
   display: grid;
   place-items: center;
   background:
-    radial-gradient(ellipse 80% 60% at 50% 20%, rgba(95, 138, 82, 0.35), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 80% 90%, rgba(208, 106, 43, 0.18), transparent 50%),
-    linear-gradient(165deg, #152018 0%, #0b100c 45%, #1a2416 100%);
+    radial-gradient(ellipse 70% 50% at 20% 10%, rgba(120, 50, 40, 0.28), transparent 50%),
+    radial-gradient(ellipse 80% 60% at 80% 90%, rgba(40, 70, 80, 0.3), transparent 55%),
+    linear-gradient(165deg, #14181c 0%, #0a0c0e 45%, #1a1614 100%);
   z-index: 20;
 }
 
@@ -216,11 +216,50 @@ body {
 .bar[data-stat="thirst"] i::after {
   background: linear-gradient(90deg, #1f4d55, #7ea8a0);
 }
-.bar[data-stat="warmth"] i::after {
-  background: linear-gradient(90deg, #8a3a18, #e08945);
-}
 .bar[data-stat="stamina"] i::after {
   background: linear-gradient(90deg, #2f4a34, #8fbf72);
+}
+
+.hud-meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.kills {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(215, 236, 228, 0.7);
+  background: var(--panel);
+  padding: 0.45rem 0.75rem;
+  backdrop-filter: blur(8px);
+}
+
+.build-banner {
+  position: absolute;
+  top: 4.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.45rem 0.9rem;
+  background: rgba(90, 60, 20, 0.85);
+  border: 1px solid rgba(240, 200, 120, 0.35);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f0d890;
+}
+
+.help {
+  position: absolute;
+  right: 1.2rem;
+  top: 1rem;
+  max-width: 14rem;
+  text-align: right;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: rgba(215, 236, 228, 0.4);
+  margin-top: 2.6rem;
 }
 
 .inventory {

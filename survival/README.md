@@ -1,33 +1,35 @@
-# CRESPO — Valmora
+# CRESPO — Niebla Norte
 
-Juego de supervivencia 2D inventado desde cero.
+Supervivencia zombie en ciudad 2D inventada.
 
-Despiertas como **Crespo** en la isla de **Valmora**. Cada partida genera un mapa nuevo: playas, pinos, ciénagas, riscos y ruinas.
+Eres **Crespo** en **Niebla Norte**: calles, manzanas, canal y muertos. Saquea, construye una base y aguanta la noche.
 
 ## Jugar
 
 ```bash
-# desde la raíz del repo
 python3 -m http.server 8080
-# abre http://localhost:8080/survival/?auto=1
+# http://localhost:8080/survival/
 ```
-
-O abre `survival/index.html` con un servidor local (módulos ES).
 
 ## Controles
 
 | Tecla | Acción |
 |-------|--------|
 | WASD | Mover |
-| Espacio | Correr |
-| E | Recolectar / beber / comer bayas |
-| F | Fogata (3 madera + 1 pedernal) |
-| Q | Lanzar piedra a lobos |
+| Espacio | Correr (hace ruido) |
+| E | Saquear / beber del canal |
+| Q | Golpear con tubería |
+| R | Consumir (botiquín → comida → agua) |
+| 1 | Modo barricada |
+| 2 | Modo puerta |
+| 3 | Marcar base |
+| B | Colocar construcción |
+| 0 / Esc | Cancelar construcción |
 
 ## Sistemas
 
-- Mapa procedural (ruido + biomas + recursos)
-- Vida, hambre, sed, calor, resistencia
-- Ciclo día / noche
-- Lobos de noche
-- Minimapa
+- Ciudad procedural (calles, edificios, parques, parking, canal)
+- Zombies de día y peores de noche
+- Base: marca suelo, cercála con barricadas y puerta
+- Los zombies no cruzan puertas sanas; pueden romperlas
+- Inventario: latas, agua, chatarra, tablas, botiquín

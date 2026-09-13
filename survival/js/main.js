@@ -11,12 +11,13 @@ const clockEl = document.getElementById("clock");
 const toastEl = document.getElementById("toast");
 const inventoryEl = document.getElementById("inventory");
 const deathReason = document.getElementById("death-reason");
+const buildEl = document.getElementById("build-mode");
+const killsEl = document.getElementById("kills");
 
 const bars = {
   health: document.getElementById("bar-health"),
   hunger: document.getElementById("bar-hunger"),
   thirst: document.getElementById("bar-thirst"),
-  warmth: document.getElementById("bar-warmth"),
   stamina: document.getElementById("bar-stamina"),
 };
 
@@ -52,6 +53,7 @@ function bindKeys(g) {
     if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k) || k.length === 1) {
       e.preventDefault();
     }
+    if (!g.keys.has(k)) g.justPressed.add(k);
     g.keys.add(k);
   };
   const up = (e) => g.keys.delete(e.key.toLowerCase());
@@ -81,15 +83,29 @@ function syncHud(g) {
   setBar(bars.health, p.health);
   setBar(bars.hunger, p.hunger);
   setBar(bars.thirst, p.thirst);
-  setBar(bars.warmth, p.warmth);
   setBar(bars.stamina, p.stamina);
-  clockEl.textContent = `${dayPhase(g).name} · isla #${g.world.seed.toString(36).slice(0, 5)}`;
+
+  const phase = dayPhase(g);
+  const seed = g.world.seed.toString(36).slice(0, 5);
+  clockEl.textContent = `${phase.name} · Niebla Norte #${seed}`;
+  if (killsEl) killsEl.textContent = `${g.kills} bajas`;
+
+  if (buildEl) {
+    if (g.buildMode) {
+      buildEl.hidden = false;
+      buildEl.textContent =
+        g.buildMode === "wall"
+          ? "Modo: BARRICADA (B)"
+          : g.buildMode === "door"
+            ? "Modo: PUERTA (B)"
+            : "Modo: MARCAR BASE (B)";
+    } else {
+      buildEl.hidden = true;
+    }
+  }
 
   inventoryEl.innerHTML = inventorySlots(g)
-    .map(
-      (s) =>
-        `<div class="inv-slot"><strong>${s.n}</strong>${s.label}</div>`
-    )
+    .map((s) => `<div class="inv-slot"><strong>${s.n}</strong>${s.label}</div>`)
     .join("");
 
   if (g.toastT > 0 && g.toast) {
@@ -101,11 +117,11 @@ function syncHud(g) {
 }
 
 function setBar(el, value) {
+  if (!el) return;
   el.style.setProperty("--v", `${Math.max(0, Math.min(100, value))}%`);
 }
 
 startBtn.addEventListener("click", start);
 retryBtn.addEventListener("click", start);
 
-// Acceso directo si se abre con ?auto=1
 if (new URLSearchParams(location.search).has("auto")) start();
