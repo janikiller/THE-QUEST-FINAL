@@ -170,10 +170,30 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
           y: y + 0.5,
           rot: x % BLOCK < ROAD_W ? 0 : 1,
           color: colors[(x * 5 + y) % colors.length],
+          wreck: noise.noise2(x + 2, y + 4) > 0.85,
         });
       }
     }
   }
+
+  // Semáforos en esquinas de cruce
+  for (let by = 0; by < size; by += BLOCK) {
+    for (let bx = 0; bx < size; bx += BLOCK) {
+      if (bx + 1 >= size || by + 1 >= size) continue;
+      if (tiles[by * size + bx] !== TILE.CROSSWALK && tiles[by * size + bx] !== TILE.ROAD) continue;
+      props.push({ type: "traffic", x: bx + ROAD_W + 0.35, y: by + ROAD_W + 0.35 });
+    }
+  }
+
+  // Tapas de alcantarilla
+  for (let y = 3; y < size - 3; y++) {
+    for (let x = 3; x < size - 3; x++) {
+      if (tiles[y * size + x] !== TILE.ROAD) continue;
+      if ((x * 17 + y * 31) % 47 === 0) props.push({ type: "manhole", x: x + 0.5, y: y + 0.5 });
+    }
+  }
+
+  props.sort((a, b) => a.y - b.y);
 
   const spawn = findSpawn(tiles, size, noise);
   return { size, seed, tiles, loot, doors, buildings, props, interiors, spawn, noise, canalY };
@@ -241,35 +261,59 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, pro
     }
   }
 
-  // Contenedor en acera
-  if (noise.noise2(bx + 2, by + 2) > 0.55) {
+  // Mobiliario urbano en acera
+  if (noise.noise2(bx + 2, by + 2) > 0.45) {
     props.push({ type: "dumpster", x: ring.x0 + 0.5, y: ((y0 + y1) / 2) + 0.15 });
   }
+  if (noise.noise2(bx + 5, by + 1) > 0.55) {
+    props.push({ type: "sign", x: dx + (side === 2 ? -0.7 : side === 3 ? 0.7 : 0), y: dy + (side === 0 ? -0.7 : side === 1 ? 0.7 : 0), label: name.split(" ")[0] });
+  }
+  // Porche / escalón delante de la puerta
+  props.push({ type: "awning", x: dx + 0.5, y: dy + 0.5, side });
 
-  buildings.push({ x0, y0, x1, y1, doorX: dx, doorY: dy, facade, name, floors });
+  buildings.push({ x0, y0, x1, y1, doorX: dx, doorY: dy, facade, name, floors, style: floors >= 4 ? "tower" : "block" });
 }
 
 function pavePark(tiles, size, bx, by, props, noise) {
   const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
+  const midX = ((x0 + x1) / 2) | 0;
+  const midY = ((y0 + y1) / 2) | 0;
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
-      tiles[y * size + x] = TILE.PARK;
-      if (noise.noise2(x * 0.9, y * 0.9) > 0.72) {
-        props.push({ type: "tree", x: x + 0.5, y: y + 0.5, r: 10 + (noise.noise2(x, y) * 8) });
+      // Sendero en cruz
+      if (x === midX || y === midY) tiles[y * size + x] = TILE.SIDEWALK;
+      else tiles[y * size + x] = TILE.PARK;
+      if (tiles[y * size + x] === TILE.PARK && noise.noise2(x * 0.9, y * 0.9) > 0.7) {
+        props.push({
+          type: "tree",
+          x: x + 0.35 + noise.noise2(x, y) * 0.3,
+          y: y + 0.35 + noise.noise2(y, x) * 0.3,
+          r: 11 + noise.noise2(x, y) * 9,
+          tone: noise.noise2(x + 3, y) > 0.5 ? 0 : 1,
+        });
       }
     }
   }
-  props.push({ type: "bench", x: ((x0 + x1) / 2) + 0.5, y: ((y0 + y1) / 2) + 0.5 });
+  props.push({ type: "bench", x: midX - 1.2, y: midY + 0.5 });
+  props.push({ type: "bench", x: midX + 1.2, y: midY + 0.5 });
+  props.push({ type: "fountain", x: midX + 0.5, y: midY + 0.5 });
 }
 
 function paveParking(tiles, size, bx, by, props, noise) {
   const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
+  const colors = ["#5a2020", "#2a3040", "#3a3a38", "#4a5030", "#6a5a20", "#203040"];
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
       tiles[y * size + x] = TILE.PARKING;
-      if ((x + y) % 5 === 0 && noise.noise2(x, y) > 0.4) {
-        const colors = ["#5a2020", "#2a3040", "#3a3a38", "#4a5030"];
-        props.push({ type: "car", x: x + 0.5, y: y + 0.5, rot: 1, color: colors[(x + y) % colors.length] });
+      if ((x + y) % 3 === 0 && noise.noise2(x, y) > 0.35) {
+        props.push({
+          type: "car",
+          x: x + 0.5,
+          y: y + 0.5,
+          rot: 1,
+          color: colors[(x * 3 + y) % colors.length],
+          wreck: noise.noise2(x + 9, y) > 0.78,
+        });
       }
     }
   }
@@ -283,6 +327,10 @@ function paveAlley(tiles, size, bx, by, props, noise) {
     }
   }
   props.push({ type: "dumpster", x: ((x0 + x1) / 2) + 0.5, y: y0 + 1.5 });
+  props.push({ type: "dumpster", x: ((x0 + x1) / 2) - 0.2, y: y1 - 0.8, color: "#3a4a58" });
+  if (noise.noise2(bx, by) > 0.4) {
+    props.push({ type: "graffiti", x: x0 + 1.5, y: y0 + 2.2 });
+  }
 }
 
 function paveQuay(tiles, size, bx, by, props, noise) {
@@ -291,6 +339,9 @@ function paveQuay(tiles, size, bx, by, props, noise) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
       tiles[y * size + x] = noise.noise2(x * 0.5, y * 0.5) > 0.55 ? TILE.RUBBLE : TILE.SIDEWALK;
     }
+  }
+  for (let x = x0 + 1; x < x1; x += 2) {
+    props.push({ type: "railing", x: x + 0.5, y: y0 + 1.2 });
   }
 }
 
