@@ -5,6 +5,7 @@ import {
   BUILD,
   BASE_CAPACITY,
   WEAPON_HOTBAR,
+  CLOTHES,
   canWalk,
   tileAt,
   setTile,
@@ -17,6 +18,7 @@ import {
 } from "./world.js";
 
 const DAY_LEN = 160;
+export const MAX_HEALTH = 160;
 const DEFAULT_WEAPON = {
   label: "Manos",
   damage: 18,
@@ -36,12 +38,13 @@ export function createGame(world) {
       x: world.spawn.x,
       y: world.spawn.y,
       facing: 1,
-      health: 100,
+      health: MAX_HEALTH,
+      maxHealth: MAX_HEALTH,
       hunger: 82,
       thirst: 78,
       stamina: 100,
-      inv: { food: 1, water: 1, scrap: 3, wood: 3, med: 0 },
-      equip: { hand: null, body: null, bag: null, light: null },
+      inv: { food: 1, water: 1, scrap: 3, wood: 3, med: 1, shirt: 1, jacket: 1, bat: 1, crowbar: 1, knife: 1 },
+      equip: { hand: "bat", body: "shirt", bag: null, light: null },
       gatherCd: 0,
       attackCd: 0,
       hurtFlash: 0,
@@ -76,7 +79,7 @@ export function createGame(world) {
     },
   };
   seedZombies(game, 4);
-  setToast(game, "Oleada 1 en camino. Armas 1-5 · T ropa/mochila/luz.");
+  setToast(game, "Oleada 1 en camino. Armas 1-5 · T cambia ropa/mochila/luz.");
   return game;
 }
 
@@ -692,7 +695,7 @@ export function equipPanel(game) {
       id: p.equip.body,
       label: body?.label || "—",
       icon: body?.icon || "·",
-      stat: body?.biteMult ? `mordida ×${body.biteMult}` : "",
+      stat: body ? `prot. ${Math.round((1 - (body.biteMult ?? 1)) * 100)}%` : "camiseta",
       empty: !p.equip.body,
     },
     {
@@ -736,7 +739,35 @@ export function equipHotbarSlot(game, index) {
 /** T cicla ropa / mochila / luz (las armas van por hotbar 1-5). */
 function tryEquipGear(game) {
   const p = game.player;
-  const order = [LOOT.BAG_BIG, LOOT.BAG, LOOT.JACKET, LOOT.FLASHLIGHT, LOOT.LANTERN];
+  // Primero ciclar ropa distinta si hay varias
+  const ownedClothes = CLOTHES.filter((id) => (p.inv[id] || 0) > 0);
+  if (ownedClothes.length) {
+    const cur = p.equip.body;
+    const idx = Math.max(0, ownedClothes.indexOf(cur));
+    const next = ownedClothes[(idx + 1) % ownedClothes.length];
+    if (next !== cur) {
+      const prev = p.equip.body;
+      p.equip.body = next;
+      if (invUsed(p) > invCapacity(p)) {
+        p.equip.body = prev;
+        setToast(game, "Demasiada carga para esa ropa.");
+        return;
+      }
+      p.gatherCd = 0.15;
+      setToast(game, `Te pones ${itemDef(next).label.toLowerCase()}.`);
+      return;
+    }
+    if (ownedClothes.length === 1 && cur) {
+      // Una sola prenda: quitarla y seguir a mochila/luz
+    } else if (ownedClothes.length > 1) {
+      // Ya dimos la vuelta: quitar ropa
+      setToast(game, `Te quitas ${itemDef(cur).label.toLowerCase()}.`);
+      p.equip.body = null;
+      return;
+    }
+  }
+
+  const order = [LOOT.BAG_BIG, LOOT.BAG, LOOT.FLASHLIGHT, LOOT.LANTERN];
   for (const id of order) {
     if ((p.inv[id] || 0) <= 0) continue;
     const def = itemDef(id);

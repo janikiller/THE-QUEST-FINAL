@@ -48,10 +48,17 @@ export const LOOT = {
   AXE: "axe",
   PAN: "pan",
   HAMMER: "hammer",
+  SHIRT: "shirt",
   JACKET: "jacket",
+  HOODIE: "hoodie",
+  RAINCOAT: "raincoat",
+  VEST: "vest",
   FLASHLIGHT: "flashlight",
   LANTERN: "lantern",
 };
+
+/** Ropa ciclable con T / panel Ropa */
+export const CLOTHES = [LOOT.VEST, LOOT.RAINCOAT, LOOT.JACKET, LOOT.HOODIE, LOOT.SHIRT];
 
 /** Orden de armas en hotbar (mano primaria) */
 export const WEAPON_HOTBAR = [
@@ -165,6 +172,17 @@ const LOOT_DEFS = {
     weight: 1,
     icon: "🍳",
   },
+  [LOOT.SHIRT]: {
+    label: "Camisa",
+    gather: "una camisa",
+    kind: "equip",
+    slot: "body",
+    biteMult: 0.95,
+    capacity: 0,
+    weight: 1,
+    icon: "👕",
+    wear: { style: "shirt", fill: "#6a3a3a", trim: "#4a2828", accent: "#c8a060" },
+  },
   [LOOT.JACKET]: {
     label: "Chaqueta",
     gather: "una chaqueta",
@@ -174,6 +192,40 @@ const LOOT_DEFS = {
     capacity: 2,
     weight: 1,
     icon: "🧥",
+    wear: { style: "jacket", fill: "#2f4050", trim: "#1e2a34", accent: "#c8a060" },
+  },
+  [LOOT.HOODIE]: {
+    label: "Sudadera",
+    gather: "una sudadera",
+    kind: "equip",
+    slot: "body",
+    biteMult: 0.85,
+    capacity: 1,
+    weight: 1,
+    icon: "🧥",
+    wear: { style: "hoodie", fill: "#3a5a3a", trim: "#2a3a28", accent: "#8a9a70" },
+  },
+  [LOOT.RAINCOAT]: {
+    label: "Chubasquero",
+    gather: "un chubasquero",
+    kind: "equip",
+    slot: "body",
+    biteMult: 0.8,
+    capacity: 1,
+    weight: 1,
+    icon: "🧥",
+    wear: { style: "raincoat", fill: "#c4a030", trim: "#8a7020", accent: "#2a2a28" },
+  },
+  [LOOT.VEST]: {
+    label: "Chaleco",
+    gather: "un chaleco táctico",
+    kind: "equip",
+    slot: "body",
+    biteMult: 0.55,
+    capacity: 3,
+    weight: 2,
+    icon: "🦺",
+    wear: { style: "vest", fill: "#3a3a32", trim: "#1e1e18", accent: "#6a7a40" },
   },
   [LOOT.FLASHLIGHT]: {
     label: "Linterna",
@@ -258,6 +310,7 @@ const CONTAINER_LOOT = {
     { id: LOOT.WOOD, w: 1 },
     { id: LOOT.SCRAP, w: 2 },
     { id: LOOT.JACKET, w: 1 },
+    { id: LOOT.HOODIE, w: 1 },
     { id: LOOT.BAG, w: 1 },
     { id: LOOT.PAN, w: 1 },
     { id: LOOT.LANTERN, w: 1 },
@@ -269,7 +322,8 @@ const CONTAINER_LOOT = {
     { id: LOOT.FOOD, w: 1 },
     { id: LOOT.KNIFE, w: 1 },
     { id: LOOT.FLASHLIGHT, w: 1 },
-    { empty: true, w: 3 },
+    { id: LOOT.SHIRT, w: 2 },
+    { empty: true, w: 2 },
   ],
   fridge: [
     { id: LOOT.FOOD, w: 4 },
@@ -285,6 +339,8 @@ const CONTAINER_LOOT = {
     { id: LOOT.AXE, w: 1 },
     { id: LOOT.BAG_BIG, w: 1 },
     { id: LOOT.FLASHLIGHT, w: 2 },
+    { id: LOOT.VEST, w: 2 },
+    { id: LOOT.RAINCOAT, w: 1 },
     { empty: true, w: 2 },
   ],
   desk: [
@@ -293,7 +349,8 @@ const CONTAINER_LOOT = {
     { id: LOOT.FOOD, w: 1 },
     { id: LOOT.KNIFE, w: 1 },
     { id: LOOT.FLASHLIGHT, w: 2 },
-    { empty: true, w: 3 },
+    { id: LOOT.SHIRT, w: 1 },
+    { empty: true, w: 2 },
   ],
   nightstand: [
     { id: LOOT.MED, w: 2 },
@@ -301,7 +358,8 @@ const CONTAINER_LOOT = {
     { id: LOOT.SCRAP, w: 1 },
     { id: LOOT.KNIFE, w: 1 },
     { id: LOOT.LANTERN, w: 1 },
-    { empty: true, w: 3 },
+    { id: LOOT.HOODIE, w: 1 },
+    { empty: true, w: 2 },
   ],
   counter: [
     { id: LOOT.FOOD, w: 3 },
@@ -701,13 +759,17 @@ function paveQuay(tiles, size, bx, by, props, noise) {
 function pickLoot(r) {
   if (r < 0.008) return LOOT.FLASHLIGHT;
   if (r < 0.012) return LOOT.LANTERN;
-  if (r < 0.02) return LOOT.BAG;
-  if (r < 0.028) return LOOT.KNIFE;
-  if (r < 0.036) return LOOT.JACKET;
-  if (r < 0.045) return LOOT.MED;
-  if (r < 0.07) return LOOT.FOOD;
-  if (r < 0.095) return LOOT.WATER;
-  if (r < 0.12) return LOOT.SCRAP;
+  if (r < 0.018) return LOOT.SHIRT;
+  if (r < 0.024) return LOOT.BAG;
+  if (r < 0.03) return LOOT.KNIFE;
+  if (r < 0.036) return LOOT.HOODIE;
+  if (r < 0.042) return LOOT.JACKET;
+  if (r < 0.046) return LOOT.VEST;
+  if (r < 0.05) return LOOT.RAINCOAT;
+  if (r < 0.06) return LOOT.MED;
+  if (r < 0.085) return LOOT.FOOD;
+  if (r < 0.11) return LOOT.WATER;
+  if (r < 0.13) return LOOT.SCRAP;
   return LOOT.WOOD;
 }
 

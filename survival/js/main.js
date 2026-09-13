@@ -9,6 +9,7 @@ import {
   equipHotbarSlot,
   waveStatus,
   setToast,
+  MAX_HEALTH,
 } from "./game.js";
 import { createRenderer } from "./render.js";
 
@@ -105,6 +106,12 @@ function bindHudClicks() {
     if (slot === "hand" && game.player.equip.hand) {
       game.player.equip.hand = null;
       setToast(game, "Mano primaria libre.");
+    } else if (slot === "body" && game.player.equip.body) {
+      setToast(game, `Te quitas ${game.player.equip.body}.`);
+      // better label via toast after null
+      const id = game.player.equip.body;
+      game.player.equip.body = null;
+      setToast(game, "Ropa guardada. T para cambiar.");
     } else if (slot === "light" && game.player.equip.light) {
       game.player.equip.light = null;
       setToast(game, "Luz guardada.");
@@ -131,7 +138,7 @@ function loop(now) {
 
 function syncHud(g) {
   const p = g.player;
-  setBar(bars.health, p.health);
+  setBar(bars.health, (p.health / (p.maxHealth || MAX_HEALTH)) * 100);
   setBar(bars.hunger, p.hunger);
   setBar(bars.thirst, p.thirst);
   setBar(bars.stamina, p.stamina);

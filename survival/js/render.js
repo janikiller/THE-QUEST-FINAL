@@ -1775,6 +1775,30 @@ function drawLoot(ctx, id, px, py, time) {
     ctx.fillRect(-8, -6, 16, 12);
     ctx.fillStyle = "#2a3238";
     ctx.fillRect(-2, -6, 4, 12);
+  } else if (id === "shirt") {
+    ctx.fillStyle = "#6a3a3a";
+    ctx.fillRect(-8, -6, 16, 12);
+    ctx.fillStyle = "#c8a060";
+    ctx.fillRect(-1, -4, 2, 8);
+  } else if (id === "hoodie") {
+    ctx.fillStyle = "#3a5a3a";
+    ctx.fillRect(-8, -6, 16, 12);
+    ctx.fillStyle = "#2a3a28";
+    ctx.beginPath();
+    ctx.moveTo(-6, -6);
+    ctx.lineTo(0, -1);
+    ctx.lineTo(6, -6);
+    ctx.fill();
+  } else if (id === "raincoat") {
+    ctx.fillStyle = "#c4a030";
+    ctx.fillRect(-8, -7, 16, 14);
+    ctx.fillStyle = "#2a2a28";
+    ctx.fillRect(-8, -7, 16, 3);
+  } else if (id === "vest") {
+    ctx.fillStyle = "#3a3a32";
+    ctx.fillRect(-8, -6, 16, 12);
+    ctx.fillStyle = "#6a7a40";
+    ctx.fillRect(-2, -3, 4, 6);
   } else if (id === "flashlight") {
     ctx.fillStyle = "#2a2e34";
     ctx.fillRect(-8, -3, 14, 6);
@@ -1836,11 +1860,21 @@ function drawPlayer(ctx, px, py, player, time) {
   ctx.save();
   ctx.translate(px, py);
   ctx.scale(player.facing, 1);
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
+
+  // Sombra
+  ctx.fillStyle = "rgba(0,0,0,0.32)";
   ctx.beginPath();
   ctx.ellipse(0, 12, 11, 4, 0, 0, Math.PI * 2);
   ctx.fill();
+
   const walk = Math.sin(time * 11) * (player.stamina < 100 ? 2 : 0);
+  const bodyDef = itemDef(player.equip?.body);
+  const wear = bodyDef?.wear || { style: "tee", fill: "#3a4a5a", trim: "#2a343c", accent: "#6a7a88" };
+  const bagId = player.equip?.bag;
+  const handId = player.equip?.hand;
+  const lightId = player.equip?.light;
+
+  // Piernas
   ctx.strokeStyle = "#1e2420";
   ctx.lineWidth = 3;
   ctx.beginPath();
@@ -1849,24 +1883,43 @@ function drawPlayer(ctx, px, py, player, time) {
   ctx.moveTo(3, 4);
   ctx.lineTo(4, 13 - walk);
   ctx.stroke();
-  // Cuerpo / chaqueta
-  ctx.fillStyle = player.equip?.body ? "#2f4050" : "#3a4a5a";
-  ctx.fillRect(-8, -10, 16, 16);
-  if (player.equip?.body) {
-    ctx.fillStyle = "#1e2a34";
-    ctx.fillRect(-2, -10, 4, 16);
-  }
-  // Mochila
-  if (player.equip?.bag) {
-    const big = player.equip.bag === "bag_big";
+
+  // Armas colgadas en el cuerpo (inventario, no la de la mano)
+  drawHolsteredWeapons(ctx, player, handId);
+
+  // Mochila detrás del torso
+  if (bagId) {
+    const big = bagId === "bag_big";
     ctx.fillStyle = big ? "#2a4a3a" : "#3a2e22";
-    ctx.fillRect(-13, -8, 6, big ? 14 : 11);
+    ctx.fillRect(-14, -9, 7, big ? 15 : 12);
     ctx.strokeStyle = "#c8a060";
     ctx.lineWidth = 1;
-    ctx.strokeRect(-13, -8, 6, big ? 14 : 11);
+    ctx.strokeRect(-14, -9, 7, big ? 15 : 12);
+    ctx.fillStyle = "#2a2218";
+    ctx.fillRect(-12, -11, 3, 3);
   }
-  ctx.fillStyle = "#6a3a28";
-  ctx.fillRect(-9, -6, 5, 12);
+
+  // Torso según ropa
+  drawWornBody(ctx, wear);
+
+  // Linterna / farol al cinto
+  if (lightId) {
+    if (lightId === "lantern") {
+      ctx.fillStyle = "#5a3a18";
+      ctx.fillRect(-6, 6, 5, 7);
+      ctx.fillStyle = "#ffb84a";
+      ctx.beginPath();
+      ctx.arc(-3.5, 8, 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = "#2a2e34";
+      ctx.fillRect(4, 7, 8, 3);
+      ctx.fillStyle = "#d8e8ff";
+      ctx.fillRect(11, 7, 2, 3);
+    }
+  }
+
+  // Cabeza
   ctx.fillStyle = "#d2b08a";
   ctx.beginPath();
   ctx.arc(0, -16, 6.5, 0, Math.PI * 2);
@@ -1877,32 +1930,211 @@ function drawPlayer(ctx, px, py, player, time) {
   ctx.arc(2, -20, 3.5, 0, Math.PI * 2);
   ctx.arc(4, -16, 2.7, 0, Math.PI * 2);
   ctx.fill();
-  // Arma en mano (primaria PZ)
-  const hand = player.equip?.hand;
-  const handColor =
-    hand === "bat" ? "#8a5a28" :
-    hand === "axe" ? "#6a7078" :
-    hand === "hammer" ? "#7a6848" :
-    hand === "pan" ? "#8a9098" :
-    hand === "crowbar" ? "#8a9098" :
-    hand === "knife" ? "#c8d0d8" :
-    "#8a9098";
-  ctx.strokeStyle = handColor;
-  ctx.lineWidth = hand === "knife" ? 2 : hand === "axe" ? 3.5 : 3;
-  ctx.beginPath();
-  ctx.moveTo(7, -2);
-  if (hand === "pan") {
-    ctx.lineTo(12, -2);
+  if (wear.style === "hoodie") {
+    ctx.strokeStyle = wear.trim;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(0, -17, 8, Math.PI * 0.95, Math.PI * 2.05);
+    ctx.stroke();
+  }
+
+  // Arma en mano (detalle)
+  drawHeldWeapon(ctx, handId, time);
+
+  ctx.restore();
+}
+
+function drawWornBody(ctx, wear) {
+  const { style, fill, trim, accent } = wear;
+  ctx.fillStyle = fill;
+  if (style === "vest") {
+    ctx.fillStyle = "#4a4a52";
+    ctx.fillRect(-8, -10, 16, 16);
+    ctx.fillStyle = fill;
+    ctx.fillRect(-9, -8, 18, 13);
+    ctx.fillStyle = trim;
+    ctx.fillRect(-7, -6, 5, 8);
+    ctx.fillRect(2, -6, 5, 8);
+    ctx.fillStyle = accent;
+    ctx.fillRect(-2, -4, 4, 6);
+  } else if (style === "raincoat") {
+    ctx.fillRect(-9, -11, 18, 18);
+    ctx.fillStyle = trim;
+    ctx.fillRect(-2, -11, 4, 18);
+    ctx.fillStyle = accent;
+    ctx.fillRect(-9, -11, 18, 3);
+  } else if (style === "hoodie") {
+    ctx.fillRect(-8, -10, 16, 16);
+    ctx.fillStyle = trim;
+    ctx.beginPath();
+    ctx.moveTo(-6, -10);
+    ctx.lineTo(0, -4);
+    ctx.lineTo(6, -10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = accent;
+    ctx.fillRect(-3, 2, 6, 3);
+  } else if (style === "jacket") {
+    ctx.fillRect(-8, -10, 16, 16);
+    ctx.fillStyle = trim;
+    ctx.fillRect(-2, -10, 4, 16);
+    ctx.fillStyle = accent;
+    ctx.fillRect(-7, -1, 3, 2);
+    ctx.fillRect(4, -1, 3, 2);
+  } else if (style === "shirt") {
+    ctx.fillRect(-8, -10, 16, 16);
+    ctx.fillStyle = trim;
+    ctx.fillRect(-8, -10, 16, 3);
+    ctx.fillStyle = accent;
+    ctx.fillRect(-1, -7, 2, 10);
+  } else {
+    ctx.fillRect(-8, -10, 16, 16);
+    ctx.fillStyle = trim;
+    ctx.fillRect(-2, -10, 4, 6);
+  }
+  // Brazo delantero
+  ctx.fillStyle = "#6a3a28";
+  ctx.fillRect(-9, -6, 5, 11);
+}
+
+function drawHeldWeapon(ctx, hand, time) {
+  if (!hand) {
+    ctx.strokeStyle = "#d2b08a";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(7, -1);
+    ctx.lineTo(10, 2);
+    ctx.stroke();
+    return;
+  }
+  const swing = Math.sin(time * 2) * 0.05;
+  ctx.save();
+  ctx.translate(8, -1);
+  ctx.rotate(-0.35 + swing);
+
+  if (hand === "bat") {
+    ctx.strokeStyle = "#8a5a28";
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(16, -10);
+    ctx.stroke();
+    ctx.strokeStyle = "#c8a060";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(12, -8);
+    ctx.lineTo(17, -11);
+    ctx.stroke();
+  } else if (hand === "axe") {
+    ctx.strokeStyle = "#6a5030";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(14, -9);
+    ctx.stroke();
+    ctx.fillStyle = "#8a9098";
+    ctx.beginPath();
+    ctx.moveTo(10, -12);
+    ctx.lineTo(19, -8);
+    ctx.lineTo(14, -4);
+    ctx.closePath();
+    ctx.fill();
+  } else if (hand === "crowbar") {
+    ctx.strokeStyle = "#7a8088";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(15, -9);
+    ctx.lineTo(17, -5);
+    ctx.stroke();
+  } else if (hand === "hammer") {
+    ctx.strokeStyle = "#6a5030";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(13, -8);
+    ctx.stroke();
+    ctx.fillStyle = "#7a6848";
+    ctx.fillRect(11, -12, 7, 5);
+  } else if (hand === "knife") {
+    ctx.fillStyle = "#c8d0d8";
+    ctx.beginPath();
+    ctx.moveTo(0, 1);
+    ctx.lineTo(3, -1);
+    ctx.lineTo(12, -8);
+    ctx.lineTo(10, -4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#5a3a28";
+    ctx.fillRect(-2, -1, 4, 4);
+  } else if (hand === "pan") {
+    ctx.strokeStyle = "#8a9098";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(7, -3);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(15, -4, 4, 0, Math.PI * 2);
+    ctx.arc(11, -5, 5, 0, Math.PI * 2);
     ctx.stroke();
   } else {
-    ctx.lineTo(hand === "knife" ? 12 : 15, hand === "knife" ? -4 : -8);
+    ctx.strokeStyle = "#8a9098";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(14, -8);
     ctx.stroke();
   }
   ctx.restore();
 }
+
+function drawHolsteredWeapons(ctx, player, handId) {
+  const owned = ["bat", "crowbar", "axe", "hammer", "knife", "pan"].filter(
+    (id) => (player.inv[id] || 0) > 0 && id !== handId
+  );
+  owned.slice(0, 3).forEach((id, i) => {
+    const x = -11 - i * 2;
+    const y = -2 + i * 3;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-0.9 - i * 0.12);
+    if (id === "bat") {
+      ctx.strokeStyle = "#6a4020";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, 12);
+      ctx.stroke();
+    } else if (id === "axe") {
+      ctx.strokeStyle = "#5a4830";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, 11);
+      ctx.stroke();
+      ctx.fillStyle = "#7a8088";
+      ctx.fillRect(-3, -2, 6, 3);
+    } else if (id === "knife") {
+      ctx.fillStyle = "#b0b8c0";
+      ctx.fillRect(-1, 0, 2, 9);
+    } else if (id === "pan") {
+      ctx.strokeStyle = "#707880";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 3, 3.5, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = "#6a7078";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, 11);
+      ctx.stroke();
+    }
+    ctx.restore();
+  });
+}
+
 
 function drawMinimap(mctx, mini, game) {
   const s = mini.width;
