@@ -1286,6 +1286,12 @@ func _settle_suspect_in_custody(wrap: Control, enemy_index: int, enemy_name: Str
 	var base_scale := anchor.scale
 
 	# Pose de rendición: frío, más bajo, sin FX encima.
+	var hurt_path := str(wrap.get_meta("pose_hurt", ""))
+	if hurt_path != "" and spr and (ResourceLoader.exists(hurt_path) or FileAccess.file_exists(hurt_path)):
+		var ht := _load_combat_tex(hurt_path)
+		if ht:
+			spr.texture = ht
+	wrap.set_meta("anim_locked", true)
 	var tw := create_tween()
 	tw.set_parallel(true)
 	tw.tween_property(anchor, "modulate", Color(0.66, 0.72, 0.8, 0.92), 0.4).set_trans(Tween.TRANS_SINE)
