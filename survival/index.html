@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CRESPO — Valmora</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/game.css" />
+</head>
+<body>
+  <div id="boot">
+    <div class="boot-inner">
+      <p class="boot-brand">CRESPO</p>
+      <h1>Valmora</h1>
+      <p class="boot-lead">Náufrago. Isla viva. El mapa se inventa cada partida.</p>
+      <button id="start-btn" type="button">Despertar en la orilla</button>
+      <p class="boot-hint">WASD mover · E recolectar · F fogata · Espacio correr</p>
+    </div>
+  </div>
+
+  <div id="game" hidden>
+    <canvas id="world"></canvas>
+    <div id="hud">
+      <header class="hud-top">
+        <div class="brand-mark">CRESPO</div>
+        <div class="clock" id="clock">Amanecer</div>
+      </header>
+
+      <aside class="vitals">
+        <div class="bar" data-stat="health"><span>Vida</span><i id="bar-health"></i></div>
+        <div class="bar" data-stat="hunger"><span>Hambre</span><i id="bar-hunger"></i></div>
+        <div class="bar" data-stat="thirst"><span>Sed</span><i id="bar-thirst"></i></div>
+        <div class="bar" data-stat="warmth"><span>Calor</span><i id="bar-warmth"></i></div>
+        <div class="bar" data-stat="stamina"><span>Fuerza</span><i id="bar-stamina"></i></div>
+      </aside>
+
+      <div class="inventory" id="inventory"></div>
+      <p class="toast" id="toast" hidden></p>
+      <canvas id="minimap" width="148" height="148" aria-label="Minimapa"></canvas>
+    </div>
+  </div>
+
+  <div id="death" hidden>
+    <div class="death-inner">
+      <p class="boot-brand">CRESPO</p>
+      <h2>La isla te reclamó</h2>
+      <p id="death-reason">Sin fuerzas.</p>
+      <button id="retry-btn" type="button">Otra isla</button>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
