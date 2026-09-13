@@ -58,11 +58,14 @@ export const BUILD = {
 const BLOCK = 10;
 const ROAD_W = 2;
 
-const FACADE = ["#6b4f3a", "#4a5560", "#7a5a48", "#5a4a3a", "#3d4a52", "#6a5850", "#4e5a48", "#5c4a55"];
+const FACADE = ["#6b4f3a", "#4a5560", "#7a5a48", "#5a4a3a", "#3d4a52", "#6a5850", "#4e5a48", "#5c4a55", "#7a6a58", "#455060"];
+const AWNING = ["#8a3030", "#2a4a6a", "#6a4a20", "#3a5a48", "#5a3050", "#4a4a4a"];
 const BUILDING_NAMES = [
   "Bloque Luna", "Edificio Sol", "Casa Mistral", "Torre Niebla", "Mercado Sur",
   "Farmacia Alba", "Taller Río", "Residencial 9", "Almacén Norte", "Café Gris",
+  "Panadería Sur", "Clínica Niebla", "Bar El Canal", "Lofts Crespo", "Depósito Este",
 ];
+const STREET_NAMES = ["Luna", "Sol", "Mistral", "Niebla", "Río", "Alba", "Crespo", "Norte", "Sur", "Puerto"];
 
 export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   const noise = createNoise(seed);
@@ -128,11 +131,10 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Farolas en aceras junto a calles
+  // Farolas, hidrantes y papeleras en aceras junto a calles
   for (let y = 1; y < size - 1; y++) {
     for (let x = 1; x < size - 1; x++) {
       if (tiles[y * size + x] !== TILE.SIDEWALK) continue;
-      if ((x + y) % 11 !== 0) continue;
       let nearRoad = false;
       for (let oy = -1; oy <= 1; oy++) {
         for (let ox = -1; ox <= 1; ox++) {
@@ -140,7 +142,23 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
           if (t === TILE.ROAD || t === TILE.CROSSWALK) nearRoad = true;
         }
       }
-      if (nearRoad) props.push({ type: "lamp", x: x + 0.5, y: y + 0.5 });
+      if (!nearRoad) continue;
+      const n = noise.noise2(x * 0.4, y * 0.4);
+      if ((x + y) % 11 === 0) props.push({ type: "lamp", x: x + 0.5, y: y + 0.5 });
+      else if ((x * 5 + y * 3) % 29 === 0) props.push({ type: "hydrant", x: x + 0.55, y: y + 0.55 });
+      else if ((x * 7 + y) % 23 === 0 && n > 0.2) props.push({ type: "trash", x: x + 0.4, y: y + 0.55 });
+      else if ((x + y * 5) % 37 === 0) props.push({ type: "planter", x: x + 0.5, y: y + 0.5, tone: n > 0.5 ? 1 : 0 });
+    }
+  }
+
+  // Paradas de bus en tramos largos de calle
+  for (let y = ROAD_W; y < size - ROAD_W; y += BLOCK) {
+    for (let x = ROAD_W + 3; x < size - 3; x += BLOCK * 2) {
+      if (tiles[y * size + x] !== TILE.SIDEWALK && tiles[(y + ROAD_W) * size + x] !== TILE.SIDEWALK) continue;
+      const sy = tiles[(y + ROAD_W) * size + x] === TILE.SIDEWALK ? y + ROAD_W : y;
+      if (tiles[sy * size + x] === TILE.SIDEWALK) {
+        props.push({ type: "busStop", x: x + 0.5, y: sy + 0.5 });
+      }
     }
   }
 
@@ -176,12 +194,36 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Semáforos en esquinas de cruce
-  for (let by = 0; by < size; by += BLOCK) {
-    for (let bx = 0; bx < size; bx += BLOCK) {
+  // Semáforos solo en cruces principales (cada 2 manzanas)
+  for (let by = 0; by < size; by += BLOCK * 2) {
+    for (let bx = 0; bx < size; bx += BLOCK * 2) {
       if (bx + 1 >= size || by + 1 >= size) continue;
       if (tiles[by * size + bx] !== TILE.CROSSWALK && tiles[by * size + bx] !== TILE.ROAD) continue;
       props.push({ type: "traffic", x: bx + ROAD_W + 0.35, y: by + ROAD_W + 0.35 });
+      // Placa de calle
+      {
+        const a = (bx / BLOCK + by / BLOCK) % STREET_NAMES.length;
+        const b = (((bx / BLOCK) * 3 + (by / BLOCK) * 5) + 1) % STREET_NAMES.length;
+        props.push({
+          type: "streetSign",
+          x: bx + ROAD_W + 0.85,
+          y: by + ROAD_W + 0.2,
+          label: STREET_NAMES[a],
+          label2: STREET_NAMES[b === a ? (a + 1) % STREET_NAMES.length : b],
+        });
+      }
+    }
+  }
+
+  // Barcas / restos en el canal
+  for (let x = 4; x < size - 4; x += 7) {
+    if (noise.noise2(x * 0.2, canalY) > 0.35) {
+      props.push({
+        type: "boat",
+        x: x + 0.5 + noise.noise2(x, 1) * 0.4,
+        y: canalY + 0.5,
+        wreck: noise.noise2(x + 1, canalY) > 0.7,
+      });
     }
   }
 
@@ -230,6 +272,13 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, pro
   const facade = FACADE[((bx * 7 + by * 13 + seed) >>> 0) % FACADE.length];
   const name = BUILDING_NAMES[((bx + by * 3) >>> 0) % BUILDING_NAMES.length];
   const floors = 2 + (((noise.noise2(bx, by) * 4) | 0) % 4);
+  const styleRoll = noise.noise2(bx * 0.31, by * 0.27);
+  let style = "block";
+  if (floors >= 4) style = "tower";
+  else if (styleRoll < 0.22) style = "shop";
+  else if (styleRoll < 0.4) style = "warehouse";
+  else if (styleRoll < 0.62) style = "residential";
+  const awning = AWNING[((bx * 3 + by * 5) >>> 0) % AWNING.length];
 
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
@@ -249,15 +298,28 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, pro
   tiles[dy * size + dx] = TILE.DOOR;
   doors.set(`${dx},${dy}`, { hp: 50 });
 
-  // Muebles interiores
+  // Muebles interiores según estilo
   for (let y = y0 + 1; y < y1; y++) {
     for (let x = x0 + 1; x < x1; x++) {
       if (tiles[y * size + x] !== TILE.FLOOR) continue;
       const r = noise.noise2(x * 1.3, y * 1.3);
-      if (r < 0.08) interiors.set(`${x},${y}`, "table");
-      else if (r < 0.12) interiors.set(`${x},${y}`, "shelf");
-      else if (r < 0.15) interiors.set(`${x},${y}`, "bed");
-      else if (r < 0.17) interiors.set(`${x},${y}`, "crate");
+      if (style === "warehouse") {
+        if (r < 0.14) interiors.set(`${x},${y}`, "crate");
+        else if (r < 0.2) interiors.set(`${x},${y}`, "shelf");
+      } else if (style === "shop") {
+        if (r < 0.1) interiors.set(`${x},${y}`, "shelf");
+        else if (r < 0.16) interiors.set(`${x},${y}`, "table");
+        else if (r < 0.19) interiors.set(`${x},${y}`, "crate");
+      } else if (style === "residential") {
+        if (r < 0.08) interiors.set(`${x},${y}`, "bed");
+        else if (r < 0.13) interiors.set(`${x},${y}`, "table");
+        else if (r < 0.16) interiors.set(`${x},${y}`, "shelf");
+      } else {
+        if (r < 0.08) interiors.set(`${x},${y}`, "table");
+        else if (r < 0.12) interiors.set(`${x},${y}`, "shelf");
+        else if (r < 0.15) interiors.set(`${x},${y}`, "bed");
+        else if (r < 0.17) interiors.set(`${x},${y}`, "crate");
+      }
     }
   }
 
@@ -268,22 +330,27 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, pro
   if (noise.noise2(bx + 5, by + 1) > 0.55) {
     props.push({ type: "sign", x: dx + (side === 2 ? -0.7 : side === 3 ? 0.7 : 0), y: dy + (side === 0 ? -0.7 : side === 1 ? 0.7 : 0), label: name.split(" ")[0] });
   }
-  // Porche / escalón delante de la puerta
-  props.push({ type: "awning", x: dx + 0.5, y: dy + 0.5, side });
+  // Porche / toldo delante de la puerta (tiendas y cafés más grandes)
+  props.push({ type: "awning", x: dx + 0.5, y: dy + 0.5, side, color: awning, wide: style === "shop" });
+  if (style === "residential" && noise.noise2(bx + 8, by) > 0.4) {
+    props.push({ type: "planter", x: dx + (side >= 2 ? 0 : side === 0 ? 0.2 : -0.2) + 0.5, y: dy + (side < 2 ? 0 : 0.2) + 0.5, tone: 1 });
+  }
 
-  buildings.push({ x0, y0, x1, y1, doorX: dx, doorY: dy, facade, name, floors, style: floors >= 4 ? "tower" : "block" });
+  buildings.push({ x0, y0, x1, y1, doorX: dx, doorY: dy, facade, name, floors, style, awning });
 }
 
 function pavePark(tiles, size, bx, by, props, noise) {
   const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
   const midX = ((x0 + x1) / 2) | 0;
   const midY = ((y0 + y1) / 2) | 0;
+  const diagonal = noise.noise2(bx, by) > 0.5;
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
-      // Sendero en cruz
-      if (x === midX || y === midY) tiles[y * size + x] = TILE.SIDEWALK;
+      const onCross = x === midX || y === midY;
+      const onDiag = diagonal && Math.abs((x - midX) - (y - midY)) <= 0;
+      if (onCross || onDiag) tiles[y * size + x] = TILE.SIDEWALK;
       else tiles[y * size + x] = TILE.PARK;
-      if (tiles[y * size + x] === TILE.PARK && noise.noise2(x * 0.9, y * 0.9) > 0.7) {
+      if (tiles[y * size + x] === TILE.PARK && noise.noise2(x * 0.9, y * 0.9) > 0.68) {
         props.push({
           type: "tree",
           x: x + 0.35 + noise.noise2(x, y) * 0.3,
@@ -296,12 +363,22 @@ function pavePark(tiles, size, bx, by, props, noise) {
   }
   props.push({ type: "bench", x: midX - 1.2, y: midY + 0.5 });
   props.push({ type: "bench", x: midX + 1.2, y: midY + 0.5 });
+  props.push({ type: "bench", x: midX + 0.5, y: midY - 1.3, rot: 1 });
   props.push({ type: "fountain", x: midX + 0.5, y: midY + 0.5 });
+  // Jardineras en las esquinas del parque
+  props.push({ type: "planter", x: x0 + 1.5, y: y0 + 1.5, tone: 0 });
+  props.push({ type: "planter", x: x1 - 0.5, y: y0 + 1.5, tone: 1 });
+  props.push({ type: "planter", x: x0 + 1.5, y: y1 - 0.5, tone: 1 });
+  props.push({ type: "planter", x: x1 - 0.5, y: y1 - 0.5, tone: 0 });
+  if (noise.noise2(bx + 1, by + 2) > 0.35) {
+    props.push({ type: "lamp", x: midX - 2.2, y: midY - 2.2 });
+    props.push({ type: "lamp", x: midX + 2.2, y: midY + 2.2 });
+  }
 }
 
 function paveParking(tiles, size, bx, by, props, noise) {
   const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
-  const colors = ["#5a2020", "#2a3040", "#3a3a38", "#4a5030", "#6a5a20", "#203040"];
+  const colors = ["#5a2020", "#2a3040", "#3a3a38", "#4a5030", "#6a5a20", "#203040", "#503828"];
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
       tiles[y * size + x] = TILE.PARKING;
@@ -317,6 +394,11 @@ function paveParking(tiles, size, bx, by, props, noise) {
       }
     }
   }
+  // Caseta / farola de parking
+  props.push({ type: "lamp", x: x0 + 1.5, y: y0 + 1.5 });
+  if (noise.noise2(bx, by + 3) > 0.4) {
+    props.push({ type: "dumpster", x: x1 - 0.6, y: y1 - 0.8, color: "#3a3a42" });
+  }
 }
 
 function paveAlley(tiles, size, bx, by, props, noise) {
@@ -328,8 +410,12 @@ function paveAlley(tiles, size, bx, by, props, noise) {
   }
   props.push({ type: "dumpster", x: ((x0 + x1) / 2) + 0.5, y: y0 + 1.5 });
   props.push({ type: "dumpster", x: ((x0 + x1) / 2) - 0.2, y: y1 - 0.8, color: "#3a4a58" });
+  props.push({ type: "trash", x: x0 + 1.4, y: ((y0 + y1) / 2) });
   if (noise.noise2(bx, by) > 0.4) {
     props.push({ type: "graffiti", x: x0 + 1.5, y: y0 + 2.2 });
+  }
+  if (noise.noise2(bx + 2, by) > 0.5) {
+    props.push({ type: "graffiti", x: x1 - 1.2, y: y1 - 1.5, text: "CRESPO" });
   }
 }
 
@@ -342,6 +428,12 @@ function paveQuay(tiles, size, bx, by, props, noise) {
   }
   for (let x = x0 + 1; x < x1; x += 2) {
     props.push({ type: "railing", x: x + 0.5, y: y0 + 1.2 });
+  }
+  props.push({ type: "bench", x: ((x0 + x1) / 2), y: y0 + 2.2 });
+  props.push({ type: "lamp", x: x0 + 1.5, y: y0 + 1.8 });
+  props.push({ type: "lamp", x: x1 - 0.8, y: y0 + 1.8 });
+  if (noise.noise2(bx, by) > 0.3) {
+    props.push({ type: "planter", x: ((x0 + x1) / 2) + 1.5, y: y0 + 2.5, tone: 0 });
   }
 }
 
