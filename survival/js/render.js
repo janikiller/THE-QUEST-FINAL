@@ -134,7 +134,8 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   for (const z of game.zombies) {
     drawZombie(ctx, z.x * TILE_PX - camX, z.y * TILE_PX - camY, game.time, z);
   }
-  drawPlayer(ctx, game.player.x * TILE_PX - camX, game.player.y * TILE_PX - camY, game.player, game.time);
+  drawAimAndBullets(ctx, game, camX, camY);
+  drawPlayer(ctx, game.player.x * TILE_PX - camX, game.player.y * TILE_PX - camY, game.player, game.time, game);
 
   if (inside && playerIndoor) {
     ctx.fillStyle = "rgba(10,12,14,0.72)";
@@ -1775,6 +1776,15 @@ function drawLoot(ctx, id, px, py, time) {
     ctx.fillRect(-8, -6, 16, 12);
     ctx.fillStyle = "#2a3238";
     ctx.fillRect(-2, -6, 4, 12);
+  } else if (id === "pistol" || id === "shotgun" || id === "rifle") {
+    ctx.fillStyle = "#2a2e34";
+    ctx.fillRect(-10, -3, id === "pistol" ? 14 : 18, 6);
+    ctx.fillStyle = "#c8a060";
+    ctx.fillRect(-10, -2, 4, 4);
+  } else if (id === "ammo_9mm" || id === "ammo_shot" || id === "ammo_rifle") {
+    ctx.fillStyle = id === "ammo_shot" ? "#a04030" : id === "ammo_rifle" ? "#b07830" : "#c8a040";
+    ctx.fillRect(-6, -5, 5, 10);
+    ctx.fillRect(2, -5, 5, 10);
   } else if (id === "shirt") {
     ctx.fillStyle = "#6a3a3a";
     ctx.fillRect(-8, -6, 16, 12);
@@ -1856,10 +1866,76 @@ function drawZombie(ctx, px, py, time, z) {
   ctx.restore();
 }
 
-function drawPlayer(ctx, px, py, player, time) {
+
+function drawAimAndBullets(ctx, game, camX, camY) {
+  const p = game.player;
+  const handDef = itemDef(p.equip?.hand);
+  const px = p.x * TILE_PX - camX;
+  const py = p.y * TILE_PX - camY;
+
+  if (handDef?.firearm) {
+    const ang = p.aim || 0;
+    const reach = (handDef.range || 8) * TILE_PX;
+    const ammo = handDef.ammo ? (p.inv[handDef.ammo] || 0) : 0;
+    ctx.save();
+    ctx.strokeStyle = ammo > 0 ? "rgba(255, 220, 140, 0.35)" : "rgba(255, 80, 80, 0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(px + Math.cos(ang) * 14, py + Math.sin(ang) * 14);
+    ctx.lineTo(px + Math.cos(ang) * reach, py + Math.sin(ang) * reach);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Retícula
+    const tx = px + Math.cos(ang) * Math.min(120, reach * 0.45);
+    const ty = py + Math.sin(ang) * Math.min(120, reach * 0.45);
+    ctx.strokeStyle = ammo > 0 ? "rgba(255, 230, 160, 0.7)" : "rgba(255,100,100,0.7)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(tx - 6, ty);
+    ctx.lineTo(tx + 6, ty);
+    ctx.moveTo(tx, ty - 6);
+    ctx.lineTo(tx, ty + 6);
+    ctx.stroke();
+    ctx.restore();
+
+    if (game.muzzleFlash > 0) {
+      const fx = px + Math.cos(ang) * 18;
+      const fy = py + Math.sin(ang) * 18;
+      const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, 16);
+      g.addColorStop(0, `rgba(255, 240, 180, ${game.muzzleFlash * 8})`);
+      g.addColorStop(1, "rgba(255, 160, 40, 0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(fx, fy, 16, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  for (const b of game.bullets || []) {
+    const bx = b.x * TILE_PX - camX;
+    const by = b.y * TILE_PX - camY;
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(Math.atan2(b.vy, b.vx));
+    ctx.fillStyle = "#ffe7a0";
+    ctx.fillRect(-4, -1.2, 8, 2.4);
+    ctx.fillStyle = "#fff6d0";
+    ctx.fillRect(2, -0.8, 3, 1.6);
+    ctx.restore();
+  }
+}
+
+function drawPlayer(ctx, px, py, player, time, game = null) {
   ctx.save();
   ctx.translate(px, py);
-  ctx.scale(player.facing, 1);
+  const handDef = itemDef(player.equip?.hand);
+  const aimingGun = !!(handDef?.firearm);
+  if (aimingGun) {
+    ctx.rotate(player.aim || 0);
+  } else {
+    ctx.scale(player.facing || 1, 1);
+  }
 
   // Sombra
   ctx.fillStyle = "rgba(0,0,0,0.32)";
@@ -2067,6 +2143,18 @@ function drawHeldWeapon(ctx, hand, time) {
     ctx.fill();
     ctx.fillStyle = "#5a3a28";
     ctx.fillRect(-2, -1, 4, 4);
+  } else if (hand === "pistol" || hand === "shotgun" || hand === "rifle") {
+    const long = hand === "rifle" ? 18 : hand === "shotgun" ? 16 : 12;
+    ctx.fillStyle = "#2a2e32";
+    ctx.fillRect(0, -2, long, 4);
+    ctx.fillStyle = "#1a1c1e";
+    ctx.fillRect(-3, -1, 5, 5);
+    ctx.fillStyle = "#6a7078";
+    ctx.fillRect(long - 2, -1, 4, 2);
+    if (hand === "shotgun") {
+      ctx.fillStyle = "#5a4030";
+      ctx.fillRect(2, -3, 8, 2);
+    }
   } else if (hand === "pan") {
     ctx.strokeStyle = "#8a9098";
     ctx.lineWidth = 2.5;

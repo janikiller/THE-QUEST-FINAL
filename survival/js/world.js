@@ -55,6 +55,13 @@ export const LOOT = {
   VEST: "vest",
   FLASHLIGHT: "flashlight",
   LANTERN: "lantern",
+  // Armas de fuego + munición
+  PISTOL: "pistol",
+  SHOTGUN: "shotgun",
+  RIFLE: "rifle",
+  AMMO_9MM: "ammo_9mm",
+  AMMO_SHOT: "ammo_shot",
+  AMMO_RIFLE: "ammo_rifle",
 };
 
 /** Ropa ciclable con T / panel Ropa */
@@ -62,6 +69,9 @@ export const CLOTHES = [LOOT.VEST, LOOT.RAINCOAT, LOOT.JACKET, LOOT.HOODIE, LOOT
 
 /** Orden de armas en hotbar (mano primaria) */
 export const WEAPON_HOTBAR = [
+  LOOT.PISTOL,
+  LOOT.SHOTGUN,
+  LOOT.RIFLE,
   LOOT.BAT,
   LOOT.CROWBAR,
   LOOT.AXE,
@@ -247,6 +257,84 @@ const LOOT_DEFS = {
     weight: 1,
     icon: "🏮",
   },
+  [LOOT.PISTOL]: {
+    label: "Pistola",
+    gather: "una pistola",
+    kind: "equip",
+    slot: "hand",
+    weapon: true,
+    firearm: true,
+    damage: 34,
+    range: 9,
+    attackCd: 0.28,
+    stamina: 2,
+    weight: 1,
+    icon: "🔫",
+    ammo: LOOT.AMMO_9MM,
+    pellets: 1,
+    spread: 0.04,
+    bulletSpeed: 22,
+    noise: 9,
+  },
+  [LOOT.SHOTGUN]: {
+    label: "Escopeta",
+    gather: "una escopeta",
+    kind: "equip",
+    slot: "hand",
+    weapon: true,
+    firearm: true,
+    damage: 22,
+    range: 5.5,
+    attackCd: 0.85,
+    stamina: 6,
+    weight: 2,
+    icon: "🔫",
+    ammo: LOOT.AMMO_SHOT,
+    pellets: 5,
+    spread: 0.22,
+    bulletSpeed: 18,
+    noise: 14,
+  },
+  [LOOT.RIFLE]: {
+    label: "Rifle",
+    gather: "un rifle de caza",
+    kind: "equip",
+    slot: "hand",
+    weapon: true,
+    firearm: true,
+    damage: 62,
+    range: 14,
+    attackCd: 0.7,
+    stamina: 5,
+    weight: 2,
+    icon: "🔫",
+    ammo: LOOT.AMMO_RIFLE,
+    pellets: 1,
+    spread: 0.02,
+    bulletSpeed: 28,
+    noise: 12,
+  },
+  [LOOT.AMMO_9MM]: {
+    label: "9mm",
+    gather: "munición 9mm",
+    kind: "stack",
+    weight: 0.15,
+    icon: "🔸",
+  },
+  [LOOT.AMMO_SHOT]: {
+    label: "Cartuchos",
+    gather: "cartuchos de escopeta",
+    kind: "stack",
+    weight: 0.2,
+    icon: "🔴",
+  },
+  [LOOT.AMMO_RIFLE]: {
+    label: "Munición rifle",
+    gather: "munición de rifle",
+    kind: "stack",
+    weight: 0.18,
+    icon: "🟠",
+  },
 };
 
 export const BASE_CAPACITY = 12;
@@ -341,6 +429,10 @@ const CONTAINER_LOOT = {
     { id: LOOT.FLASHLIGHT, w: 2 },
     { id: LOOT.VEST, w: 2 },
     { id: LOOT.RAINCOAT, w: 1 },
+    { id: LOOT.PISTOL, w: 1 },
+    { id: LOOT.SHOTGUN, w: 1 },
+    { id: LOOT.AMMO_9MM, w: 2 },
+    { id: LOOT.AMMO_SHOT, w: 1 },
     { empty: true, w: 2 },
   ],
   desk: [
@@ -350,6 +442,8 @@ const CONTAINER_LOOT = {
     { id: LOOT.KNIFE, w: 1 },
     { id: LOOT.FLASHLIGHT, w: 2 },
     { id: LOOT.SHIRT, w: 1 },
+    { id: LOOT.AMMO_9MM, w: 2 },
+    { id: LOOT.PISTOL, w: 1 },
     { empty: true, w: 2 },
   ],
   nightstand: [
@@ -757,15 +851,19 @@ function paveQuay(tiles, size, bx, by, props, noise) {
 }
 
 function pickLoot(r) {
-  if (r < 0.008) return LOOT.FLASHLIGHT;
-  if (r < 0.012) return LOOT.LANTERN;
+  if (r < 0.005) return LOOT.PISTOL;
+  if (r < 0.008) return LOOT.AMMO_9MM;
+  if (r < 0.011) return LOOT.FLASHLIGHT;
+  if (r < 0.014) return LOOT.LANTERN;
   if (r < 0.018) return LOOT.SHIRT;
-  if (r < 0.024) return LOOT.BAG;
+  if (r < 0.022) return LOOT.AMMO_SHOT;
+  if (r < 0.026) return LOOT.BAG;
   if (r < 0.03) return LOOT.KNIFE;
-  if (r < 0.036) return LOOT.HOODIE;
-  if (r < 0.042) return LOOT.JACKET;
-  if (r < 0.046) return LOOT.VEST;
-  if (r < 0.05) return LOOT.RAINCOAT;
+  if (r < 0.034) return LOOT.HOODIE;
+  if (r < 0.038) return LOOT.JACKET;
+  if (r < 0.042) return LOOT.VEST;
+  if (r < 0.046) return LOOT.RAINCOAT;
+  if (r < 0.05) return LOOT.AMMO_RIFLE;
   if (r < 0.06) return LOOT.MED;
   if (r < 0.085) return LOOT.FOOD;
   if (r < 0.11) return LOOT.WATER;

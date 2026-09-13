@@ -43,8 +43,8 @@ export function createGame(world) {
       hunger: 82,
       thirst: 78,
       stamina: 100,
-      inv: { food: 1, water: 1, scrap: 1, wood: 1, med: 1, shirt: 1, jacket: 1, bat: 1 },
-      equip: { hand: "bat", body: "shirt", bag: null, light: null },
+      inv: { food: 1, water: 1, scrap: 1, wood: 1, med: 1, shirt: 1, jacket: 1, bat: 1, pistol: 1, ammo_9mm: 24 },
+      equip: { hand: "pistol", body: "shirt", bag: null, light: null },
       gearPhase: "clothes",
       gatherCd: 0,
       attackCd: 0,
@@ -78,9 +78,13 @@ export function createGame(world) {
       wind: 0.7,
       label: "Lluvia",
     },
+    bullets: [],
+    muzzleFlash: 0,
+    mouse: { x: 0, y: 0, worldX: 0, worldY: 0, viewW: 0, viewH: 0, down: false, clicked: false },
   };
+  game.player.aim = 0;
   seedZombies(game, 4);
-  setToast(game, "Oleada 1 en camino. Armas 1-5 · T cambia ropa/mochila/luz.");
+  setToast(game, "Oleada 1. Apunta con el ratón · clic izq. dispara · Q cuerpo a cuerpo.");
   return game;
 }
 
@@ -200,14 +204,28 @@ export function updateGame(game, dt) {
   if (p.hunger < 8) p.health -= 3.5 * dt;
   if (p.thirst < 8) p.health -= 4.5 * dt;
 
+  // Apuntado al cursor (recalcula mundo si el jugador se movió)
+  if (game.mouse.viewW) {
+    game.mouse.worldX = p.x + (game.mouse.x - game.mouse.viewW / 2) / 48;
+    game.mouse.worldY = p.y + (game.mouse.y - game.mouse.viewH / 2) / 48;
+  }
+  p.aim = Math.atan2(game.mouse.worldY - p.y, game.mouse.worldX - p.x);
+  if (Math.cos(p.aim) !== 0) p.facing = Math.cos(p.aim) >= 0 ? 1 : -1;
+
   if (pressed(game, "e") && p.gatherCd <= 0) interact(game);
   if ((pressed(game, "q") || pressed(game, "f")) && p.attackCd <= 0) melee(game);
+  if ((game.mouse.clicked || (game.mouse.down && isAutomaticFire(p))) && p.attackCd <= 0) {
+    fireWeapon(game);
+  }
   if (pressed(game, "r") && p.gatherCd <= 0) consume(game);
   if (pressed(game, "enter") && p.gatherCd <= 0 && game.buildMode) build(game);
   if (pressed(game, "t")) tryEquipGear(game);
 
+  game.mouse.clicked = false;
   game.justPressed.clear();
 
+  updateBullets(game, dt);
+  game.muzzleFlash = Math.max(0, game.muzzleFlash - dt);
   updateZombies(game, dt, phase);
   updateWaves(game, dt, phase);
 
@@ -368,18 +386,22 @@ function consume(game) {
 function melee(game) {
   const p = game.player;
   const weapon = equippedWeapon(p);
-  p.attackCd = weapon.attackCd;
-  p.stamina = Math.max(0, p.stamina - weapon.stamina);
-  game.noisePulse = Math.max(game.noisePulse, 3.5);
+  // Con arma de fuego, Q es culatazo corto (no el daño de bala)
+  const meleeDmg = weapon.firearm ? Math.max(12, Math.floor(weapon.damage * 0.28)) : weapon.damage;
+  const meleeRange = weapon.firearm ? 1.2 : weapon.range;
+  const meleeCd = weapon.firearm ? 0.4 : weapon.attackCd;
+  p.attackCd = meleeCd;
+  p.stamina = Math.max(0, p.stamina - (weapon.firearm ? 8 : weapon.stamina));
+  game.noisePulse = Math.max(game.noisePulse, weapon.firearm ? 2.2 : 3.5);
   let hit = false;
 
   for (const z of game.zombies) {
     const dx = z.x - p.x;
     const dy = z.y - p.y;
-    if (Math.hypot(dx, dy) > weapon.range) continue;
+    if (Math.hypot(dx, dy) > meleeRange) continue;
     if (p.facing > 0 && dx < -0.45) continue;
     if (p.facing < 0 && dx > 0.45) continue;
-    z.hp -= weapon.damage;
+    z.hp -= meleeDmg;
     z.stun = 0.35;
     z.x += Math.sign(dx || p.facing) * 0.4;
     hit = true;
@@ -396,7 +418,7 @@ function melee(game) {
     return false;
   });
 
-  setToast(game, hit ? `Golpeas con ${weapon.label.toLowerCase()}.` : "Cortas el aire.");
+  setToast(game, hit ? (weapon.firearm ? `Culatazo con ${weapon.label.toLowerCase()}.` : `Golpeas con ${weapon.label.toLowerCase()}.`) : "Cortas el aire.");
 }
 
 function build(game) {
@@ -648,9 +670,96 @@ function equippedWeapon(p) {
       attackCd: def.attackCd ?? DEFAULT_WEAPON.attackCd,
       stamina: def.stamina ?? DEFAULT_WEAPON.stamina,
       icon: def.icon || "⚔",
+      firearm: !!def.firearm,
+      ammo: def.ammo || null,
+      pellets: def.pellets || 1,
+      spread: def.spread || 0,
+      bulletSpeed: def.bulletSpeed || 20,
+      noise: def.noise || 4,
     };
   }
-  return { id: null, ...DEFAULT_WEAPON };
+  return { id: null, firearm: false, ammo: null, pellets: 1, spread: 0, bulletSpeed: 20, noise: 2, ...DEFAULT_WEAPON };
+}
+
+function isAutomaticFire(p) {
+  // Semiauto: solo click. (Reservado por si hay ametralladoras luego.)
+  return false;
+}
+
+function fireWeapon(game) {
+  const p = game.player;
+  const weapon = equippedWeapon(p);
+  if (!weapon.firearm) {
+    // Clic con melee = mismo golpe
+    melee(game);
+    return;
+  }
+  const ammoId = weapon.ammo;
+  if (!ammoId || (p.inv[ammoId] || 0) <= 0) {
+    setToast(game, `Sin munición (${itemDef(ammoId)?.label || "balas"}).`);
+    p.attackCd = 0.2;
+    return;
+  }
+  p.inv[ammoId] -= 1;
+  if (p.inv[ammoId] <= 0) delete p.inv[ammoId];
+  p.attackCd = weapon.attackCd;
+  p.stamina = Math.max(0, p.stamina - weapon.stamina);
+  game.noisePulse = Math.max(game.noisePulse, weapon.noise);
+  game.muzzleFlash = 0.08;
+
+  const pellets = weapon.pellets || 1;
+  for (let i = 0; i < pellets; i++) {
+    const spread = (Math.random() - 0.5) * (weapon.spread || 0) * 2;
+    const ang = p.aim + spread;
+    game.bullets.push({
+      x: p.x + Math.cos(ang) * 0.45,
+      y: p.y + Math.sin(ang) * 0.45,
+      vx: Math.cos(ang) * weapon.bulletSpeed,
+      vy: Math.sin(ang) * weapon.bulletSpeed,
+      life: weapon.range / weapon.bulletSpeed,
+      damage: weapon.damage,
+      from: "player",
+    });
+  }
+  setToast(game, `${weapon.label}: ${p.inv[ammoId] || 0} balas`);
+}
+
+function updateBullets(game, dt) {
+  const next = [];
+  for (const b of game.bullets) {
+    b.life -= dt;
+    if (b.life <= 0) continue;
+    const nx = b.x + b.vx * dt;
+    const ny = b.y + b.vy * dt;
+    // Colisión con muros
+    if (!canWalk(game.world, nx, ny, { bullet: true })) continue;
+    b.x = nx;
+    b.y = ny;
+
+    let hit = false;
+    for (const z of game.zombies) {
+      if (Math.hypot(z.x - b.x, z.y - b.y) < 0.45) {
+        z.hp -= b.damage;
+        z.stun = Math.max(z.stun || 0, 0.25);
+        z.x += Math.sign(b.vx || 1) * 0.25;
+        hit = true;
+        break;
+      }
+    }
+    if (hit) continue;
+    next.push(b);
+  }
+  game.bullets = next;
+  game.zombies = game.zombies.filter((z) => {
+    if (z.hp > 0) return true;
+    game.kills += 1;
+    if (Math.random() < 0.28) {
+      const id = Math.random() < 0.55 ? LOOT.SCRAP : LOOT.FOOD;
+      const key = `${Math.floor(z.x)},${Math.floor(z.y)}`;
+      if (!game.world.loot.has(key)) game.world.loot.set(key, { id, amount: 1 });
+    }
+    return false;
+  });
 }
 
 /** Armas en inventario, en orden de hotbar (máx 5). */
@@ -687,7 +796,11 @@ export function equipPanel(game) {
       id: p.equip.hand,
       label: weapon.label,
       icon: weapon.icon || "✊",
-      stat: p.equip.hand ? `${weapon.damage} dmg` : "sin arma",
+      stat: p.equip.hand
+        ? weapon.firearm
+          ? `${weapon.damage} dmg · ${p.inv[weapon.ammo] || 0} balas`
+          : `${weapon.damage} dmg`
+        : "sin arma",
       empty: !p.equip.hand,
       primary: true,
     },
@@ -850,7 +963,7 @@ function tryEquipGear(game) {
 
 export function inventorySlots(game) {
   const p = game.player;
-  const stacks = [LOOT.FOOD, LOOT.WATER, LOOT.SCRAP, LOOT.WOOD, LOOT.MED].map((id) => ({
+  const stacks = [LOOT.FOOD, LOOT.WATER, LOOT.SCRAP, LOOT.WOOD, LOOT.MED, LOOT.AMMO_9MM, LOOT.AMMO_SHOT, LOOT.AMMO_RIFLE].map((id) => ({
     id,
     label: lootLabel(id),
     n: p.inv[id] || 0,

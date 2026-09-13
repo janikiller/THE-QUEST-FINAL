@@ -68,6 +68,7 @@ function start() {
   }
 
   bindKeys(game);
+  bindMouse(game);
   bindHudClicks();
   last = performance.now();
   cancelAnimationFrame(raf);
@@ -89,6 +90,38 @@ function bindKeys(g) {
   const up = (e) => g.keys.delete(e.key.toLowerCase());
   window.onkeydown = down;
   window.onkeyup = up;
+}
+
+function bindMouse(g) {
+  const canvas = document.getElementById("world");
+  if (!canvas) return;
+  canvas.style.cursor = "crosshair";
+
+  const syncPos = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    g.mouse.x = x;
+    g.mouse.y = y;
+    g.mouse.viewW = rect.width;
+    g.mouse.viewH = rect.height;
+    // Cámara centrada en el jugador
+    g.mouse.worldX = g.player.x + (x - rect.width / 2) / 48;
+    g.mouse.worldY = g.player.y + (y - rect.height / 2) / 48;
+  };
+
+  canvas.onmousemove = (e) => syncPos(e);
+  canvas.onmousedown = (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    syncPos(e);
+    g.mouse.down = true;
+    g.mouse.clicked = true;
+  };
+  window.onmouseup = (e) => {
+    if (e.button === 0) g.mouse.down = false;
+  };
+  canvas.oncontextmenu = (e) => e.preventDefault();
 }
 
 function bindHudClicks() {
