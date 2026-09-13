@@ -49,6 +49,59 @@ const LOOT_DEFS = {
   [LOOT.MED]: { label: "Botiquín", gather: "botiquín" },
 };
 
+/** Muebles interiores. searchable = se registran con E. */
+export const FURNITURE = {
+  table: { label: "Mesa", searchable: false },
+  bed: { label: "Cama", searchable: false },
+  shelf: { label: "Estantería", searchable: true },
+  crate: { label: "Cajón", searchable: true },
+  cabinet: { label: "Armario", searchable: true },
+  drawer: { label: "Cómoda", searchable: true },
+  fridge: { label: "Nevera", searchable: true },
+  locker: { label: "Taquilla", searchable: true },
+};
+
+const CONTAINER_LOOT = {
+  shelf: [
+    { id: LOOT.FOOD, w: 3 },
+    { id: LOOT.SCRAP, w: 2 },
+    { id: LOOT.WOOD, w: 2 },
+    { id: LOOT.WATER, w: 1 },
+    { empty: true, w: 2 },
+  ],
+  crate: [
+    { id: LOOT.SCRAP, w: 3 },
+    { id: LOOT.WOOD, w: 3 },
+    { id: LOOT.FOOD, w: 1 },
+    { empty: true, w: 2 },
+  ],
+  cabinet: [
+    { id: LOOT.FOOD, w: 2 },
+    { id: LOOT.MED, w: 2 },
+    { id: LOOT.WOOD, w: 1 },
+    { id: LOOT.SCRAP, w: 2 },
+    { empty: true, w: 2 },
+  ],
+  drawer: [
+    { id: LOOT.SCRAP, w: 3 },
+    { id: LOOT.MED, w: 2 },
+    { id: LOOT.FOOD, w: 1 },
+    { empty: true, w: 3 },
+  ],
+  fridge: [
+    { id: LOOT.FOOD, w: 4 },
+    { id: LOOT.WATER, w: 4 },
+    { empty: true, w: 2 },
+  ],
+  locker: [
+    { id: LOOT.SCRAP, w: 3 },
+    { id: LOOT.WOOD, w: 2 },
+    { id: LOOT.MED, w: 2 },
+    { id: LOOT.FOOD, w: 1 },
+    { empty: true, w: 2 },
+  ],
+};
+
 export const BUILD = {
   wall: { label: "Barricada", tile: TILE.BARRICADE, cost: { scrap: 2, wood: 1 }, hint: "2 chatarra + 1 tabla" },
   door: { label: "Puerta", tile: TILE.DOOR, cost: { scrap: 2, wood: 1 }, hint: "2 chatarra + 1 tabla" },
@@ -74,7 +127,7 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   const doors = new Map();
   const buildings = [];
   const props = [];
-  const interiors = new Map(); // "x,y" -> furniture type
+  const interiors = new Map(); // "x,y" -> { type, searched }
 
   tiles.fill(TILE.SIDEWALK);
 
@@ -164,13 +217,15 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Loot
+  // Loot en el suelo (pocas cosas dentro: el botín está en armarios)
   for (let y = 1; y < size - 1; y++) {
     for (let x = 1; x < size - 1; x++) {
       const t = tiles[y * size + x];
       const r = noise.noise2(x * 2.1 + 4, y * 2.1 + seed * 0.0001);
-      if (t === TILE.FLOOR && r < 0.14) putLoot(loot, x, y, pickLoot(r));
-      else if (t === TILE.RUBBLE && r < 0.1) putLoot(loot, x, y, r < 0.05 ? LOOT.SCRAP : LOOT.WOOD);
+      if (t === TILE.FLOOR) {
+        if (interiors.has(`${x},${y}`)) continue;
+        if (r < 0.045) putLoot(loot, x, y, pickLoot(r));
+      } else if (t === TILE.RUBBLE && r < 0.1) putLoot(loot, x, y, r < 0.05 ? LOOT.SCRAP : LOOT.WOOD);
       else if (t === TILE.PARKING && r < 0.06) putLoot(loot, x, y, LOOT.SCRAP);
       else if (t === TILE.PARK && r < 0.05) putLoot(loot, x, y, LOOT.WOOD);
       else if (t === TILE.ALLEY && r < 0.08) putLoot(loot, x, y, r < 0.04 ? LOOT.FOOD : LOOT.SCRAP);
@@ -303,28 +358,40 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, pro
   tiles[dy * size + dx] = TILE.DOOR;
   doors.set(`${dx},${dy}`, { hp: 50 });
 
-  // Muebles interiores según estilo
+  // Muebles interiores (armarios, cómodas, neveras… buscables con E)
   for (let y = y0 + 1; y < y1; y++) {
     for (let x = x0 + 1; x < x1; x++) {
       if (tiles[y * size + x] !== TILE.FLOOR) continue;
+      const againstWall =
+        tiles[(y - 1) * size + x] === TILE.WALL ||
+        tiles[(y + 1) * size + x] === TILE.WALL ||
+        tiles[y * size + (x - 1)] === TILE.WALL ||
+        tiles[y * size + (x + 1)] === TILE.WALL;
       const r = noise.noise2(x * 1.3, y * 1.3);
+      let type = null;
       if (style === "warehouse") {
-        if (r < 0.14) interiors.set(`${x},${y}`, "crate");
-        else if (r < 0.2) interiors.set(`${x},${y}`, "shelf");
+        if (againstWall && r < 0.24) type = r < 0.11 ? "locker" : "shelf";
+        else if (r < 0.12) type = "crate";
+        else if (r < 0.17) type = "shelf";
       } else if (style === "shop") {
-        if (r < 0.1) interiors.set(`${x},${y}`, "shelf");
-        else if (r < 0.16) interiors.set(`${x},${y}`, "table");
-        else if (r < 0.19) interiors.set(`${x},${y}`, "crate");
+        if (againstWall && r < 0.22) type = r < 0.09 ? "fridge" : r < 0.16 ? "cabinet" : "shelf";
+        else if (r < 0.1) type = "shelf";
+        else if (r < 0.15) type = "table";
+        else if (r < 0.18) type = "crate";
       } else if (style === "residential") {
-        if (r < 0.08) interiors.set(`${x},${y}`, "bed");
-        else if (r < 0.13) interiors.set(`${x},${y}`, "table");
-        else if (r < 0.16) interiors.set(`${x},${y}`, "shelf");
+        if (againstWall && r < 0.2) type = r < 0.07 ? "fridge" : r < 0.14 ? "cabinet" : "drawer";
+        else if (r < 0.08) type = "bed";
+        else if (r < 0.12) type = "table";
+        else if (r < 0.15) type = "shelf";
+        else if (againstWall && r < 0.22) type = "cabinet";
       } else {
-        if (r < 0.08) interiors.set(`${x},${y}`, "table");
-        else if (r < 0.12) interiors.set(`${x},${y}`, "shelf");
-        else if (r < 0.15) interiors.set(`${x},${y}`, "bed");
-        else if (r < 0.17) interiors.set(`${x},${y}`, "crate");
+        if (againstWall && r < 0.18) type = r < 0.07 ? "cabinet" : r < 0.12 ? "drawer" : "shelf";
+        else if (r < 0.07) type = "table";
+        else if (r < 0.11) type = "shelf";
+        else if (r < 0.14) type = "bed";
+        else if (r < 0.16) type = "crate";
       }
+      if (type) placeFurniture(interiors, x, y, type);
     }
   }
 
@@ -510,6 +577,83 @@ export function buildingAt(world, x, y) {
   const ix = Math.floor(x);
   const iy = Math.floor(y);
   return world.buildings.find((b) => ix >= b.x0 && ix <= b.x1 && iy >= b.y0 && iy <= b.y1) || null;
+}
+
+function placeFurniture(interiors, x, y, type) {
+  interiors.set(`${x},${y}`, { type, searched: false });
+}
+
+export function furnitureType(furn) {
+  if (!furn) return null;
+  return typeof furn === "string" ? furn : furn.type;
+}
+
+export function furnitureLabel(furn) {
+  const t = furnitureType(furn);
+  return FURNITURE[t]?.label ?? "Mueble";
+}
+
+export function isSearchable(furn) {
+  const t = furnitureType(furn);
+  if (!t || !FURNITURE[t]?.searchable) return false;
+  if (typeof furn === "string") return true;
+  return !furn.searched;
+}
+
+/** Marca el mueble como registrado y devuelve loot o vacío. */
+export function searchFurniture(furn) {
+  const t = furnitureType(furn);
+  const label = furnitureLabel(furn);
+  if (!t || !FURNITURE[t]?.searchable) return { empty: true, label };
+  if (typeof furn !== "string" && furn.searched) {
+    return { empty: true, already: true, label };
+  }
+  if (typeof furn !== "string") furn.searched = true;
+
+  const table = CONTAINER_LOOT[t] || CONTAINER_LOOT.shelf;
+  let total = 0;
+  for (const row of table) total += row.w;
+  let roll = Math.random() * total;
+  let pick = table[table.length - 1];
+  for (const row of table) {
+    roll -= row.w;
+    if (roll <= 0) {
+      pick = row;
+      break;
+    }
+  }
+  if (pick.empty) return { empty: true, label };
+  const amount = 1 + ((Math.random() * 2) | 0);
+  return { empty: false, id: pick.id, amount, label };
+}
+
+/** Contenedor (buscable) más cercano, incluso si ya está registrado. */
+export function nearestContainer(world, x, y) {
+  const tx = Math.floor(x);
+  const ty = Math.floor(y);
+  let best = null;
+  let bestD = 99;
+  for (let oy = -1; oy <= 1; oy++) {
+    for (let ox = -1; ox <= 1; ox++) {
+      const key = `${tx + ox},${ty + oy}`;
+      const furn = world.interiors.get(key);
+      const t = furnitureType(furn);
+      if (!t || !FURNITURE[t]?.searchable) continue;
+      const d = Math.abs(ox) + Math.abs(oy);
+      if (d < bestD) {
+        bestD = d;
+        best = { key, furn, x: tx + ox, y: ty + oy };
+      }
+    }
+  }
+  return best;
+}
+
+/** Contenedor aún sin registrar más cercano (para el prompt). */
+export function nearestSearchable(world, x, y) {
+  const hit = nearestContainer(world, x, y);
+  if (!hit || !isSearchable(hit.furn)) return null;
+  return hit;
 }
 
 function shadeHex(hex, delta) {

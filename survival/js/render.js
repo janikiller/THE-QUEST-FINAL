@@ -1,4 +1,4 @@
-import { TILE, TILE_META, buildingAt } from "./world.js";
+import { TILE, TILE_META, buildingAt, furnitureType, furnitureLabel, nearestSearchable } from "./world.js";
 import { dayPhase } from "./game.js";
 
 const TILE_PX = 48;
@@ -143,6 +143,16 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     ctx.font = "600 13px Sora, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(`🚪 ${inside.name}`, w / 2, 38);
+
+    const near = nearestSearchable(game.world, game.player.x, game.player.y);
+    if (near) {
+      const label = furnitureLabel(near.furn);
+      ctx.fillStyle = "rgba(20,18,14,0.78)";
+      ctx.fillRect(w / 2 - 110, 54, 220, 26);
+      ctx.fillStyle = "#f0d9a0";
+      ctx.font = "600 12px Sora, sans-serif";
+      ctx.fillText(`E · registrar ${label.toLowerCase()}`, w / 2, 72);
+    }
   }
 
   // Oscuridad + iluminación (farolas, ventanas, linterna)
@@ -651,7 +661,9 @@ function drawInterior(ctx, game, tile, tx, ty, px, py) {
   }
 
   const furn = game.world.interiors.get(`${tx},${ty}`);
-  if (furn === "table") {
+  const fType = furnitureType(furn);
+  const searched = typeof furn === "object" && furn?.searched;
+  if (fType === "table") {
     ctx.fillStyle = "rgba(0,0,0,0.2)";
     ctx.fillRect(px + 11, py + 28, 28, 6);
     ctx.fillStyle = "#5a4030";
@@ -661,26 +673,28 @@ function drawInterior(ctx, game, tile, tx, ty, px, py) {
     ctx.fillStyle = "#3a2818";
     ctx.fillRect(px + 12, py + 30, 4, 8);
     ctx.fillRect(px + 32, py + 30, 4, 8);
-  } else if (furn === "shelf") {
+  } else if (fType === "shelf") {
     ctx.fillStyle = "#4a3a2a";
     ctx.fillRect(px + 6, py + 6, 36, 36);
     ctx.fillStyle = "#6a5040";
     ctx.fillRect(px + 8, py + 10, 32, 6);
     ctx.fillRect(px + 8, py + 22, 32, 6);
     ctx.fillRect(px + 8, py + 34, 32, 6);
-    ctx.fillStyle = "#a05040";
-    ctx.fillRect(px + 12, py + 11, 6, 4);
-    ctx.fillStyle = "#4080a0";
-    ctx.fillRect(px + 22, py + 23, 8, 4);
-  } else if (furn === "bed") {
+    if (!searched) {
+      ctx.fillStyle = "#a05040";
+      ctx.fillRect(px + 12, py + 11, 6, 4);
+      ctx.fillStyle = "#4080a0";
+      ctx.fillRect(px + 22, py + 23, 8, 4);
+    }
+  } else if (fType === "bed") {
     ctx.fillStyle = "#4a3a50";
     ctx.fillRect(px + 6, py + 8, 36, 32);
     ctx.fillStyle = "#d8d0c0";
     ctx.fillRect(px + 8, py + 10, 32, 12);
     ctx.fillStyle = "#8a4a5a";
     ctx.fillRect(px + 8, py + 24, 32, 14);
-  } else if (furn === "crate") {
-    ctx.fillStyle = "#7a5a30";
+  } else if (fType === "crate") {
+    ctx.fillStyle = searched ? "#5a4828" : "#7a5a30";
     ctx.fillRect(px + 12, py + 14, 24, 22);
     ctx.strokeStyle = "#3a2a18";
     ctx.strokeRect(px + 12, py + 14, 24, 22);
@@ -688,6 +702,79 @@ function drawInterior(ctx, game, tile, tx, ty, px, py) {
     ctx.moveTo(px + 12, py + 25);
     ctx.lineTo(px + 36, py + 25);
     ctx.stroke();
+    if (searched) {
+      ctx.fillStyle = "rgba(20,15,10,0.45)";
+      ctx.fillRect(px + 14, py + 16, 20, 10);
+    }
+  } else if (fType === "cabinet") {
+    // Armario de pared
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillRect(px + 9, py + 40, 30, 5);
+    ctx.fillStyle = searched ? "#5a4838" : "#6a5040";
+    ctx.fillRect(px + 8, py + 4, 32, 38);
+    ctx.fillStyle = searched ? "#3a3028" : "#4a3a30";
+    ctx.fillRect(px + 10, py + 6, 13, 34);
+    ctx.fillRect(px + 25, py + 6, 13, 34);
+    if (searched) {
+      // Puertas entreabiertas
+      ctx.fillStyle = "#7a6550";
+      ctx.fillRect(px + 4, py + 8, 8, 30);
+      ctx.fillRect(px + 36, py + 8, 8, 30);
+    } else {
+      ctx.fillStyle = "#c8a060";
+      ctx.beginPath();
+      ctx.arc(px + 20, py + 24, 1.8, 0, Math.PI * 2);
+      ctx.arc(px + 28, py + 24, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      // Indicador de contenido
+      ctx.fillStyle = "rgba(255, 210, 120, 0.35)";
+      ctx.fillRect(px + 12, py + 10, 8, 6);
+    }
+  } else if (fType === "drawer") {
+    // Cómoda
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(px + 10, py + 38, 28, 5);
+    ctx.fillStyle = searched ? "#5a4a38" : "#6e5640";
+    ctx.fillRect(px + 9, py + 12, 30, 28);
+    ctx.strokeStyle = "#3a2a1c";
+    for (let i = 0; i < 3; i++) {
+      const yy = py + 14 + i * 9;
+      ctx.strokeRect(px + 11, yy, 26, 8);
+      ctx.fillStyle = searched ? "#2a2018" : "#c8a868";
+      ctx.fillRect(px + 21, yy + 3, 6, 2);
+    }
+  } else if (fType === "fridge") {
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillRect(px + 11, py + 40, 26, 4);
+    ctx.fillStyle = searched ? "#5a6068" : "#8a9098";
+    ctx.fillRect(px + 10, py + 4, 28, 38);
+    ctx.fillStyle = searched ? "#3a4048" : "#6a7078";
+    ctx.fillRect(px + 12, py + 6, 24, 22);
+    ctx.fillRect(px + 12, py + 30, 24, 10);
+    ctx.fillStyle = "#2a2e34";
+    ctx.fillRect(px + 32, py + 14, 3, 10);
+    if (!searched) {
+      ctx.fillStyle = "rgba(180, 220, 255, 0.2)";
+      ctx.fillRect(px + 14, py + 8, 20, 8);
+    } else {
+      ctx.fillStyle = "rgba(20,20,24,0.5)";
+      ctx.fillRect(px + 14, py + 8, 20, 18);
+    }
+  } else if (fType === "locker") {
+    ctx.fillStyle = searched ? "#3a4a3a" : "#4a5a48";
+    ctx.fillRect(px + 12, py + 4, 24, 40);
+    ctx.strokeStyle = "#2a3228";
+    ctx.strokeRect(px + 12, py + 4, 24, 40);
+    ctx.beginPath();
+    ctx.moveTo(px + 24, py + 4);
+    ctx.lineTo(px + 24, py + 44);
+    ctx.stroke();
+    ctx.fillStyle = searched ? "#1a2018" : "#c8b060";
+    ctx.fillRect(px + 20, py + 22, 4, 6);
+    if (!searched) {
+      ctx.fillStyle = "rgba(255, 200, 100, 0.25)";
+      ctx.fillRect(px + 14, py + 8, 8, 10);
+    }
   }
 
   // Luz de ventana

@@ -9,6 +9,10 @@ import {
   lootLabel,
   lootGatherText,
   buildingAt,
+  nearestSearchable,
+  nearestContainer,
+  searchFurniture,
+  furnitureLabel,
 } from "./world.js";
 
 const DAY_LEN = 160;
@@ -257,6 +261,25 @@ function interact(game) {
     }
   }
 
+  // Primero registrar muebles (armarios, cómodas, neveras…)
+  const near = nearestContainer(game.world, p.x, p.y);
+  if (near) {
+    p.gatherCd = 0.55;
+    const result = searchFurniture(near.furn);
+    game.noisePulse = Math.max(game.noisePulse, 1.4);
+    if (result.already) {
+      setToast(game, `${result.label}: ya lo registraste.`);
+      return;
+    }
+    if (result.empty) {
+      setToast(game, `Registras ${result.label.toLowerCase()}… vacío.`);
+      return;
+    }
+    p.inv[result.id] = (p.inv[result.id] || 0) + result.amount;
+    setToast(game, `En ${result.label.toLowerCase()}: ${lootGatherText(result.id)}.`);
+    return;
+  }
+
   for (let oy = -1; oy <= 1; oy++) {
     for (let ox = -1; ox <= 1; ox++) {
       const key = `${tx + ox},${ty + oy}`;
@@ -274,7 +297,7 @@ function interact(game) {
     game,
     game.buildMode
       ? `Modo ${BUILD[game.buildMode].label} — pulsa B`
-      : "Nada que saquear. 1/2/3 construir · Q atacar · R consumir"
+      : "Nada que saquear. Entra a edificios y registra armarios (E)."
   );
 }
 
