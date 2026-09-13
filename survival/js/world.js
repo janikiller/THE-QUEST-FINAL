@@ -49,6 +49,8 @@ export const LOOT = {
   PAN: "pan",
   HAMMER: "hammer",
   JACKET: "jacket",
+  FLASHLIGHT: "flashlight",
+  LANTERN: "lantern",
 };
 
 /** Orden de armas en hotbar (mano primaria) */
@@ -173,6 +175,26 @@ const LOOT_DEFS = {
     weight: 1,
     icon: "🧥",
   },
+  [LOOT.FLASHLIGHT]: {
+    label: "Linterna",
+    gather: "una linterna",
+    kind: "equip",
+    slot: "light",
+    lightRadius: 150,
+    lightWarm: false,
+    weight: 1,
+    icon: "🔦",
+  },
+  [LOOT.LANTERN]: {
+    label: "Farol",
+    gather: "un farol",
+    kind: "equip",
+    slot: "light",
+    lightRadius: 120,
+    lightWarm: true,
+    weight: 1,
+    icon: "🏮",
+  },
 };
 
 export const BASE_CAPACITY = 10;
@@ -238,6 +260,7 @@ const CONTAINER_LOOT = {
     { id: LOOT.JACKET, w: 1 },
     { id: LOOT.BAG, w: 1 },
     { id: LOOT.PAN, w: 1 },
+    { id: LOOT.LANTERN, w: 1 },
     { empty: true, w: 2 },
   ],
   drawer: [
@@ -245,6 +268,7 @@ const CONTAINER_LOOT = {
     { id: LOOT.MED, w: 2 },
     { id: LOOT.FOOD, w: 1 },
     { id: LOOT.KNIFE, w: 1 },
+    { id: LOOT.FLASHLIGHT, w: 1 },
     { empty: true, w: 3 },
   ],
   fridge: [
@@ -260,6 +284,7 @@ const CONTAINER_LOOT = {
     { id: LOOT.BAT, w: 1 },
     { id: LOOT.AXE, w: 1 },
     { id: LOOT.BAG_BIG, w: 1 },
+    { id: LOOT.FLASHLIGHT, w: 2 },
     { empty: true, w: 2 },
   ],
   desk: [
@@ -267,6 +292,7 @@ const CONTAINER_LOOT = {
     { id: LOOT.MED, w: 1 },
     { id: LOOT.FOOD, w: 1 },
     { id: LOOT.KNIFE, w: 1 },
+    { id: LOOT.FLASHLIGHT, w: 2 },
     { empty: true, w: 3 },
   ],
   nightstand: [
@@ -274,6 +300,7 @@ const CONTAINER_LOOT = {
     { id: LOOT.FOOD, w: 1 },
     { id: LOOT.SCRAP, w: 1 },
     { id: LOOT.KNIFE, w: 1 },
+    { id: LOOT.LANTERN, w: 1 },
     { empty: true, w: 3 },
   ],
   counter: [
@@ -672,9 +699,11 @@ function paveQuay(tiles, size, bx, by, props, noise) {
 }
 
 function pickLoot(r) {
-  if (r < 0.012) return LOOT.BAG;
-  if (r < 0.02) return LOOT.KNIFE;
-  if (r < 0.028) return LOOT.JACKET;
+  if (r < 0.008) return LOOT.FLASHLIGHT;
+  if (r < 0.012) return LOOT.LANTERN;
+  if (r < 0.02) return LOOT.BAG;
+  if (r < 0.028) return LOOT.KNIFE;
+  if (r < 0.036) return LOOT.JACKET;
   if (r < 0.045) return LOOT.MED;
   if (r < 0.07) return LOOT.FOOD;
   if (r < 0.095) return LOOT.WATER;

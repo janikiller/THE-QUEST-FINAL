@@ -101,9 +101,13 @@ function bindHudClicks() {
   equipEl.onclick = (e) => {
     const btn = e.target.closest("[data-equip]");
     if (!btn || !game) return;
-    if (btn.dataset.equip === "hand" && game.player.equip.hand) {
+    const slot = btn.dataset.equip;
+    if (slot === "hand" && game.player.equip.hand) {
       game.player.equip.hand = null;
       setToast(game, "Mano primaria libre.");
+    } else if (slot === "light" && game.player.equip.light) {
+      game.player.equip.light = null;
+      setToast(game, "Luz guardada.");
     }
   };
 }

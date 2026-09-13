@@ -41,7 +41,7 @@ export function createGame(world) {
       thirst: 78,
       stamina: 100,
       inv: { food: 1, water: 1, scrap: 3, wood: 3, med: 0 },
-      equip: { hand: null, body: null, bag: null },
+      equip: { hand: null, body: null, bag: null, light: null },
       gatherCd: 0,
       attackCd: 0,
       hurtFlash: 0,
@@ -76,7 +76,7 @@ export function createGame(world) {
     },
   };
   seedZombies(game, 4);
-  setToast(game, "Oleada 1 en camino. Armas en hotbar 1-5 · T ropa/mochila.");
+  setToast(game, "Oleada 1 en camino. Armas 1-5 · T ropa/mochila/luz.");
   return game;
 }
 
@@ -608,7 +608,7 @@ function invUsed(p) {
     const def = itemDef(id);
     const equipped =
       def?.kind === "equip" &&
-      (p.equip.hand === id || p.equip.body === id || p.equip.bag === id);
+      (p.equip.hand === id || p.equip.body === id || p.equip.bag === id || p.equip.light === id);
     const free = equipped ? 1 : 0;
     n += Math.max(0, count - free) * (def?.weight ?? 1);
   }
@@ -617,7 +617,7 @@ function invUsed(p) {
 
 export function invCapacity(p) {
   let cap = BASE_CAPACITY;
-  for (const slot of ["hand", "body", "bag"]) {
+  for (const slot of ["hand", "body", "bag", "light"]) {
     const def = itemDef(p.equip[slot]);
     if (def?.capacity) cap += def.capacity;
   }
@@ -674,6 +674,7 @@ export function equipPanel(game) {
   const weapon = equippedWeapon(p);
   const body = itemDef(p.equip.body);
   const bag = itemDef(p.equip.bag);
+  const light = itemDef(p.equip.light);
   return [
     {
       slot: "hand",
@@ -703,6 +704,15 @@ export function equipPanel(game) {
       stat: bag?.capacity ? `+${bag.capacity} carga` : "",
       empty: !p.equip.bag,
     },
+    {
+      slot: "light",
+      tag: "Luz",
+      id: p.equip.light,
+      label: light?.label || "—",
+      icon: light?.icon || "·",
+      stat: light?.lightRadius ? `alcance ${light.lightRadius}` : "busca linterna",
+      empty: !p.equip.light,
+    },
   ];
 }
 
@@ -723,10 +733,10 @@ export function equipHotbarSlot(game, index) {
   setToast(game, `Arma primaria: ${slot.label}.`);
 }
 
-/** T solo cicla ropa / mochila (las armas van por hotbar 1-5). */
+/** T cicla ropa / mochila / luz (las armas van por hotbar 1-5). */
 function tryEquipGear(game) {
   const p = game.player;
-  const order = [LOOT.BAG_BIG, LOOT.BAG, LOOT.JACKET];
+  const order = [LOOT.BAG_BIG, LOOT.BAG, LOOT.JACKET, LOOT.FLASHLIGHT, LOOT.LANTERN];
   for (const id of order) {
     if ((p.inv[id] || 0) <= 0) continue;
     const def = itemDef(id);
@@ -744,6 +754,11 @@ function tryEquipGear(game) {
     return;
   }
 
+  if (p.equip.light) {
+    setToast(game, `Apagas y guardas ${itemDef(p.equip.light).label.toLowerCase()}.`);
+    p.equip.light = null;
+    return;
+  }
   if (p.equip.body) {
     setToast(game, `Te quitas ${itemDef(p.equip.body).label.toLowerCase()}.`);
     p.equip.body = null;
@@ -760,7 +775,7 @@ function tryEquipGear(game) {
     setToast(game, `Dejas ${itemDef(bag).label.toLowerCase()}.`);
     return;
   }
-  setToast(game, "Nada de ropa/mochila. Armas: teclas 1-5.");
+  setToast(game, "Nada de ropa/mochila/luz. Armas: teclas 1-5.");
 }
 
 export function inventorySlots(game) {

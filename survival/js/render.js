@@ -1,4 +1,4 @@
-import { TILE, TILE_META, buildingAt, furnitureType, furnitureLabel, nearestSearchable } from "./world.js";
+import { TILE, TILE_META, buildingAt, furnitureType, furnitureLabel, nearestSearchable, itemDef } from "./world.js";
 import { dayPhase } from "./game.js";
 
 const TILE_PX = 48;
@@ -240,8 +240,13 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
 
   const px = game.player.x * TILE_PX - camX;
   const py = game.player.y * TILE_PX - camY;
-  const playerR = indoor ? 110 : phase.night ? 170 : 80;
+  const lightDef = itemDef(game.player.equip?.light);
+  const hasLight = Boolean(lightDef?.lightRadius);
+  const playerR = hasLight
+    ? lightDef.lightRadius * (indoor ? 0.85 : phase.night ? 1 : 0.7)
+    : 0;
   const cool = phase.rain > 0.25 || phase.weather === "storm";
+  const lightCool = hasLight ? (lightDef.lightWarm === false ? true : cool && !lightDef.lightWarm) : cool;
 
   // Máscara aparte: destination-out no borra el mundo
   const mask = getLightMask(w, h);
@@ -270,8 +275,8 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     m.arc(cx, cy, lr, 0, Math.PI * 2);
     m.fill();
   }
-  {
-    const hole = m.createRadialGradient(px, py, 10, px, py, playerR);
+  if (hasLight && playerR > 0) {
+    const hole = m.createRadialGradient(px, py, 8, px, py, playerR);
     hole.addColorStop(0, "rgba(0,0,0,0.95)");
     hole.addColorStop(0.5, "rgba(0,0,0,0.45)");
     hole.addColorStop(1, "rgba(0,0,0,0)");
@@ -326,14 +331,22 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     ctx.fill();
   }
 
-  const pg = ctx.createRadialGradient(px, py, 6, px, py, playerR);
-  pg.addColorStop(0, `rgba(255, 235, 190, ${0.2 + darkness * 0.08})`);
-  pg.addColorStop(0.5, `rgba(255, 210, 150, ${0.07 + darkness * 0.04})`);
-  pg.addColorStop(1, "rgba(255, 190, 110, 0)");
-  ctx.fillStyle = pg;
-  ctx.beginPath();
-  ctx.arc(px, py, playerR, 0, Math.PI * 2);
-  ctx.fill();
+  if (hasLight && playerR > 0) {
+    const pg = ctx.createRadialGradient(px, py, 6, px, py, playerR);
+    if (lightCool) {
+      pg.addColorStop(0, `rgba(210, 230, 255, ${0.28 + darkness * 0.1})`);
+      pg.addColorStop(0.5, `rgba(160, 195, 240, ${0.1 + darkness * 0.05})`);
+      pg.addColorStop(1, "rgba(120, 160, 220, 0)");
+    } else {
+      pg.addColorStop(0, `rgba(255, 220, 150, ${0.3 + darkness * 0.1})`);
+      pg.addColorStop(0.5, `rgba(255, 180, 100, ${0.1 + darkness * 0.05})`);
+      pg.addColorStop(1, "rgba(255, 150, 70, 0)");
+    }
+    ctx.fillStyle = pg;
+    ctx.beginPath();
+    ctx.arc(px, py, playerR, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   for (const win of litWindows) {
     const wr = 32;
@@ -1762,6 +1775,25 @@ function drawLoot(ctx, id, px, py, time) {
     ctx.fillRect(-8, -6, 16, 12);
     ctx.fillStyle = "#2a3238";
     ctx.fillRect(-2, -6, 4, 12);
+  } else if (id === "flashlight") {
+    ctx.fillStyle = "#2a2e34";
+    ctx.fillRect(-8, -3, 14, 6);
+    ctx.fillStyle = "#d8e8ff";
+    ctx.beginPath();
+    ctx.arc(7, 0, 4, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (id === "lantern") {
+    ctx.fillStyle = "#5a3a18";
+    ctx.fillRect(-5, -8, 10, 14);
+    ctx.fillStyle = "#ffc060";
+    ctx.beginPath();
+    ctx.arc(0, -1, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#8a6a30";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, -10, 4, Math.PI, 0);
+    ctx.stroke();
   }
   ctx.restore();
 }
