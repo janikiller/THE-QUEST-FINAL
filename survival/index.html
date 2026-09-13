@@ -25,7 +25,7 @@
           <p><kbd>WASD</kbd> mover · <kbd>Espacio</kbd> correr</p>
           <p><kbd>1-5</kbd> arma en hotbar · <kbd>Q</kbd> cuerpo a cuerpo</p>
           <p><kbd>Ratón</kbd> apuntar · <kbd>Clic izq.</kbd> disparar</p>
-          <p><kbd>E</kbd> saquear / registrar · <kbd>R</kbd> consumir</p>
+          <p><kbd>E</kbd> saquear / registrar · <kbd>R</kbd> consumir · <kbd>I</kbd> inventario</p>
           <p><kbd>T</kbd> cambiar ropa / mochila / luz · <kbd>B</kbd> ciclo construcción</p>
           <p><kbd>Enter</kbd> colocar construcción · <kbd>0</kbd>/<kbd>Esc</kbd> cancelar</p>
         </div>
@@ -59,12 +59,19 @@
 
       <div class="hotbar-wrap">
         <div class="hotbar" id="hotbar" aria-label="Hotbar de armas"></div>
-        <div class="inv-strip" id="inventory" aria-label="Inventario"></div>
+      </div>
+
+      <div class="inv-panel" id="inventory" hidden aria-label="Inventario">
+        <header class="inv-head">
+          <strong>Inventario</strong>
+          <span>I para cerrar</span>
+        </header>
+        <div class="inv-grid" id="inventory-grid"></div>
       </div>
 
       <p class="toast" id="toast" hidden></p>
       <canvas id="minimap" width="148" height="148" aria-label="Minimapa"></canvas>
-      <p class="help">Ratón apunta · Clic dispara · 1-5 arma · Q melee · E saquear · T ropa · B+Enter construye</p>
+      <p class="help">Ratón apunta · Clic dispara · 1-5 arma · Q melee · E saquear · I inventario · T ropa · B+Enter construye</p>
     </div>
   </div>
 

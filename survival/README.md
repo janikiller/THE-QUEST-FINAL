@@ -24,18 +24,20 @@ python3 -m http.server 8080
 | Q / F | Cuerpo a cuerpo (culatazo si llevas arma de fuego) |
 | R | Consumir (botiquín → comida → agua) |
 | 1-5 | Equipar arma de la hotbar |
+| I | Abrir / cerrar inventario |
 | T | Ciclar ropa → mochila → luz |
 | B | Ciclo de construcción (barricada / puerta / base) |
 | Enter | Colocar construcción |
-| 0 / Esc | Cancelar construcción |
+| 0 / Esc | Cancelar construcción / cerrar inventario |
 
 ## Sistemas
 
-- Ciudad procedural (calles, edificios, parques, parking, canal)
-- Día/noche, clima y farolas
+- Ciudad procedural apocalíptica (calles rotas, escombros, niebla)
+- Día/noche, clima (niebla, lluvia, tormenta) y farolas
 - Oleadas de zombis cada vez más duras
-- **Jefes cada 3 oleadas** (El Bruto, El Aullador, El Blindado): más vida, carga telegráfica y botín
+- **Jefes cada 3 oleadas** (El Bruto, El Aullador, El Blindado)
 - Armas melee y de fuego con munición
+- Inventario con **I** (no ocupa el HUD)
 - Ropa visible, mochila y linterna/farol equipables
 - Base: marca suelo, cercála con barricadas y puerta
 

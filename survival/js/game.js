@@ -141,6 +141,7 @@ export function createGame(world) {
     keys: new Set(),
     justPressed: new Set(),
     buildMode: null,
+    inventoryOpen: false,
     baseClaimed: false,
     kills: 0,
     noisePulse: 0,
@@ -154,12 +155,12 @@ export function createGame(world) {
     waveBossKind: null,
     waveBossSpawned: false,
     weather: {
-      kind: "rain",
-      intensity: 0.55,
+      kind: "fog",
+      intensity: 0.7,
       nextChange: 14 + Math.random() * 10,
       thunder: 0,
-      wind: 0.7,
-      label: "Lluvia",
+      wind: 0.45,
+      label: "Niebla",
     },
     bullets: [],
     fx: [],
@@ -231,6 +232,7 @@ export function dayPhase(game) {
 
   const w = game.weather;
   if (w.kind === "cloudy") phase.light *= 0.94;
+  if (w.kind === "fog") phase.light *= 0.82;
   if (w.kind === "rain") phase.light *= 0.88;
   if (w.kind === "storm") phase.light *= 0.78;
   if (w.thunder > 0) phase.light = Math.min(1, phase.light + w.thunder * 0.85);
@@ -338,6 +340,13 @@ export function updateGame(game, dt) {
   if (pressed(game, "r") && p.gatherCd <= 0) consume(game);
   if (pressed(game, "enter") && p.gatherCd <= 0 && game.buildMode) build(game);
   if (pressed(game, "t")) tryEquipGear(game);
+  if (pressed(game, "i")) {
+    game.inventoryOpen = !game.inventoryOpen;
+    setToast(game, game.inventoryOpen ? "Inventario abierto (I cierra)." : "Inventario cerrado.");
+  }
+  if (pressed(game, "escape") && game.inventoryOpen) {
+    game.inventoryOpen = false;
+  }
 
   game.mouse.clicked = false;
   game.justPressed.clear();
@@ -378,29 +387,33 @@ function updateWeather(game, dt) {
   const target =
     w.kind === "clear" ? 0 :
     w.kind === "cloudy" ? 0.25 :
+    w.kind === "fog" ? 0.7 :
     w.kind === "rain" ? 0.7 :
     1;
   w.intensity += (target - w.intensity) * Math.min(1, dt * 1.4);
-  w.wind += ((w.kind === "storm" ? 1.4 : w.kind === "rain" ? 0.8 : 0.25) - w.wind) * Math.min(1, dt);
+  w.wind += ((w.kind === "storm" ? 1.4 : w.kind === "rain" ? 0.8 : w.kind === "fog" ? 0.35 : 0.25) - w.wind) * Math.min(1, dt);
 
   if (w.nextChange > 0) return;
   w.nextChange = 18 + Math.random() * 28;
   const roll = Math.random();
   const night = ((game.time % game.dayLen) / game.dayLen) >= 0.6;
   let next = w.kind;
-  if (w.kind === "clear") next = roll < (night ? 0.7 : 0.5) ? "cloudy" : "clear";
-  else if (w.kind === "cloudy") next = roll < (night ? 0.55 : 0.35) ? "rain" : roll < 0.75 ? "cloudy" : "clear";
-  else if (w.kind === "rain") next = roll < (night ? 0.55 : 0.3) ? "storm" : roll < 0.7 ? "rain" : "cloudy";
-  else next = roll < 0.45 ? "rain" : "cloudy";
+  if (w.kind === "clear") next = roll < (night ? 0.55 : 0.4) ? "fog" : roll < 0.75 ? "cloudy" : "clear";
+  else if (w.kind === "cloudy") next = roll < 0.4 ? "fog" : roll < (night ? 0.7 : 0.55) ? "rain" : roll < 0.85 ? "cloudy" : "clear";
+  else if (w.kind === "fog") next = roll < (night ? 0.4 : 0.25) ? "rain" : roll < 0.65 ? "fog" : "cloudy";
+  else if (w.kind === "rain") next = roll < (night ? 0.55 : 0.3) ? "storm" : roll < 0.7 ? "rain" : "fog";
+  else next = roll < 0.45 ? "rain" : "fog";
 
   w.kind = next;
   w.label =
     next === "clear" ? "Despejado" :
     next === "cloudy" ? "Nublado" :
+    next === "fog" ? "Niebla" :
     next === "rain" ? "Lluvia" :
     "Tormenta";
   if (next === "storm") setToast(game, "La tormenta cae sobre Niebla Norte.");
   else if (next === "rain") setToast(game, "Empieza a llover sobre el asfalto.");
+  else if (next === "fog") setToast(game, "La niebla espesa cubre las calles.");
 }
 
 function tryMove(game, nx, ny) {

@@ -25,6 +25,7 @@ const controlsPanel = document.getElementById("controls-panel");
 const clockEl = document.getElementById("clock");
 const toastEl = document.getElementById("toast");
 const inventoryEl = document.getElementById("inventory");
+const inventoryGridEl = document.getElementById("inventory-grid");
 const hotbarEl = document.getElementById("hotbar");
 const equipEl = document.getElementById("equip-panel");
 const deathReason = document.getElementById("death-reason");
@@ -227,9 +228,12 @@ function syncHud(g) {
     )
     .join("");
 
-  inventoryEl.innerHTML = inventorySlots(g)
-    .map((s) => `<div class="inv-slot inv-${s.kind}"><strong>${s.n}</strong>${s.label}</div>`)
-    .join("");
+  if (inventoryEl) inventoryEl.hidden = !g.inventoryOpen;
+  if (inventoryGridEl) {
+    inventoryGridEl.innerHTML = inventorySlots(g)
+      .map((s) => `<div class="inv-slot inv-${s.kind}"><strong>${s.n}</strong>${s.label}</div>`)
+      .join("");
+  }
 
   if (g.toastT > 0 && g.toast) {
     toastEl.hidden = false;

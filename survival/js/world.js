@@ -18,19 +18,19 @@ export const TILE = {
 };
 
 export const TILE_META = {
-  [TILE.ROAD]: { name: "asfalto", walk: true, color: "#3d3f42", speed: 1.05 },
-  [TILE.SIDEWALK]: { name: "acera", walk: true, color: "#8a8680", speed: 1 },
-  [TILE.FLOOR]: { name: "interior", walk: true, color: "#6b5a48", speed: 1, indoor: true },
-  [TILE.WALL]: { name: "muro", walk: false, color: "#4a4540", solid: true },
-  [TILE.RUBBLE]: { name: "escombros", walk: true, color: "#6a6258", speed: 0.65 },
-  [TILE.PARK]: { name: "parque", walk: true, color: "#3f6a3a", speed: 0.95 },
-  [TILE.PARKING]: { name: "parking", walk: true, color: "#4a4c50", speed: 1 },
-  [TILE.WATER]: { name: "canal", walk: false, color: "#2a5a62", solid: true, drink: true },
-  [TILE.ALLEY]: { name: "callejón", walk: true, color: "#3a3a3e", speed: 0.9 },
-  [TILE.BARRICADE]: { name: "barricada", walk: false, color: "#7a5230", solid: true, built: true },
-  [TILE.DOOR]: { name: "puerta", walk: true, color: "#8b6238", speed: 0.9, door: true },
-  [TILE.BASE]: { name: "base", walk: true, color: "#4f6a40", speed: 1, indoor: true, base: true },
-  [TILE.CROSSWALK]: { name: "paso", walk: true, color: "#4a4a4c", speed: 1 },
+  [TILE.ROAD]: { name: "asfalto", walk: true, color: "#2a2c2e", speed: 1.05 },
+  [TILE.SIDEWALK]: { name: "acera", walk: true, color: "#5a564f", speed: 1 },
+  [TILE.FLOOR]: { name: "interior", walk: true, color: "#4a3d32", speed: 1, indoor: true },
+  [TILE.WALL]: { name: "muro", walk: false, color: "#3a3530", solid: true },
+  [TILE.RUBBLE]: { name: "escombros", walk: true, color: "#524a42", speed: 0.65 },
+  [TILE.PARK]: { name: "parque", walk: true, color: "#2a3a24", speed: 0.95 },
+  [TILE.PARKING]: { name: "parking", walk: true, color: "#323438", speed: 1 },
+  [TILE.WATER]: { name: "canal", walk: false, color: "#1a3a3e", solid: true, drink: true },
+  [TILE.ALLEY]: { name: "callejón", walk: true, color: "#2a2a2e", speed: 0.9 },
+  [TILE.BARRICADE]: { name: "barricada", walk: false, color: "#6a4220", solid: true, built: true },
+  [TILE.DOOR]: { name: "puerta", walk: true, color: "#6b4a2a", speed: 0.9, door: true },
+  [TILE.BASE]: { name: "base", walk: true, color: "#3a4a30", speed: 1, indoor: true, base: true },
+  [TILE.CROSSWALK]: { name: "paso", walk: true, color: "#343436", speed: 1 },
 };
 
 export const LOOT = {
@@ -603,24 +603,6 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Coches aparcados en bordes de calle
-  for (let y = 2; y < size - 2; y++) {
-    for (let x = 2; x < size - 2; x++) {
-      if (tiles[y * size + x] !== TILE.ROAD && tiles[y * size + x] !== TILE.CROSSWALK) continue;
-      if (noise.noise2(x * 0.7, y * 0.7) > 0.82 && (x + y * 3) % 17 === 0) {
-        const colors = ["#6a3030", "#2a3a4a", "#3a3a3a", "#4a5a30", "#5a4a20"];
-        props.push({
-          type: "car",
-          x: x + 0.5,
-          y: y + 0.5,
-          rot: x % BLOCK < ROAD_W ? 0 : 1,
-          color: colors[(x * 5 + y) % colors.length],
-          wreck: noise.noise2(x + 2, y + 4) > 0.85,
-        });
-      }
-    }
-  }
-
   // Semáforos solo en cruces principales (cada 2 manzanas)
   for (let by = 0; by < size; by += BLOCK * 2) {
     for (let bx = 0; bx < size; bx += BLOCK * 2) {
@@ -659,6 +641,23 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     for (let x = 3; x < size - 3; x++) {
       if (tiles[y * size + x] !== TILE.ROAD) continue;
       if ((x * 17 + y * 31) % 47 === 0) props.push({ type: "manhole", x: x + 0.5, y: y + 0.5 });
+    }
+  }
+
+
+  // Cicatrices del colapso: escombros y barricadas rotas en calles
+  for (let y = 2; y < size - 2; y++) {
+    for (let x = 2; x < size - 2; x++) {
+      const t = tiles[y * size + x];
+      if (t !== TILE.ROAD && t !== TILE.CROSSWALK && t !== TILE.SIDEWALK) continue;
+      const r = noise.noise2(x * 0.55 + 9, y * 0.55 + seed * 0.0002);
+      if (t === TILE.ROAD && r > 0.78) tiles[y * size + x] = TILE.RUBBLE;
+      if (r > 0.82 && (x + y) % 7 === 0) {
+        props.push({ type: "debris", x: x + 0.5, y: y + 0.5, tone: (x + y) % 3 });
+      }
+      if (r > 0.86 && t === TILE.SIDEWALK && (x * y) % 13 === 0) {
+        props.push({ type: "barricadeJunk", x: x + 0.5, y: y + 0.5 });
+      }
     }
   }
 
@@ -775,7 +774,7 @@ function pavePark(tiles, size, bx, by, props, noise) {
           x: x + 0.35 + noise.noise2(x, y) * 0.3,
           y: y + 0.35 + noise.noise2(y, x) * 0.3,
           r: 11 + noise.noise2(x, y) * 9,
-          tone: noise.noise2(x + 3, y) > 0.5 ? 0 : 1,
+          tone: noise.noise2(x + 3, y) > 0.35 ? 2 : (noise.noise2(x + 3, y) > 0.5 ? 0 : 1), // 2 = muerto
         });
       }
     }
@@ -794,18 +793,16 @@ function pavePark(tiles, size, bx, by, props, noise) {
 
 function paveParking(tiles, size, bx, by, props, noise) {
   const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
-  const colors = ["#5a2020", "#2a3040", "#3a3a38", "#4a5030", "#6a5a20", "#203040", "#503828"];
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
-      tiles[y * size + x] = TILE.PARKING;
-      if ((x + y) % 3 === 0 && noise.noise2(x, y) > 0.35) {
+      // Parking abandonado: más escombros que asfalto limpio
+      tiles[y * size + x] = noise.noise2(x * 1.3, y * 1.1) > 0.72 ? TILE.RUBBLE : TILE.PARKING;
+      if ((x + y) % 4 === 0 && noise.noise2(x, y) > 0.55) {
         props.push({
-          type: "car",
+          type: "debris",
           x: x + 0.5,
           y: y + 0.5,
-          rot: 1,
-          color: colors[(x * 3 + y) % colors.length],
-          wreck: noise.noise2(x + 9, y) > 0.78,
+          tone: (x * 3 + y) % 3,
         });
       }
     }

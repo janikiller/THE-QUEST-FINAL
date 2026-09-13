@@ -64,9 +64,10 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     sky.addColorStop(0, "#5a646c");
     sky.addColorStop(1, "#3a4248");
   } else {
-    sky.addColorStop(0, "#7a8a92");
-    sky.addColorStop(0.45, "#9aa0a0");
-    sky.addColorStop(1, "#6a6a62");
+    // Día ceniciento post-colapso
+    sky.addColorStop(0, "#4a4e52");
+    sky.addColorStop(0.45, "#5a5854");
+    sky.addColorStop(1, "#3a3834");
   }
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, w, h);
@@ -210,13 +211,22 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   }
 
   // Viñeta muy suave (no oscurece el centro)
-  const fogA = phase.night ? 0.12 : raining ? 0.22 : 0.14;
-  const fog = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.45, w / 2, h / 2, Math.max(w, h) * 0.9);
+  const fogA = phase.night ? 0.28 : raining ? 0.32 : 0.24;
+  const fog = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.28, w / 2, h / 2, Math.max(w, h) * 0.85);
   fog.addColorStop(0, "rgba(0,0,0,0)");
-  fog.addColorStop(0.7, "rgba(0,0,0,0)");
-  fog.addColorStop(1, phase.night ? `rgba(6,8,14,${fogA})` : `rgba(60,70,78,${fogA})`);
+  fog.addColorStop(0.55, phase.night ? "rgba(8,10,14,0.08)" : "rgba(40,36,30,0.1)");
+  fog.addColorStop(1, phase.night ? `rgba(4,5,8,${fogA})` : `rgba(32,28,24,${fogA})`);
   ctx.fillStyle = fog;
   ctx.fillRect(0, 0, w, h);
+
+  // Ceniza / polvo en suspensión
+  ctx.fillStyle = phase.night ? "rgba(180,170,150,0.045)" : "rgba(120,110,95,0.06)";
+  const ashSeed = (game.time * 18) | 0;
+  for (let i = 0; i < 28; i++) {
+    const ax = ((ashSeed * 17 + i * 97) % Math.max(1, w | 0));
+    const ay = ((ashSeed * 13 + i * 53 + game.time * 12 * (i % 5)) % Math.max(1, h | 0));
+    ctx.fillRect(ax, ay, 2, 2);
+  }
 
   drawMinimap(mctx, mini, game);
 }
@@ -466,8 +476,8 @@ function drawRoad(ctx, game, tile, tx, ty, px, py, phase) {
   const n = ((tx * 19 + ty * 11) & 15);
   const patch = ((tx * 13 + ty * 7) % 19) === 0;
   // De noche el asfalto sube de tono para no perderse en el velo
-  const nightBoost = phase?.night ? 28 : 0;
-  const shade = (patch ? 58 + (n % 6) : 46 + n) + nightBoost;
+  const nightBoost = phase?.night ? 12 : 0;
+  const shade = (patch ? 42 + (n % 5) : 32 + (n % 6)) + nightBoost;
   ctx.fillStyle = `rgb(${shade},${shade + 1},${shade + 4})`;
   ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
 
@@ -507,7 +517,7 @@ function drawRoad(ctx, game, tile, tx, ty, px, py, phase) {
   ctx.stroke();
 
   // Bordillo hacia acera
-  const curb = "rgba(170,168,160,0.7)";
+  const curb = "rgba(90,88,80,0.55)";
   ctx.fillStyle = curb;
   if (neighborTile(game, tx, ty - 1) === TILE.SIDEWALK) ctx.fillRect(px, py, TILE_PX, 3);
   if (neighborTile(game, tx, ty + 1) === TILE.SIDEWALK) ctx.fillRect(px, py + TILE_PX - 3, TILE_PX, 3);
@@ -515,7 +525,7 @@ function drawRoad(ctx, game, tile, tx, ty, px, py, phase) {
   if (neighborTile(game, tx + 1, ty) === TILE.SIDEWALK) ctx.fillRect(px + TILE_PX - 3, py, 3, TILE_PX);
 
   // Línea blanca de borde de calzada
-  ctx.strokeStyle = "rgba(220,220,210,0.4)";
+  ctx.strokeStyle = "rgba(140,140,130,0.28)";
   ctx.lineWidth = 2;
   ctx.beginPath();
   if (tx % 10 === 0) {
@@ -535,7 +545,7 @@ function drawRoad(ctx, game, tile, tx, ty, px, py, phase) {
 
   const vertRoad = tx % 10 < 2;
   if (tile === TILE.CROSSWALK) {
-    ctx.fillStyle = "rgba(235,235,225,0.88)";
+    ctx.fillStyle = "rgba(160,160,150,0.55)";
     if (vertRoad) {
       for (let i = 0; i < 5; i++) ctx.fillRect(px + 4 + i * 9, py + 6, 5, TILE_PX - 12);
     } else {
@@ -554,7 +564,7 @@ function drawRoad(ctx, game, tile, tx, ty, px, py, phase) {
     }
     ctx.stroke();
   } else {
-    ctx.strokeStyle = "rgba(230, 200, 70, 0.62)";
+    ctx.strokeStyle = "rgba(150, 120, 40, 0.4)";
     ctx.setLineDash([10, 12]);
     ctx.lineWidth = 2.5;
     ctx.beginPath();
@@ -581,12 +591,12 @@ function drawRoad(ctx, game, tile, tx, ty, px, py, phase) {
 }
 
 function drawSidewalk(ctx, game, tx, ty, px, py, phase) {
-  const nightBoost = phase?.night ? 18 : 0;
-  const base = 136 + ((tx * 3 + ty * 5) % 8) + nightBoost;
-  ctx.fillStyle = `rgb(${base},${base - 3},${base - 8})`;
+  const nightBoost = phase?.night ? 8 : 0;
+  const base = 78 + ((tx * 3 + ty * 5) % 10) + nightBoost;
+  ctx.fillStyle = `rgb(${base},${base - 4},${base - 10})`;
   ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
 
-  ctx.strokeStyle = "rgba(50,48,44,0.28)";
+  ctx.strokeStyle = "rgba(20,18,16,0.4)";
   ctx.lineWidth = 1;
   const h = TILE_PX / 2;
   ctx.strokeRect(px + 0.5, py + 0.5, h - 1, h - 1);
@@ -594,28 +604,32 @@ function drawSidewalk(ctx, game, tx, ty, px, py, phase) {
   ctx.strokeRect(px + 0.5, py + h + 0.5, h - 1, h - 1);
   ctx.strokeRect(px + h + 0.5, py + h + 0.5, h - 1, h - 1);
 
-  // Hierba entre juntas / chicle / grieta
-  if (((tx * 5 + ty * 9) % 7) === 0) {
-    ctx.fillStyle = "rgba(60,100,50,0.4)";
+  // Hierba muerta / suciedad / grietas
+  if (((tx * 5 + ty * 9) % 5) === 0) {
+    ctx.fillStyle = "rgba(50,55,35,0.45)";
     ctx.fillRect(px + h - 1, py + 8, 2, 12);
   }
-  if (((tx + ty * 4) % 11) === 0) {
-    ctx.fillStyle = "rgba(160,80,120,0.35)";
+  if (((tx + ty * 4) % 7) === 0) {
+    ctx.fillStyle = "rgba(30,28,24,0.4)";
     ctx.beginPath();
-    ctx.arc(px + 18, py + 22, 2.2, 0, Math.PI * 2);
+    ctx.ellipse(px + 20, py + 24, 7, 4, 0.3, 0, Math.PI * 2);
     ctx.fill();
   }
-  if (((tx * 9 + ty) % 17) === 0) {
-    ctx.strokeStyle = "rgba(40,38,36,0.45)";
+  if (((tx * 9 + ty) % 11) === 0) {
+    ctx.strokeStyle = "rgba(20,18,16,0.55)";
     ctx.beginPath();
     ctx.moveTo(px + 6, py + 10);
     ctx.lineTo(px + 20, py + 28);
     ctx.lineTo(px + 38, py + 34);
     ctx.stroke();
   }
+  if (((tx * 2 + ty * 7) % 13) === 0) {
+    ctx.fillStyle = "rgba(90,70,40,0.35)";
+    ctx.fillRect(px + 10, py + 14, 12, 3);
+  }
 
   // Bordillo oscuro hacia la calle
-  ctx.fillStyle = "rgba(30,30,32,0.45)";
+  ctx.fillStyle = "rgba(18,18,20,0.55)";
   if (neighborTile(game, tx, ty + 1) === TILE.ROAD || neighborTile(game, tx, ty + 1) === TILE.CROSSWALK) {
     ctx.fillRect(px, py + TILE_PX - 5, TILE_PX, 5);
   }
@@ -629,7 +643,7 @@ function drawSidewalk(ctx, game, tx, ty, px, py, phase) {
     ctx.fillRect(px + TILE_PX - 4, py, 4, TILE_PX);
   }
 
-  ctx.fillStyle = "rgba(200,195,185,0.22)";
+  ctx.fillStyle = "rgba(140,130,110,0.12)";
   ctx.fillRect(px, py, TILE_PX, 2);
 }
 
@@ -677,8 +691,8 @@ function drawWater(ctx, game, tx, ty, px, py, time) {
 }
 
 function drawGrass(ctx, tx, ty, px, py) {
-  const g = 86 + ((tx * 3 + ty * 5) % 24);
-  ctx.fillStyle = `rgb(${38 + (g % 12)},${g},${34 + (g % 10)})`;
+  const g = 48 + ((tx * 3 + ty * 5) % 18);
+  ctx.fillStyle = `rgb(${28 + (g % 10)},${g},${22 + (g % 8)})`;
   ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
 
   // Parche de tierra
@@ -1392,39 +1406,37 @@ function shade(hex, delta) {
 
 function drawProp(ctx, p, px, py, phase) {
   if (p.type === "car") {
-    ctx.save();
-    ctx.translate(px, py);
-    if (p.rot) ctx.rotate(Math.PI / 2);
-    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    // Coches eliminados del escenario apocalíptico
+    return;
+  } else if (p.type === "debris") {
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
     ctx.beginPath();
-    ctx.ellipse(0, 4, 18, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(px, py + 6, 14, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = p.wreck ? shade(p.color || "#4a3030", -40) : (p.color || "#4a3030");
-    roundRect(ctx, -18, -10, 36, 18, 3);
+    const tones = ["#4a4038", "#3a322c", "#5a4a40"];
+    ctx.fillStyle = tones[p.tone % 3] || tones[0];
+    ctx.beginPath();
+    ctx.moveTo(px - 12, py + 4);
+    ctx.lineTo(px - 4, py - 6);
+    ctx.lineTo(px + 8, py - 2);
+    ctx.lineTo(px + 12, py + 6);
+    ctx.lineTo(px - 8, py + 8);
+    ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = p.wreck ? "rgba(80,90,100,0.5)" : "rgba(160,200,220,0.6)";
-    roundRect(ctx, -8, -8, 14, 12, 2);
-    ctx.fill();
-    ctx.fillStyle = "#111";
-    ctx.fillRect(-14, -12, 7, 4);
-    ctx.fillRect(8, -12, 7, 4);
-    ctx.fillRect(-14, 9, 7, 4);
-    ctx.fillRect(8, 9, 7, 4);
-    if (p.wreck) {
-      ctx.strokeStyle = "rgba(200,200,200,0.5)";
-      ctx.beginPath();
-      ctx.moveTo(-10, -6);
-      ctx.lineTo(6, 4);
-      ctx.moveTo(8, -4);
-      ctx.lineTo(-4, 6);
-      ctx.stroke();
-    }
-    // luces
-    ctx.fillStyle = phase.night ? "#ffe08a" : "#c8b060";
-    ctx.fillRect(15, -4, 3, 5);
-    ctx.fillStyle = "#a03030";
-    ctx.fillRect(-18, -4, 3, 5);
-    ctx.restore();
+    ctx.fillStyle = "rgba(90,70,50,0.7)";
+    ctx.fillRect(px - 6, py - 2, 9, 5);
+    ctx.strokeStyle = "rgba(180,160,120,0.25)";
+    ctx.strokeRect(px - 6, py - 2, 9, 5);
+  } else if (p.type === "barricadeJunk") {
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.fillRect(px - 14, py + 2, 28, 8);
+    ctx.fillStyle = "#5a3a22";
+    ctx.fillRect(px - 12, py - 6, 24, 10);
+    ctx.fillStyle = "#3a3a38";
+    ctx.fillRect(px - 10, py - 10, 8, 6);
+    ctx.fillRect(px + 2, py - 8, 10, 5);
+    ctx.strokeStyle = "rgba(200,180,120,0.2)";
+    ctx.strokeRect(px - 12, py - 6, 24, 10);
   } else if (p.type === "tree") {
     const r = p.r || 12;
     ctx.fillStyle = "rgba(0,0,0,0.28)";
@@ -1433,15 +1445,33 @@ function drawProp(ctx, p, px, py, phase) {
     ctx.fill();
     ctx.fillStyle = "#5a3a20";
     ctx.fillRect(px - 3, py + 2, 6, 14);
-    ctx.fillStyle = p.tone ? "#3a6a32" : "#2f4a28";
-    ctx.beginPath();
-    ctx.arc(px, py - 2, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = p.tone ? "#5a8a48" : "#4a7a3a";
-    ctx.beginPath();
-    ctx.arc(px - 5, py - 5, r * 0.55, 0, Math.PI * 2);
-    ctx.arc(px + 6, py - 2, r * 0.45, 0, Math.PI * 2);
-    ctx.fill();
+    if (p.tone === 2) {
+      // Árbol muerto / quemado
+      ctx.strokeStyle = "#3a3228";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(px, py + 2);
+      ctx.lineTo(px - 8, py - 10);
+      ctx.moveTo(px, py);
+      ctx.lineTo(px + 9, py - 12);
+      ctx.moveTo(px, py - 4);
+      ctx.lineTo(px - 3, py - 16);
+      ctx.stroke();
+      ctx.fillStyle = "#2a241c";
+      ctx.beginPath();
+      ctx.arc(px, py - 2, r * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = p.tone ? "#2a4a24" : "#243a20";
+      ctx.beginPath();
+      ctx.arc(px, py - 2, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = p.tone ? "#3a5a30" : "#325028";
+      ctx.beginPath();
+      ctx.arc(px - 5, py - 5, r * 0.55, 0, Math.PI * 2);
+      ctx.arc(px + 6, py - 2, r * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else if (p.type === "lamp") {
     // Farola de calle: poste + farol
     ctx.fillStyle = "rgba(0,0,0,0.28)";
