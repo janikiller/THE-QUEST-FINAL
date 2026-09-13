@@ -1467,34 +1467,35 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
     ctx.stroke();
   }
 
-  // Ventanas escasas + muros con carácter (o detalle interior si estás dentro)
+  // Algunas ventanas; el resto muro vacío o un detalle suelto (no llenar la pared)
   const pushWin = (wx, wy, lit) => {
     drawWindow(ctx, wx, wy, lit, style);
     if (lit) litWindows.push({ x: wx + 7, y: wy + 8 });
   };
-  // ~5% ventanas reales, ~5% tapiadas, el resto muro con carácter
-  const wallRoll = (x, y, salt) => ((x * 17 + y * 31 + b.x0 * 5 + salt) >>> 0) % 20;
+  // 0–1 ventana (~17%), 2 tapiada (~8%), 3–4 detalle (~17%), 5–11 muro limpio (~58%)
+  const wallRoll = (x, y, salt) => ((x * 17 + y * 31 + b.x0 * 5 + salt) >>> 0) % 12;
 
   for (let x = b.x0 + 1; x < b.x1; x++) {
     const wx = x * TILE_PX - camX + 12;
-    for (const [wy, salt, edge] of [[py + 10, 1, "n"], [py + bh - t + 10, 4, "s"]]) {
+    for (const [wy, salt] of [[py + 10, 1], [py + bh - t + 10, 4]]) {
       const roll = wallRoll(x, b.y0 + salt, salt);
       if (entered) {
         drawInteriorWallFace(ctx, wx, wy, b, roll, x + salt);
         continue;
       }
-      if (roll === 0) {
+      if (roll <= 1) {
         const lit = phase.night && ((x + b.y0 + salt) % 7) === 0;
         if (style === "residential") {
           ctx.fillStyle = shade(b.facade, -32);
           ctx.fillRect(wx - 2, wy + 14, 18, 4);
         }
         pushWin(wx, wy, lit);
-      } else if (roll === 1) {
+      } else if (roll === 2) {
         drawBoardedWindow(ctx, wx, wy, style);
-      } else {
+      } else if (roll <= 4) {
         drawBareWallDetail(ctx, wx, wy, b, roll, x, salt);
       }
+      // roll 5–11: muro vacío
     }
   }
   for (let y = b.y0 + 1; y < b.y1; y++) {
@@ -1505,12 +1506,12 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
         drawInteriorWallFace(ctx, wx, wy, b, roll, y + salt);
         continue;
       }
-      if (roll === 0) {
+      if (roll <= 1) {
         const lit = phase.night && ((y + b.x0) % 7) === 0;
         pushWin(wx, wy, lit);
-      } else if (roll === 1) {
+      } else if (roll === 2) {
         drawBoardedWindow(ctx, wx, wy, style);
-      } else {
+      } else if (roll <= 4) {
         drawBareWallDetail(ctx, wx, wy, b, roll, y, salt);
       }
     }
@@ -1661,52 +1662,44 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
 
 
 function drawInteriorWallFace(ctx, x, y, b, roll, seed) {
-  // Interior: zócalo + cuadros frecuentes / humedad (sin rejilla de ventanas)
-  ctx.fillStyle = "rgba(0,0,0,0.1)";
-  ctx.fillRect(x - 2, y + 16, 18, 3);
-  ctx.fillStyle = "rgba(40, 30, 20, 0.16)";
-  ctx.fillRect(x + ((seed % 5)), y + 3, 2, 12);
-  if (roll >= 7) {
-    // Cuadro / arte en la pared
-    ctx.fillStyle = "#1e1812";
-    ctx.fillRect(x + 1, y + 2, 13, 15);
-    ctx.fillStyle = seed % 2 ? "#d2c4a4" : "#b8a888";
-    ctx.fillRect(x + 2, y + 3, 11, 13);
-    const cols = ["#6a4040", "#40506a", "#4a6040", "#5a4060", "#6a5a30"];
-    ctx.fillStyle = cols[seed % cols.length];
-    ctx.fillRect(x + 3, y + 4, 9, 11);
-    if (seed % 3 === 0) {
-      ctx.fillStyle = "rgba(255,255,255,0.2)";
-      ctx.beginPath();
-      ctx.arc(x + 6, y + 8, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (seed % 3 === 1) {
-      ctx.strokeStyle = "rgba(255,255,255,0.25)";
-      ctx.beginPath();
-      ctx.moveTo(x + 4, y + 12);
-      ctx.lineTo(x + 10, y + 5);
-      ctx.stroke();
-    }
-  } else if (roll >= 4 && roll <= 6) {
-    // Cartel / foto pequeña
-    const cols = ["#7a3030", "#2a4860", "#5a3860", "#3a5838"];
-    ctx.fillStyle = cols[seed % cols.length];
-    ctx.fillRect(x + 3, y + 4, 10, 12);
-    ctx.fillStyle = "rgba(240, 220, 180, 0.4)";
-    ctx.fillRect(x + 4, y + 5, 8, 3);
-    ctx.fillStyle = "rgba(0,0,0,0.3)";
-    ctx.fillRect(x + 4, y + 9, 8, 5);
-  } else if (roll === 2 || roll === 3) {
-    // Humedad / suciedad
-    ctx.fillStyle = "rgba(30, 50, 30, 0.22)";
+  // Interior: muro mayormente vacío; alguna ventana y pocos cuadros
+  if (roll <= 1) {
+    // Ventana interior (cristal oscuro / cortina)
+    ctx.fillStyle = "rgba(22, 26, 32, 0.78)";
+    ctx.fillRect(x + 2, y + 3, 12, 14);
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.strokeRect(x + 2, y + 3, 12, 14);
     ctx.beginPath();
-    ctx.ellipse(x + 8, y + 12, 6, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (roll === 0) {
-    ctx.fillStyle = "rgba(22, 24, 28, 0.7)";
+    ctx.moveTo(x + 8, y + 3);
+    ctx.lineTo(x + 8, y + 17);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(90, 70, 50, 0.35)";
+    ctx.fillRect(x + 3, y + 4, 3, 12);
+    return;
+  }
+  if (roll === 2) {
+    // Un cuadro
+    ctx.fillStyle = "#1e1812";
     ctx.fillRect(x + 2, y + 3, 11, 13);
-    ctx.fillStyle = "rgba(90, 70, 50, 0.45)";
-    ctx.fillRect(x + 3, y + 4, 3, 11);
+    ctx.fillStyle = seed % 2 ? "#d2c4a4" : "#b8a888";
+    ctx.fillRect(x + 3, y + 4, 9, 11);
+    const cols = ["#6a4040", "#40506a", "#4a6040", "#5a4060"];
+    ctx.fillStyle = cols[seed % cols.length];
+    ctx.fillRect(x + 4, y + 5, 7, 9);
+    return;
+  }
+  if (roll === 3) {
+    // Mancha / humedad suave
+    ctx.fillStyle = "rgba(30, 50, 30, 0.18)";
+    ctx.beginPath();
+    ctx.ellipse(x + 8, y + 12, 5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+  // roll 4–11: pared limpia (solo zócalo muy sutil)
+  if (roll === 4) {
+    ctx.fillStyle = "rgba(0,0,0,0.08)";
+    ctx.fillRect(x - 1, y + 17, 16, 2);
   }
 }
 
@@ -1731,55 +1724,31 @@ function drawBoardedWindow(ctx, x, y, style = "block") {
 }
 
 function drawBareWallDetail(ctx, x, y, b, roll, seed, salt) {
-  // Sin rectángulos grandes: el muro debe leerse como muro, no como ventana.
-  ctx.fillStyle = "rgba(20, 16, 12, 0.16)";
-  ctx.fillRect(x + ((seed + salt) % 6), y + 2, 3, 16);
-  ctx.fillStyle = "rgba(40, 32, 24, 0.14)";
-  ctx.beginPath();
-  ctx.ellipse(x + 8, y + 16, 5, 3, 0.2, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Exterior: solo desgaste, musgo, graffiti — los cuadros van dentro
-  if (roll === 6 || roll === 7) {
-    ctx.strokeStyle = "rgba(10, 8, 6, 0.45)";
-    ctx.beginPath();
-    ctx.moveTo(x + 3, y + 2);
-    ctx.lineTo(x + 7, y + 9);
-    ctx.lineTo(x + 4, y + 17);
-    ctx.moveTo(x + 8, y + 4);
-    ctx.lineTo(x + 11, y + 14);
-    ctx.stroke();
-    ctx.fillStyle = "rgba(35, 28, 18, 0.28)";
-    ctx.beginPath();
-    ctx.ellipse(x + 9, y + 15, 5, 3, 0.1, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (roll === 8 || roll === 9) {
-    ctx.fillStyle = "rgba(200, 70, 160, 0.7)";
-    ctx.font = `800 9px ${FONT_UI}`;
-    const tags = ["XX", "SUR", "NO", "Ω", "FN", "OUT"];
-    ctx.fillText(tags[(seed + salt) % tags.length], x + 2, y + 12);
-  } else if (roll === 10 || roll === 11) {
-    ctx.strokeStyle = "#2a5a28";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(x + 2, y + 18);
-    ctx.quadraticCurveTo(x + 6, y + 8, x + 3, y + 1);
-    ctx.stroke();
-    ctx.fillStyle = "rgba(50, 110, 40, 0.65)";
-    ctx.beginPath();
-    ctx.ellipse(x + 5, y + 6, 3, 2, 0.4, 0, Math.PI * 2);
-    ctx.ellipse(x + 10, y + 10, 3.5, 2, -0.3, 0, Math.PI * 2);
-    ctx.ellipse(x + 4, y + 13, 2.5, 1.8, 0.2, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
+  // Detalle exterior suelto (solo se llama en pocos tiles)
+  const kind = (seed + salt + roll) % 3;
+  if (kind === 0) {
     ctx.strokeStyle = "rgba(10, 8, 6, 0.4)";
     ctx.beginPath();
-    ctx.moveTo(x + 4, y + 2);
-    ctx.lineTo(x + 6, y + 10);
-    ctx.lineTo(x + 3, y + 16);
+    ctx.moveTo(x + 4, y + 3);
+    ctx.lineTo(x + 7, y + 10);
+    ctx.lineTo(x + 5, y + 16);
     ctx.stroke();
-    ctx.fillStyle = "rgba(40, 70, 35, 0.3)";
-    ctx.fillRect(x + 9, y + 13, 4, 5);
+  } else if (kind === 1) {
+    ctx.strokeStyle = "#2a5a28";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y + 16);
+    ctx.quadraticCurveTo(x + 7, y + 8, x + 4, y + 2);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(50, 110, 40, 0.55)";
+    ctx.beginPath();
+    ctx.ellipse(x + 6, y + 7, 2.5, 1.6, 0.3, 0, Math.PI * 2);
+    ctx.ellipse(x + 9, y + 11, 2.8, 1.6, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.fillStyle = "rgba(200, 70, 160, 0.55)";
+    ctx.font = `800 8px ${FONT_UI}`;
+    ctx.fillText(["XX", "SUR", "NO"][(seed + salt) % 3], x + 2, y + 12);
   }
 }
 
@@ -2106,7 +2075,7 @@ function drawProp(ctx, p, px, py, phase) {
     }
   } else if (p.type === "wallArt") {
     const frame = p.frame || "#c8b898";
-    const motif = p.motif ?? p.motif ?? 0;
+    const motif = p.motif ?? 0;
     ctx.fillStyle = "#14100c";
     ctx.fillRect(px - 9, py - 10, 18, 19);
     ctx.fillStyle = frame;

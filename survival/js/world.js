@@ -1087,8 +1087,8 @@ function decorateFacadeWalls({
     const n2 = noise.noise2(e.x * 0.9, e.y * 0.7 + 3);
     const corner = (e.x === x0 || e.x === x1) && (e.y === y0 || e.y === y1);
 
-    // Suciedad / filtraciones en el muro exterior
-    if (n2 > 0.4) {
+    // Suciedad puntual (no toda la fachada)
+    if (n2 > 0.72) {
       props.push({
         type: "wallGrime",
         x: e.x + 0.5,
@@ -1098,8 +1098,8 @@ function decorateFacadeWalls({
       });
     }
 
-    // Enredadera en esquinas y muros húmedos
-    if (corner || n > 0.68) {
+    // Enredadera: sobre todo esquinas
+    if ((corner && n > 0.35) || n > 0.82) {
       props.push({
         type: "vine",
         x: e.x + 0.5,
@@ -1110,8 +1110,8 @@ function decorateFacadeWalls({
       });
     }
 
-    // Graffiti callejero (fuera), no cuadros
-    if (graffitiOnBuilding < 2 && n > 0.7 && n2 > 0.45) {
+    // Graffiti callejero (fuera), máximo 1–2 por edificio
+    if (graffitiOnBuilding < 2 && n > 0.78 && n2 > 0.5) {
       const tag = GRAFFITI_TAGS[((e.x * 13 + e.y * 7 + bx) >>> 0) % GRAFFITI_TAGS.length];
       props.push({
         type: "graffiti",
@@ -1125,9 +1125,9 @@ function decorateFacadeWalls({
     }
   }
 
-  // Basura, escombros y hierbajos FUERA del edificio
-  for (let i = 0; i < 5; i++) {
-    if (noise.noise2(bx + i * 1.7, by + 11) < 0.32) continue;
+  // Basura / plantas FUERA (pocos puntos, no saturar)
+  for (let i = 0; i < 3; i++) {
+    if (noise.noise2(bx + i * 1.7, by + 11) < 0.42) continue;
     const e = edges[((bx * 5 + by * 3 + i * 11) >>> 0) % edges.length];
     if (e.x === doorX && e.y === doorY) continue;
     const ox = e.wall === "w" ? -0.55 : e.wall === "e" ? 0.55 : ((i % 2) ? 0.2 : -0.15);
@@ -1404,14 +1404,15 @@ function decorateIndoorWallArt({
 
   let artCount = 0;
   let posterCount = 0;
-  const artBudget = style === "warehouse" ? 1 : style === "shop" ? 2 : 3;
-  const posterBudget = style === "shop" ? 3 : 2;
+  // Pocos cuadros por habitación — el muro queda mayormente libre
+  const artBudget = style === "warehouse" ? 1 : style === "shop" ? 1 : 2;
+  const posterBudget = style === "shop" ? 2 : 1;
 
   for (const s of spots) {
     const n = noise.noise2(s.x * 0.51 + bx, s.y * 0.47 + by + 4);
     const n2 = noise.noise2(s.x * 0.8 + 2, s.y * 0.7 + by);
 
-    if (artCount < artBudget && n > 0.55 && n2 < 0.7) {
+    if (artCount < artBudget && n > 0.72 && n2 < 0.55) {
       props.push({
         type: "wallArt",
         x: s.x + 0.5 + s.ox,
