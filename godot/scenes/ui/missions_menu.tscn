@@ -19,30 +19,38 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.03, 0.05, 0.09, 0.97)
+color = Color(0.035, 0.055, 0.08, 0.98)
+
+[node name="Accent" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 3.0
+grow_horizontal = 2
+color = Color(0.2, 0.72, 0.95, 0.9)
 
 [node name="Root" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = 14.0
-offset_right = -20.0
-offset_bottom = -14.0
+offset_left = 22.0
+offset_top = 16.0
+offset_right = -22.0
+offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="VBox" type="VBoxContainer" parent="Root"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 12
 
 [node name="Header" type="HBoxContainer" parent="Root/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 14
 
 [node name="Badge" type="TextureRect" parent="Root/VBox/Header"]
-custom_minimum_size = Vector2(46, 46)
+custom_minimum_size = Vector2(52, 52)
 layout_mode = 2
 texture = ExtResource("2_badge")
 expand_mode = 1
@@ -54,14 +62,22 @@ size_flags_horizontal = 3
 
 [node name="Title" type="Label" parent="Root/VBox/Header/TitleCol"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
-text = "CENTRAL DE MISIONES"
+theme_override_font_sizes/font_size = 28
+text = "CENTRAL DE OPERACIONES"
 
 [node name="Sub" type="Label" parent="Root/VBox/Header/TitleCol"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.72, 0.9, 1)
-theme_override_font_sizes/font_size = 12
-text = "MISIÓN  ·  INTERVENIR  ·  EVALUAR  ·  DECIDIR  ·  RESOLVER"
+theme_override_colors/font_color = Color(0.55, 0.78, 0.95, 1)
+theme_override_font_sizes/font_size = 13
+text = "Avisos activos · briefing del asalto · despacho"
+
+[node name="PeriodChip" type="Label" parent="Root/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.88, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "DÍA"
+vertical_alignment = 1
 
 [node name="CountLabel" type="Label" parent="Root/VBox/Header"]
 unique_name_in_owner = true
@@ -73,7 +89,7 @@ vertical_alignment = 1
 
 [node name="BtnBack" type="Button" parent="Root/VBox/Header"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(170, 40)
+custom_minimum_size = Vector2(180, 42)
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "←  VOLVER AL MAPA"
@@ -83,24 +99,160 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Scroll" type="ScrollContainer" parent="Root/VBox"]
+[node name="Body" type="HBoxContainer" parent="Root/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="ListPane" type="PanelContainer" parent="Root/VBox/Body"]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.95
+
+[node name="ListMargin" type="MarginContainer" parent="Root/VBox/Body/ListPane"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="ListVBox" type="VBoxContainer" parent="Root/VBox/Body/ListPane/ListMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ListHeader" type="Label" parent="Root/VBox/Body/ListPane/ListMargin/ListVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.78, 0.95, 1)
+theme_override_font_sizes/font_size = 12
+text = "BANDEJA DE AVISOS  ·  ordenados por prioridad"
+
+[node name="ListScroll" type="ScrollContainer" parent="Root/VBox/Body/ListPane/ListMargin/ListVBox"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="MissionCards" type="GridContainer" parent="Root/VBox/Scroll"]
+[node name="MissionCards" type="VBoxContainer" parent="Root/VBox/Body/ListPane/ListMargin/ListVBox/ListScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 12
-theme_override_constants/v_separation = 12
-columns = 3
+theme_override_constants/separation = 8
 
-[node name="EmptyLabel" type="Label" parent="Root/VBox"]
+[node name="EmptyLabel" type="Label" parent="Root/VBox/Body/ListPane/ListMargin/ListVBox"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65, 0.74, 0.86, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
 text = "Sin avisos activos. Cuando entre una llamada, aparecerá aquí."
 horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="DetailPane" type="PanelContainer" parent="Root/VBox/Body"]
+custom_minimum_size = Vector2(620, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.15
+
+[node name="DetailMargin" type="MarginContainer" parent="Root/VBox/Body/DetailPane"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="DetailVBox" type="VBoxContainer" parent="Root/VBox/Body/DetailPane/DetailMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="DetailHead" type="HBoxContainer" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="DetailTitle" type="Label" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox/DetailHead"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "Selecciona un aviso"
+autowrap_mode = 3
+
+[node name="UrgencyBadge" type="Label" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox/DetailHead"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = "URGENTE"
+vertical_alignment = 1
+
+[node name="DetailMeta" type="Label" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.76, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+autowrap_mode = 3
+
+[node name="StatsRow" type="HBoxContainer" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ArtRow" type="HBoxContainer" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="DetailArt" type="TextureRect" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox/ArtRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 6
+
+[node name="SuspectsCol" type="VBoxContainer" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox/ArtRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SuspectsTitle" type="Label" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox/ArtRow/SuspectsCol"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.78, 0.4, 1)
+theme_override_font_sizes/font_size = 12
+text = "SOSPECHOSOS"
+
+[node name="SuspectsRow" type="VBoxContainer" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox/ArtRow/SuspectsCol"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="DetailBlurb" type="RichTextLabel" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 90)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
+[node name="RewardTitle" type="Label" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.88, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "RECOMPENSAS Y DATOS DEL ASALTO"
+
+[node name="RewardRow" type="HBoxContainer" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BtnOpen" type="Button" parent="Root/VBox/Body/DetailPane/DetailMargin/DetailVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.04, 0.1, 0.08, 1)
+theme_override_font_sizes/font_size = 17
+text = "▶  ABRIR BRIEFING DEL ASALTO"
