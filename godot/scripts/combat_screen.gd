@@ -1156,11 +1156,14 @@ func _on_end_turn() -> void:
 
 func _on_combat_ended(victory: bool) -> void:
 	AudioDirector.stop_combat_music(victory, true)
+	result_panel.visible = false
 	if victory:
 		_screen_shake(6.0, 0.16)
+		await _play_arrest_finale()
 	else:
 		_screen_shake(14.0, 0.28)
 		_apply_hero_pose("hurt", 1.2)
+		await get_tree().create_timer(0.35).timeout
 	result_panel.visible = true
 	if victory:
 		var xp := CombatState.combat_xp_gained
@@ -1173,12 +1176,13 @@ func _on_combat_ended(victory: bool) -> void:
 		var coins_hint := GameState.mission_coin_reward(mission)
 		var hp_bonus := GameState.level_hp_bonus()
 		var bits: PackedStringArray = []
+		bits.append("DETENCIÓN COMPLETADA")
 		if levels > 0:
 			bits.append("¡NIVEL %d!" % GameState.hero_level)
 		bits.append(("+%d XP" % xp) if xp > 0 else "ÉXITO")
 		bits.append("+%d monedas" % coins_hint)
 		if kills > 0:
-			bits.append("%d bajas" % kills)
+			bits.append("%d detenidos" % kills)
 		if hp_bonus > 0:
 			bits.append("+%d PV de nivel" % hp_bonus)
 		if GameState.pending_level_packs > 0:
@@ -1188,6 +1192,178 @@ func _on_combat_ended(victory: bool) -> void:
 	else:
 		result_title.text = "UNIDAD CAÍDA"
 		result_title.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+
+
+func _play_arrest_finale() -> void:
+	## Cierre cinematográfico: esposas → DETENIDO → radio → sello.
+	_busy = true
+	if end_turn_btn:
+		end_turn_btn.disabled = true
+	AudioDirector.play_sfx("whoosh", 0.85, -4.0)
+	await _screen_pulse(Color(0.2, 0.55, 1.0, 0.35))
+	await get_tree().create_timer(0.12).timeout
+
+	var snap := CombatState.get_snapshot()
+	var enemies: Array = snap.get("enemies", [])
+	var cuffed := 0
+	for i in range(enemies.size()):
+		var e: Dictionary = enemies[i]
+		if bool(e.get("fled", false)):
+			continue
+		# Cualquier enemigo caído/detenido recibe el sello visual.
+		if int(e.get("hp", 0)) > 0 and not bool(e.get("detained", false)):
+			continue
+		var wrap := _enemy_wrap(i)
+		if wrap == null or not is_instance_valid(wrap):
+			continue
+		await _stamp_enemy_cuffs(wrap, str(e.get("name", "Sospechoso")))
+		cuffed += 1
+		await get_tree().create_timer(0.18).timeout
+
+	if cuffed <= 0:
+		# Fallback: sella al primer wrap visible.
+		for i2 in range(enemies.size()):
+			var wrap2 := _enemy_wrap(i2)
+			if wrap2:
+				await _stamp_enemy_cuffs(wrap2, str(enemies[i2].get("name", "Sospechoso")))
+				cuffed = 1
+				break
+
+	RadioBus.announce_resolve(
+		"ALPHA-1",
+		true,
+		"%d sospechoso(s) esposado(s). Intervención cerrada" % maxi(cuffed, 1)
+	)
+	await _show_arrest_banner(cuffed)
+	_busy = false
+
+
+func _stamp_enemy_cuffs(wrap: Control, enemy_name: String) -> void:
+	if not is_instance_valid(wrap) or _fx_layer == null:
+		return
+	var spr: TextureRect = wrap.find_child("EnemySprite", true, false) as TextureRect
+	var anchor: Control = spr if spr else wrap
+	# Flash táctico azul/rojo
+	await _screen_pulse(Color(0.15, 0.45, 1.0, 0.22))
+	AudioDirector.play_sfx("ui_click", 0.7, -6.0)
+
+	var cuffs := TextureRect.new()
+	cuffs.name = "ArrestCuffs"
+	cuffs.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cuffs.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	cuffs.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	cuffs.custom_minimum_size = Vector2(96, 96)
+	cuffs.size = Vector2(96, 96)
+	cuffs.z_index = 120
+	var cuff_path := "res://assets/character/handcuffs.png"
+	if not ResourceLoader.exists(cuff_path):
+		cuff_path = "res://assets/combat/custom/cards/cuffs.png"
+	if ResourceLoader.exists(cuff_path):
+		cuffs.texture = load(cuff_path)
+	elif FileAccess.file_exists(cuff_path):
+		var img := Image.load_from_file(cuff_path)
+		if img:
+			cuffs.texture = ImageTexture.create_from_image(img)
+	_fx_layer.add_child(cuffs)
+	var gp := anchor.global_position + anchor.size * Vector2(0.35, 0.55) - Vector2(48, 48)
+	cuffs.global_position = gp + Vector2(0, 40)
+	cuffs.modulate = Color(1, 1, 1, 0)
+	cuffs.scale = Vector2(1.6, 1.6)
+	cuffs.pivot_offset = cuffs.size * 0.5
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(cuffs, "global_position", gp, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(cuffs, "modulate:a", 1.0, 0.16)
+	tw.tween_property(cuffs, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await tw.finished
+
+	# Tint verde de “asegurado”
+	if is_instance_valid(anchor):
+		var twc := create_tween()
+		twc.tween_property(anchor, "modulate", Color(0.55, 1.0, 0.7), 0.2)
+		await twc.finished
+
+	var tag := Label.new()
+	tag.text = "DETENIDO"
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tag.add_theme_font_size_override("font_size", 22)
+	tag.add_theme_color_override("font_color", Color(0.35, 1.0, 0.55))
+	tag.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	tag.add_theme_constant_override("outline_size", 6)
+	tag.z_index = 121
+	_fx_layer.add_child(tag)
+	tag.global_position = gp + Vector2(-10, -36)
+	tag.modulate.a = 0.0
+	tag.scale = Vector2(1.4, 1.4)
+	var twt := create_tween()
+	twt.set_parallel(true)
+	twt.tween_property(tag, "modulate:a", 1.0, 0.12)
+	twt.tween_property(tag, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await twt.finished
+	log_label.text = "%s — esposado." % enemy_name
+	# Deja cuffs+tag un momento; se limpian con el cierre de combate.
+	await get_tree().create_timer(0.25).timeout
+
+
+func _show_arrest_banner(cuffed_count: int) -> void:
+	if _fx_layer == null:
+		return
+	var banner := PanelContainer.new()
+	banner.name = "ArrestBanner"
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	banner.z_index = 130
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.1, 0.18, 0.92)
+	sb.border_color = Color(0.35, 0.85, 1.0, 0.95)
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(14)
+	sb.content_margin_left = 28
+	sb.content_margin_right = 28
+	sb.content_margin_top = 16
+	sb.content_margin_bottom = 16
+	sb.shadow_color = Color(0.2, 0.6, 1.0, 0.4)
+	sb.shadow_size = 16
+	banner.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 4)
+	banner.add_child(v)
+	var title := Label.new()
+	title.text = "DETENCIÓN COMPLETADA"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 34)
+	title.add_theme_color_override("font_color", Color(0.75, 0.95, 1.0))
+	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	title.add_theme_constant_override("outline_size", 5)
+	v.add_child(title)
+	var sub := Label.new()
+	sub.text = "%d en custodia · situación controlada" % maxi(cuffed_count, 1)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_font_size_override("font_size", 16)
+	sub.add_theme_color_override("font_color", Color(0.55, 0.9, 0.65))
+	v.add_child(sub)
+	_fx_layer.add_child(banner)
+	banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	banner.position = get_viewport_rect().size * 0.5 - Vector2(220, 60)
+	banner.modulate.a = 0.0
+	banner.scale = Vector2(0.82, 0.82)
+	banner.pivot_offset = Vector2(220, 60)
+	AudioDirector.play_sfx("card_play", 0.8, -2.0)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(banner, "modulate:a", 1.0, 0.18)
+	tw.tween_property(banner, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await tw.finished
+	await _screen_pulse(Color(0.3, 0.9, 0.55, 0.28))
+	await get_tree().create_timer(0.85).timeout
+	var tw2 := create_tween()
+	tw2.set_parallel(true)
+	tw2.tween_property(banner, "modulate:a", 0.0, 0.28)
+	tw2.tween_property(banner, "position:y", banner.position.y - 30.0, 0.28)
+	await tw2.finished
+	if is_instance_valid(banner):
+		banner.queue_free()
 
 
 func _on_result_close() -> void:
@@ -3506,6 +3682,15 @@ func _play_card_fx(panel: Control, card_id: String) -> void:
 	elif is_block:
 		_apply_hero_pose("aim", 0.45)
 		await _hero_guard_pulse()
+	elif bool(def.get("detain", false)):
+		_apply_hero_pose("aim", 0.4)
+		AudioDirector.play_sfx("whoosh", 0.9, -3.0)
+		await _screen_pulse(Color(0.2, 0.55, 1.0, 0.28))
+		var idx := int(CombatState.selected_enemy)
+		var ewrap := _enemy_wrap(idx)
+		if ewrap:
+			# Preview de esposas al jugar la carta (el sello final llega en la victoria).
+			await _stamp_enemy_cuffs(ewrap, str(def.get("name", "Detención")))
 	else:
 		_apply_hero_pose("aim", 0.28)
 		AudioDirector.play_sfx("whoosh", 1.1, -3.0)
