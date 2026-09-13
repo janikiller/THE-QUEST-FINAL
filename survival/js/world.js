@@ -25,7 +25,7 @@ export const TILE_META = {
   [TILE.RUBBLE]: { name: "escombros", walk: true, color: "#524a42", speed: 0.65 },
   [TILE.PARK]: { name: "parque", walk: true, color: "#2a3a24", speed: 0.95 },
   [TILE.PARKING]: { name: "parking", walk: true, color: "#323438", speed: 1 },
-  [TILE.WATER]: { name: "canal", walk: false, color: "#1a3a3e", solid: true, drink: true },
+  [TILE.WATER]: { name: "río tóxico", walk: false, color: "#1a3020", solid: true, drink: true },
   [TILE.ALLEY]: { name: "callejón", walk: true, color: "#2a2a2e", speed: 0.9 },
   [TILE.BARRICADE]: { name: "barricada", walk: false, color: "#6a4220", solid: true, built: true },
   [TILE.DOOR]: { name: "puerta", walk: true, color: "#6b4a2a", speed: 0.9, door: true },
@@ -497,9 +497,11 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
 
   tiles.fill(TILE.SIDEWALK);
 
-  const canalY = 42 + ((noise.noise2(3, 7) * 10) | 0);
+  // Río tóxico post-colapso (ancho, atraviesa la ciudad)
+  const canalY = Math.max(18, Math.min(size - 20, ((size * 0.52) | 0) + ((noise.noise2(3, 7) * 8) | 0)));
+  const canalHalf = 3; // 7 tiles de ancho — bien visible desde el spawn
   for (let x = 0; x < size; x++) {
-    for (let dy = -1; dy <= 1; dy++) {
+    for (let dy = -canalHalf; dy <= canalHalf; dy++) {
       const y = canalY + dy;
       if (y >= 0 && y < size) tiles[y * size + x] = TILE.WATER;
     }
@@ -528,7 +530,7 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   // Manzanas
   for (let by = ROAD_W; by < size - ROAD_W; by += BLOCK) {
     for (let bx = ROAD_W; bx < size - ROAD_W; bx += BLOCK) {
-      if (by <= canalY + 3 && by + BLOCK >= canalY - 1) {
+      if (by <= canalY + canalHalf + 2 && by + BLOCK >= canalY - canalHalf - 1) {
         paveQuay(tiles, size, bx, by, props, noise);
         continue;
       }
@@ -540,10 +542,10 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Puentes del canal
+  // Puentes del río (solo bajo las avenidas N-S)
   for (let x = 0; x < size; x++) {
     if (x % BLOCK < ROAD_W) {
-      for (let dy = -1; dy <= 1; dy++) {
+      for (let dy = -canalHalf; dy <= canalHalf; dy++) {
         const y = canalY + dy;
         if (y >= 0 && y < size) tiles[y * size + x] = TILE.ROAD;
       }
@@ -624,18 +626,6 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Barcas / restos en el canal
-  for (let x = 4; x < size - 4; x += 7) {
-    if (noise.noise2(x * 0.2, canalY) > 0.35) {
-      props.push({
-        type: "boat",
-        x: x + 0.5 + noise.noise2(x, 1) * 0.4,
-        y: canalY + 0.5,
-        wreck: noise.noise2(x + 1, canalY) > 0.7,
-      });
-    }
-  }
-
   // Tapas de alcantarilla
   for (let y = 3; y < size - 3; y++) {
     for (let x = 3; x < size - 3; x++) {
@@ -661,9 +651,84 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
+  // Restaurar el río tras manzanas/escombros (los bloques no deben taparlo)
+  for (let x = 0; x < size; x++) {
+    const isBridge = x % BLOCK < ROAD_W;
+    for (let dy = -canalHalf; dy <= canalHalf; dy++) {
+      const y = canalY + dy;
+      if (y < 0 || y >= size) continue;
+      if (isBridge) {
+        tiles[y * size + x] = TILE.ROAD;
+      } else {
+        tiles[y * size + x] = TILE.WATER;
+      }
+    }
+    // Orillas ruinosas
+    for (const bank of [canalY - canalHalf - 1, canalY + canalHalf + 1]) {
+      if (bank < 1 || bank >= size - 1) continue;
+      if (isBridge) continue;
+      const t = tiles[bank * size + x];
+      if (t === TILE.WATER || t === TILE.ROAD || t === TILE.CROSSWALK) continue;
+      if (noise.noise2(x * 0.4, bank * 0.4) > 0.35) tiles[bank * size + x] = TILE.RUBBLE;
+    }
+  }
+
+  // Assets post-apocalípticos del río (barcas, muelles, tuberías, barriles)
+  for (let x = 3; x < size - 3; x += 3) {
+    if (x % BLOCK < ROAD_W + 1) continue;
+    if (noise.noise2(x * 0.2, canalY) > 0.12) {
+      props.push({
+        type: "boat",
+        x: x + 0.5 + noise.noise2(x, 1) * 0.4,
+        y: canalY + 0.5 + (noise.noise2(x, 2) - 0.5) * (canalHalf - 0.6),
+        wreck: true,
+      });
+    }
+    if (noise.noise2(x * 0.3 + 2, canalY + 1) > 0.28) {
+      props.push({
+        type: "riverDebris",
+        x: x + 0.3 + noise.noise2(x, 5) * 0.4,
+        y: canalY + 0.5 + (noise.noise2(x, 4) - 0.5) * canalHalf,
+        tone: (x * 3) % 3,
+      });
+    }
+    if (noise.noise2(x * 0.25, canalY - 2) > 0.25) {
+      props.push({
+        type: "barrel",
+        x: x + 0.6,
+        y: canalY - canalHalf - 0.55,
+        toxic: noise.noise2(x, 8) > 0.35,
+      });
+    }
+    if (noise.noise2(x * 0.22, canalY + 3) > 0.3) {
+      props.push({
+        type: "barrel",
+        x: x + 0.4,
+        y: canalY + canalHalf + 0.55,
+        toxic: true,
+      });
+    }
+    if (x % 6 === 0 || noise.noise2(x, 11) > 0.55) {
+      props.push({
+        type: "dock",
+        x: x + 0.5,
+        y: canalY - canalHalf - 0.1,
+        broken: true,
+      });
+    }
+    if (x % 5 === 2 || noise.noise2(x, 12) > 0.5) {
+      props.push({
+        type: "pipe",
+        x: x + 0.5,
+        y: canalY + canalHalf + 0.15,
+        toxic: true,
+      });
+    }
+  }
+
   props.sort((a, b) => a.y - b.y);
 
-  const spawn = findSpawn(tiles, size, noise);
+  const spawn = findSpawn(tiles, size, noise, canalY);
   return { size, seed, tiles, loot, doors, buildings, props, interiors, decor, spawn, noise, canalY };
 }
 
@@ -834,18 +899,29 @@ function paveQuay(tiles, size, bx, by, props, noise) {
   const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
-      tiles[y * size + x] = noise.noise2(x * 0.5, y * 0.5) > 0.55 ? TILE.RUBBLE : TILE.SIDEWALK;
+      if (tiles[y * size + x] === TILE.WATER) continue;
+      tiles[y * size + x] = noise.noise2(x * 0.5, y * 0.5) > 0.38 ? TILE.RUBBLE : TILE.SIDEWALK;
     }
   }
+  // Barandillas rotas / oxidadas
   for (let x = x0 + 1; x < x1; x += 2) {
-    props.push({ type: "railing", x: x + 0.5, y: y0 + 1.2 });
+    if (noise.noise2(x * 0.4, by) > 0.25) {
+      props.push({ type: "railing", x: x + 0.5, y: y0 + 1.2, broken: noise.noise2(x, by + 1) > 0.4 });
+    }
   }
-  props.push({ type: "bench", x: ((x0 + x1) / 2), y: y0 + 2.2 });
-  if (noise.noise2(bx + 4, by) > 0.72) {
-    props.push({ type: "lamp", x: ((x0 + x1) / 2), y: y0 + 1.8 });
+  // Orilla saqueada: barriles, escombros, farolas caídas
+  props.push({ type: "debris", x: (x0 + x1) / 2, y: y0 + 2.2, tone: 1 });
+  if (noise.noise2(bx + 1, by) > 0.35) {
+    props.push({ type: "barrel", x: x0 + 2.2, y: y0 + 2.4, toxic: true });
   }
-  if (noise.noise2(bx, by) > 0.3) {
-    props.push({ type: "planter", x: ((x0 + x1) / 2) + 1.5, y: y0 + 2.5, tone: 0 });
+  if (noise.noise2(bx + 2, by) > 0.4) {
+    props.push({ type: "barricadeJunk", x: x1 - 2.1, y: y0 + 2.6 });
+  }
+  if (noise.noise2(bx + 4, by) > 0.55) {
+    props.push({ type: "lamp", x: (x0 + x1) / 2, y: y0 + 1.8 });
+  }
+  if (noise.noise2(bx, by) > 0.45) {
+    props.push({ type: "debris", x: (x0 + x1) / 2 + 1.2, y: y0 + 2.8, tone: 2 });
   }
 }
 
@@ -875,7 +951,7 @@ function putLoot(map, x, y, id) {
   map.set(`${x},${y}`, { id, amount });
 }
 
-function findSpawn(tiles, size, noise) {
+function findSpawn(tiles, size, noise, canalY = (size / 2) | 0) {
   const candidates = [];
   for (let y = 4; y < size - 4; y++) {
     for (let x = 4; x < size - 4; x++) {
@@ -890,11 +966,15 @@ function findSpawn(tiles, size, noise) {
           }
         }
       }
-      if (nearDoor) candidates.push({ x: x + 0.5, y: y + 0.5, score: noise.noise2(x * 0.2, y * 0.2) });
+      if (!nearDoor) continue;
+      // Preferir orilla del río para ver el escenario apocalíptico al empezar
+      const riverBias = 1.4 - Math.min(1.4, Math.abs(y - canalY) / 18);
+      const score = noise.noise2(x * 0.2, y * 0.2) + riverBias;
+      candidates.push({ x: x + 0.5, y: y + 0.5, score });
     }
   }
   candidates.sort((a, b) => b.score - a.score);
-  return candidates[0] || { x: size / 2 + 0.5, y: size / 2 + 0.5 };
+  return candidates[0] || { x: size / 2 + 0.5, y: Math.max(6, canalY - 6) + 0.5 };
 }
 
 export function tileAt(world, x, y) {

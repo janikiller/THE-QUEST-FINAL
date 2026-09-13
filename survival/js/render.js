@@ -648,46 +648,64 @@ function drawSidewalk(ctx, game, tx, ty, px, py, phase) {
 }
 
 function drawWater(ctx, game, tx, ty, px, py, time) {
+  // Río tóxico post-apocalíptico: verde enfermo / aceite
   const g = ctx.createLinearGradient(px, py, px + TILE_PX, py + TILE_PX);
-  g.addColorStop(0, "#2f7078");
-  g.addColorStop(0.45, "#1c5862");
-  g.addColorStop(1, "#123e48");
+  g.addColorStop(0, "#1c3a28");
+  g.addColorStop(0.35, "#163428");
+  g.addColorStop(0.7, "#1a2e22");
+  g.addColorStop(1, "#0e2218");
   ctx.fillStyle = g;
   ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
 
-  // Orilla de piedra si toca acera/muelle
-  const bank = "rgba(90,88,82,0.85)";
+  // Manchas de aceite / brillo tóxico
+  if (((tx * 5 + ty * 3) % 7) === 0) {
+    ctx.fillStyle = "rgba(40, 90, 40, 0.35)";
+    ctx.beginPath();
+    ctx.ellipse(px + 22, py + 24, 12, 6, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (((tx + ty * 2) % 11) === 0) {
+    ctx.fillStyle = "rgba(20, 16, 10, 0.45)";
+    ctx.beginPath();
+    ctx.ellipse(px + 18, py + 16, 9, 4, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Orilla ruinosa
+  const bank = "rgba(55,50,42,0.9)";
   if (neighborTile(game, tx, ty - 1) !== TILE.WATER && neighborTile(game, tx, ty - 1) !== TILE.ROAD) {
     ctx.fillStyle = bank;
-    ctx.fillRect(px, py, TILE_PX, 5);
+    ctx.fillRect(px, py, TILE_PX, 6);
+    ctx.fillStyle = "rgba(90,70,40,0.35)";
+    ctx.fillRect(px + 4, py + 1, 10, 3);
   }
   if (neighborTile(game, tx, ty + 1) !== TILE.WATER && neighborTile(game, tx, ty + 1) !== TILE.ROAD) {
     ctx.fillStyle = bank;
-    ctx.fillRect(px, py + TILE_PX - 5, TILE_PX, 5);
+    ctx.fillRect(px, py + TILE_PX - 6, TILE_PX, 6);
   }
 
-  ctx.fillStyle = "rgba(180, 220, 230, 0.14)";
-  ctx.fillRect(px + 6, py + 4, 14, TILE_PX - 8);
-
-  ctx.strokeStyle = "rgba(200, 235, 235, 0.42)";
-  ctx.lineWidth = 1.5;
-  const wave = Math.sin(time * 2.2 + tx * 0.7 + ty * 0.4) * 3;
+  ctx.strokeStyle = "rgba(90, 160, 90, 0.22)";
+  ctx.lineWidth = 1.4;
+  const wave = Math.sin(time * 1.6 + tx * 0.55 + ty * 0.35) * 2.5;
   ctx.beginPath();
   ctx.moveTo(px + 2, py + 16 + wave);
-  ctx.quadraticCurveTo(px + 20, py + 10 + wave, px + 46, py + 18 + wave);
+  ctx.quadraticCurveTo(px + 22, py + 12 + wave, px + 46, py + 18 + wave);
   ctx.stroke();
+  ctx.strokeStyle = "rgba(60, 100, 70, 0.18)";
   ctx.beginPath();
   ctx.moveTo(px + 2, py + 30 + wave * 0.6);
-  ctx.quadraticCurveTo(px + 24, py + 26 + wave * 0.6, px + 46, py + 32 + wave * 0.6);
+  ctx.quadraticCurveTo(px + 24, py + 28 + wave * 0.6, px + 46, py + 32 + wave * 0.6);
   ctx.stroke();
 
-  if (((tx + ty) % 9) === 0) {
-    ctx.fillStyle = "rgba(80,70,40,0.5)";
-    ctx.fillRect(px + 18, py + 22 + wave, 6, 3);
+  // Espuma tóxica / basura flotante
+  if (((tx + ty) % 8) === 0) {
+    ctx.fillStyle = "rgba(120, 140, 60, 0.35)";
+    ctx.fillRect(px + 16, py + 20 + wave, 8, 3);
   }
-  // Reflejo suave
-  ctx.fillStyle = "rgba(255,255,255,0.06)";
-  ctx.fillRect(px + 20, py + 8 + wave * 0.3, 18, 4);
+  if (((tx * 3 + ty) % 13) === 0) {
+    ctx.fillStyle = "rgba(70, 55, 40, 0.55)";
+    ctx.fillRect(px + 10, py + 28 + wave, 7, 4);
+  }
 }
 
 function drawGrass(ctx, tx, ty, px, py) {
@@ -1616,18 +1634,30 @@ function drawProp(ctx, p, px, py, phase) {
     ctx.fillStyle = "rgba(60,160,200,0.45)";
     ctx.fillText(p.text ? "" : "norte", px - 10, py + 10);
   } else if (p.type === "railing") {
-    ctx.strokeStyle = "#6a7078";
+    ctx.strokeStyle = p.broken ? "#4a3a30" : "#5a5248";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(px - 12, py);
-    ctx.lineTo(px + 12, py);
+    if (p.broken) {
+      ctx.lineTo(px - 2, py + 1);
+      ctx.moveTo(px + 4, py + 3);
+      ctx.lineTo(px + 12, py + 6);
+    } else {
+      ctx.lineTo(px + 12, py);
+    }
     ctx.moveTo(px - 8, py);
     ctx.lineTo(px - 8, py + 8);
     ctx.moveTo(px + 8, py);
-    ctx.lineTo(px + 8, py + 8);
-    ctx.moveTo(px, py);
-    ctx.lineTo(px, py + 8);
+    ctx.lineTo(px + 8, p.broken ? py + 4 : py + 8);
+    if (!p.broken) {
+      ctx.moveTo(px, py);
+      ctx.lineTo(px, py + 8);
+    }
     ctx.stroke();
+    if (p.broken) {
+      ctx.fillStyle = "rgba(90, 70, 40, 0.45)";
+      ctx.fillRect(px + 2, py + 4, 8, 3);
+    }
   } else if (p.type === "hydrant") {
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.beginPath();
@@ -1699,32 +1729,90 @@ function drawProp(ctx, p, px, py, phase) {
     ctx.fillText(`C/ ${(p.label || "LUNA").slice(0, 8)}`, px, py - 13);
     ctx.fillText(`C/ ${(p.label2 || "SOL").slice(0, 8)}`, px, py - 2);
   } else if (p.type === "boat") {
-    ctx.fillStyle = "rgba(0,0,0,0.2)";
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
     ctx.beginPath();
-    ctx.ellipse(px, py + 4, 16, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(px, py + 5, 18, 6, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = p.wreck ? "#4a4038" : "#6a5040";
+    ctx.fillStyle = "#2e2820";
     ctx.beginPath();
-    ctx.moveTo(px - 16, py);
-    ctx.quadraticCurveTo(px, py + 10, px + 16, py);
-    ctx.quadraticCurveTo(px, py - 8, px - 16, py);
+    ctx.moveTo(px - 18, py);
+    ctx.quadraticCurveTo(px, py + 12, px + 18, py);
+    ctx.quadraticCurveTo(px, py - 9, px - 18, py);
     ctx.fill();
-    if (!p.wreck) {
-      ctx.fillStyle = "#d8d0c0";
-      ctx.fillRect(px - 4, py - 10, 3, 10);
-      ctx.fillStyle = "rgba(200,60,50,0.7)";
-      ctx.beginPath();
-      ctx.moveTo(px - 1, py - 10);
-      ctx.lineTo(px + 10, py - 6);
-      ctx.lineTo(px - 1, py - 2);
-      ctx.fill();
-    } else {
-      ctx.strokeStyle = "rgba(180,180,180,0.4)";
-      ctx.beginPath();
-      ctx.moveTo(px - 6, py - 2);
-      ctx.lineTo(px + 8, py + 2);
-      ctx.stroke();
+    // Casco hundido / agujeros
+    ctx.fillStyle = "rgba(20, 40, 28, 0.55)";
+    ctx.beginPath();
+    ctx.ellipse(px - 4, py + 2, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(160,150,130,0.45)";
+    ctx.beginPath();
+    ctx.moveTo(px - 8, py - 3);
+    ctx.lineTo(px + 10, py + 3);
+    ctx.moveTo(px - 2, py - 6);
+    ctx.lineTo(px + 4, py + 5);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(90,110,50,0.4)";
+    ctx.fillRect(px - 6, py - 1, 10, 4);
+    ctx.fillStyle = "#4a3a28";
+    ctx.fillRect(px + 6, py - 8, 3, 10);
+  } else if (p.type === "riverDebris") {
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(px, py + 3, 10, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const tones = ["#4a4034", "#3a342c", "#5a4a38"];
+    ctx.fillStyle = tones[p.tone % 3] || tones[0];
+    ctx.beginPath();
+    ctx.moveTo(px - 9, py + 2);
+    ctx.lineTo(px - 3, py - 4);
+    ctx.lineTo(px + 8, py - 1);
+    ctx.lineTo(px + 6, py + 4);
+    ctx.closePath();
+    ctx.fill();
+  } else if (p.type === "barrel") {
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.beginPath();
+    ctx.ellipse(px, py + 8, 8, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = p.toxic ? "#3a5a28" : "#5a4a28";
+    ctx.fillRect(px - 7, py - 8, 14, 16);
+    ctx.fillStyle = p.toxic ? "#6a8a30" : "#7a6a30";
+    ctx.fillRect(px - 7, py - 8, 14, 4);
+    ctx.strokeStyle = "rgba(20,20,16,0.55)";
+    ctx.strokeRect(px - 7, py - 8, 14, 16);
+    if (p.toxic) {
+      ctx.fillStyle = "rgba(140, 200, 60, 0.45)";
+      ctx.font = "bold 9px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("☢", px, py + 3);
     }
+  } else if (p.type === "dock") {
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillRect(px - 16, py - 2, 32, 10);
+    ctx.fillStyle = p.broken ? "#3a3228" : "#4a3a28";
+    ctx.fillRect(px - 18, py - 6, 36, 8);
+    ctx.fillStyle = "#2a241c";
+    for (let i = 0; i < 5; i++) ctx.fillRect(px - 16 + i * 7, py - 6, 2, 8);
+    if (p.broken) {
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      ctx.beginPath();
+      ctx.moveTo(px + 4, py - 6);
+      ctx.lineTo(px + 14, py + 4);
+      ctx.stroke();
+      ctx.fillStyle = "#2a2218";
+      ctx.fillRect(px + 6, py - 2, 12, 5);
+    }
+  } else if (p.type === "pipe") {
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillRect(px - 4, py - 2, 18, 8);
+    ctx.fillStyle = "#4a4a42";
+    ctx.fillRect(px - 6, py - 8, 10, 14);
+    ctx.fillStyle = "#3a3a34";
+    ctx.fillRect(px + 2, py - 4, 16, 7);
+    ctx.fillStyle = "rgba(70, 120, 50, 0.4)";
+    ctx.beginPath();
+    ctx.ellipse(px + 18, py + 2, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
