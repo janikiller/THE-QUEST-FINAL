@@ -856,7 +856,10 @@ func _arrest_finale_demo() -> void:
 	GameState.set_patrol(p)
 	if GameState.active_missions.has(mid):
 		var m: Dictionary = GameState.active_missions[mid]
+		# Forzar 1 sospechoso (sin autofill a 2) para una detención clara.
 		m["solo_boss"] = false
+		m["severity"] = "low"
+		m["period"] = "day"
 		var ed: Dictionary = CombatRoster.enemy_by_id("foe_01_hoodie")
 		if ed.is_empty():
 			ed = CombatRoster.enemy_by_id("foe_03_bat")
