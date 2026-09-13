@@ -227,47 +227,115 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   const darkness = Math.max(0, 1 - phase.light);
   if (darkness < 0.04 && phase.thunder <= 0) return;
 
-  // Noche profunda: la escasez de luces deja calles casi negras
-  ctx.fillStyle = `rgba(2, 4, 10, ${Math.min(0.92, darkness * 1.02)})`;
-  ctx.fillRect(0, 0, w, h);
+  // Farolas cercanas (margen amplio para que iluminen al entrar en cámara)
+  const lampMargin = 150;
+  const lamps = [];
+  for (const p of game.world.props) {
+    if (p.type !== "lamp") continue;
+    const lx = p.x * TILE_PX - camX;
+    const ly = p.y * TILE_PX - camY;
+    if (lx < -lampMargin || ly < -lampMargin || lx > w + lampMargin || ly > h + lampMargin) continue;
+    lamps.push({ p, lx, ly });
+  }
 
-  ctx.save();
-  ctx.globalCompositeOperation = "lighter";
+  // Noche profunda: calles negras fuera de las farolas
+  ctx.fillStyle = `rgba(2, 4, 12, ${Math.min(0.94, darkness * 1.06)})`;
+  ctx.fillRect(0, 0, w, h);
 
   const px = game.player.x * TILE_PX - camX;
   const py = game.player.y * TILE_PX - camY;
+  const playerR = indoor ? 58 : phase.night ? 72 : 42;
+  const cool = phase.rain > 0.25 || phase.weather === "storm";
 
-  // Linterna del jugador: alcance corto
-  const playerR = indoor ? 58 : phase.night ? 78 : 42;
+  // Abrir pozos de luz (como charcos circulares bajo cada farola)
+  ctx.save();
+  ctx.globalCompositeOperation = "destination-out";
+  for (const { p, lx, ly } of lamps) {
+    const flicker =
+      phase.weather === "storm" ? 0.72 + Math.sin(game.time * 22 + p.x * 9) * 0.28 : 1;
+    // El farol cuelga a la derecha del poste
+    const cx = lx + 10;
+    const cy = ly + 4;
+    const lr = 112;
+    const hole = ctx.createRadialGradient(cx, cy, 6, cx, cy, lr);
+    hole.addColorStop(0, `rgba(0,0,0,${0.92 * flicker})`);
+    hole.addColorStop(0.3, `rgba(0,0,0,${0.55 * flicker})`);
+    hole.addColorStop(0.65, `rgba(0,0,0,${0.16 * flicker})`);
+    hole.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = hole;
+    ctx.beginPath();
+    ctx.arc(cx, cy, lr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  {
+    const hole = ctx.createRadialGradient(px, py, 4, px, py, playerR);
+    hole.addColorStop(0, "rgba(0,0,0,0.75)");
+    hole.addColorStop(0.5, "rgba(0,0,0,0.28)");
+    hole.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = hole;
+    ctx.beginPath();
+    ctx.arc(px, py, playerR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (const win of litWindows) {
+    const wr = 22;
+    const hole = ctx.createRadialGradient(win.x, win.y, 1, win.x, win.y, wr);
+    hole.addColorStop(0, "rgba(0,0,0,0.45)");
+    hole.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = hole;
+    ctx.beginPath();
+    ctx.arc(win.x, win.y, wr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Tinte suave sobre los pozos (blanco-azulado en lluvia, ámbar en seco)
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const { p, lx, ly } of lamps) {
+    const flicker =
+      phase.weather === "storm" ? 0.72 + Math.sin(game.time * 22 + p.x * 9) * 0.28 : 1;
+    const cx = lx + 10;
+    const cy = ly + 4;
+    const lr = 104;
+    const lg = ctx.createRadialGradient(cx, cy - 10, 2, cx, cy, lr);
+    if (cool) {
+      lg.addColorStop(0, `rgba(210, 225, 255, ${0.3 * flicker})`);
+      lg.addColorStop(0.35, `rgba(160, 190, 235, ${0.12 * flicker})`);
+      lg.addColorStop(1, "rgba(130, 160, 210, 0)");
+    } else {
+      lg.addColorStop(0, `rgba(255, 230, 170, ${0.28 * flicker})`);
+      lg.addColorStop(0.4, `rgba(255, 190, 110, ${0.1 * flicker})`);
+      lg.addColorStop(1, "rgba(255, 160, 70, 0)");
+    }
+    ctx.fillStyle = lg;
+    ctx.beginPath();
+    ctx.arc(cx, cy, lr, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Núcleo del foco
+    const core = ctx.createRadialGradient(cx, cy - 14, 0, cx, cy - 14, 14);
+    core.addColorStop(0, cool ? `rgba(240,245,255,${0.55 * flicker})` : `rgba(255,240,200,${0.55 * flicker})`);
+    core.addColorStop(1, "rgba(255,220,160,0)");
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 14, 14, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   const pg = ctx.createRadialGradient(px, py, 3, px, py, playerR);
-  pg.addColorStop(0, `rgba(255, 225, 160, ${0.16 + darkness * 0.08})`);
-  pg.addColorStop(0.45, `rgba(255, 195, 120, ${0.05 + darkness * 0.04})`);
+  pg.addColorStop(0, `rgba(255, 225, 160, ${0.14 + darkness * 0.06})`);
+  pg.addColorStop(0.45, `rgba(255, 195, 120, ${0.04 + darkness * 0.03})`);
   pg.addColorStop(1, "rgba(255, 190, 110, 0)");
   ctx.fillStyle = pg;
   ctx.beginPath();
   ctx.arc(px, py, playerR, 0, Math.PI * 2);
   ctx.fill();
 
-  // Farolas: halo local, no inunda la manzana
-  for (const { p, px: lx, py: ly } of visibleProps) {
-    if (p.type !== "lamp") continue;
-    const flicker = phase.weather === "storm" ? 0.7 + Math.sin(game.time * 22 + p.x * 9) * 0.3 : 1;
-    const lr = 48;
-    const lg = ctx.createRadialGradient(lx, ly - 8, 2, lx, ly, lr);
-    lg.addColorStop(0, `rgba(255, 210, 125, ${0.22 * flicker})`);
-    lg.addColorStop(0.45, `rgba(255, 175, 90, ${0.06 * flicker})`);
-    lg.addColorStop(1, "rgba(255, 160, 70, 0)");
-    ctx.fillStyle = lg;
-    ctx.beginPath();
-    ctx.arc(lx, ly, lr, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Ventanas: puntos mínimos de luz
   for (const win of litWindows) {
-    const wr = 16;
+    const wr = 18;
     const wg = ctx.createRadialGradient(win.x, win.y, 1, win.x, win.y, wr);
-    wg.addColorStop(0, "rgba(255, 210, 115, 0.18)");
+    wg.addColorStop(0, "rgba(255, 210, 115, 0.16)");
     wg.addColorStop(0.55, "rgba(255, 175, 85, 0.04)");
     wg.addColorStop(1, "rgba(255, 160, 70, 0)");
     ctx.fillStyle = wg;
@@ -275,7 +343,6 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     ctx.arc(win.x, win.y, wr, 0, Math.PI * 2);
     ctx.fill();
   }
-
   ctx.restore();
 }
 
@@ -1312,22 +1379,33 @@ function drawProp(ctx, p, px, py, phase) {
     ctx.arc(px + 6, py - 2, r * 0.45, 0, Math.PI * 2);
     ctx.fill();
   } else if (p.type === "lamp") {
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    // Farola de calle: poste + farol
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
     ctx.beginPath();
-    ctx.ellipse(px, py + 10, 6, 3, 0, 0, Math.PI * 2);
+    ctx.ellipse(px, py + 12, 7, 3.2, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#2e3034";
-    ctx.fillRect(px - 2, py - 2, 4, 14);
-    ctx.fillStyle = "#1a1a1c";
-    ctx.fillRect(px - 5, py - 8, 10, 4);
-    ctx.fillStyle = phase.night ? "#ffe08a" : "#d0d0d0";
+    ctx.fillStyle = "#2a2c30";
+    ctx.fillRect(px - 2, py - 4, 4, 18);
+    ctx.fillStyle = "#3a3c42";
+    ctx.fillRect(px - 3, py + 10, 6, 3);
+    // Brazo
+    ctx.fillStyle = "#1e2024";
+    ctx.fillRect(px - 1, py - 14, 12, 3);
+    ctx.fillRect(px + 9, py - 14, 3, 6);
+    // Farol
+    const lit = phase.night || phase.light < 0.55;
+    ctx.fillStyle = lit ? (phase.rain > 0.25 ? "#e8f0ff" : "#ffe6a0") : "#9a9aa0";
     ctx.beginPath();
-    ctx.arc(px, py - 10, 5, 0, Math.PI * 2);
+    ctx.moveTo(px + 6, py - 8);
+    ctx.lineTo(px + 15, py - 8);
+    ctx.lineTo(px + 13, py - 2);
+    ctx.lineTo(px + 8, py - 2);
+    ctx.closePath();
     ctx.fill();
-    if (phase.night) {
-      ctx.fillStyle = "rgba(255, 220, 140, 0.12)";
+    if (lit) {
+      ctx.fillStyle = phase.rain > 0.25 ? "rgba(180, 205, 240, 0.2)" : "rgba(255, 220, 140, 0.18)";
       ctx.beginPath();
-      ctx.arc(px, py, 28, 0, Math.PI * 2);
+      ctx.arc(px + 10, py + 4, 22, 0, Math.PI * 2);
       ctx.fill();
     }
   } else if (p.type === "dumpster") {

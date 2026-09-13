@@ -317,9 +317,13 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       }
       if (!nearRoad) continue;
       const n = noise.noise2(x * 0.4, y * 0.4);
-      // Farolas muy espaciadas: pocas islas de luz en la noche
-      if ((x + y * 5) % 47 === 0 && x % 3 === 0 && y % 2 === 0) {
-        props.push({ type: "lamp", x: x + 0.5, y: y + 0.5 });
+      // Farolas regulares en acera (cada ~8 tiles) para pozos de luz nocturnos
+      const lampRow = y % 8 === 3 && x % 4 !== 1;
+      const lampCol = x % 8 === 3 && y % 4 !== 1;
+      if (lampRow || lampCol) {
+        if (!props.some((p) => p.type === "lamp" && Math.abs(p.x - (x + 0.5)) < 1.2 && Math.abs(p.y - (y + 0.5)) < 1.2)) {
+          props.push({ type: "lamp", x: x + 0.5, y: y + 0.5 });
+        }
       } else if ((x * 5 + y * 3) % 29 === 0) props.push({ type: "hydrant", x: x + 0.55, y: y + 0.55 });
       else if ((x * 7 + y) % 23 === 0 && n > 0.2) props.push({ type: "trash", x: x + 0.4, y: y + 0.55 });
       else if ((x + y * 5) % 37 === 0) props.push({ type: "planter", x: x + 0.5, y: y + 0.5, tone: n > 0.5 ? 1 : 0 });
