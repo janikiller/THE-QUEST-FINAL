@@ -177,22 +177,28 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   // Oscuridad + iluminación (farolas, ventanas, linterna)
   drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visibleProps, playerIndoor);
 
-  // Lluvia encima de la noche (gotas visibles)
-  if (phase.rain > 0.08 && !sanding) {
-    drawRain(ctx, w, h, game, phase);
-  }
-
-  // Tormenta de arena / polvo
-  if (sanding) {
-    drawSandstorm(ctx, w, h, game, phase);
-  } else if (windy || phase.wind > 0.7) {
-    drawWindDust(ctx, w, h, game, phase);
-  }
-
-  // Flash de rayo
-  if (phase.thunder > 0) {
-    ctx.fillStyle = `rgba(220, 230, 255, ${Math.min(0.55, phase.thunder * 1.8)})`;
-    ctx.fillRect(0, 0, w, h);
+  // Clima exterior: dentro de casas no llueve ni entra arena
+  if (!playerIndoor) {
+    if (phase.rain > 0.08 && !sanding) {
+      drawRain(ctx, w, h, game, phase);
+    }
+    if (sanding) {
+      drawSandstorm(ctx, w, h, game, phase);
+    } else if (windy || phase.wind > 0.7) {
+      drawWindDust(ctx, w, h, game, phase);
+    }
+    if (phase.thunder > 0) {
+      ctx.fillStyle = `rgba(220, 230, 255, ${Math.min(0.55, phase.thunder * 1.8)})`;
+      ctx.fillRect(0, 0, w, h);
+    }
+  } else {
+    // Polvo en suspensión dentro
+    drawIndoorMotes(ctx, w, h, game, phase);
+    // Trueno amortiguado (flash suave)
+    if (phase.thunder > 0.12) {
+      ctx.fillStyle = `rgba(220, 230, 255, ${Math.min(0.18, phase.thunder * 0.45)})`;
+      ctx.fillRect(0, 0, w, h);
+    }
   }
 
   if (game.player.hurtFlash > 0) {
@@ -319,6 +325,20 @@ function drawWindDust(ctx, w, h, game, phase) {
   }
 }
 
+
+function drawIndoorMotes(ctx, w, h, game, phase) {
+  const n = phase.night ? 28 : 16;
+  const t = game.time;
+  ctx.fillStyle = phase.night ? "rgba(255, 210, 140, 0.14)" : "rgba(200, 180, 140, 0.1)";
+  for (let i = 0; i < n; i++) {
+    const seed = (i * 4201 + ((t * 40) | 0)) % 8000;
+    const x = ((seed * 17 + t * 12) % w + w) % w;
+    const y = ((seed * 29 + Math.sin(t * 0.7 + i) * 18) % h + h) % h;
+    const s = 1 + (seed % 2);
+    ctx.fillRect(x, y, s, s);
+  }
+}
+
 function drawRain(ctx, w, h, game, phase) {
   const n = Math.floor(80 + phase.rain * 160);
   const wind = phase.wind * 10;
@@ -355,7 +375,8 @@ function drawRain(ctx, w, h, game, phase) {
 
 function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visibleProps, indoor) {
   const darkness = Math.max(0, 1 - phase.light);
-  if (darkness < 0.04 && phase.thunder <= 0) return;
+  // De día en exterior casi no hay velo; en interior siempre hay penumbra
+  if (darkness < 0.04 && phase.thunder <= 0 && !indoor) return;
 
   const lampMargin = 220;
   const lamps = [];
@@ -382,13 +403,23 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   const m = mask.getContext("2d");
   m.setTransform(1, 0, 0, 1, 0, 0);
   m.clearRect(0, 0, w, h);
-  // Velo nocturno ligero: la calle se lee también fuera de farolas
-  const veil = phase.night ? Math.min(0.2, 0.1 + darkness * 0.14) : Math.min(0.18, darkness * 0.28);
-  m.fillStyle = `rgba(8, 12, 24, ${veil})`;
+  // Velo: más denso en interiores (casas cerradas, lejos de farolas)
+  const veil = indoor
+    ? (phase.night ? Math.min(0.62, 0.38 + darkness * 0.3) : Math.min(0.34, 0.18 + darkness * 0.22))
+    : phase.night
+      ? Math.min(0.2, 0.1 + darkness * 0.14)
+      : Math.min(0.18, darkness * 0.28);
+  m.fillStyle = indoor ? `rgba(18, 14, 10, ${veil})` : `rgba(8, 12, 24, ${veil})`;
   m.fillRect(0, 0, w, h);
 
   m.globalCompositeOperation = "destination-out";
+  // Farolas de calle: fuera, o solo cerca de la puerta si estás dentro
   for (const { p, lx, ly } of lamps) {
+    if (indoor) {
+      const dx = p.x - game.player.x;
+      const dy = p.y - game.player.y;
+      if (dx * dx + dy * dy > 36) continue;
+    }
     const flicker =
       phase.weather === "storm" ? 0.85 + Math.sin(game.time * 16 + p.x * 9) * 0.15 : 1;
     const cx = lx + 10;
@@ -404,6 +435,24 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     m.arc(cx, cy, lr, 0, Math.PI * 2);
     m.fill();
   }
+  // Lámparas / velas interiores
+  for (const p of game.world.props) {
+    if ((p.type !== "indoorLamp" && p.type !== "candle") || !p.lit) continue;
+    const lx = p.x * TILE_PX - camX;
+    const ly = p.y * TILE_PX - camY;
+    if (lx < -80 || ly < -80 || lx > w + 80 || ly > h + 80) continue;
+    const flick = p.flicker ? 0.82 + Math.sin(game.time * 9 + p.x * 7) * 0.18 : 0.92 + Math.sin(game.time * 3 + p.y) * 0.08;
+    const lr = p.type === "candle" ? 70 : 110;
+    const hole = m.createRadialGradient(lx, ly, 4, lx, ly, lr);
+    hole.addColorStop(0, `rgba(0,0,0,${0.95 * flick})`);
+    hole.addColorStop(0.45, `rgba(0,0,0,${0.55 * flick})`);
+    hole.addColorStop(1, "rgba(0,0,0,0)");
+    m.fillStyle = hole;
+    m.beginPath();
+    m.arc(lx, ly, lr, 0, Math.PI * 2);
+    m.fill();
+  }
+
   if (hasLight && playerR > 0) {
     const hole = m.createRadialGradient(px, py, 8, px, py, playerR);
     hole.addColorStop(0, "rgba(0,0,0,0.95)");
@@ -431,6 +480,11 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   for (const { p, lx, ly } of lamps) {
+    if (indoor) {
+      const dx = p.x - game.player.x;
+      const dy = p.y - game.player.y;
+      if (dx * dx + dy * dy > 36) continue;
+    }
     const flicker =
       phase.weather === "storm" ? 0.85 + Math.sin(game.time * 16 + p.x * 9) * 0.15 : 1;
     const cx = lx + 10;
@@ -478,14 +532,31 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   }
 
   for (const win of litWindows) {
-    const wr = 32;
+    const wr = indoor ? 48 : 32;
     const wg = ctx.createRadialGradient(win.x, win.y, 1, win.x, win.y, wr);
-    wg.addColorStop(0, "rgba(255, 220, 140, 0.26)");
-    wg.addColorStop(0.55, "rgba(255, 185, 100, 0.08)");
+    wg.addColorStop(0, indoor ? "rgba(255, 210, 140, 0.34)" : "rgba(255, 220, 140, 0.26)");
+    wg.addColorStop(0.55, indoor ? "rgba(255, 180, 100, 0.12)" : "rgba(255, 185, 100, 0.08)");
     wg.addColorStop(1, "rgba(255, 160, 70, 0)");
     ctx.fillStyle = wg;
     ctx.beginPath();
     ctx.arc(win.x, win.y, wr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for (const p of game.world.props) {
+    if ((p.type !== "indoorLamp" && p.type !== "candle") || !p.lit) continue;
+    const lx = p.x * TILE_PX - camX;
+    const ly = p.y * TILE_PX - camY;
+    if (lx < -80 || ly < -80 || lx > w + 80 || ly > h + 80) continue;
+    const flick = p.flicker ? 0.82 + Math.sin(game.time * 9 + p.x * 7) * 0.18 : 0.94;
+    const lr = p.type === "candle" ? 64 : 100;
+    const lg = ctx.createRadialGradient(lx, ly - 4, 2, lx, ly, lr);
+    lg.addColorStop(0, `rgba(255, 210, 140, ${0.38 * flick})`);
+    lg.addColorStop(0.4, `rgba(255, 160, 80, ${0.14 * flick})`);
+    lg.addColorStop(1, "rgba(255, 130, 50, 0)");
+    ctx.fillStyle = lg;
+    ctx.beginPath();
+    ctx.arc(lx, ly, lr, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();
@@ -958,6 +1029,21 @@ function drawInteriorFloor(ctx, tile, px, py, b, floorStyle, tx, ty) {
     ctx.lineTo(px + 40, py + 8);
     ctx.stroke();
   }
+
+  // Desgaste del suelo (tablones/losas rotas)
+  const wear = (tx * 17 + ty * 31) % 11;
+  if (wear === 0) {
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.fillRect(px + 6, py + 20, 18, 3);
+  } else if (wear === 3) {
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(px + 22, py + 8, 14, 2);
+  } else if (wear === 7) {
+    ctx.fillStyle = "rgba(40, 30, 20, 0.16)";
+    ctx.beginPath();
+    ctx.ellipse(px + 30, py + 34, 8, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function drawFloorDecor(ctx, dec, px, py) {
@@ -988,6 +1074,39 @@ function drawFloorDecor(ctx, dec, px, py) {
     ctx.strokeRect(px + 8, py + 14, 32, 20);
     ctx.fillStyle = "rgba(255,255,255,0.08)";
     for (let i = 0; i < 4; i++) ctx.fillRect(px + 10 + i * 7, py + 16, 4, 16);
+  } else if (dec.kind === "dust") {
+    ctx.fillStyle = "rgba(140, 115, 75, 0.38)";
+    ctx.beginPath();
+    ctx.ellipse(px + 22 + (dec.variant || 0) * 3, py + 26, 16, 8, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(100, 80, 50, 0.22)";
+    ctx.fillRect(px + 8, py + 10, 14, 5);
+    ctx.fillRect(px + 28, py + 34, 10, 3);
+  } else if (dec.kind === "stain") {
+    ctx.fillStyle = "rgba(45, 25, 18, 0.42)";
+    ctx.beginPath();
+    ctx.ellipse(px + 24, py + 28, 12 + (dec.variant || 0) * 2, 7, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(70, 35, 25, 0.28)";
+    ctx.beginPath();
+    ctx.ellipse(px + 18, py + 20, 7, 3.5, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (dec.kind === "rubble") {
+    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.fillRect(px + 10, py + 30, 22, 6);
+    const tones = ["#5a5048", "#4a443c", "#6a5a50"];
+    ctx.fillStyle = tones[(dec.variant || 0) % 3];
+    ctx.beginPath();
+    ctx.moveTo(px + 12, py + 28);
+    ctx.lineTo(px + 18, py + 16);
+    ctx.lineTo(px + 28, py + 22);
+    ctx.lineTo(px + 32, py + 30);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#3a342c";
+    ctx.fillRect(px + 20, py + 24, 9, 6);
+    ctx.fillStyle = "#7a6a58";
+    ctx.fillRect(px + 14, py + 22, 5, 4);
   }
 }
 
@@ -1432,10 +1551,36 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
       }
     }
   } else {
-    // Interior: luz cálida ambiental
-    if (phase.night) {
-      ctx.fillStyle = "rgba(255, 210, 140, 0.08)";
-      ctx.fillRect(px + t, py + t, bw - t * 2, bh - t * 2);
+    // Interior: penumbra cálida + rayos de ventana
+    const roomX = px + t;
+    const roomY = py + t;
+    const roomW = bw - t * 2;
+    const roomH = bh - t * 2;
+    if (roomW > 0 && roomH > 0) {
+      ctx.fillStyle = phase.night ? "rgba(22, 16, 12, 0.34)" : "rgba(36, 28, 20, 0.16)";
+      ctx.fillRect(roomX, roomY, roomW, roomH);
+      if (phase.night) {
+        ctx.fillStyle = "rgba(255, 200, 120, 0.06)";
+        ctx.fillRect(roomX, roomY, roomW, roomH);
+      } else {
+        ctx.fillStyle = "rgba(255, 230, 170, 0.07)";
+        ctx.fillRect(roomX, roomY, roomW, roomH);
+      }
+      // Rayos desde ventanas de fachada hacia el interior
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      for (const win of litWindows) {
+        if (win.x < roomX - 20 || win.x > roomX + roomW + 20) continue;
+        if (win.y < roomY - 40 || win.y > roomY + roomH + 40) continue;
+        const beam = ctx.createRadialGradient(win.x, win.y, 2, win.x, win.y + 30, 70);
+        beam.addColorStop(0, phase.night ? "rgba(255, 200, 120, 0.2)" : "rgba(255, 240, 200, 0.12)");
+        beam.addColorStop(1, "rgba(255, 200, 120, 0)");
+        ctx.fillStyle = beam;
+        ctx.beginPath();
+        ctx.arc(win.x, win.y + 20, 70, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
     }
     ctx.fillStyle = "rgba(255,255,255,0.6)";
     ctx.font = `600 11px ${FONT_UI}`;
@@ -1573,6 +1718,52 @@ function drawProp(ctx, p, px, py, phase) {
       ctx.arc(px - 5, py - 5, r * 0.55, 0, Math.PI * 2);
       ctx.arc(px + 6, py - 2, r * 0.45, 0, Math.PI * 2);
       ctx.fill();
+    }
+  } else if (p.type === "indoorLamp") {
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(px, py + 10, 8, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#3a342c";
+    ctx.fillRect(px - 5, py + 2, 10, 8);
+    ctx.fillStyle = "#5a4a38";
+    ctx.fillRect(px - 7, py - 2, 14, 5);
+    ctx.fillStyle = "#2a241c";
+    ctx.fillRect(px - 1, py - 14, 2, 12);
+    ctx.fillStyle = p.lit ? "#f0d080" : "#6a5a40";
+    ctx.beginPath();
+    ctx.arc(px, py - 16, 5, 0, Math.PI * 2);
+    ctx.fill();
+    if (p.lit) {
+      ctx.fillStyle = "rgba(255, 200, 100, 0.35)";
+      ctx.beginPath();
+      ctx.arc(px, py - 16, 9, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (p.type === "candle") {
+    ctx.fillStyle = "rgba(0,0,0,0.2)";
+    ctx.beginPath();
+    ctx.ellipse(px, py + 8, 6, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#5a4030";
+    ctx.fillRect(px - 5, py + 2, 10, 5);
+    ctx.fillStyle = "#e8e0d0";
+    ctx.fillRect(px - 2, py - 8, 4, 10);
+    if (p.lit) {
+      const flick = 0.7 + Math.sin((phase?.wind || 0) * 10 + px * 0.2) * 0.3;
+      ctx.fillStyle = `rgba(255, 160, 60, ${0.55 + flick * 0.25})`;
+      ctx.beginPath();
+      ctx.moveTo(px, py - 18);
+      ctx.quadraticCurveTo(px + 4, py - 12, px, py - 8);
+      ctx.quadraticCurveTo(px - 4, py - 12, px, py - 18);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255, 240, 180, 0.8)";
+      ctx.beginPath();
+      ctx.arc(px, py - 12, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = "#3a3020";
+      ctx.fillRect(px - 0.5, py - 10, 1, 2);
     }
   } else if (p.type === "lamp") {
     // Farola de calle: poste + farol

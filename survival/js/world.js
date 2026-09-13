@@ -799,7 +799,7 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, dec
   doors.set(`${dx},${dy}`, { hp: 50 });
 
   decorateInterior({
-    tiles, size, interiors, decor,
+    tiles, size, interiors, decor, props,
     x0, y0, x1, y1, doorX: dx, doorY: dy, side,
     style, accent, noise, bx, by,
   });
@@ -1056,7 +1056,7 @@ function placeRug(decor, x, y, w, h, color, variant = 0) {
  * No es ruido aleatorio: camas con mesita y alfombra, cocina, zona de estar, etc.
  */
 function decorateInterior({
-  tiles, size, interiors, decor,
+  tiles, size, interiors, decor, props,
   x0, y0, x1, y1, doorX, doorY, side,
   style, accent, noise, bx, by,
 }) {
@@ -1209,6 +1209,58 @@ function decorateInterior({
     put(ix0, iy0 === farY ? iy1 : iy0, "plant");
     put(ix0, iy1 === farY ? iy0 : iy1, "drawer");
     if (tiles[nearDoorY * size + nearDoorX] === TILE.FLOOR) placeDecor(decor, nearDoorX, nearDoorY, "mat", "#5a4038", 0);
+  }
+
+  // Desgaste post-colapso: polvo, manchas, escombros
+  for (let y = iy0; y <= iy1; y++) {
+    for (let x = ix0; x <= ix1; x++) {
+      if (tiles[y * size + x] !== TILE.FLOOR) continue;
+      if (decor.has(`${x},${y}`)) continue;
+      const r = noise.noise2(x * 0.55 + bx * 0.1, y * 0.55 + by * 0.1);
+      if (r > 0.48) placeDecor(decor, x, y, "dust", "#6a5a48", (x + y) % 3);
+      else if (r > 0.34) placeDecor(decor, x, y, "stain", "#3a2a22", (x * 3 + y) % 2);
+      else if (r > 0.22 && style !== "tower") placeDecor(decor, x, y, "rubble", "#5a5048", (x + y * 2) % 3);
+    }
+  }
+
+  // Luces interiores (lámpara de mesa / vela) — atmósfera
+  if (props) {
+    const lampSpots = [];
+    for (let y = iy0; y <= iy1; y++) {
+      for (let x = ix0; x <= ix1; x++) {
+        const f = interiors.get(`${x},${y}`);
+        const t = typeof f === "string" ? f : f?.type;
+        if (t === "nightstand" || t === "desk" || t === "table" || t === "counter") {
+          lampSpots.push({ x, y, kind: t === "nightstand" ? "candle" : "indoorLamp" });
+        }
+      }
+    }
+    // Al menos una luz en casas grandes
+    if (!lampSpots.length && (ix1 - ix0) >= 2) {
+      lampSpots.push({ x: midX, y: midY, kind: style === "warehouse" ? "indoorLamp" : "candle" });
+    }
+    for (const spot of lampSpots) {
+      if (noise.noise2(spot.x + 3, spot.y + 5) < 0.28) continue;
+      const lit = noise.noise2(spot.x * 0.4, spot.y * 0.4) > 0.22;
+      props.push({
+        type: spot.kind,
+        x: spot.x + 0.5,
+        y: spot.y + 0.5,
+        lit,
+        indoor: true,
+        flicker: spot.kind === "candle",
+      });
+    }
+    // Silla volcada / caja tirada ocasional
+    if (style === "residential" || style === "block") {
+      for (const c of corners) {
+        if (interiors.has(`${c.x},${c.y}`)) continue;
+        if (noise.noise2(c.x + 9, c.y + 2) > 0.62) {
+          props.push({ type: "debris", x: c.x + 0.5, y: c.y + 0.55, tone: 1, indoor: true });
+          break;
+        }
+      }
+    }
   }
 }
 
