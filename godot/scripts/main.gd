@@ -25,7 +25,7 @@ func _ready() -> void:
 		"TQ_ARENA_VARIETY_SHOT",
 		"TQ_BOSS_MARKET_SHOT", "TQ_BOSS_FIGHT", "TQ_BOSS_AUTOPLAY", "TQ_PROGRESSION_SHOT", "TQ_ROSTER_SHOT", "TQ_ANIME_CARDS_SHOT",
 		"TQ_MARKET_ROULETTE_SHOT", "TQ_XP_PACK_SHOT", "TQ_FIX_SHOT", "TQ_ENEMY_CARDS_SHOT",
-		"TQ_GROUND_SHOT", "TQ_PLAY_COMBAT",
+		"TQ_GROUND_SHOT", "TQ_PLAY_COMBAT", "TQ_SURVIVAL_RUN",
 	]:
 		if OS.get_environment(key) == "1":
 			mode = key
@@ -69,6 +69,8 @@ func _ready() -> void:
 			call_deferred("_ground_shot")
 		"TQ_PLAY_COMBAT":
 			call_deferred("_play_combat_live")
+		"TQ_SURVIVAL_RUN":
+			call_deferred("_survival_run")
 		_:
 			pass
 
@@ -825,6 +827,243 @@ func _progression_shot() -> void:
 	print("PROGRESSION_SHOT_OK level=", GameState.hero_level, " hp_bonus=", GameState.level_hp_bonus())
 	if OS.get_environment("TQ_PROGRESSION_QUIT") != "0":
 		get_tree().quit(0)
+
+
+func _survival_run() -> void:
+	## Partida realista: pelea calle + boss, jugando hasta caer o ganar. Mide cuánto duras.
+	var t0_ms := Time.get_ticks_msec()
+	await get_tree().create_timer(0.9).timeout
+	print("SURVIVAL_RUN begin")
+	$UI/UIRouter.show_map()
+	await get_tree().create_timer(0.6).timeout
+
+	var fights_won := 0
+	var total_turns := 0
+	var last_result := "NONE"
+
+	# --- Pelea 1: patrulla callejera (3 enemigos) ---
+	var tries := 0
+	while GameState.active_missions.is_empty() and tries < 40:
+		await get_tree().create_timer(0.2).timeout
+		tries += 1
+	if GameState.active_missions.is_empty():
+		print("SURVIVAL_FAIL no missions")
+		get_tree().quit(1)
+		return
+	var mid: String = ""
+	for m in GameState.active_missions.values():
+		if str(m.get("status", "")) == "open" and not bool(m.get("is_boss", false)):
+			mid = str(m.get("id", ""))
+			break
+	if mid == "":
+		mid = String(GameState.active_missions.keys()[0])
+	var p: Dictionary = GameState.patrols.get("alpha", {})
+	p["status"] = "available"
+	p.erase("_awaiting_combat")
+	GameState.set_patrol(p)
+	if GameState.active_missions.has(mid):
+		var m: Dictionary = GameState.active_missions[mid]
+		m["solo_boss"] = false
+		var suspects: Array = []
+		for eid in ["foe_01_hoodie", "foe_03_bat", "foe_05_biker"]:
+			var ed: Dictionary = CombatRoster.enemy_by_id(eid)
+			if ed.is_empty():
+				ed = CombatRoster.enemy_by_id(eid.replace("foe_", "foe_"))
+			if ed.is_empty():
+				continue
+			suspects.append({
+				"id": str(ed.get("id", "")),
+				"name": str(ed.get("name", "Sospechoso")),
+				"alias": str(ed.get("alias", "")),
+				"full": str(ed.get("sprite", "")),
+				"thumb": str(ed.get("portrait", "")),
+				"hp_bonus": int(ed.get("hp", 30)),
+				"pose_attack": str(ed.get("pose_attack", "")),
+				"pose_hurt": str(ed.get("pose_hurt", "")),
+			})
+		if not suspects.is_empty():
+			m["suspects"] = suspects
+		GameState.active_missions[mid] = m
+	print("SURVIVAL_FIGHT1 mid=", mid)
+	$UI/UIRouter.begin_fight(mid)
+	await get_tree().process_frame
+	await get_tree().create_timer(0.7).timeout
+	await _save_shot("survival_fight1_start")
+	var r1: Dictionary = await _survival_play_combat_visual(28)
+	total_turns += int(r1.get("turns", 0))
+	last_result = str(r1.get("result", "?"))
+	print("SURVIVAL_FIGHT1 ", last_result, " turns=", r1.get("turns", 0), " hp=", r1.get("hp", -1))
+	await _save_shot("survival_fight1_end")
+	if last_result != "WIN":
+		var elapsed := (Time.get_ticks_msec() - t0_ms) / 1000.0
+		print("SURVIVAL_RUN_RESULT DEATH fights_won=0 turns=", total_turns, " sec=", snappedf(elapsed, 0.1), " hp=", r1.get("hp", 0))
+		await get_tree().create_timer(1.2).timeout
+		get_tree().quit(0)
+		return
+	fights_won = 1
+
+	# Cerrar resultado si aparece y volver al mapa
+	await get_tree().create_timer(0.8).timeout
+	$UI/UIRouter.show_map()
+	await get_tree().create_timer(0.5).timeout
+
+	# --- Pelea 2: EL CAPO (duelo 1v1) ---
+	for bmid in GameState.active_missions.keys():
+		var bm: Dictionary = GameState.active_missions[bmid]
+		if bool(bm.get("is_boss", false)):
+			GameState.remove_mission(str(bmid))
+	GameState.day_index = 2
+	GameState.nights_count = 2
+	GameState.boss_spawned = false
+	GameState.boss_defeated = false
+	GameState.boss_mission_id = ""
+	GameState.active_boss_id = ""
+	GameState.request_boss_spawn()
+	await get_tree().create_timer(0.5).timeout
+	var boss_mid := GameState.boss_mission_id
+	print("SURVIVAL_FIGHT2 boss=", boss_mid)
+	if boss_mid == "":
+		var elapsed2 := (Time.get_ticks_msec() - t0_ms) / 1000.0
+		print("SURVIVAL_RUN_RESULT WIN_STREET_ONLY fights_won=1 turns=", total_turns, " sec=", snappedf(elapsed2, 0.1))
+		await _save_shot("survival_final")
+		get_tree().quit(0)
+		return
+	p = GameState.patrols.get("alpha", {})
+	p["status"] = "available"
+	p.erase("_awaiting_combat")
+	GameState.set_patrol(p)
+	if GameState.active_missions.has(boss_mid):
+		var bm2: Dictionary = GameState.active_missions[boss_mid]
+		bm2["solo_boss"] = true
+		GameState.active_missions[boss_mid] = bm2
+	$UI/UIRouter.begin_fight(boss_mid)
+	await get_tree().process_frame
+	await get_tree().create_timer(0.8).timeout
+	await _save_shot("survival_boss_start")
+	var r2: Dictionary = await _survival_play_combat_visual(40)
+	total_turns += int(r2.get("turns", 0))
+	last_result = str(r2.get("result", "?"))
+	print("SURVIVAL_FIGHT2 ", last_result, " turns=", r2.get("turns", 0), " hp=", r2.get("hp", -1))
+	await _save_shot("survival_boss_end")
+	if last_result == "WIN":
+		fights_won = 2
+	var elapsed_f := (Time.get_ticks_msec() - t0_ms) / 1000.0
+	print(
+		"SURVIVAL_RUN_RESULT ",
+		("WIN" if fights_won >= 2 else "DEATH"),
+		" fights_won=", fights_won,
+		" turns=", total_turns,
+		" sec=", snappedf(elapsed_f, 0.1),
+		" hp=", r2.get("hp", 0)
+	)
+	await get_tree().create_timer(1.4).timeout
+	get_tree().quit(0)
+
+
+func _survival_play_combat_visual(max_turns: int) -> Dictionary:
+	## Juega un combate visible pero ligero (sin rebuild pesado por carta) hasta WIN/DEATH.
+	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	if combat == null or not CombatState.is_active():
+		return {"result": "FAIL", "turns": 0, "hp": 0}
+	var refresh_was_connected := false
+	if CombatState.combat_updated.is_connected(combat._refresh):
+		CombatState.combat_updated.disconnect(combat._refresh)
+		refresh_was_connected = true
+	combat._busy = false
+	combat._refresh()
+	var turns := 0
+	while CombatState.is_active() and turns < max_turns:
+		turns += 1
+		var wait_i := 0
+		while CombatState.is_active() and CombatState.phase != CombatState.Phase.PLAYER and wait_i < 30:
+			await get_tree().create_timer(0.08).timeout
+			wait_i += 1
+		if not CombatState.is_active() or CombatState.phase != CombatState.Phase.PLAYER:
+			break
+		combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+		if combat:
+			combat._busy = false
+			if "_dying" in combat:
+				combat._dying.clear()
+			elif combat.get("_dying") != null:
+				pass
+			combat._dying.clear()
+		var php := int(CombatState.player.get("hp", 0))
+		var pblock := int(CombatState.player.get("block", CombatState.player.get("shield", 0)))
+		var threat := 0
+		for e in CombatState.enemies:
+			if int(e.get("hp", 0)) <= 0:
+				continue
+			threat = maxi(threat, int(e.get("intent_value", e.get("next_card_value", 8))))
+		var need_guard := php <= 36 or (threat >= 10 and pblock < threat)
+		print("SURVIVAL_TURN ", turns, " hp=", php, " block=", pblock, " threat=", threat, " guard=", need_guard)
+
+		var focus := 0
+		if CombatState.has_method("select_enemy"):
+			CombatState.select_enemy(focus)
+		var scored: Array = []
+		for cid_v in CombatState.hand:
+			var cid := str(cid_v)
+			var def := CardDB.get_card(cid)
+			var typ := str(def.get("type", ""))
+			var score := 0
+			if need_guard and (typ == "defensa" or int(def.get("block", 0)) > 0 or bool(def.get("dodge", false)) or bool(def.get("miss_next", false)) or cid == "provocar"):
+				score = 100 + int(def.get("block", 0))
+			elif int(def.get("next_bonus", 0)) > 0:
+				score = 70
+			elif typ == "ataque" or int(def.get("damage", 0)) > 0:
+				score = 40 + int(def.get("damage", 0))
+			elif typ == "cura" or int(def.get("heal", 0)) > 0:
+				score = 55 if php < 40 else 15
+			else:
+				score = 20
+			scored.append({"id": cid, "score": score})
+		scored.sort_custom(func(a, b): return int(a["score"]) > int(b["score"]))
+
+		var played := 0
+		for item in scored:
+			if not CombatState.is_active() or CombatState.phase != CombatState.Phase.PLAYER:
+				break
+			var cid2 := str(item["id"])
+			if not CombatState.can_play_card(cid2):
+				continue
+			CombatState.play_card(cid2, focus)
+			played += 1
+			await get_tree().create_timer(0.14).timeout
+			if not CombatState.is_active():
+				break
+		print("SURVIVAL_TURN_PLAYED ", turns, " cards=", played, " energy_left=", CombatState.player.get("energy", -1))
+		combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+		if combat and is_instance_valid(combat):
+			combat._busy = false
+			combat._dying.clear()
+			if combat.has_method("_sync_enemy_stats"):
+				combat._sync_enemy_stats(CombatState.get_snapshot())
+			if combat.end_turn_btn:
+				combat.end_turn_btn.disabled = false
+		if not CombatState.is_active():
+			break
+		CombatState.end_player_turn()
+		await get_tree().create_timer(0.35).timeout
+		if combat and is_instance_valid(combat) and turns % 2 == 0:
+			combat._busy = false
+			combat._refresh()
+			await get_tree().create_timer(0.15).timeout
+
+	var hp_end := int(CombatState.player.get("hp", 0))
+	var any_alive := false
+	for e2 in CombatState.enemies:
+		if int(e2.get("hp", 0)) > 0 and not bool(e2.get("detained", false)) and not bool(e2.get("fled", false)):
+			any_alive = true
+	var result := "WIN" if hp_end > 0 and not any_alive else ("DEATH" if hp_end <= 0 else "TIMEOUT")
+	combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	if combat and refresh_was_connected and not CombatState.combat_updated.is_connected(combat._refresh):
+		CombatState.combat_updated.connect(combat._refresh)
+	if combat and is_instance_valid(combat):
+		combat._busy = false
+		combat._refresh()
+	return {"result": result, "turns": turns, "hp": hp_end}
+
 
 
 func _boss_autoplay() -> void:
