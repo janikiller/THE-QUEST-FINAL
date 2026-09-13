@@ -894,10 +894,10 @@ function paveAlley(tiles, size, bx, by, props, noise) {
   props.push({ type: "dumpster", x: ((x0 + x1) / 2) - 0.2, y: y1 - 0.8, color: "#3a4a58" });
   props.push({ type: "trash", x: x0 + 1.4, y: ((y0 + y1) / 2) });
   if (noise.noise2(bx, by) > 0.4) {
-    props.push({ type: "graffiti", x: x0 + 1.5, y: y0 + 2.2 });
+    props.push({ type: "graffiti", x: x0 + 1.5, y: y0 + 2.2, wall: "w", text: "XX" });
   }
   if (noise.noise2(bx + 2, by) > 0.5) {
-    props.push({ type: "graffiti", x: x1 - 1.2, y: y1 - 1.5, text: "CRESPO" });
+    props.push({ type: "graffiti", x: x1 - 1.2, y: y1 - 1.5, wall: "e", text: "CRESPO" });
   }
 }
 

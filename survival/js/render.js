@@ -1547,19 +1547,20 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
         ctx.stroke();
       }
 
+      // Pocos lucernarios (no una rejilla de “ventanas” en el techo)
       const cols = Math.max(1, b.x1 - b.x0 - 2);
       const rows = Math.max(1, b.y1 - b.y0 - 2);
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
-          const wx = roofX + 8 + col * ((roofW - 12) / cols);
-          const wy = roofY + 8 + row * ((roofH - 12) / rows);
-          const ww = Math.max(4, (roofW - 12) / cols - 10);
-          const wh = Math.max(4, (roofH - 12) / rows - 10);
-          const lit = phase.night && (col + row * 3 + b.x0) % 11 === 0;
-          ctx.fillStyle = lit ? "rgba(255, 215, 130, 0.45)" : "rgba(18, 28, 38, 0.6)";
+          if ((col * 5 + row * 7 + b.x0 + b.y0) % 5 !== 0) continue;
+          const wx = roofX + 10 + col * ((roofW - 16) / cols);
+          const wy = roofY + 10 + row * ((roofH - 16) / rows);
+          const ww = Math.max(5, Math.min(14, (roofW - 16) / cols - 14));
+          const wh = Math.max(5, Math.min(12, (roofH - 16) / rows - 14));
+          const lit = phase.night && (col + row * 3 + b.x0) % 9 === 0;
+          ctx.fillStyle = lit ? "rgba(255, 215, 130, 0.4)" : "rgba(14, 20, 28, 0.55)";
           ctx.fillRect(wx, wy, ww, wh);
-          // Casi ningún lucernario aporta glow exterior
-          if (lit && (col + row) % 4 === 0) litWindows.push({ x: wx + ww / 2, y: wy + wh / 2 });
+          if (lit && (col + row) % 5 === 0) litWindows.push({ x: wx + ww / 2, y: wy + wh / 2 });
         }
       }
 
