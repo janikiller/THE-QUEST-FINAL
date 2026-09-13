@@ -1062,7 +1062,7 @@ function placeRug(decor, x, y, w, h, color, variant = 0) {
  * No es ruido aleatorio: camas con mesita y alfombra, cocina, zona de estar, etc.
  */
 
-const GRAFFITI_TAGS = ["CRESPO", "NIEBLA", "NO HAY SALIDA", "XX", "VIVOS?", "SUR", "¡FUERA!", "RATAS", "Ω"];
+const GRAFFITI_TAGS = ["CRESPO", "NIEBLA", "XX", "VIVOS?", "SUR", "FUERA", "RATAS", "Ω", "FN", "OUT"];
 const POSTER_COLORS = ["#8a3030", "#2a4a6a", "#5a3a68", "#3a5a38", "#6a4a20"];
 
 /** Detalles de fachada: graffiti, carteles, enredaderas, suciedad, ventanas tapiadas. */
@@ -1080,13 +1080,16 @@ function decorateFacadeWalls({
     edges.push({ x: x1, y, wall: "e" });
   }
 
+  let graffitiOnBuilding = 0;
+  let artOnBuilding = 0;
   for (const e of edges) {
     if (e.x === doorX && e.y === doorY) continue;
     const n = noise.noise2(e.x * 0.37 + bx, e.y * 0.41 + by);
     const n2 = noise.noise2(e.x * 0.9, e.y * 0.7 + 3);
+    const corner = (e.x === x0 || e.x === x1) && (e.y === y0 || e.y === y1);
 
-    // Suciedad / filtraciones
-    if (n2 > 0.2) {
+    // Suciedad / filtraciones (manchas orgánicas, no marcos)
+    if (n2 > 0.45) {
       props.push({
         type: "wallGrime",
         x: e.x + 0.5,
@@ -1096,20 +1099,20 @@ function decorateFacadeWalls({
       });
     }
 
-    // Enredadera en esquinas y muros húmedos
-    if (n > 0.55 || ((e.x === x0 || e.x === x1) && (e.y === y0 || e.y === y1) && n > 0.28)) {
+    // Enredadera: esquinas y algunos muros húmedos
+    if (corner || n > 0.72) {
       props.push({
         type: "vine",
         x: e.x + 0.5,
         y: e.y + 0.5,
         wall: e.wall,
-        growth: 0.5 + n * 0.55,
-        dead: n2 > 0.55,
+        growth: 0.55 + n * 0.5,
+        dead: n2 > 0.6,
       });
     }
 
-    // Graffiti
-    if (n > 0.58 && n2 > 0.32) {
+    // Graffiti: pocos tags cortos por edificio
+    if (graffitiOnBuilding < 2 && n > 0.68 && n2 > 0.4) {
       const tag = GRAFFITI_TAGS[((e.x * 13 + e.y * 7 + bx) >>> 0) % GRAFFITI_TAGS.length];
       props.push({
         type: "graffiti",
@@ -1119,10 +1122,11 @@ function decorateFacadeWalls({
         text: tag,
         color: n2 > 0.7 ? "#c040a0" : n2 > 0.5 ? "#40a0c8" : "#d0c040",
       });
+      graffitiOnBuilding++;
     }
 
     // Carteles / avisos
-    if (n < 0.22 && n2 > 0.35) {
+    if (n < 0.12 && n2 > 0.5) {
       props.push({
         type: "poster",
         x: e.x + 0.5,
@@ -1133,8 +1137,12 @@ function decorateFacadeWalls({
       });
     }
 
-    // Cuadro / arte colgado
-    if ((style === "residential" || style === "shop" || style === "block" || style === "tower") && n > 0.42 && n2 < 0.62) {
+    // Cuadro / arte colgado (1–2 por fachada)
+    if (
+      artOnBuilding < 2 &&
+      (style === "residential" || style === "shop" || style === "block" || style === "tower") &&
+      n > 0.75 && n2 < 0.5
+    ) {
       props.push({
         type: "wallArt",
         x: e.x + 0.5,
@@ -1142,6 +1150,7 @@ function decorateFacadeWalls({
         wall: e.wall,
         motif: (e.x + e.y * 3) % 4,
       });
+      artOnBuilding++;
     }
   }
 
