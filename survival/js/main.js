@@ -55,8 +55,6 @@ controlsBtn?.addEventListener("click", () => {
 function start() {
   const world = generateWorld(96);
   game = createGame(world);
-  // Un bate al empezar para probar hotbar estilo PZ
-  game.player.inv.bat = (game.player.inv.bat || 0) + 1;
   window.__crespo = game;
   boot.hidden = true;
   death.hidden = true;

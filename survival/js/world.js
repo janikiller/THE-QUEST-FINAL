@@ -249,7 +249,7 @@ const LOOT_DEFS = {
   },
 };
 
-export const BASE_CAPACITY = 10;
+export const BASE_CAPACITY = 12;
 
 export function itemDef(id) {
   return LOOT_DEFS[id] || null;

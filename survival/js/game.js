@@ -43,8 +43,9 @@ export function createGame(world) {
       hunger: 82,
       thirst: 78,
       stamina: 100,
-      inv: { food: 1, water: 1, scrap: 2, wood: 2, med: 1, shirt: 1, jacket: 1, bat: 1 },
+      inv: { food: 1, water: 1, scrap: 1, wood: 1, med: 1, shirt: 1, jacket: 1, bat: 1 },
       equip: { hand: "bat", body: "shirt", bag: null, light: null },
+      gearPhase: "clothes",
       gatherCd: 0,
       attackCd: 0,
       hurtFlash: 0,
@@ -342,9 +343,10 @@ function interact(game) {
 function consume(game) {
   const p = game.player;
   p.gatherCd = 0.4;
-  if (p.inv.med > 0 && p.health < 95) {
+  const maxHp = p.maxHealth || MAX_HEALTH;
+  if (p.inv.med > 0 && p.health < maxHp - 5) {
     p.inv.med -= 1;
-    p.health = Math.min(100, p.health + 42);
+    p.health = Math.min(maxHp, p.health + 55);
     setToast(game, "Usas un botiquín.");
     return;
   }
@@ -736,76 +738,113 @@ export function equipHotbarSlot(game, index) {
   setToast(game, `Arma primaria: ${slot.label}.`);
 }
 
-/** T cicla ropa / mochila / luz (las armas van por hotbar 1-5). */
+/** T cicla por fases: ropa → mochila → luz → ropa… */
 function tryEquipGear(game) {
   const p = game.player;
-  // Primero ciclar ropa distinta si hay varias
-  const ownedClothes = CLOTHES.filter((id) => (p.inv[id] || 0) > 0);
-  if (ownedClothes.length) {
-    const cur = p.equip.body;
-    const idx = Math.max(0, ownedClothes.indexOf(cur));
-    const next = ownedClothes[(idx + 1) % ownedClothes.length];
-    if (next !== cur) {
-      const prev = p.equip.body;
-      p.equip.body = next;
-      if (invUsed(p) > invCapacity(p)) {
-        p.equip.body = prev;
-        setToast(game, "Demasiada carga para esa ropa.");
-        return;
-      }
-      p.gatherCd = 0.15;
-      setToast(game, `Te pones ${itemDef(next).label.toLowerCase()}.`);
-      return;
-    }
-    if (ownedClothes.length === 1 && cur) {
-      // Una sola prenda: quitarla y seguir a mochila/luz
-    } else if (ownedClothes.length > 1) {
-      // Ya dimos la vuelta: quitar ropa
-      setToast(game, `Te quitas ${itemDef(cur).label.toLowerCase()}.`);
-      p.equip.body = null;
-      return;
-    }
-  }
+  if (!p.gearPhase) p.gearPhase = "clothes";
 
-  const order = [LOOT.BAG_BIG, LOOT.BAG, LOOT.FLASHLIGHT, LOOT.LANTERN];
-  for (const id of order) {
-    if ((p.inv[id] || 0) <= 0) continue;
-    const def = itemDef(id);
-    if (!def || def.kind !== "equip") continue;
-    if (p.equip[def.slot] === id) continue;
-    const prev = p.equip[def.slot];
-    p.equip[def.slot] = id;
+  const clothes = CLOTHES.filter((id) => (p.inv[id] || 0) > 0).sort(
+    (a, b) => CLOTHES.indexOf(b) - CLOTHES.indexOf(a)
+  );
+  const bags = [LOOT.BAG_BIG, LOOT.BAG].filter((id) => (p.inv[id] || 0) > 0);
+  const lights = [LOOT.FLASHLIGHT, LOOT.LANTERN].filter((id) => (p.inv[id] || 0) > 0);
+
+  const apply = (slot, id, msg) => {
+    const prev = p.equip[slot];
+    p.equip[slot] = id;
     if (invUsed(p) > invCapacity(p)) {
-      p.equip[def.slot] = prev;
+      p.equip[slot] = prev;
       setToast(game, "Demasiada carga para ese cambio.");
-      return;
+      return false;
     }
     p.gatherCd = 0.15;
-    setToast(game, `Equipas ${def.label.toLowerCase()}.`);
+    setToast(game, msg);
+    return true;
+  };
+
+  // ---- ROPA ----
+  if (p.gearPhase === "clothes") {
+    if (!clothes.length) {
+      p.gearPhase = "bag";
+    } else if (!p.equip.body || !clothes.includes(p.equip.body)) {
+      if (!apply("body", clothes[0], `Te pones ${itemDef(clothes[0]).label.toLowerCase()}.`)) return;
+      return;
+    } else {
+      const idx = clothes.indexOf(p.equip.body);
+      if (idx < clothes.length - 1) {
+        const next = clothes[idx + 1];
+        if (!apply("body", next, `Te pones ${itemDef(next).label.toLowerCase()}.`)) return;
+        return;
+      }
+      p.equip.body = null;
+      p.gatherCd = 0.15;
+      setToast(game, "Te quitas la ropa.");
+      p.gearPhase = "bag";
+      return;
+    }
+  }
+
+  // ---- MOCHILA ----
+  if (p.gearPhase === "bag") {
+    if (!bags.length) {
+      p.gearPhase = "light";
+    } else if (!p.equip.bag) {
+      if (!apply("bag", bags[0], `Equipas ${itemDef(bags[0]).label.toLowerCase()}.`)) {
+        p.gearPhase = "light";
+        // continuar a luz abajo
+      } else return;
+    } else {
+      const idx = bags.indexOf(p.equip.bag);
+      if (idx >= 0 && idx < bags.length - 1) {
+        const next = bags[idx + 1];
+        if (!apply("bag", next, `Equipas ${itemDef(next).label.toLowerCase()}.`)) return;
+        return;
+      }
+      const bag = p.equip.bag;
+      p.equip.bag = null;
+      if (invUsed(p) > invCapacity(p)) {
+        p.equip.bag = bag;
+        setToast(game, "Vacía la mochila antes de quitártela.");
+        p.gearPhase = "light";
+        // no return — pasar a luz
+      } else {
+        p.gatherCd = 0.15;
+        setToast(game, `Dejas ${itemDef(bag).label.toLowerCase()}.`);
+        p.gearPhase = "light";
+        return;
+      }
+    }
+  }
+
+  // ---- LUZ ----
+  if (p.gearPhase === "light") {
+    if (!lights.length) {
+      p.gearPhase = "clothes";
+      if (clothes.length) {
+        apply("body", clothes[0], `Te pones ${itemDef(clothes[0]).label.toLowerCase()}.`);
+      } else {
+        setToast(game, "Nada de ropa/mochila/luz. Armas: teclas 1-5.");
+      }
+      return;
+    }
+    if (!p.equip.light) {
+      apply("light", lights[0], `Equipas ${itemDef(lights[0]).label.toLowerCase()}.`);
+      return;
+    }
+    const idx = lights.indexOf(p.equip.light);
+    if (idx >= 0 && idx < lights.length - 1) {
+      const next = lights[idx + 1];
+      apply("light", next, `Equipas ${itemDef(next).label.toLowerCase()}.`);
+      return;
+    }
+    setToast(game, `Apagas y guardas ${itemDef(p.equip.light).label.toLowerCase()}.`);
+    p.equip.light = null;
+    p.gatherCd = 0.15;
+    p.gearPhase = "clothes";
     return;
   }
 
-  if (p.equip.light) {
-    setToast(game, `Apagas y guardas ${itemDef(p.equip.light).label.toLowerCase()}.`);
-    p.equip.light = null;
-    return;
-  }
-  if (p.equip.body) {
-    setToast(game, `Te quitas ${itemDef(p.equip.body).label.toLowerCase()}.`);
-    p.equip.body = null;
-    return;
-  }
-  if (p.equip.bag) {
-    const bag = p.equip.bag;
-    p.equip.bag = null;
-    if (invUsed(p) > invCapacity(p)) {
-      p.equip.bag = bag;
-      setToast(game, "Vacía la mochila antes de quitártela.");
-      return;
-    }
-    setToast(game, `Dejas ${itemDef(bag).label.toLowerCase()}.`);
-    return;
-  }
+  p.gearPhase = "clothes";
   setToast(game, "Nada de ropa/mochila/luz. Armas: teclas 1-5.");
 }
 
