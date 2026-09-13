@@ -144,8 +144,10 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       }
       if (!nearRoad) continue;
       const n = noise.noise2(x * 0.4, y * 0.4);
-      if ((x + y) % 11 === 0) props.push({ type: "lamp", x: x + 0.5, y: y + 0.5 });
-      else if ((x * 5 + y * 3) % 29 === 0) props.push({ type: "hydrant", x: x + 0.55, y: y + 0.55 });
+      // Farolas muy espaciadas: pocas islas de luz en la noche
+      if ((x + y * 5) % 47 === 0 && x % 3 === 0 && y % 2 === 0) {
+        props.push({ type: "lamp", x: x + 0.5, y: y + 0.5 });
+      } else if ((x * 5 + y * 3) % 29 === 0) props.push({ type: "hydrant", x: x + 0.55, y: y + 0.55 });
       else if ((x * 7 + y) % 23 === 0 && n > 0.2) props.push({ type: "trash", x: x + 0.4, y: y + 0.55 });
       else if ((x + y * 5) % 37 === 0) props.push({ type: "planter", x: x + 0.5, y: y + 0.5, tone: n > 0.5 ? 1 : 0 });
     }
@@ -373,10 +375,7 @@ function pavePark(tiles, size, bx, by, props, noise) {
   props.push({ type: "planter", x: x1 - 0.5, y: y0 + 1.5, tone: 1 });
   props.push({ type: "planter", x: x0 + 1.5, y: y1 - 0.5, tone: 1 });
   props.push({ type: "planter", x: x1 - 0.5, y: y1 - 0.5, tone: 0 });
-  if (noise.noise2(bx + 1, by + 2) > 0.35) {
-    props.push({ type: "lamp", x: midX - 2.2, y: midY - 2.2 });
-    props.push({ type: "lamp", x: midX + 2.2, y: midY + 2.2 });
-  }
+  // Parque: sin farola fija (la noche se siente más vacía)
 }
 
 function paveParking(tiles, size, bx, by, props, noise) {
@@ -397,8 +396,6 @@ function paveParking(tiles, size, bx, by, props, noise) {
       }
     }
   }
-  // Caseta / farola de parking
-  props.push({ type: "lamp", x: x0 + 1.5, y: y0 + 1.5 });
   if (noise.noise2(bx, by + 3) > 0.4) {
     props.push({ type: "dumpster", x: x1 - 0.6, y: y1 - 0.8, color: "#3a3a42" });
   }
@@ -433,8 +430,9 @@ function paveQuay(tiles, size, bx, by, props, noise) {
     props.push({ type: "railing", x: x + 0.5, y: y0 + 1.2 });
   }
   props.push({ type: "bench", x: ((x0 + x1) / 2), y: y0 + 2.2 });
-  props.push({ type: "lamp", x: x0 + 1.5, y: y0 + 1.8 });
-  props.push({ type: "lamp", x: x1 - 0.8, y: y0 + 1.8 });
+  if (noise.noise2(bx + 4, by) > 0.72) {
+    props.push({ type: "lamp", x: ((x0 + x1) / 2), y: y0 + 1.8 });
+  }
   if (noise.noise2(bx, by) > 0.3) {
     props.push({ type: "planter", x: ((x0 + x1) / 2) + 1.5, y: y0 + 2.5, tone: 0 });
   }

@@ -217,8 +217,8 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   const darkness = Math.max(0, 1 - phase.light);
   if (darkness < 0.04 && phase.thunder <= 0) return;
 
-  // Capa de noche
-  ctx.fillStyle = `rgba(4, 6, 12, ${Math.min(0.92, darkness * 1.05)})`;
+  // Noche profunda: la escasez de luces deja calles casi negras
+  ctx.fillStyle = `rgba(2, 4, 10, ${Math.min(0.92, darkness * 1.02)})`;
   ctx.fillRect(0, 0, w, h);
 
   ctx.save();
@@ -227,51 +227,42 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   const px = game.player.x * TILE_PX - camX;
   const py = game.player.y * TILE_PX - camY;
 
-  // Linterna / aura del jugador
-  const playerR = indoor ? 90 : phase.night ? 150 : 70;
-  const pg = ctx.createRadialGradient(px, py, 6, px, py, playerR);
-  pg.addColorStop(0, `rgba(255, 230, 170, ${0.28 + darkness * 0.2})`);
-  pg.addColorStop(0.35, `rgba(255, 210, 140, ${0.12 + darkness * 0.1})`);
-  pg.addColorStop(1, "rgba(255, 210, 140, 0)");
+  // Linterna del jugador: alcance corto
+  const playerR = indoor ? 58 : phase.night ? 78 : 42;
+  const pg = ctx.createRadialGradient(px, py, 3, px, py, playerR);
+  pg.addColorStop(0, `rgba(255, 225, 160, ${0.16 + darkness * 0.08})`);
+  pg.addColorStop(0.45, `rgba(255, 195, 120, ${0.05 + darkness * 0.04})`);
+  pg.addColorStop(1, "rgba(255, 190, 110, 0)");
   ctx.fillStyle = pg;
   ctx.beginPath();
   ctx.arc(px, py, playerR, 0, Math.PI * 2);
   ctx.fill();
 
-  // Farolas
+  // Farolas: halo local, no inunda la manzana
   for (const { p, px: lx, py: ly } of visibleProps) {
     if (p.type !== "lamp") continue;
-    const flicker = phase.weather === "storm" ? 0.75 + Math.sin(game.time * 28 + p.x * 9) * 0.25 : 1;
-    const lg = ctx.createRadialGradient(lx, ly - 8, 3, lx, ly, 95);
-    lg.addColorStop(0, `rgba(255, 215, 130, ${0.42 * flicker})`);
-    lg.addColorStop(0.4, `rgba(255, 190, 100, ${0.16 * flicker})`);
-    lg.addColorStop(1, "rgba(255, 180, 90, 0)");
+    const flicker = phase.weather === "storm" ? 0.7 + Math.sin(game.time * 22 + p.x * 9) * 0.3 : 1;
+    const lr = 48;
+    const lg = ctx.createRadialGradient(lx, ly - 8, 2, lx, ly, lr);
+    lg.addColorStop(0, `rgba(255, 210, 125, ${0.22 * flicker})`);
+    lg.addColorStop(0.45, `rgba(255, 175, 90, ${0.06 * flicker})`);
+    lg.addColorStop(1, "rgba(255, 160, 70, 0)");
     ctx.fillStyle = lg;
     ctx.beginPath();
-    ctx.arc(lx, ly, 95, 0, Math.PI * 2);
+    ctx.arc(lx, ly, lr, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Ventanas encendidas
+  // Ventanas: puntos mínimos de luz
   for (const win of litWindows) {
-    const wg = ctx.createRadialGradient(win.x, win.y, 2, win.x, win.y, 36);
-    wg.addColorStop(0, "rgba(255, 210, 120, 0.35)");
-    wg.addColorStop(1, "rgba(255, 180, 80, 0)");
+    const wr = 16;
+    const wg = ctx.createRadialGradient(win.x, win.y, 1, win.x, win.y, wr);
+    wg.addColorStop(0, "rgba(255, 210, 115, 0.18)");
+    wg.addColorStop(0.55, "rgba(255, 175, 85, 0.04)");
+    wg.addColorStop(1, "rgba(255, 160, 70, 0)");
     ctx.fillStyle = wg;
     ctx.beginPath();
-    ctx.arc(win.x, win.y, 36, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Semáforos en rojo de noche
-  for (const { p, px: tx, py: ty } of visibleProps) {
-    if (p.type !== "traffic") continue;
-    const tg = ctx.createRadialGradient(tx, ty - 12, 1, tx, ty - 12, 28);
-    tg.addColorStop(0, "rgba(255, 60, 50, 0.35)");
-    tg.addColorStop(1, "rgba(255, 40, 30, 0)");
-    ctx.fillStyle = tg;
-    ctx.beginPath();
-    ctx.arc(tx, ty - 12, 28, 0, Math.PI * 2);
+    ctx.arc(win.x, win.y, wr, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -762,21 +753,22 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
       ctx.strokeRect(px + 6 + i * 4, py + bh - t + 8, t - 14, t - 16);
     }
   } else if (style === "shop") {
-    const shopLit = phase.night || phase.light < 0.55;
-    ctx.fillStyle = shopLit ? "rgba(255, 200, 110, 0.45)" : "rgba(35, 55, 75, 0.6)";
+    // Solo ~1 de cada 4 comercios queda encendido de noche
+    const shopLit = (phase.night || phase.light < 0.55) && ((b.x0 + b.y0 * 3) % 4 === 0);
+    ctx.fillStyle = shopLit ? "rgba(255, 200, 110, 0.28)" : "rgba(35, 55, 75, 0.6)";
     ctx.fillRect(px + t + 4, py + bh - t + 14, bw - t * 2 - 8, t - 20);
-    ctx.strokeStyle = shopLit ? "rgba(255, 220, 150, 0.5)" : "rgba(200,210,220,0.35)";
+    ctx.strokeStyle = shopLit ? "rgba(255, 220, 150, 0.35)" : "rgba(200,210,220,0.35)";
     ctx.strokeRect(px + t + 4, py + bh - t + 14, bw - t * 2 - 8, t - 20);
     if (bw > 70) {
       const neon = b.awning || "#8a3030";
-      ctx.fillStyle = neon;
+      ctx.fillStyle = shopLit ? neon : shade(neon, -40);
       ctx.fillRect(px + t + 8, py + bh - t + 2, Math.min(120, bw - t * 2 - 16), 13);
       if (shopLit) {
         litWindows.push({ x: px + t + 40, y: py + bh - t + 8 });
-        ctx.fillStyle = "rgba(255, 180, 120, 0.25)";
+        ctx.fillStyle = "rgba(255, 180, 120, 0.12)";
         ctx.fillRect(px + t + 6, py + bh - t, Math.min(124, bw - t * 2 - 12), 16);
       }
-      ctx.fillStyle = "#f8f0e0";
+      ctx.fillStyle = shopLit ? "#f8f0e0" : "#a09888";
       ctx.font = "700 10px Sora, sans-serif";
       ctx.textAlign = "left";
       ctx.fillText(b.name.split(" ")[0].toUpperCase(), px + t + 12, py + bh - t + 12);
@@ -801,7 +793,7 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
     ctx.stroke();
   }
 
-  // Ventanas en fachada (con glow nocturno)
+  // Ventanas: casi todas apagadas; solo alguna aislada brilla
   const pushWin = (wx, wy, lit) => {
     drawWindow(ctx, wx, wy, lit, style);
     if (lit) litWindows.push({ x: wx + 7, y: wy + 8 });
@@ -809,8 +801,8 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
 
   for (let x = b.x0 + 1; x < b.x1; x++) {
     const wx = x * TILE_PX - camX + 12;
-    const litTop = phase.night && ((x * 3 + b.y0 * 5) % 5) !== 0;
-    const litBot = phase.night && ((x * 5 + b.y1 * 3) % 4) !== 0;
+    const litTop = phase.night && ((x * 3 + b.y0 * 5) % 13) === 0;
+    const litBot = phase.night && ((x * 5 + b.y1 * 3) % 17) === 1;
     if (style === "residential") {
       ctx.fillStyle = shade(b.facade, -32);
       ctx.fillRect(wx - 2, py + 24, 18, 4);
@@ -827,8 +819,8 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
   }
   for (let y = b.y0 + 1; y < b.y1; y++) {
     const wy = y * TILE_PX - camY + 10;
-    pushWin(px + 12, wy, phase.night && ((y * 3 + b.x0) % 4) !== 0);
-    pushWin(px + bw - t + 12, wy, phase.night && ((y * 5 + b.x1) % 3) !== 0);
+    pushWin(px + 12, wy, phase.night && ((y * 3 + b.x0) % 13) === 0);
+    pushWin(px + bw - t + 12, wy, phase.night && ((y * 5 + b.x1) % 17) === 3);
   }
 
   if (!entered) {
@@ -870,10 +862,11 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
           const wy = roofY + 8 + row * ((roofH - 12) / rows);
           const ww = Math.max(4, (roofW - 12) / cols - 10);
           const wh = Math.max(4, (roofH - 12) / rows - 10);
-          const lit = phase.night && (col + row * 2 + b.x0) % 3 !== 0;
-          ctx.fillStyle = lit ? "rgba(255, 215, 130, 0.9)" : "rgba(18, 28, 38, 0.6)";
+          const lit = phase.night && (col + row * 3 + b.x0) % 11 === 0;
+          ctx.fillStyle = lit ? "rgba(255, 215, 130, 0.45)" : "rgba(18, 28, 38, 0.6)";
           ctx.fillRect(wx, wy, ww, wh);
-          if (lit) litWindows.push({ x: wx + ww / 2, y: wy + wh / 2 });
+          // Casi ningún lucernario aporta glow exterior
+          if (lit && (col + row) % 4 === 0) litWindows.push({ x: wx + ww / 2, y: wy + wh / 2 });
         }
       }
 
@@ -928,10 +921,9 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
   ctx.fillRect(doorPx + 10, doorPy + 4, 28, TILE_PX - 6);
   ctx.fillStyle = style === "shop" ? "#c8a060" : "#b8925a";
   ctx.fillRect(doorPx + 14, doorPy + 8, 20, TILE_PX - 14);
-  if (style === "shop" && phase.night) {
-    ctx.fillStyle = "rgba(255,220,140,0.55)";
+  if (style === "shop" && phase.night && ((b.x0 + b.y0 * 3) % 4 === 0)) {
+    ctx.fillStyle = "rgba(255,220,140,0.35)";
     ctx.fillRect(doorPx + 16, doorPy + 12, 16, 12);
-    litWindows.push({ x: doorPx + 24, y: doorPy + 18 });
   }
   ctx.fillStyle = "#e0c080";
   ctx.beginPath();
