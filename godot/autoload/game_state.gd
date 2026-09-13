@@ -610,8 +610,7 @@ func create_boss_mission(district: Dictionary, map_pos: Vector2) -> Dictionary:
 		"radio_log": [],
 	}
 	_seed_inicio_beat(mission)
-	# Boss + escoltas del catálogo anime
-	var escorts: Array = CombatRoster.pick_enemies_for_mission(mid + ":escort", 2)
+	# Duelo 1v1: solo el boss contra ti (sin escoltas).
 	var suspects: Array = []
 	suspects.append({
 		"id": str(boss_def.get("id", "boss")),
@@ -627,16 +626,8 @@ func create_boss_mission(district: Dictionary, map_pos: Vector2) -> Dictionary:
 		"hp_bonus": int(boss_def.get("hp", 100)),
 		"damage": int(boss_def.get("damage", 14)),
 	})
-	for e in escorts:
-		suspects.append({
-			"id": str(e.get("id", "")),
-			"name": str(e.get("name", "Escolta")),
-			"alias": str(e.get("alias", e.get("name", "Escolta"))),
-			"full": str(e.get("sprite", "")),
-			"thumb": str(e.get("portrait", "")),
-			"hp_bonus": int(e.get("hp", 26)),
-		})
 	mission["suspects"] = suspects
+	mission["solo_boss"] = true
 	mission["suspect_icon"] = str(boss_def.get("portrait", ""))
 	var loc: Dictionary = LocationDB.house_for_mission(mid)
 	mission["location_art"] = str(loc.get("path", ""))
@@ -1139,12 +1130,15 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 	var suspects: Array = mission.get("suspects", [])
 	var period := str(mission.get("period", time_of_day()))
 	var is_boss := bool(mission.get("is_boss", false))
+	var solo_boss := is_boss and (bool(mission.get("solo_boss", true)) or suspects.size() == 1)
 	var want := 2
-	if is_boss or period == "night" or str(mission.get("severity", "")) in ["high", "critical"]:
+	if solo_boss:
+		want = 1
+	elif is_boss or period == "night" or str(mission.get("severity", "")) in ["high", "critical"]:
 		want = 3
 	elif period == "day" and str(mission.get("severity", "")) == "low":
 		want = 1
-	if suspects.size() < want:
+	if not solo_boss and suspects.size() < want:
 		var fill: Array = CombatRoster.pick_enemies_for_mission(mission_id, want)
 		for e in fill:
 			suspects.append({
@@ -1255,7 +1249,11 @@ func build_combat_config(mission_id: String, patrol_id: String = "alpha") -> Dic
 
 	var objective := "Detener a los sospechosos"
 	if is_boss:
-		objective = "BOSS: derrota a %s y su escolta" % str(enemies[0].get("name", "el jefe") if not enemies.is_empty() else "el jefe")
+		var bname2 := str(enemies[0].get("name", "el jefe") if not enemies.is_empty() else "el jefe")
+		if solo_boss or enemies.size() <= 1:
+			objective = "DUELO: tú solo contra %s" % bname2
+		else:
+			objective = "BOSS: derrota a %s y su escolta" % bname2
 	else:
 		match period:
 			"day":
