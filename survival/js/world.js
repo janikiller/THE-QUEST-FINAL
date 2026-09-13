@@ -1,6 +1,6 @@
 import { createNoise } from "./noise.js";
 
-/** Niebla Norte — ciudad zombie inventada. */
+/** Niebla Norte — ciudad zombie con manzanas reales y edificios entrables. */
 export const TILE = {
   ROAD: 0,
   SIDEWALK: 1,
@@ -14,21 +14,23 @@ export const TILE = {
   BARRICADE: 9,
   DOOR: 10,
   BASE: 11,
+  CROSSWALK: 12,
 };
 
 export const TILE_META = {
-  [TILE.ROAD]: { name: "asfalto", walk: true, color: "#3a3a3c", speed: 1.05 },
-  [TILE.SIDEWALK]: { name: "acera", walk: true, color: "#6a6864", speed: 1 },
-  [TILE.FLOOR]: { name: "interior", walk: true, color: "#5a4e42", speed: 1, indoor: true },
-  [TILE.WALL]: { name: "muro", walk: false, color: "#2a2a2c", solid: true },
-  [TILE.RUBBLE]: { name: "escombros", walk: true, color: "#5c5348", speed: 0.65 },
-  [TILE.PARK]: { name: "parque", walk: true, color: "#3d5a3a", speed: 0.95 },
-  [TILE.PARKING]: { name: "parking", walk: true, color: "#4a4a4e", speed: 1 },
-  [TILE.WATER]: { name: "canal", walk: false, color: "#2a555c", solid: true, drink: true },
-  [TILE.ALLEY]: { name: "callejón", walk: true, color: "#353438", speed: 0.9 },
-  [TILE.BARRICADE]: { name: "barricada", walk: false, color: "#6b4a28", solid: true, built: true },
-  [TILE.DOOR]: { name: "puerta", walk: true, color: "#8a6a3a", speed: 0.85, door: true },
-  [TILE.BASE]: { name: "base", walk: true, color: "#4a5a3a", speed: 1, indoor: true, base: true },
+  [TILE.ROAD]: { name: "asfalto", walk: true, color: "#3d3f42", speed: 1.05 },
+  [TILE.SIDEWALK]: { name: "acera", walk: true, color: "#8a8680", speed: 1 },
+  [TILE.FLOOR]: { name: "interior", walk: true, color: "#6b5a48", speed: 1, indoor: true },
+  [TILE.WALL]: { name: "muro", walk: false, color: "#4a4540", solid: true },
+  [TILE.RUBBLE]: { name: "escombros", walk: true, color: "#6a6258", speed: 0.65 },
+  [TILE.PARK]: { name: "parque", walk: true, color: "#3f6a3a", speed: 0.95 },
+  [TILE.PARKING]: { name: "parking", walk: true, color: "#4a4c50", speed: 1 },
+  [TILE.WATER]: { name: "canal", walk: false, color: "#2a5a62", solid: true, drink: true },
+  [TILE.ALLEY]: { name: "callejón", walk: true, color: "#3a3a3e", speed: 0.9 },
+  [TILE.BARRICADE]: { name: "barricada", walk: false, color: "#7a5230", solid: true, built: true },
+  [TILE.DOOR]: { name: "puerta", walk: true, color: "#8b6238", speed: 0.9, door: true },
+  [TILE.BASE]: { name: "base", walk: true, color: "#4f6a40", speed: 1, indoor: true, base: true },
+  [TILE.CROSSWALK]: { name: "paso", walk: true, color: "#4a4a4c", speed: 1 },
 };
 
 export const LOOT = {
@@ -53,17 +55,27 @@ export const BUILD = {
   claim: { label: "Marcar base", tile: TILE.BASE, cost: { scrap: 1, wood: 1 }, hint: "1 chatarra + 1 tabla" },
 };
 
-const BLOCK = 7;
+const BLOCK = 10;
+const ROAD_W = 2;
 
-export function generateWorld(size = 96, seed = (Math.random() * 1e9) | 0) {
+const FACADE = ["#6b4f3a", "#4a5560", "#7a5a48", "#5a4a3a", "#3d4a52", "#6a5850", "#4e5a48", "#5c4a55"];
+const BUILDING_NAMES = [
+  "Bloque Luna", "Edificio Sol", "Casa Mistral", "Torre Niebla", "Mercado Sur",
+  "Farmacia Alba", "Taller Río", "Residencial 9", "Almacén Norte", "Café Gris",
+];
+
+export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   const noise = createNoise(seed);
   const tiles = new Uint8Array(size * size);
   const loot = new Map();
   const doors = new Map();
+  const buildings = [];
+  const props = [];
+  const interiors = new Map(); // "x,y" -> furniture type
 
   tiles.fill(TILE.SIDEWALK);
 
-  const canalY = 38 + ((noise.noise2(3, 7) * 14) | 0);
+  const canalY = 42 + ((noise.noise2(3, 7) * 10) | 0);
   for (let x = 0; x < size; x++) {
     for (let dy = -1; dy <= 1; dy++) {
       const y = canalY + dy;
@@ -71,33 +83,44 @@ export function generateWorld(size = 96, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
+  // Calles en retícula
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       if (tiles[y * size + x] === TILE.WATER) continue;
-      if (x % BLOCK <= 1 || y % BLOCK <= 1) tiles[y * size + x] = TILE.ROAD;
+      const onV = x % BLOCK < ROAD_W;
+      const onH = y % BLOCK < ROAD_W;
+      if (onV || onH) tiles[y * size + x] = TILE.ROAD;
     }
   }
 
-  for (let by = 2; by < size - 2; by += BLOCK) {
-    for (let bx = 2; bx < size - 2; bx += BLOCK) {
-      if (by <= canalY + 2 && by + BLOCK >= canalY - 2) {
-        fillRect(tiles, size, bx, by, TILE.RUBBLE);
+  // Pasos de cebra en cruces
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (tiles[y * size + x] !== TILE.ROAD) continue;
+      const nearV = x % BLOCK < ROAD_W;
+      const nearH = y % BLOCK < ROAD_W;
+      if (nearV && nearH) tiles[y * size + x] = TILE.CROSSWALK;
+    }
+  }
+
+  // Manzanas
+  for (let by = ROAD_W; by < size - ROAD_W; by += BLOCK) {
+    for (let bx = ROAD_W; bx < size - ROAD_W; bx += BLOCK) {
+      if (by <= canalY + 3 && by + BLOCK >= canalY - 1) {
+        paveQuay(tiles, size, bx, by, props, noise);
         continue;
       }
-      const roll = noise.noise2(bx * 0.17, by * 0.17);
-      if (roll < 0.18) fillRect(tiles, size, bx, by, TILE.PARK);
-      else if (roll < 0.28) fillRect(tiles, size, bx, by, TILE.PARKING);
-      else if (roll < 0.36) {
-        fillRect(tiles, size, bx, by, TILE.ALLEY);
-        sprinkle(tiles, size, bx, by, TILE.RUBBLE, 0.22, noise);
-      } else {
-        carveBuilding(tiles, size, bx, by, doors, noise);
-      }
+      const roll = noise.noise2(bx * 0.13, by * 0.13);
+      if (roll < 0.16) pavePark(tiles, size, bx, by, props, noise);
+      else if (roll < 0.26) paveParking(tiles, size, bx, by, props, noise);
+      else if (roll < 0.34) paveAlley(tiles, size, bx, by, props, noise);
+      else carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, props, noise, seed);
     }
   }
 
+  // Puentes del canal
   for (let x = 0; x < size; x++) {
-    if (x % BLOCK <= 1) {
+    if (x % BLOCK < ROAD_W) {
       for (let dy = -1; dy <= 1; dy++) {
         const y = canalY + dy;
         if (y >= 0 && y < size) tiles[y * size + x] = TILE.ROAD;
@@ -105,57 +128,98 @@ export function generateWorld(size = 96, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
+  // Farolas en aceras junto a calles
+  for (let y = 1; y < size - 1; y++) {
+    for (let x = 1; x < size - 1; x++) {
+      if (tiles[y * size + x] !== TILE.SIDEWALK) continue;
+      if ((x + y) % 11 !== 0) continue;
+      let nearRoad = false;
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          const t = tiles[(y + oy) * size + (x + ox)];
+          if (t === TILE.ROAD || t === TILE.CROSSWALK) nearRoad = true;
+        }
+      }
+      if (nearRoad) props.push({ type: "lamp", x: x + 0.5, y: y + 0.5 });
+    }
+  }
+
+  // Loot
   for (let y = 1; y < size - 1; y++) {
     for (let x = 1; x < size - 1; x++) {
       const t = tiles[y * size + x];
       const r = noise.noise2(x * 2.1 + 4, y * 2.1 + seed * 0.0001);
-      if (t === TILE.FLOOR && r < 0.12) putLoot(loot, x, y, pickLoot(r));
-      else if (t === TILE.RUBBLE && r < 0.09) putLoot(loot, x, y, r < 0.045 ? LOOT.SCRAP : LOOT.WOOD);
-      else if (t === TILE.PARKING && r < 0.05) putLoot(loot, x, y, LOOT.SCRAP);
-      else if (t === TILE.PARK && r < 0.045) putLoot(loot, x, y, LOOT.WOOD);
-      else if (t === TILE.ALLEY && r < 0.07) putLoot(loot, x, y, r < 0.035 ? LOOT.FOOD : LOOT.SCRAP);
+      if (t === TILE.FLOOR && r < 0.14) putLoot(loot, x, y, pickLoot(r));
+      else if (t === TILE.RUBBLE && r < 0.1) putLoot(loot, x, y, r < 0.05 ? LOOT.SCRAP : LOOT.WOOD);
+      else if (t === TILE.PARKING && r < 0.06) putLoot(loot, x, y, LOOT.SCRAP);
+      else if (t === TILE.PARK && r < 0.05) putLoot(loot, x, y, LOOT.WOOD);
+      else if (t === TILE.ALLEY && r < 0.08) putLoot(loot, x, y, r < 0.04 ? LOOT.FOOD : LOOT.SCRAP);
+      else if (t === TILE.SIDEWALK && r < 0.015) putLoot(loot, x, y, LOOT.SCRAP);
+    }
+  }
+
+  // Coches aparcados en bordes de calle
+  for (let y = 2; y < size - 2; y++) {
+    for (let x = 2; x < size - 2; x++) {
+      if (tiles[y * size + x] !== TILE.ROAD && tiles[y * size + x] !== TILE.CROSSWALK) continue;
+      if (noise.noise2(x * 0.7, y * 0.7) > 0.82 && (x + y * 3) % 17 === 0) {
+        const colors = ["#6a3030", "#2a3a4a", "#3a3a3a", "#4a5a30", "#5a4a20"];
+        props.push({
+          type: "car",
+          x: x + 0.5,
+          y: y + 0.5,
+          rot: x % BLOCK < ROAD_W ? 0 : 1,
+          color: colors[(x * 5 + y) % colors.length],
+        });
+      }
     }
   }
 
   const spawn = findSpawn(tiles, size, noise);
-  return { size, seed, tiles, loot, doors, spawn, noise, canalY };
+  return { size, seed, tiles, loot, doors, buildings, props, interiors, spawn, noise, canalY };
 }
 
-function fillRect(tiles, size, bx, by, tile) {
-  for (let y = by; y < Math.min(size - 1, by + BLOCK - 2); y++) {
-    for (let x = bx; x < Math.min(size - 1, bx + BLOCK - 2); x++) {
-      const cur = tiles[y * size + x];
-      if (cur === TILE.ROAD || cur === TILE.WATER) continue;
-      tiles[y * size + x] = tile;
-    }
-  }
-}
-
-function sprinkle(tiles, size, bx, by, tile, chance, noise) {
-  for (let y = by; y < Math.min(size - 1, by + BLOCK - 2); y++) {
-    for (let x = bx; x < Math.min(size - 1, bx + BLOCK - 2); x++) {
-      if (noise.noise2(x, y) < chance) tiles[y * size + x] = tile;
-    }
-  }
-}
-
-function carveBuilding(tiles, size, bx, by, doors, noise) {
+function blockBounds(bx, by, size) {
   const x0 = bx;
   const y0 = by;
-  const x1 = Math.min(size - 2, bx + BLOCK - 3);
-  const y1 = Math.min(size - 2, by + BLOCK - 3);
+  const x1 = Math.min(size - 1, bx + BLOCK - ROAD_W - 1);
+  const y1 = Math.min(size - 1, by + BLOCK - ROAD_W - 1);
+  return { x0, y0, x1, y1 };
+}
+
+function paveSidewalkRing(tiles, size, bx, by) {
+  const { x0, y0, x1, y1 } = blockBounds(bx, by, size);
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (tiles[y * size + x] === TILE.ROAD || tiles[y * size + x] === TILE.WATER || tiles[y * size + x] === TILE.CROSSWALK) continue;
+      tiles[y * size + x] = TILE.SIDEWALK;
+    }
+  }
+  return { x0, y0, x1, y1 };
+}
+
+function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, props, noise, seed) {
+  const ring = paveSidewalkRing(tiles, size, bx, by);
+  // Edificio inset 1 tile (deja acera)
+  const x0 = ring.x0 + 1;
+  const y0 = ring.y0 + 1;
+  const x1 = ring.x1 - 1;
+  const y1 = ring.y1 - 1;
   if (x1 - x0 < 3 || y1 - y0 < 3) return;
+
+  const facade = FACADE[((bx * 7 + by * 13 + seed) >>> 0) % FACADE.length];
+  const name = BUILDING_NAMES[((bx + by * 3) >>> 0) % BUILDING_NAMES.length];
+  const floors = 2 + (((noise.noise2(bx, by) * 4) | 0) % 4);
 
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
-      const cur = tiles[y * size + x];
-      if (cur === TILE.ROAD || cur === TILE.WATER) continue;
       const edge = x === x0 || x === x1 || y === y0 || y === y1;
       tiles[y * size + x] = edge ? TILE.WALL : TILE.FLOOR;
     }
   }
 
-  const side = (noise.noise2(bx, by) * 4) | 0;
+  // Puerta hacia la calle más cercana
+  const side = (noise.noise2(bx * 0.5, by * 0.5) * 4) | 0;
   let dx = ((x0 + x1) / 2) | 0;
   let dy = ((y0 + y1) / 2) | 0;
   if (side === 0) dy = y0;
@@ -163,12 +227,70 @@ function carveBuilding(tiles, size, bx, by, doors, noise) {
   else if (side === 2) dx = x0;
   else dx = x1;
   tiles[dy * size + dx] = TILE.DOOR;
-  doors.set(`${dx},${dy}`, { hp: 45 });
+  doors.set(`${dx},${dy}`, { hp: 50 });
 
-  if (noise.noise2(bx + 9, by + 3) > 0.7) {
-    const rx = x0 + 1 + ((noise.noise2(bx, 1) * (x1 - x0 - 2)) | 0);
-    const ry = y0 + 1 + ((noise.noise2(1, by) * (y1 - y0 - 2)) | 0);
-    tiles[ry * size + rx] = TILE.RUBBLE;
+  // Muebles interiores
+  for (let y = y0 + 1; y < y1; y++) {
+    for (let x = x0 + 1; x < x1; x++) {
+      if (tiles[y * size + x] !== TILE.FLOOR) continue;
+      const r = noise.noise2(x * 1.3, y * 1.3);
+      if (r < 0.08) interiors.set(`${x},${y}`, "table");
+      else if (r < 0.12) interiors.set(`${x},${y}`, "shelf");
+      else if (r < 0.15) interiors.set(`${x},${y}`, "bed");
+      else if (r < 0.17) interiors.set(`${x},${y}`, "crate");
+    }
+  }
+
+  // Contenedor en acera
+  if (noise.noise2(bx + 2, by + 2) > 0.55) {
+    props.push({ type: "dumpster", x: ring.x0 + 0.5, y: ((y0 + y1) / 2) + 0.15 });
+  }
+
+  buildings.push({ x0, y0, x1, y1, doorX: dx, doorY: dy, facade, name, floors });
+}
+
+function pavePark(tiles, size, bx, by, props, noise) {
+  const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
+  for (let y = y0 + 1; y <= y1 - 1; y++) {
+    for (let x = x0 + 1; x <= x1 - 1; x++) {
+      tiles[y * size + x] = TILE.PARK;
+      if (noise.noise2(x * 0.9, y * 0.9) > 0.72) {
+        props.push({ type: "tree", x: x + 0.5, y: y + 0.5, r: 10 + (noise.noise2(x, y) * 8) });
+      }
+    }
+  }
+  props.push({ type: "bench", x: ((x0 + x1) / 2) + 0.5, y: ((y0 + y1) / 2) + 0.5 });
+}
+
+function paveParking(tiles, size, bx, by, props, noise) {
+  const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
+  for (let y = y0 + 1; y <= y1 - 1; y++) {
+    for (let x = x0 + 1; x <= x1 - 1; x++) {
+      tiles[y * size + x] = TILE.PARKING;
+      if ((x + y) % 5 === 0 && noise.noise2(x, y) > 0.4) {
+        const colors = ["#5a2020", "#2a3040", "#3a3a38", "#4a5030"];
+        props.push({ type: "car", x: x + 0.5, y: y + 0.5, rot: 1, color: colors[(x + y) % colors.length] });
+      }
+    }
+  }
+}
+
+function paveAlley(tiles, size, bx, by, props, noise) {
+  const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
+  for (let y = y0 + 1; y <= y1 - 1; y++) {
+    for (let x = x0 + 1; x <= x1 - 1; x++) {
+      tiles[y * size + x] = noise.noise2(x, y) > 0.65 ? TILE.RUBBLE : TILE.ALLEY;
+    }
+  }
+  props.push({ type: "dumpster", x: ((x0 + x1) / 2) + 0.5, y: y0 + 1.5 });
+}
+
+function paveQuay(tiles, size, bx, by, props, noise) {
+  const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
+  for (let y = y0 + 1; y <= y1 - 1; y++) {
+    for (let x = x0 + 1; x <= x1 - 1; x++) {
+      tiles[y * size + x] = noise.noise2(x * 0.5, y * 0.5) > 0.55 ? TILE.RUBBLE : TILE.SIDEWALK;
+    }
   }
 }
 
@@ -189,19 +311,17 @@ function findSpawn(tiles, size, noise) {
   for (let y = 4; y < size - 4; y++) {
     for (let x = 4; x < size - 4; x++) {
       const t = tiles[y * size + x];
-      if (t !== TILE.ROAD && t !== TILE.SIDEWALK && t !== TILE.PARKING) continue;
-      let nearFloor = false;
-      for (let oy = -4; oy <= 4 && !nearFloor; oy++) {
-        for (let ox = -4; ox <= 4; ox++) {
-          if (tiles[(y + oy) * size + (x + ox)] === TILE.FLOOR) {
-            nearFloor = true;
+      if (t !== TILE.ROAD && t !== TILE.SIDEWALK && t !== TILE.CROSSWALK) continue;
+      let nearDoor = false;
+      for (let oy = -5; oy <= 5 && !nearDoor; oy++) {
+        for (let ox = -5; ox <= 5; ox++) {
+          if (tiles[(y + oy) * size + (x + ox)] === TILE.DOOR) {
+            nearDoor = true;
             break;
           }
         }
       }
-      if (nearFloor) {
-        candidates.push({ x: x + 0.5, y: y + 0.5, score: noise.noise2(x * 0.2, y * 0.2) });
-      }
+      if (nearDoor) candidates.push({ x: x + 0.5, y: y + 0.5, score: noise.noise2(x * 0.2, y * 0.2) });
     }
   }
   candidates.sort((a, b) => b.score - a.score);
@@ -240,4 +360,10 @@ export function lootLabel(id) {
 
 export function lootGatherText(id) {
   return LOOT_DEFS[id]?.gather ?? id;
+}
+
+export function buildingAt(world, x, y) {
+  const ix = Math.floor(x);
+  const iy = Math.floor(y);
+  return world.buildings.find((b) => ix >= b.x0 && ix <= b.x1 && iy >= b.y0 && iy <= b.y1) || null;
 }

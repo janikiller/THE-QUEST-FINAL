@@ -8,6 +8,7 @@ import {
   setTile,
   lootLabel,
   lootGatherText,
+  buildingAt,
 } from "./world.js";
 
 const DAY_LEN = 200;
@@ -41,6 +42,7 @@ export function createGame(world) {
     baseClaimed: false,
     kills: 0,
     noisePulse: 0,
+    lastBuilding: null,
   };
   seedZombies(game, 30);
   return game;
@@ -110,6 +112,16 @@ export function updateGame(game, dt) {
     if (sprint) game.noisePulse = Math.max(game.noisePulse, 2.5);
   } else {
     p.stamina = Math.min(100, p.stamina + 14 * dt);
+  }
+
+  // Aviso al entrar en un edificio (el tejado se oculta)
+  const bNow = buildingAt(game.world, p.x, p.y);
+  const indoorNow = TILE_META[tileAt(game.world, p.x, p.y)]?.indoor;
+  if (bNow && indoorNow && game.lastBuilding !== bNow) {
+    setToast(game, `Entras en ${bNow.name}`);
+    game.lastBuilding = bNow;
+  } else if (!indoorNow) {
+    game.lastBuilding = null;
   }
 
   p.hunger = Math.max(0, p.hunger - 0.28 * dt);
