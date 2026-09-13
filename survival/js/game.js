@@ -97,13 +97,13 @@ export function dayPhase(game) {
   if (t < 0.18) phase = { name: "Amanecer", light: 0.45 + t * 2.8, night: false };
   else if (t < 0.48) phase = { name: "Día", light: 1, night: false };
   else if (t < 0.6) phase = { name: "Atardecer", light: 0.78 - (t - 0.48) * 1.5, night: false };
-  else if (t < 0.72) phase = { name: "Anochecer", light: 0.42 - (t - 0.6) * 1.8, night: true };
-  else phase = { name: "Noche", light: 0.1, night: true };
+  else if (t < 0.72) phase = { name: "Anochecer", light: 0.52 - (t - 0.6) * 1.2, night: true };
+  else phase = { name: "Noche", light: 0.42, night: true };
 
   const w = game.weather;
-  if (w.kind === "cloudy") phase.light *= 0.88;
-  if (w.kind === "rain") phase.light *= 0.72;
-  if (w.kind === "storm") phase.light *= 0.55;
+  if (w.kind === "cloudy") phase.light *= 0.94;
+  if (w.kind === "rain") phase.light *= 0.88;
+  if (w.kind === "storm") phase.light *= 0.78;
   if (w.thunder > 0) phase.light = Math.min(1, phase.light + w.thunder * 0.85);
   phase.weather = w.kind;
   phase.rain = w.intensity;

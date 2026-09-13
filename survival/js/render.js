@@ -45,11 +45,11 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     sky.addColorStop(1, "#6a7080");
   } else if (phase.night) {
     if (storming) {
-      sky.addColorStop(0, "#05070c");
-      sky.addColorStop(1, "#121018");
+      sky.addColorStop(0, "#12151e");
+      sky.addColorStop(1, "#1a1822");
     } else {
-      sky.addColorStop(0, "#0a101a");
-      sky.addColorStop(1, "#181410");
+      sky.addColorStop(0, "#151c28");
+      sky.addColorStop(1, "#1e1a16");
     }
   } else if (phase.name === "Atardecer" || phase.name === "Anochecer") {
     sky.addColorStop(0, raining ? "#3a3038" : "#5a3828");
@@ -174,10 +174,11 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     ctx.fillRect(0, 0, w, h);
   }
 
-  // Niebla / viñeta
-  const fogA = phase.night ? 0.5 : raining ? 0.34 : 0.18;
-  const fog = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.2, w / 2, h / 2, Math.max(w, h) * 0.78);
+  // Viñeta muy suave (no oscurece el centro)
+  const fogA = phase.night ? 0.12 : raining ? 0.22 : 0.14;
+  const fog = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.45, w / 2, h / 2, Math.max(w, h) * 0.9);
   fog.addColorStop(0, "rgba(0,0,0,0)");
+  fog.addColorStop(0.7, "rgba(0,0,0,0)");
   fog.addColorStop(1, phase.night ? `rgba(6,8,14,${fogA})` : `rgba(60,70,78,${fogA})`);
   ctx.fillStyle = fog;
   ctx.fillRect(0, 0, w, h);
@@ -227,8 +228,7 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   const darkness = Math.max(0, 1 - phase.light);
   if (darkness < 0.04 && phase.thunder <= 0) return;
 
-  // Farolas cercanas (margen amplio para que iluminen al entrar en cámara)
-  const lampMargin = 150;
+  const lampMargin = 220;
   const lamps = [];
   for (const p of game.world.props) {
     if (p.type !== "lamp") continue;
@@ -238,94 +238,97 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     lamps.push({ p, lx, ly });
   }
 
-  // Noche profunda: calles negras fuera de las farolas
-  ctx.fillStyle = `rgba(2, 4, 12, ${Math.min(0.94, darkness * 1.06)})`;
-  ctx.fillRect(0, 0, w, h);
-
   const px = game.player.x * TILE_PX - camX;
   const py = game.player.y * TILE_PX - camY;
-  const playerR = indoor ? 58 : phase.night ? 72 : 42;
+  const playerR = indoor ? 110 : phase.night ? 170 : 80;
   const cool = phase.rain > 0.25 || phase.weather === "storm";
 
-  // Abrir pozos de luz (como charcos circulares bajo cada farola)
-  ctx.save();
-  ctx.globalCompositeOperation = "destination-out";
+  // Máscara aparte: destination-out no borra el mundo
+  const mask = getLightMask(w, h);
+  const m = mask.getContext("2d");
+  m.setTransform(1, 0, 0, 1, 0, 0);
+  m.clearRect(0, 0, w, h);
+  // Velo nocturno ligero: la calle se lee también fuera de farolas
+  const veil = phase.night ? Math.min(0.2, 0.1 + darkness * 0.14) : Math.min(0.18, darkness * 0.28);
+  m.fillStyle = `rgba(8, 12, 24, ${veil})`;
+  m.fillRect(0, 0, w, h);
+
+  m.globalCompositeOperation = "destination-out";
   for (const { p, lx, ly } of lamps) {
     const flicker =
-      phase.weather === "storm" ? 0.72 + Math.sin(game.time * 22 + p.x * 9) * 0.28 : 1;
-    // El farol cuelga a la derecha del poste
+      phase.weather === "storm" ? 0.85 + Math.sin(game.time * 16 + p.x * 9) * 0.15 : 1;
     const cx = lx + 10;
     const cy = ly + 4;
-    const lr = 112;
-    const hole = ctx.createRadialGradient(cx, cy, 6, cx, cy, lr);
-    hole.addColorStop(0, `rgba(0,0,0,${0.92 * flicker})`);
-    hole.addColorStop(0.3, `rgba(0,0,0,${0.55 * flicker})`);
-    hole.addColorStop(0.65, `rgba(0,0,0,${0.16 * flicker})`);
+    const lr = 165;
+    const hole = m.createRadialGradient(cx, cy, 10, cx, cy, lr);
+    hole.addColorStop(0, `rgba(0,0,0,${0.98 * flicker})`);
+    hole.addColorStop(0.4, `rgba(0,0,0,${0.7 * flicker})`);
+    hole.addColorStop(0.75, `rgba(0,0,0,${0.28 * flicker})`);
     hole.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = hole;
-    ctx.beginPath();
-    ctx.arc(cx, cy, lr, 0, Math.PI * 2);
-    ctx.fill();
+    m.fillStyle = hole;
+    m.beginPath();
+    m.arc(cx, cy, lr, 0, Math.PI * 2);
+    m.fill();
   }
   {
-    const hole = ctx.createRadialGradient(px, py, 4, px, py, playerR);
-    hole.addColorStop(0, "rgba(0,0,0,0.75)");
-    hole.addColorStop(0.5, "rgba(0,0,0,0.28)");
+    const hole = m.createRadialGradient(px, py, 10, px, py, playerR);
+    hole.addColorStop(0, "rgba(0,0,0,0.95)");
+    hole.addColorStop(0.5, "rgba(0,0,0,0.45)");
     hole.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = hole;
-    ctx.beginPath();
-    ctx.arc(px, py, playerR, 0, Math.PI * 2);
-    ctx.fill();
+    m.fillStyle = hole;
+    m.beginPath();
+    m.arc(px, py, playerR, 0, Math.PI * 2);
+    m.fill();
   }
   for (const win of litWindows) {
-    const wr = 22;
-    const hole = ctx.createRadialGradient(win.x, win.y, 1, win.x, win.y, wr);
-    hole.addColorStop(0, "rgba(0,0,0,0.45)");
+    const wr = 42;
+    const hole = m.createRadialGradient(win.x, win.y, 1, win.x, win.y, wr);
+    hole.addColorStop(0, "rgba(0,0,0,0.65)");
     hole.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = hole;
-    ctx.beginPath();
-    ctx.arc(win.x, win.y, wr, 0, Math.PI * 2);
-    ctx.fill();
+    m.fillStyle = hole;
+    m.beginPath();
+    m.arc(win.x, win.y, wr, 0, Math.PI * 2);
+    m.fill();
   }
-  ctx.restore();
+  m.globalCompositeOperation = "source-over";
+  ctx.drawImage(mask, 0, 0);
 
-  // Tinte suave sobre los pozos (blanco-azulado en lluvia, ámbar en seco)
+  // Brillo de farolas encima
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   for (const { p, lx, ly } of lamps) {
     const flicker =
-      phase.weather === "storm" ? 0.72 + Math.sin(game.time * 22 + p.x * 9) * 0.28 : 1;
+      phase.weather === "storm" ? 0.85 + Math.sin(game.time * 16 + p.x * 9) * 0.15 : 1;
     const cx = lx + 10;
     const cy = ly + 4;
-    const lr = 104;
-    const lg = ctx.createRadialGradient(cx, cy - 10, 2, cx, cy, lr);
+    const lr = 155;
+    const lg = ctx.createRadialGradient(cx, cy - 8, 2, cx, cy, lr);
     if (cool) {
-      lg.addColorStop(0, `rgba(210, 225, 255, ${0.3 * flicker})`);
-      lg.addColorStop(0.35, `rgba(160, 190, 235, ${0.12 * flicker})`);
-      lg.addColorStop(1, "rgba(130, 160, 210, 0)");
+      lg.addColorStop(0, `rgba(225, 238, 255, ${0.42 * flicker})`);
+      lg.addColorStop(0.4, `rgba(175, 205, 245, ${0.18 * flicker})`);
+      lg.addColorStop(1, "rgba(140, 170, 220, 0)");
     } else {
-      lg.addColorStop(0, `rgba(255, 230, 170, ${0.28 * flicker})`);
-      lg.addColorStop(0.4, `rgba(255, 190, 110, ${0.1 * flicker})`);
-      lg.addColorStop(1, "rgba(255, 160, 70, 0)");
+      lg.addColorStop(0, `rgba(255, 238, 190, ${0.4 * flicker})`);
+      lg.addColorStop(0.4, `rgba(255, 205, 130, ${0.16 * flicker})`);
+      lg.addColorStop(1, "rgba(255, 170, 80, 0)");
     }
     ctx.fillStyle = lg;
     ctx.beginPath();
     ctx.arc(cx, cy, lr, 0, Math.PI * 2);
     ctx.fill();
 
-    // Núcleo del foco
-    const core = ctx.createRadialGradient(cx, cy - 14, 0, cx, cy - 14, 14);
-    core.addColorStop(0, cool ? `rgba(240,245,255,${0.55 * flicker})` : `rgba(255,240,200,${0.55 * flicker})`);
+    const core = ctx.createRadialGradient(cx, cy - 14, 0, cx, cy - 14, 20);
+    core.addColorStop(0, cool ? `rgba(250,252,255,${0.75 * flicker})` : `rgba(255,248,220,${0.75 * flicker})`);
     core.addColorStop(1, "rgba(255,220,160,0)");
     ctx.fillStyle = core;
     ctx.beginPath();
-    ctx.arc(cx, cy - 14, 14, 0, Math.PI * 2);
+    ctx.arc(cx, cy - 14, 20, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  const pg = ctx.createRadialGradient(px, py, 3, px, py, playerR);
-  pg.addColorStop(0, `rgba(255, 225, 160, ${0.14 + darkness * 0.06})`);
-  pg.addColorStop(0.45, `rgba(255, 195, 120, ${0.04 + darkness * 0.03})`);
+  const pg = ctx.createRadialGradient(px, py, 6, px, py, playerR);
+  pg.addColorStop(0, `rgba(255, 235, 190, ${0.2 + darkness * 0.08})`);
+  pg.addColorStop(0.5, `rgba(255, 210, 150, ${0.07 + darkness * 0.04})`);
   pg.addColorStop(1, "rgba(255, 190, 110, 0)");
   ctx.fillStyle = pg;
   ctx.beginPath();
@@ -333,10 +336,10 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   ctx.fill();
 
   for (const win of litWindows) {
-    const wr = 18;
+    const wr = 32;
     const wg = ctx.createRadialGradient(win.x, win.y, 1, win.x, win.y, wr);
-    wg.addColorStop(0, "rgba(255, 210, 115, 0.16)");
-    wg.addColorStop(0.55, "rgba(255, 175, 85, 0.04)");
+    wg.addColorStop(0, "rgba(255, 220, 140, 0.26)");
+    wg.addColorStop(0.55, "rgba(255, 185, 100, 0.08)");
     wg.addColorStop(1, "rgba(255, 160, 70, 0)");
     ctx.fillStyle = wg;
     ctx.beginPath();
@@ -346,17 +349,27 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   ctx.restore();
 }
 
+let _lightMask = null;
+function getLightMask(w, h) {
+  if (!_lightMask) _lightMask = document.createElement("canvas");
+  if (_lightMask.width !== w || _lightMask.height !== h) {
+    _lightMask.width = Math.max(1, w | 0);
+    _lightMask.height = Math.max(1, h | 0);
+  }
+  return _lightMask;
+}
+
 function tileIndex(game, x, y) {
   return game.world.tiles[Math.floor(y) * game.world.size + Math.floor(x)];
 }
 
 function drawGround(ctx, game, tile, tx, ty, px, py, phase) {
   if (tile === TILE.ROAD || tile === TILE.CROSSWALK) {
-    drawRoad(ctx, game, tile, tx, ty, px, py);
+    drawRoad(ctx, game, tile, tx, ty, px, py, phase);
     return;
   }
   if (tile === TILE.SIDEWALK) {
-    drawSidewalk(ctx, game, tx, ty, px, py);
+    drawSidewalk(ctx, game, tx, ty, px, py, phase);
     return;
   }
   if (tile === TILE.WATER) {
@@ -401,10 +414,12 @@ function neighborTile(game, tx, ty) {
   return game.world.tiles[ty * game.world.size + tx];
 }
 
-function drawRoad(ctx, game, tile, tx, ty, px, py) {
+function drawRoad(ctx, game, tile, tx, ty, px, py, phase) {
   const n = ((tx * 19 + ty * 11) & 15);
   const patch = ((tx * 13 + ty * 7) % 19) === 0;
-  const shade = patch ? 58 + (n % 6) : 46 + n;
+  // De noche el asfalto sube de tono para no perderse en el velo
+  const nightBoost = phase?.night ? 28 : 0;
+  const shade = (patch ? 58 + (n % 6) : 46 + n) + nightBoost;
   ctx.fillStyle = `rgb(${shade},${shade + 1},${shade + 4})`;
   ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
 
@@ -517,8 +532,9 @@ function drawRoad(ctx, game, tile, tx, ty, px, py) {
   }
 }
 
-function drawSidewalk(ctx, game, tx, ty, px, py) {
-  const base = 136 + ((tx * 3 + ty * 5) % 8);
+function drawSidewalk(ctx, game, tx, ty, px, py, phase) {
+  const nightBoost = phase?.night ? 18 : 0;
+  const base = 136 + ((tx * 3 + ty * 5) % 8) + nightBoost;
   ctx.fillStyle = `rgb(${base},${base - 3},${base - 8})`;
   ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
 
