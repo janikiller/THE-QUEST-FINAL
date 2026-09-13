@@ -2,6 +2,15 @@
 
 Roguelike policial de cartas en Godot 4.7.2. **Una patrulla (García)** interviene en misiones del mapa.
 
+## CRESPO — Supervivencia 2D
+
+Isla procedural inventada: [`survival/`](survival/). Mapa 2D, biomas, recursos, día/noche y lobos.
+
+```bash
+python3 -m http.server 8080
+# http://localhost:8080/survival/
+```
+
 ## Jugar (Godot)
 
 ```bash
