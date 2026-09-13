@@ -1,4 +1,4 @@
-import { generateWorld } from "./world.js";
+import { generateWorld, TILE, TILE_META, tileAt } from "./world.js";
 import {
   createGame,
   updateGame,
@@ -14,6 +14,7 @@ import {
   invUsed,
 } from "./game.js";
 import { createRenderer } from "./render.js";
+import { createAudio } from "./audio.js";
 
 const boot = document.getElementById("boot");
 const death = document.getElementById("death");
@@ -41,6 +42,7 @@ const bars = {
 
 let game = null;
 let renderer = null;
+let audio = createAudio();
 let last = 0;
 let raf = 0;
 
@@ -73,6 +75,7 @@ function start() {
   bindKeys(game);
   bindMouse(game);
   bindHudClicks();
+  audio.unlock();
   last = performance.now();
   cancelAnimationFrame(raf);
   raf = requestAnimationFrame(loop);
@@ -167,6 +170,9 @@ function loop(now) {
   last = now;
   if (!game) return;
 
+  const tile = tileAt(game.world, game.player.x, game.player.y);
+  game._audioIndoor = Boolean(TILE_META[tile]?.indoor) || tile === TILE.DOOR;
+  audio.update(game, dt);
   updateGame(game, dt);
   renderer.draw(game);
   syncHud(game);

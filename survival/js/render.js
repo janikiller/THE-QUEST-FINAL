@@ -42,12 +42,18 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   const camY = game.player.y * TILE_PX - h / 2 + shakeY;
   const raining = phase.rain > 0.15;
   const storming = phase.weather === "storm";
+  const sanding = phase.weather === "sandstorm" || phase.sand > 0.2;
+  const windy = phase.weather === "wind" || phase.wind > 0.9;
 
   // Cielo / atmósfera
   const sky = ctx.createLinearGradient(0, 0, 0, h);
   if (phase.thunder > 0.05) {
     sky.addColorStop(0, "#c8d0e0");
     sky.addColorStop(1, "#6a7080");
+  } else if (sanding) {
+    sky.addColorStop(0, phase.night ? "#2a2218" : "#6a5340");
+    sky.addColorStop(0.5, phase.night ? "#3a2e20" : "#8a6a48");
+    sky.addColorStop(1, phase.night ? "#1a1410" : "#4a3828");
   } else if (phase.night) {
     if (storming) {
       sky.addColorStop(0, "#12151e");
@@ -63,6 +69,9 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   } else if (raining) {
     sky.addColorStop(0, "#5a646c");
     sky.addColorStop(1, "#3a4248");
+  } else if (windy) {
+    sky.addColorStop(0, "#5a5852");
+    sky.addColorStop(1, "#3a3834");
   } else {
     // Día ceniciento post-colapso
     sky.addColorStop(0, "#4a4e52");
@@ -169,8 +178,15 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visibleProps, playerIndoor);
 
   // Lluvia encima de la noche (gotas visibles)
-  if (phase.rain > 0.08) {
+  if (phase.rain > 0.08 && !sanding) {
     drawRain(ctx, w, h, game, phase);
+  }
+
+  // Tormenta de arena / polvo
+  if (sanding) {
+    drawSandstorm(ctx, w, h, game, phase);
+  } else if (windy || phase.wind > 0.7) {
+    drawWindDust(ctx, w, h, game, phase);
   }
 
   // Flash de rayo
@@ -210,22 +226,33 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     ctx.restore();
   }
 
-  // Viñeta muy suave (no oscurece el centro)
-  const fogA = phase.night ? 0.28 : raining ? 0.32 : 0.24;
+  // Viñeta / velo atmosférico
+  const fogA = sanding ? 0.42 : phase.night ? 0.28 : raining ? 0.32 : 0.24;
   const fog = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.28, w / 2, h / 2, Math.max(w, h) * 0.85);
   fog.addColorStop(0, "rgba(0,0,0,0)");
-  fog.addColorStop(0.55, phase.night ? "rgba(8,10,14,0.08)" : "rgba(40,36,30,0.1)");
-  fog.addColorStop(1, phase.night ? `rgba(4,5,8,${fogA})` : `rgba(32,28,24,${fogA})`);
+  if (sanding) {
+    fog.addColorStop(0.45, "rgba(90,70,40,0.12)");
+    fog.addColorStop(1, `rgba(60,42,22,${fogA})`);
+  } else {
+    fog.addColorStop(0.55, phase.night ? "rgba(8,10,14,0.08)" : "rgba(40,36,30,0.1)");
+    fog.addColorStop(1, phase.night ? `rgba(4,5,8,${fogA})` : `rgba(32,28,24,${fogA})`);
+  }
   ctx.fillStyle = fog;
   ctx.fillRect(0, 0, w, h);
 
-  // Ceniza / polvo en suspensión
-  ctx.fillStyle = phase.night ? "rgba(180,170,150,0.045)" : "rgba(120,110,95,0.06)";
+  // Ceniza / polvo en suspensión (más con viento)
+  const ashN = sanding ? 55 : windy ? 40 : 28;
+  const windPush = phase.wind * 40 + phase.gust * 60;
+  ctx.fillStyle = sanding
+    ? "rgba(210,170,110,0.12)"
+    : phase.night
+      ? "rgba(180,170,150,0.045)"
+      : "rgba(120,110,95,0.06)";
   const ashSeed = (game.time * 18) | 0;
-  for (let i = 0; i < 28; i++) {
-    const ax = ((ashSeed * 17 + i * 97) % Math.max(1, w | 0));
+  for (let i = 0; i < ashN; i++) {
+    const ax = ((ashSeed * 17 + i * 97 + game.time * windPush) % Math.max(1, w | 0) + w) % Math.max(1, w | 0);
     const ay = ((ashSeed * 13 + i * 53 + game.time * 12 * (i % 5)) % Math.max(1, h | 0));
-    ctx.fillRect(ax, ay, 2, 2);
+    ctx.fillRect(ax, ay, sanding ? 3 : 2, sanding ? 2 : 2);
   }
 
   drawMinimap(mctx, mini, game);
@@ -239,17 +266,74 @@ function drawWetSheen(ctx, px, py, time, tx, ty) {
   ctx.fill();
 }
 
+function drawSandstorm(ctx, w, h, game, phase) {
+  const t = game.time;
+  const wind = 18 + phase.wind * 28 + phase.gust * 40;
+  const veil = 0.18 + phase.sand * 0.22 + phase.gust * 0.08;
+  ctx.fillStyle = `rgba(150, 110, 60, ${veil})`;
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = `rgba(90, 60, 30, ${veil * 0.45})`;
+  ctx.fillRect(0, 0, w, h * 0.35);
+
+  ctx.strokeStyle = phase.night ? "rgba(200,160,100,0.22)" : "rgba(230,190,130,0.28)";
+  ctx.lineWidth = 1.4;
+  const n = Math.floor(90 + phase.sand * 140 + phase.gust * 80);
+  for (let i = 0; i < n; i++) {
+    const seed = (i * 6151 + ((t * 280) | 0)) % 12000;
+    const y = ((seed * 41 + t * (30 + (i % 9))) % (h + 20)) - 10;
+    const x = ((seed * 17 + t * wind * (0.7 + (i % 5) * 0.08)) % (w + 80)) - 40;
+    const len = 14 + (seed % 22);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + len, y + (seed % 5) - 2);
+    ctx.stroke();
+  }
+
+  // Remolinos bajos
+  ctx.fillStyle = "rgba(180,140,80,0.1)";
+  for (let i = 0; i < 10; i++) {
+    const seed = (i * 997 + ((t * 9) | 0)) % 4000;
+    const x = ((seed * 23 + t * wind * 0.5) % (w + 60)) - 30;
+    const y = h * 0.45 + (seed % Math.floor(h * 0.5));
+    ctx.beginPath();
+    ctx.ellipse(x, y, 28 + (seed % 20), 5 + (seed % 4), -0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawWindDust(ctx, w, h, game, phase) {
+  const t = game.time;
+  const wind = 10 + phase.wind * 22 + phase.gust * 35;
+  ctx.strokeStyle = phase.night ? "rgba(170,160,140,0.12)" : "rgba(140,130,110,0.14)";
+  ctx.lineWidth = 1;
+  const n = Math.floor(36 + phase.wind * 40);
+  for (let i = 0; i < n; i++) {
+    const seed = (i * 5107 + ((t * 160) | 0)) % 9000;
+    const y = ((seed * 37) % h);
+    const x = ((seed * 19 + t * wind) % (w + 50)) - 25;
+    const len = 8 + (seed % 14);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + len, y + 1);
+    ctx.stroke();
+  }
+}
+
 function drawRain(ctx, w, h, game, phase) {
   const n = Math.floor(80 + phase.rain * 160);
   const wind = phase.wind * 10;
-  ctx.strokeStyle = phase.night ? "rgba(170,190,220,0.35)" : "rgba(200,210,220,0.4)";
-  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = phase.night
+    ? phase.weather === "storm"
+      ? "rgba(170,190,230,0.45)"
+      : "rgba(170,190,220,0.35)"
+    : "rgba(200,210,220,0.4)";
+  ctx.lineWidth = phase.weather === "storm" ? 1.5 : 1.2;
   const t = game.time;
   for (let i = 0; i < n; i++) {
     const seed = (i * 7919 + ((t * 420) | 0)) % 10000;
     const x = ((seed * 37) % w) + wind * (seed % 7);
     const y = ((seed * 53 + t * (380 + phase.rain * 220)) % (h + 40)) - 20;
-    const len = 8 + (seed % 10);
+    const len = 8 + (seed % 10) + (phase.weather === "storm" ? 4 : 0);
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(x + wind * 0.6, y + len);

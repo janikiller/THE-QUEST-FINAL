@@ -160,6 +160,8 @@ export function createGame(world) {
       nextChange: 14 + Math.random() * 10,
       thunder: 0,
       wind: 0.45,
+      gust: 0,
+      gustTimer: 4 + Math.random() * 6,
       label: "Niebla",
     },
     bullets: [],
@@ -177,7 +179,7 @@ export function createGame(world) {
   return game;
 }
 
-/** ?boss=1 → oleada 3 con jefe pronto; ?fastwaves=1 → timers cortos. */
+/** ?boss=1 → oleada 3 con jefe pronto; ?fastwaves=1 → timers cortos; ?weather=sandstorm|storm|rain|wind|fog. */
 function applyWaveDebugFlags(game) {
   try {
     const q = new URLSearchParams(location.search);
@@ -190,9 +192,33 @@ function applyWaveDebugFlags(game) {
       game.waveTimer = q.has("fastwaves") ? 2 : 5;
       setToast(game, "Debug: oleada 3 con jefe en breve.");
     }
+    const forced = q.get("weather");
+    if (forced) forceWeather(game, forced);
   } catch (_) {
     /* SSR / tests */
   }
+}
+
+function forceWeather(game, kind) {
+  const map = {
+    clear: ["clear", "Despejado", 0.1, 0.35],
+    cloudy: ["cloudy", "Nublado", 0.3, 0.45],
+    fog: ["fog", "Niebla", 0.75, 0.4],
+    rain: ["rain", "Lluvia", 0.8, 0.85],
+    storm: ["storm", "Tormenta", 1, 1.35],
+    sandstorm: ["sandstorm", "Tormenta de arena", 1, 1.55],
+    sand: ["sandstorm", "Tormenta de arena", 1, 1.55],
+    wind: ["wind", "Viento fuerte", 0.55, 1.25],
+  };
+  const conf = map[kind];
+  if (!conf) return;
+  const w = game.weather;
+  w.kind = conf[0];
+  w.label = conf[1];
+  w.intensity = conf[2];
+  w.wind = conf[3];
+  w.nextChange = 9999;
+  setToast(game, `Clima forzado: ${w.label}.`);
 }
 
 /** Texto corto para el HUD de oleadas. */
@@ -234,11 +260,15 @@ export function dayPhase(game) {
   if (w.kind === "cloudy") phase.light *= 0.94;
   if (w.kind === "fog") phase.light *= 0.82;
   if (w.kind === "rain") phase.light *= 0.88;
-  if (w.kind === "storm") phase.light *= 0.78;
+  if (w.kind === "storm") phase.light *= 0.72;
+  if (w.kind === "sandstorm") phase.light *= 0.62;
+  if (w.kind === "wind") phase.light *= 0.9;
   if (w.thunder > 0) phase.light = Math.min(1, phase.light + w.thunder * 0.85);
   phase.weather = w.kind;
-  phase.rain = w.intensity;
-  phase.wind = w.wind;
+  phase.rain = w.kind === "rain" || w.kind === "storm" ? w.intensity : 0;
+  phase.sand = w.kind === "sandstorm" ? w.intensity : 0;
+  phase.wind = w.wind + (w.gust || 0) * 0.65;
+  phase.gust = w.gust || 0;
   phase.thunder = w.thunder;
   phase.weatherLabel = w.label;
   return phase;
@@ -377,9 +407,29 @@ function updateWeather(game, dt) {
   w.thunder = Math.max(0, w.thunder - dt * 3.2);
   w.nextChange -= dt;
 
-  if (w.kind === "storm" && w.thunder <= 0 && Math.random() < dt * 0.35) {
-    w.thunder = 0.18 + Math.random() * 0.22;
-    if (Math.random() < 0.45) setToast(game, "⚡ Un trueno parte la noche.");
+  // Ráfagas de viento
+  w.gustTimer -= dt;
+  if (w.gustTimer <= 0) {
+    const stormy = w.kind === "storm" || w.kind === "sandstorm" || w.kind === "wind";
+    if (stormy || Math.random() < 0.45) {
+      w.gust = stormy ? 0.55 + Math.random() * 0.7 : 0.2 + Math.random() * 0.35;
+      w.gustTimer = (stormy ? 2.5 : 5) + Math.random() * (stormy ? 4 : 8);
+      if (w.kind === "sandstorm" && Math.random() < 0.35) {
+        setToast(game, "El viento arrastra la arena como cuchillas.");
+      } else if (w.kind === "wind" && Math.random() < 0.3) {
+        setToast(game, "Una ráfaga azota los cables muertos.");
+      }
+    } else {
+      w.gust = 0;
+      w.gustTimer = 6 + Math.random() * 10;
+    }
+  } else {
+    w.gust = Math.max(0, w.gust - dt * 0.35);
+  }
+
+  if (w.kind === "storm" && w.thunder <= 0 && Math.random() < dt * 0.4) {
+    w.thunder = 0.18 + Math.random() * 0.28;
+    if (Math.random() < 0.5) setToast(game, "⚡ Un trueno parte el cielo.");
   } else if (w.kind === "rain" && w.thunder <= 0 && Math.random() < dt * 0.04) {
     w.thunder = 0.08 + Math.random() * 0.1;
   }
@@ -388,32 +438,66 @@ function updateWeather(game, dt) {
     w.kind === "clear" ? 0 :
     w.kind === "cloudy" ? 0.25 :
     w.kind === "fog" ? 0.7 :
-    w.kind === "rain" ? 0.7 :
+    w.kind === "wind" ? 0.5 :
+    w.kind === "rain" ? 0.75 :
     1;
   w.intensity += (target - w.intensity) * Math.min(1, dt * 1.4);
-  w.wind += ((w.kind === "storm" ? 1.4 : w.kind === "rain" ? 0.8 : w.kind === "fog" ? 0.35 : 0.25) - w.wind) * Math.min(1, dt);
+
+  const windTarget =
+    w.kind === "storm" ? 1.45 :
+    w.kind === "sandstorm" ? 1.6 :
+    w.kind === "wind" ? 1.25 :
+    w.kind === "rain" ? 0.85 :
+    w.kind === "fog" ? 0.4 :
+    w.kind === "cloudy" ? 0.45 :
+    0.3;
+  w.wind += (windTarget - w.wind) * Math.min(1, dt);
 
   if (w.nextChange > 0) return;
-  w.nextChange = 18 + Math.random() * 28;
+  w.nextChange = 16 + Math.random() * 26;
   const roll = Math.random();
   const night = ((game.time % game.dayLen) / game.dayLen) >= 0.6;
+  const day = !night;
   let next = w.kind;
-  if (w.kind === "clear") next = roll < (night ? 0.55 : 0.4) ? "fog" : roll < 0.75 ? "cloudy" : "clear";
-  else if (w.kind === "cloudy") next = roll < 0.4 ? "fog" : roll < (night ? 0.7 : 0.55) ? "rain" : roll < 0.85 ? "cloudy" : "clear";
-  else if (w.kind === "fog") next = roll < (night ? 0.4 : 0.25) ? "rain" : roll < 0.65 ? "fog" : "cloudy";
-  else if (w.kind === "rain") next = roll < (night ? 0.55 : 0.3) ? "storm" : roll < 0.7 ? "rain" : "fog";
-  else next = roll < 0.45 ? "rain" : "fog";
+
+  if (w.kind === "clear") {
+    next = roll < 0.35 ? "fog" : roll < 0.55 ? "wind" : roll < 0.8 ? "cloudy" : "clear";
+  } else if (w.kind === "cloudy") {
+    next = roll < 0.28 ? "fog" : roll < 0.48 ? "wind" : roll < (night ? 0.72 : 0.62) ? "rain" : roll < 0.82 ? "cloudy" : "clear";
+  } else if (w.kind === "fog") {
+    next = roll < (day ? 0.28 : 0.12) ? "sandstorm" : roll < 0.45 ? "rain" : roll < 0.7 ? "fog" : roll < 0.85 ? "wind" : "cloudy";
+  } else if (w.kind === "wind") {
+    next = roll < (day ? 0.4 : 0.15) ? "sandstorm" : roll < 0.6 ? "fog" : roll < 0.8 ? "cloudy" : "rain";
+  } else if (w.kind === "rain") {
+    next = roll < (night ? 0.5 : 0.28) ? "storm" : roll < 0.65 ? "rain" : roll < 0.8 ? "fog" : "wind";
+  } else if (w.kind === "storm") {
+    next = roll < 0.5 ? "rain" : roll < 0.75 ? "fog" : "wind";
+  } else if (w.kind === "sandstorm") {
+    next = roll < 0.4 ? "wind" : roll < 0.7 ? "fog" : "cloudy";
+  } else {
+    next = roll < 0.4 ? "rain" : "fog";
+  }
 
   w.kind = next;
-  w.label =
-    next === "clear" ? "Despejado" :
-    next === "cloudy" ? "Nublado" :
-    next === "fog" ? "Niebla" :
-    next === "rain" ? "Lluvia" :
-    "Tormenta";
+  w.label = weatherLabel(next);
   if (next === "storm") setToast(game, "La tormenta cae sobre Niebla Norte.");
+  else if (next === "sandstorm") setToast(game, "Una tormenta de arena se traga la ciudad.");
   else if (next === "rain") setToast(game, "Empieza a llover sobre el asfalto.");
+  else if (next === "wind") setToast(game, "El viento aúlla entre los edificios.");
   else if (next === "fog") setToast(game, "La niebla espesa cubre las calles.");
+}
+
+function weatherLabel(kind) {
+  return (
+    kind === "clear" ? "Despejado" :
+    kind === "cloudy" ? "Nublado" :
+    kind === "fog" ? "Niebla" :
+    kind === "rain" ? "Lluvia" :
+    kind === "storm" ? "Tormenta" :
+    kind === "sandstorm" ? "Tormenta de arena" :
+    kind === "wind" ? "Viento fuerte" :
+    "Niebla"
+  );
 }
 
 function tryMove(game, nx, ny) {

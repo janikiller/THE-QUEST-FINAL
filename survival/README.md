@@ -10,7 +10,14 @@ Eres **Crespo** en **Niebla Norte**: calles, manzanas, canal y muertos. Saquea, 
 python3 -m http.server 8080
 # http://localhost:8080/survival/
 # http://localhost:8080/survival/?auto=1
+# Clima forzado (ambiente + audio):
+# ?weather=sandstorm | storm | rain | wind | fog
 ```
+
+## Ambiente
+
+Clima dinámico con **viento**, **lluvia**, **tormentas**, **tormentas de arena** y ráfagas.
+Audio procedural (Web Audio): viento, lluvia, truenos y arena — se activa al empezar.
 
 ## Controles
 
