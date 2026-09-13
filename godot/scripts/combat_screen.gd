@@ -78,6 +78,11 @@ var _enemy_menu_enemy_index: int = -1
 var _enemy_hand_row: HBoxContainer
 var _enemy_hand_label: Label
 var _hand_label: Label
+var _hand_preview: PanelContainer
+var _hand_preview_title: Label
+var _hand_preview_body: Label
+var _hand_hover_wrap: Control
+var _hand_index_map: Array = [] # wrap refs in hand order for hotkeys
 var _hand_deal_token: int = 0
 var _enemy_deal_token: int = 0
 var _last_hand_sig: String = ""
@@ -1009,8 +1014,18 @@ func _style_bottom_panel() -> void:
 		discard_count.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 		discard_count.add_theme_constant_override("outline_size", 3)
 	if hand_row:
-		hand_row.add_theme_constant_override("separation", 12)
+		hand_row.add_theme_constant_override("separation", 8)
 		hand_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		hand_row.clip_contents = false
+		var hand_col := hand_row.get_parent() as Control
+		if hand_col:
+			hand_col.clip_contents = false
+		var bottom_panel := get_node_or_null("Bottom/BottomPanel") as Control
+		if bottom_panel:
+			bottom_panel.clip_contents = false
+		var bottom_root := get_node_or_null("Bottom") as Control
+		if bottom_root:
+			bottom_root.clip_contents = false
 	if log_label:
 		log_label.add_theme_color_override("font_color", Color(0.82, 0.92, 1.0, 0.9))
 		log_label.add_theme_font_size_override("font_size", 13)
@@ -1999,22 +2014,14 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	wrap.set_meta("pose_hurt", str(e.get("pose_hurt", "")))
 	wrap.set_meta("idle_sprite", str(e.get("sprite", "")))
 
-	# Intent flotante (lo más importante del mockup).
+	# Intent: badge compacto (sin carta flotante sobre el cuerpo).
 	var intent_host := PanelContainer.new()
 	intent_host.name = "IntentHost"
 	intent_host.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var isb := StyleBoxFlat.new()
-	isb.bg_color = Color(0.06, 0.08, 0.12, 0.82)
-	isb.border_color = Color(1.0, 0.45, 0.35, 0.85)
-	isb.set_border_width_all(1)
-	isb.set_corner_radius_all(8)
-	isb.content_margin_left = 8
-	isb.content_margin_right = 8
-	isb.content_margin_top = 3
-	isb.content_margin_bottom = 3
+	var isb := StyleBoxEmpty.new()
 	intent_host.add_theme_stylebox_override("panel", isb)
 	intent_host.add_child(_build_enemy_intent_content(e, index))
-	# Recolorea borde según tipo de intent.
+	# El acento vive en el badge; aquí no hace falta borde extra.
 	var kind := "attack"
 	var cid := str(e.get("next_card", ""))
 	if cid != "":
@@ -2026,7 +2033,7 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 			kind = "block"
 		elif iid == CombatState.Intent.FLEE:
 			kind = "flee"
-	isb.border_color = _enemy_kind_accent(kind, is_boss)
+	intent_host.set_meta("intent_kind", kind)
 	wrap.add_child(intent_host)
 
 	# Nombre compacto (sin alias clutter).
@@ -2137,6 +2144,8 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 func _rebuild_hand(snap: Dictionary) -> void:
 	_hand_deal_token += 1
 	var token := _hand_deal_token
+	_hide_hand_preview()
+	_ensure_hand_preview()
 	for c in hand_row.get_children():
 		c.queue_free()
 	var hand: Array = snap.get("hand", [])
@@ -2148,16 +2157,158 @@ func _rebuild_hand(snap: Dictionary) -> void:
 	var should_deal := sig != _last_hand_sig
 	_last_hand_sig = sig
 	var wraps: Array = []
-	for card_id in hand:
-		var cid := str(card_id)
+	var n := hand.size()
+	for i in range(n):
+		var cid := str(hand[i])
 		var playable := can_act and CombatState.can_play_card(cid)
 		var wrap := _make_card(cid, playable, should_deal)
+		wrap.set_meta("hand_index", i)
 		hand_row.add_child(wrap)
 		wraps.append(wrap)
+	_hand_index_map = wraps.duplicate()
+	_apply_hand_fan(wraps)
 	if _hand_label:
-		_hand_label.text = "TU MANO · %d" % wraps.size()
+		_hand_label.text = "TU MANO · %d  ·  teclas 1-%d" % [wraps.size(), mini(9, wraps.size())]
 	if should_deal and wraps.size() > 0:
 		_animate_hand_deal(wraps, token)
+
+
+
+func _ensure_hand_preview() -> void:
+	if _hand_preview and is_instance_valid(_hand_preview):
+		return
+	var host := hand_row.get_parent() as Control
+	if host == null:
+		return
+	_hand_preview = PanelContainer.new()
+	_hand_preview.name = "HandPreview"
+	_hand_preview.visible = false
+	_hand_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hand_preview.z_index = 40
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.08, 0.14, 0.94)
+	sb.border_color = Color(0.45, 0.85, 1.0, 0.85)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(12)
+	sb.content_margin_left = 14
+	sb.content_margin_right = 14
+	sb.content_margin_top = 10
+	sb.content_margin_bottom = 10
+	sb.shadow_color = Color(0.2, 0.6, 1.0, 0.25)
+	sb.shadow_size = 10
+	_hand_preview.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hand_preview.add_child(v)
+	_hand_preview_title = Label.new()
+	_hand_preview_title.add_theme_font_size_override("font_size", 16)
+	_hand_preview_title.add_theme_color_override("font_color", Color(0.95, 0.98, 1.0))
+	v.add_child(_hand_preview_title)
+	_hand_preview_body = Label.new()
+	_hand_preview_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hand_preview_body.custom_minimum_size = Vector2(280, 0)
+	_hand_preview_body.add_theme_font_size_override("font_size", 13)
+	_hand_preview_body.add_theme_color_override("font_color", Color(0.75, 0.9, 1.0))
+	v.add_child(_hand_preview_body)
+	host.add_child(_hand_preview)
+	# Encima de la mano
+	if host is VBoxContainer:
+		host.move_child(_hand_preview, maxi(0, hand_row.get_index()))
+
+
+func _show_hand_preview(wrap: Control) -> void:
+	_ensure_hand_preview()
+	if _hand_preview == null or not is_instance_valid(wrap):
+		return
+	_hand_hover_wrap = wrap
+	var cid := str(wrap.get_meta("card_id", ""))
+	var def := CardDB.get_card(cid)
+	var cost := int(def.get("cost", 0))
+	var playable := bool(wrap.get_meta("playable", false))
+	_hand_preview_title.text = "%s  ·  coste %d" % [str(def.get("name", cid)), cost]
+	var body := CardDB.effect_line(def)
+	var flavor := ""
+	if CardDB.has_method("flavor_line"):
+		flavor = str(CardDB.flavor_line(def))
+	if flavor != "":
+		body = "%s\n%s" % [body, flavor]
+	body += "\n%s" % ("Listo para jugar" if playable else "Sin energía / no jugable ahora")
+	_hand_preview_body.text = body
+	_hand_preview.visible = true
+	_hand_preview.modulate.a = 0.0
+	_hand_preview.scale = Vector2(0.94, 0.94)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(_hand_preview, "modulate:a", 1.0, 0.12)
+	tw.tween_property(_hand_preview, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _hide_hand_preview() -> void:
+	_hand_hover_wrap = null
+	if _hand_preview and is_instance_valid(_hand_preview):
+		_hand_preview.visible = false
+
+
+func _apply_hand_fan(wraps: Array) -> void:
+	## Abanico suave: rotación + hundido en laterales.
+	if hand_row:
+		hand_row.clip_contents = false
+		hand_row.add_theme_constant_override("separation", 8)
+	var n := wraps.size()
+	if n <= 0:
+		return
+	var mid := (n - 1) * 0.5
+	for i in range(n):
+		var wrap: Control = wraps[i]
+		if not is_instance_valid(wrap):
+			continue
+		var panel: Control = wrap.get_meta("card_panel", null)
+		if panel == null:
+			continue
+		var offset := float(i) - mid
+		var rot := offset * 3.4
+		var y := absf(offset) * 5.0
+		panel.set_meta("fan_rot", rot)
+		panel.set_meta("fan_y", y)
+		panel.set_meta("fan_z", i)
+		panel.set_meta("hand_wrap", wrap)
+		panel.rotation_degrees = rot
+		panel.position.y = y
+		panel.z_index = i
+		wrap.custom_minimum_size.y = HAND_CARD_H + 18.0
+
+
+func _card_press_feedback(panel: Control) -> void:
+	if not is_instance_valid(panel) or _busy:
+		return
+	var tw := create_tween()
+	tw.tween_property(panel, "scale", Vector2(0.94, 0.94), 0.06)
+	tw.tween_property(panel, "scale", Vector2(1.1, 1.1), 0.1)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _busy or _enemy_card_menu != null:
+		return
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
+	var ke := event as InputEventKey
+	var key: Key = ke.keycode
+	var idx := -1
+	if key >= KEY_1 and key <= KEY_9:
+		idx = int(key) - int(KEY_1)
+	elif key >= KEY_KP_1 and key <= KEY_KP_9:
+		idx = int(key) - int(KEY_KP_1)
+	if idx < 0 or idx >= _hand_index_map.size():
+		return
+	var wrap: Control = _hand_index_map[idx]
+	if not is_instance_valid(wrap):
+		return
+	var cid := str(wrap.get_meta("card_id", ""))
+	if cid == "":
+		return
+	get_viewport().set_input_as_handled()
+	_try_play_card(cid, wrap)
 
 
 func _rebuild_enemy_hand(snap: Dictionary) -> void:
@@ -2239,29 +2390,33 @@ func _animate_hand_deal(wraps: Array, token: int) -> void:
 		panel.rotation_degrees = randf_range(-14.0, 14.0)
 		panel.scale = Vector2(0.42, 0.42)
 		panel.modulate.a = 0.0
+		var fan_y := float(panel.get_meta("fan_y", 0.0))
+		var fan_rot := float(panel.get_meta("fan_rot", 0.0))
+		var land := Vector2(0.0, fan_y)
 		var tw := create_tween()
 		tw.set_parallel(true)
-		tw.tween_property(panel, "position", Vector2.ZERO, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "position", land, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(panel, "scale", Vector2.ONE, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw.tween_property(panel, "rotation_degrees", 0.0, 0.3)
+		tw.tween_property(panel, "rotation_degrees", fan_rot, 0.3)
 		var final_a := 0.82 if bool(wrap.get_meta("dimmed", false)) else 1.0
 		var final_mod := Color(0.7, 0.7, 0.74, final_a) if bool(wrap.get_meta("dimmed", false)) else Color(1, 1, 1, 1)
 		tw.tween_property(panel, "modulate", final_mod, 0.18)
 		AudioDirector.play_sfx("card_play", randf_range(0.95, 1.12), -6.0)
 		await get_tree().create_timer(0.045).timeout
-		# Al terminar cada tween, re-anclar (en paralelo al stagger).
+		# Al terminar cada tween, fijar pose de abanico (permite hover lift).
 		tw.finished.connect(func():
 			if is_instance_valid(panel):
-				# Top-left fijo: permite hover lift (position.y) sin pelear con anchors.
 				panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 				panel.size = Vector2(HAND_CARD_W, HAND_CARD_H)
-				panel.position = Vector2.ZERO
+				panel.position = Vector2(0.0, float(panel.get_meta("fan_y", 0.0)))
 				panel.scale = Vector2.ONE
-				panel.rotation_degrees = 0.0
+				panel.rotation_degrees = float(panel.get_meta("fan_rot", 0.0))
 				panel.set_meta("dealing", false)
 			if is_instance_valid(wrap):
 				wrap.set_meta("dealing", false)
 		)
+	if token == _hand_deal_token:
+		_apply_hand_fan(wraps)
 
 
 func _animate_enemy_hand_deal(wraps: Array, token: int) -> void:
@@ -2304,15 +2459,27 @@ func _card_hover(panel: Control, enter: bool) -> void:
 	if bool(panel.get_meta("dealing", false)):
 		return
 	panel.pivot_offset = panel.size * 0.5
+	var base_y := float(panel.get_meta("fan_y", 0.0))
+	var base_rot := float(panel.get_meta("fan_rot", 0.0))
 	var tw := create_tween()
 	tw.set_parallel(true)
 	if enter:
-		AudioDirector.play_sfx("ui_click", 1.4, -14.0)
-		tw.tween_property(panel, "scale", Vector2(1.07, 1.07), 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		tw.tween_property(panel, "position:y", -12.0, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		AudioDirector.play_sfx("ui_click", 1.45, -16.0)
+		panel.z_index = 20
+		tw.tween_property(panel, "scale", Vector2(1.14, 1.14), 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "position:y", base_y - 28.0, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "rotation_degrees", base_rot * 0.35, 0.14)
+		var wrap: Control = panel.get_meta("hand_wrap", null)
+		if wrap:
+			_show_hand_preview(wrap)
 	else:
+		panel.z_index = int(panel.get_meta("fan_z", 0))
 		tw.tween_property(panel, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		tw.tween_property(panel, "position:y", 0.0, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "position:y", base_y, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(panel, "rotation_degrees", base_rot, 0.12)
+		var wrap2: Control = panel.get_meta("hand_wrap", null)
+		if wrap2 and _hand_hover_wrap == wrap2:
+			_hide_hand_preview()
 
 
 func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: int, animate: bool = true) -> Control:
@@ -2451,6 +2618,7 @@ func _refresh_enemy_intent_host(host: Control, e: Dictionary, enemy_index: int =
 
 
 func _build_enemy_intent_content(e: Dictionary, enemy_index: int = -1) -> Control:
+	## Sin cartas flotantes sobre el cuerpo: solo badge compacto + clic al mazo.
 	if bool(e.get("detained", false)):
 		return _enemy_intent_status("DETENIDO", Color(0.4, 0.9, 0.55))
 	if bool(e.get("fled", false)):
@@ -2459,7 +2627,7 @@ func _build_enemy_intent_content(e: Dictionary, enemy_index: int = -1) -> Contro
 		return _enemy_intent_status("", Color.WHITE)
 	var cid := str(e.get("next_card", ""))
 	if cid != "":
-		return _make_enemy_intent_card(e, enemy_index)
+		return _make_enemy_intent_badge(e, enemy_index)
 	# Fallback a intent clásico sin carta
 	var intent_id := int(e.get("intent", 0))
 	var val := int(e.get("intent_value", 0))
@@ -2475,7 +2643,121 @@ func _build_enemy_intent_content(e: Dictionary, enemy_index: int = -1) -> Contro
 	elif intent_id == CombatState.Intent.FLEE:
 		txt = "→ HUIR"
 		col = Color(1.0, 0.78, 0.35)
-	return _enemy_intent_status(txt, col)
+	return _make_enemy_intent_badge_from_text(txt, col, enemy_index, is_boss)
+
+
+
+func _make_enemy_intent_badge(e: Dictionary, enemy_index: int = -1) -> Control:
+	var cid := str(e.get("next_card", ""))
+	var def: Dictionary = CardDB.get_enemy_card(cid)
+	if def.is_empty():
+		def = {
+			"id": cid,
+			"name": str(e.get("next_card_name", cid)),
+			"effect": str(e.get("next_card_effect", "")),
+			"kind": str(e.get("next_card_kind", "attack")),
+			"damage": int(e.get("intent_value", 0)),
+		}
+	var is_boss := bool(e.get("is_boss", false))
+	var kind := CardDB.enemy_card_intent_kind(def)
+	var accent := _enemy_kind_accent(kind, is_boss)
+	var value := 0
+	if CardDB.has_method("enemy_card_preview_value"):
+		value = int(CardDB.enemy_card_preview_value(def))
+	else:
+		value = int(def.get("damage", e.get("intent_value", 0)))
+	var icon := "●"
+	var tag := "ATK"
+	match kind:
+		"block":
+			icon = "◈"
+			tag = "DEF"
+		"heal":
+			icon = "+"
+			tag = "CURA"
+		"flee":
+			icon = "→"
+			tag = "HUIR"
+		"weaken", "vulnerable", "stun", "status":
+			icon = "⚠"
+			tag = "ESTADO"
+		_:
+			icon = "◆" if is_boss else "●"
+			tag = "ATK"
+	var label := tag
+	if value > 0 and kind in ["attack", "block", "heal"]:
+		label = "%s %s %d" % [icon, tag, value]
+	else:
+		label = "%s %s" % [icon, tag]
+	var tip := "%s — clic para ver mazo" % str(def.get("name", cid))
+	return _make_enemy_intent_badge_from_text(label, accent, enemy_index, is_boss, tip)
+
+
+func _make_enemy_intent_badge_from_text(text: String, col: Color, enemy_index: int = -1, is_boss: bool = false, tip: String = "") -> Control:
+	var wrap := PanelContainer.new()
+	wrap.name = "IntentBadge"
+	wrap.mouse_filter = Control.MOUSE_FILTER_STOP
+	wrap.custom_minimum_size = Vector2(118 if is_boss else 102, 34)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.07, 0.1, 0.92)
+	sb.border_color = Color(col.r, col.g, col.b, 0.95)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(16)
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
+	if is_boss:
+		sb.shadow_color = Color(col.r, col.g, col.b, 0.35)
+		sb.shadow_size = 6
+	wrap.add_theme_stylebox_override("panel", sb)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(row)
+
+	var l := Label.new()
+	l.text = text
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 13 if is_boss else 12)
+	l.add_theme_color_override("font_color", col)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(l)
+
+	var hint := Label.new()
+	hint.text = "▾"
+	hint.add_theme_font_size_override("font_size", 11)
+	hint.add_theme_color_override("font_color", Color(col.r, col.g, col.b, 0.7))
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(hint)
+
+	var btn := Button.new()
+	btn.flat = true
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	btn.tooltip_text = tip if tip != "" else "Ver mazo del enemigo"
+	var idx := enemy_index
+	btn.mouse_entered.connect(func():
+		if not is_instance_valid(wrap):
+			return
+		var tw := create_tween()
+		tw.tween_property(wrap, "scale", Vector2(1.08, 1.08), 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	)
+	btn.mouse_exited.connect(func():
+		if not is_instance_valid(wrap):
+			return
+		var tw := create_tween()
+		tw.tween_property(wrap, "scale", Vector2.ONE, 0.1)
+	)
+	btn.pressed.connect(func():
+		AudioDirector.play_ui_click()
+		_open_enemy_card_menu(idx)
+	)
+	wrap.pivot_offset = Vector2(wrap.custom_minimum_size.x * 0.5, wrap.custom_minimum_size.y * 0.5)
+	wrap.add_child(btn)
+	return wrap
 
 
 func _enemy_intent_status(text: String, col: Color) -> Control:
@@ -2767,22 +3049,44 @@ func _open_enemy_card_menu(enemy_index: int) -> void:
 	head.add_child(close_b)
 
 	var sub := Label.new()
-	sub.text = "Cartas que puede jugar este sospechoso (mismo tamaño que tu mazo)."
+	sub.text = "Pasa el ratón por una carta para inspeccionarla. La marcada es la siguiente jugada."
 	sub.add_theme_color_override("font_color", Color(0.7, 0.78, 0.88))
 	root.add_child(sub)
 
+	var detail := PanelContainer.new()
+	detail.name = "EnemyCardDetail"
+	var dsb := StyleBoxFlat.new()
+	dsb.bg_color = Color(0.07, 0.1, 0.16, 0.95)
+	dsb.border_color = Color(1.0, 0.55, 0.35, 0.65)
+	dsb.set_border_width_all(1)
+	dsb.set_corner_radius_all(10)
+	dsb.content_margin_left = 12
+	dsb.content_margin_right = 12
+	dsb.content_margin_top = 8
+	dsb.content_margin_bottom = 8
+	detail.add_theme_stylebox_override("panel", dsb)
+	root.add_child(detail)
+	var detail_l := Label.new()
+	detail_l.name = "DetailLabel"
+	detail_l.text = "Elige una carta del mazo para ver su efecto completo."
+	detail_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_l.add_theme_font_size_override("font_size", 14)
+	detail_l.add_theme_color_override("font_color", Color(0.88, 0.93, 1.0))
+	detail.add_child(detail_l)
+
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(0, 400)
+	scroll.custom_minimum_size = Vector2(0, 340)
 	root.add_child(scroll)
 	var grid := HBoxContainer.new()
-	grid.add_theme_constant_override("separation", 12)
+	grid.add_theme_constant_override("separation", 14)
 	scroll.add_child(grid)
 
 	var pool: Array = e.get("card_pool", [])
 	if pool.is_empty():
 		pool = [str(e.get("next_card", ""))]
 	var seen: Dictionary = {}
+	var cards_built: Array = []
 	for cid_v in pool:
 		var cid := str(cid_v)
 		if cid == "" or seen.has(cid):
@@ -2792,7 +3096,26 @@ func _open_enemy_card_menu(enemy_index: int) -> void:
 		if def.is_empty():
 			continue
 		var is_next := cid == str(e.get("next_card", ""))
-		grid.add_child(_make_enemy_menu_card(def, is_next))
+		var card := _make_enemy_menu_card(def, is_next, detail_l)
+		grid.add_child(card)
+		cards_built.append(card)
+
+	# Entrada animada del panel y abanico de cartas
+	panel.modulate.a = 0.0
+	panel.scale = Vector2(0.92, 0.92)
+	panel.pivot_offset = panel.custom_minimum_size * 0.5
+	var tw_in := create_tween()
+	tw_in.set_parallel(true)
+	tw_in.tween_property(panel, "modulate:a", 1.0, 0.18)
+	tw_in.tween_property(panel, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	for i in range(cards_built.size()):
+		var c: Control = cards_built[i]
+		c.modulate.a = 0.0
+		c.position.y = 24
+		var twc := create_tween()
+		twc.set_parallel(true)
+		twc.tween_property(c, "modulate:a", 1.0, 0.16).set_delay(0.04 * i)
+		twc.tween_property(c, "position:y", 0.0, 0.2).set_delay(0.04 * i).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 	dim.gui_input.connect(func(ev: InputEvent):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
@@ -2807,7 +3130,7 @@ func _close_enemy_card_menu() -> void:
 	_enemy_menu_enemy_index = -1
 
 
-func _make_enemy_menu_card(def: Dictionary, is_next: bool) -> Control:
+func _make_enemy_menu_card(def: Dictionary, is_next: bool, detail_label: Label = null) -> Control:
 	## Carta grande estilo mazo del jugador, dentro del menú de combate.
 	var kind := CardDB.enemy_card_intent_kind(def)
 	var accent := _enemy_kind_accent(kind, str(def.get("id", "")).begins_with("boss_"))
@@ -2875,6 +3198,46 @@ func _make_enemy_menu_card(def: Dictionary, is_next: bool) -> Control:
 	desc.add_theme_font_size_override("font_size", 11)
 	desc.add_theme_color_override("font_color", Color(0.65, 0.72, 0.8))
 	v.add_child(desc)
+	# Interactividad: hover + detalle
+	wrap.pivot_offset = wrap.custom_minimum_size * 0.5
+	var hover_btn := Button.new()
+	hover_btn.flat = true
+	hover_btn.focus_mode = Control.FOCUS_NONE
+	hover_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hover_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dref = detail_label
+	var card_def = def.duplicate(true)
+	var next_flag = is_next
+	hover_btn.mouse_entered.connect(func():
+		if not is_instance_valid(wrap):
+			return
+		AudioDirector.play_sfx("ui_click", 1.5, -18.0)
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(wrap, "scale", Vector2(1.1, 1.1), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(wrap, "position:y", -16.0, 0.12)
+		if dref and is_instance_valid(dref):
+			var kind2 := CardDB.enemy_card_intent_kind(card_def)
+			var fx2 := CardDB.enemy_effect_line(card_def)
+			var prefix := "▶ SIGUIENTE · " if next_flag else ""
+			dref.text = "%s%s (%s)\n%s" % [prefix, str(card_def.get("name", "")), kind2.to_upper(), fx2]
+	)
+	hover_btn.mouse_exited.connect(func():
+		if not is_instance_valid(wrap):
+			return
+		var tw := create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(wrap, "scale", Vector2.ONE, 0.1)
+		tw.tween_property(wrap, "position:y", 0.0, 0.1)
+	)
+	wrap.add_child(hover_btn)
+	if is_next:
+		# Pulso suave en la siguiente carta
+		var pulse := create_tween()
+		pulse.set_loops()
+		pulse.tween_property(wrap, "modulate", Color(1.08, 1.05, 0.9, 1.0), 0.7)
+		pulse.tween_property(wrap, "modulate", Color.WHITE, 0.7)
+
 	return wrap
 
 
@@ -3066,12 +3429,18 @@ func _make_card(card_id: String, playable: bool, animate: bool = true) -> Contro
 	fx.custom_minimum_size = Vector2(0, 18)
 	tv.add_child(fx)
 
+	wrap.set_meta("card_id", card_id)
+	wrap.set_meta("playable", playable)
+	wrap.set_meta("card_panel", panel)
+	panel.set_meta("hand_wrap", wrap)
 	var btn := Button.new()
 	btn.flat = true
 	btn.focus_mode = Control.FOCUS_NONE
 	btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	btn.tooltip_text = "Clic para jugar · tecla rápida en la mano"
 	btn.mouse_entered.connect(func(): _card_hover(panel, true))
 	btn.mouse_exited.connect(func(): _card_hover(panel, false))
+	btn.button_down.connect(func(): _card_press_feedback(panel))
 	btn.pressed.connect(func(): _try_play_card(card_id, wrap))
 	panel.add_child(btn)
 	return wrap
