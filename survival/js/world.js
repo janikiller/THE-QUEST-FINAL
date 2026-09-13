@@ -269,8 +269,8 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, pro
   const y1 = ring.y1 - 1;
   if (x1 - x0 < 3 || y1 - y0 < 3) return;
 
-  const facade = FACADE[((bx * 7 + by * 13 + seed) >>> 0) % FACADE.length];
-  const name = BUILDING_NAMES[((bx + by * 3) >>> 0) % BUILDING_NAMES.length];
+  const facade = FACADE[((bx * 17 + by * 31 + (seed * 3) + ((bx / BLOCK) | 0) * 7) >>> 0) % FACADE.length];
+  const name = BUILDING_NAMES[((bx * 5 + by * 11 + seed) >>> 0) % BUILDING_NAMES.length];
   const floors = 2 + (((noise.noise2(bx, by) * 4) | 0) % 4);
   const styleRoll = noise.noise2(bx * 0.31, by * 0.27);
   let style = "block";
@@ -278,7 +278,10 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, pro
   else if (styleRoll < 0.22) style = "shop";
   else if (styleRoll < 0.4) style = "warehouse";
   else if (styleRoll < 0.62) style = "residential";
-  const awning = AWNING[((bx * 3 + by * 5) >>> 0) % AWNING.length];
+  // Matiz de fachada por manzana para que no se vean clonadas
+  const tint = ((noise.noise2(bx * 0.17, by * 0.19) * 24) | 0) - 12;
+  const awning = AWNING[((bx * 3 + by * 5 + seed) >>> 0) % AWNING.length];
+  const facadeTinted = shadeHex(facade, tint);
 
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
@@ -336,7 +339,7 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, pro
     props.push({ type: "planter", x: dx + (side >= 2 ? 0 : side === 0 ? 0.2 : -0.2) + 0.5, y: dy + (side < 2 ? 0 : 0.2) + 0.5, tone: 1 });
   }
 
-  buildings.push({ x0, y0, x1, y1, doorX: dx, doorY: dy, facade, name, floors, style, awning });
+  buildings.push({ x0, y0, x1, y1, doorX: dx, doorY: dy, facade: facadeTinted, name, floors, style, awning });
 }
 
 function pavePark(tiles, size, bx, by, props, noise) {
@@ -509,4 +512,15 @@ export function buildingAt(world, x, y) {
   const ix = Math.floor(x);
   const iy = Math.floor(y);
   return world.buildings.find((b) => ix >= b.x0 && ix <= b.x1 && iy >= b.y0 && iy <= b.y1) || null;
+}
+
+function shadeHex(hex, delta) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255;
+  let g = (n >> 8) & 255;
+  let b = n & 255;
+  r = Math.max(0, Math.min(255, r + delta));
+  g = Math.max(0, Math.min(255, g + delta));
+  b = Math.max(0, Math.min(255, b + delta));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 }
