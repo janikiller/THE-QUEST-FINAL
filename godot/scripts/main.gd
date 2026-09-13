@@ -735,6 +735,15 @@ func _boss_fight_demo() -> void:
 			print("BOSS_FIGHT name=", CombatState.enemies[0].get("name", "?"),
 				" hp=", CombatState.enemies[0].get("hp", "?"),
 				" signature=", CombatState.enemies[0].get("signature_move", "?"))
+			# Menú interactivo del mazo enemigo (sin cartas flotantes sobre el sprite).
+			if combat.has_method("_open_enemy_card_menu"):
+				print("BOSS_SOLO_DEMO enemy_menu")
+				combat._open_enemy_card_menu(0)
+				await get_tree().create_timer(0.7).timeout
+				await _save_shot("cartas_menu_enemigo")
+				if combat.has_method("_close_enemy_card_menu"):
+					combat._close_enemy_card_menu()
+				await get_tree().create_timer(0.25).timeout
 			if CombatState.hand.size() >= 2:
 				CombatState.hand[0] = "bloqueo"
 				CombatState.hand[1] = "punetazo"
