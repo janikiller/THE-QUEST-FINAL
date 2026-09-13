@@ -246,7 +246,7 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     ? lightDef.lightRadius * (indoor ? 0.85 : phase.night ? 1 : 0.7)
     : 0;
   const cool = phase.rain > 0.25 || phase.weather === "storm";
-  const lightCool = hasLight ? (lightDef.lightWarm === false ? true : cool && !lightDef.lightWarm) : cool;
+  const lightCool = hasLight ? lightDef.lightWarm === false : cool;
 
   // Máscara aparte: destination-out no borra el mundo
   const mask = getLightMask(w, h);
