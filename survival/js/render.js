@@ -2,6 +2,8 @@ import { TILE, TILE_META, buildingAt, furnitureType, furnitureLabel, nearestSear
 import { dayPhase } from "./game.js";
 
 const TILE_PX = 48;
+const FONT_UI = '"IBM Plex Sans", "Segoe UI", sans-serif';
+const FONT_DISPLAY = '"Instrument Serif", Georgia, serif';
 
 export function createRenderer(canvas, miniCanvas) {
   const ctx = canvas.getContext("2d");
@@ -33,8 +35,11 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   const w = canvas.width / dpr;
   const h = canvas.height / dpr;
   const phase = dayPhase(game);
-  const camX = game.player.x * TILE_PX - w / 2;
-  const camY = game.player.y * TILE_PX - h / 2;
+  const shakeAmt = Math.min(10, (game.shake || 0) * 14);
+  const shakeX = shakeAmt ? (Math.random() - 0.5) * 2 * shakeAmt : 0;
+  const shakeY = shakeAmt ? (Math.random() - 0.5) * 2 * shakeAmt : 0;
+  const camX = game.player.x * TILE_PX - w / 2 + shakeX;
+  const camY = game.player.y * TILE_PX - h / 2 + shakeY;
   const raining = phase.rain > 0.15;
   const storming = phase.weather === "storm";
 
@@ -122,8 +127,10 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   }
 
   if (game.buildMode) {
-    const bx = game.buildMode === "claim" ? Math.floor(game.player.x) : Math.floor(game.player.x + game.player.facing);
-    const by = Math.floor(game.player.y);
+    const aimDx = Math.cos(game.player.aim || 0);
+    const aimDy = Math.sin(game.player.aim || 0);
+    const bx = game.buildMode === "claim" ? Math.floor(game.player.x) : Math.floor(game.player.x + aimDx * 1.15);
+    const by = game.buildMode === "claim" ? Math.floor(game.player.y) : Math.floor(game.player.y + aimDy * 1.15);
     ctx.fillStyle = "rgba(220, 190, 90, 0.3)";
     ctx.strokeStyle = "rgba(255, 220, 120, 0.9)";
     ctx.lineWidth = 2;
@@ -134,6 +141,7 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   for (const z of game.zombies) {
     drawZombie(ctx, z.x * TILE_PX - camX, z.y * TILE_PX - camY, game.time, z);
   }
+  drawFx(ctx, game, camX, camY);
   drawAimAndBullets(ctx, game, camX, camY);
   drawPlayer(ctx, game.player.x * TILE_PX - camX, game.player.y * TILE_PX - camY, game.player, game.time, game);
 
@@ -141,9 +149,9 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     ctx.fillStyle = "rgba(10,12,14,0.72)";
     ctx.fillRect(w / 2 - 100, 18, 200, 30);
     ctx.fillStyle = "#e8e0d0";
-    ctx.font = "600 13px Sora, sans-serif";
+    ctx.font = `600 13px ${FONT_UI}`;
     ctx.textAlign = "center";
-    ctx.fillText(`🚪 ${inside.name}`, w / 2, 38);
+    ctx.fillText(inside.name, w / 2, 38);
 
     const near = nearestSearchable(game.world, game.player.x, game.player.y);
     if (near) {
@@ -151,7 +159,7 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
       ctx.fillStyle = "rgba(20,18,14,0.78)";
       ctx.fillRect(w / 2 - 110, 54, 220, 26);
       ctx.fillStyle = "#f0d9a0";
-      ctx.font = "600 12px Sora, sans-serif";
+      ctx.font = `600 12px ${FONT_UI}`;
       ctx.fillText(`E · registrar ${label.toLowerCase()}`, w / 2, 72);
     }
   }
@@ -171,8 +179,34 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   }
 
   if (game.player.hurtFlash > 0) {
-    ctx.fillStyle = `rgba(140, 20, 20, ${game.player.hurtFlash * 0.5})`;
+    const hf = game.player.hurtFlash;
+    ctx.fillStyle = `rgba(140, 20, 20, ${hf * 0.55})`;
     ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = `rgba(200, 40, 30, ${hf * 0.85})`;
+    ctx.lineWidth = 10;
+    ctx.strokeRect(4, 4, w - 8, h - 8);
+  }
+
+  if (game.dead) {
+    ctx.fillStyle = "rgba(8, 6, 6, 0.35)";
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  if (game.waveBannerT > 0 && game.waveBanner) {
+    const a = Math.min(1, game.waveBannerT * 2);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "rgba(12, 14, 10, 0.72)";
+    ctx.fillRect(w / 2 - 160, h * 0.18, 320, 52);
+    ctx.strokeStyle = "rgba(216, 192, 120, 0.55)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(w / 2 - 160, h * 0.18, 320, 52);
+    ctx.fillStyle = "#f0d9a0";
+    ctx.font = `italic 28px ${FONT_DISPLAY}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(game.waveBanner, w / 2, h * 0.18 + 26);
+    ctx.restore();
   }
 
   // Viñeta muy suave (no oscurece el centro)
@@ -700,7 +734,7 @@ function drawParking(ctx, tx, ty, px, py) {
   ctx.lineTo(px + TILE_PX / 2 - 6, py + 22);
   ctx.fill();
   ctx.fillStyle = "rgba(220,220,210,0.5)";
-  ctx.font = "600 10px Sora, sans-serif";
+  ctx.font = `600 10px ${FONT_UI}`;
   ctx.textAlign = "center";
   ctx.fillText(String(((tx + ty * 3) % 24) + 1), px + TILE_PX / 2, py + TILE_PX / 2 + 10);
 }
@@ -1153,7 +1187,7 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
         ctx.fillRect(px + t + 6, py + bh - t, Math.min(124, bw - t * 2 - 12), 16);
       }
       ctx.fillStyle = shopLit ? "#f8f0e0" : "#a09888";
-      ctx.font = "700 10px Sora, sans-serif";
+      ctx.font = `700 10px ${FONT_UI}`;
       ctx.textAlign = "left";
       ctx.fillText(b.name.split(" ")[0].toUpperCase(), px + t + 12, py + bh - t + 12);
     }
@@ -1276,7 +1310,7 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
         ctx.fillStyle = "rgba(0,0,0,0.6)";
         ctx.fillRect(roofX + 6, roofY + 6, Math.min(150, roofW - 12), 20);
         ctx.fillStyle = phase.night ? "#ffe8b0" : "#f0e8d8";
-        ctx.font = "600 12px Sora, sans-serif";
+        ctx.font = `600 12px ${FONT_UI}`;
         ctx.textAlign = "left";
         ctx.fillText(b.name, roofX + 10, roofY + 20);
       }
@@ -1288,7 +1322,7 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
       ctx.fillRect(px + t, py + t, bw - t * 2, bh - t * 2);
     }
     ctx.fillStyle = "rgba(255,255,255,0.6)";
-    ctx.font = "600 11px Sora, sans-serif";
+    ctx.font = `600 11px ${FONT_UI}`;
     ctx.textAlign = "left";
     ctx.fillText(b.name, px + t + 6, py + t - 8);
   }
@@ -1317,7 +1351,7 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
   ctx.fillRect(doorPx + 8, doorPy + TILE_PX - 6, 32, 5);
   // Número / placa
   ctx.fillStyle = "rgba(230,220,200,0.7)";
-  ctx.font = "600 8px Sora, sans-serif";
+  ctx.font = `600 8px ${FONT_UI}`;
   ctx.textAlign = "center";
   ctx.fillText(String((b.x0 + b.y0) % 90 + 10), doorPx + TILE_PX / 2, doorPy + 7);
 }
@@ -1522,7 +1556,7 @@ function drawProp(ctx, p, px, py, phase) {
     roundRect(ctx, px - 14, py - 16, 28, 12, 2);
     ctx.fill();
     ctx.fillStyle = "#e8eef8";
-    ctx.font = "600 8px Sora, sans-serif";
+    ctx.font = `600 8px ${FONT_UI}`;
     ctx.textAlign = "center";
     ctx.fillText((p.label || "CALLE").slice(0, 8), px, py - 7);
   } else if (p.type === "awning") {
@@ -1547,7 +1581,7 @@ function drawProp(ctx, p, px, py, phase) {
     }
   } else if (p.type === "graffiti") {
     ctx.fillStyle = "rgba(180,60,140,0.55)";
-    ctx.font = "700 11px Sora, sans-serif";
+    ctx.font = `700 11px ${FONT_UI}`;
     ctx.fillText(p.text || "NIEBLA", px - 16, py);
     ctx.fillStyle = "rgba(60,160,200,0.45)";
     ctx.fillText(p.text ? "" : "norte", px - 10, py + 10);
@@ -1617,7 +1651,7 @@ function drawProp(ctx, p, px, py, phase) {
     ctx.fillStyle = "rgba(180,210,230,0.35)";
     ctx.fillRect(px - 12, py - 16, 24, 14);
     ctx.fillStyle = "#e8c040";
-    ctx.font = "700 8px Sora, sans-serif";
+    ctx.font = `700 8px ${FONT_UI}`;
     ctx.textAlign = "center";
     ctx.fillText("BUS", px, py - 12);
   } else if (p.type === "streetSign") {
@@ -1630,7 +1664,7 @@ function drawProp(ctx, p, px, py, phase) {
     roundRect(ctx, px - 18, py - 10, 36, 10, 2);
     ctx.fill();
     ctx.fillStyle = "#e8eef8";
-    ctx.font = "600 8px Sora, sans-serif";
+    ctx.font = `600 8px ${FONT_UI}`;
     ctx.textAlign = "center";
     ctx.fillText(`C/ ${(p.label || "LUNA").slice(0, 8)}`, px, py - 13);
     ctx.fillText(`C/ ${(p.label2 || "SOL").slice(0, 8)}`, px, py - 2);
@@ -1832,17 +1866,36 @@ function drawLoot(ctx, id, px, py, time) {
   ctx.restore();
 }
 
+
+function drawFx(ctx, game, camX, camY) {
+  if (!game.fx?.length) return;
+  for (const f of game.fx) {
+    const a = Math.max(0, f.life / (f.max || 0.5));
+    const x = f.x * TILE_PX - camX;
+    const y = f.y * TILE_PX - camY;
+    ctx.fillStyle =
+      f.kind === "death"
+        ? `rgba(90, 20, 18, ${a * 0.85})`
+        : `rgba(160, 30, 28, ${a * 0.9})`;
+    ctx.beginPath();
+    ctx.arc(x, y, f.size || 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function drawZombie(ctx, px, py, time, z) {
   ctx.save();
   ctx.translate(px, py);
+  const flash = z.hitFlash || 0;
+  if (flash > 0) ctx.globalAlpha = 0.85 + flash * 0.7;
   ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.beginPath();
   ctx.ellipse(0, 12, 10, 4, 0, 0, Math.PI * 2);
   ctx.fill();
   const limp = Math.sin(time * 6 + z.x) * 2;
-  ctx.fillStyle = "#3a4a34";
+  ctx.fillStyle = flash > 0 ? "#c85848" : "#3a4a34";
   ctx.fillRect(-7, -8, 14, 16);
-  ctx.fillStyle = "#6a7a5a";
+  ctx.fillStyle = flash > 0 ? "#e8b0a0" : "#6a7a5a";
   ctx.beginPath();
   ctx.arc(0, -14, 6.5, 0, Math.PI * 2);
   ctx.fill();
@@ -1851,7 +1904,7 @@ function drawZombie(ctx, px, py, time, z) {
   ctx.arc(-2.5, -14, 1.5, 0, Math.PI * 2);
   ctx.arc(3, -14, 1.5, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "#2a3228";
+  ctx.strokeStyle = flash > 0 ? "#6a2020" : "#2a3228";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(-4, 6);
@@ -1863,6 +1916,12 @@ function drawZombie(ctx, px, py, time, z) {
   ctx.moveTo(7, -2);
   ctx.lineTo(12, 3 - limp);
   ctx.stroke();
+  if (flash > 0) {
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = `rgba(255, 220, 200, ${Math.min(1, flash * 4)})`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-9, -22, 18, 36);
+  }
   ctx.restore();
 }
 
@@ -1900,15 +1959,26 @@ function drawAimAndBullets(ctx, game, camX, camY) {
     ctx.restore();
 
     if (game.muzzleFlash > 0) {
-      const fx = px + Math.cos(ang) * 18;
-      const fy = py + Math.sin(ang) * 18;
-      const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, 16);
-      g.addColorStop(0, `rgba(255, 240, 180, ${game.muzzleFlash * 8})`);
-      g.addColorStop(1, "rgba(255, 160, 40, 0)");
+      const fx = px + Math.cos(ang) * 20;
+      const fy = py + Math.sin(ang) * 20;
+      const flash = Math.min(1, game.muzzleFlash * 7);
+      const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, 28);
+      g.addColorStop(0, `rgba(255, 250, 210, ${flash})`);
+      g.addColorStop(0.35, `rgba(255, 180, 60, ${flash * 0.7})`);
+      g.addColorStop(1, "rgba(255, 80, 20, 0)");
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(fx, fy, 16, 0, Math.PI * 2);
+      ctx.arc(fx, fy, 28, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = `rgba(255, 230, 160, ${flash})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = ang + (i - 2) * 0.18;
+        ctx.moveTo(fx, fy);
+        ctx.lineTo(fx + Math.cos(a) * (10 + i * 2), fy + Math.sin(a) * (10 + i * 2));
+      }
+      ctx.stroke();
     }
   }
 
@@ -1931,7 +2001,7 @@ function drawPlayer(ctx, px, py, player, time, game = null) {
   ctx.translate(px, py);
   const handDef = itemDef(player.equip?.hand);
   const aimingGun = !!(handDef?.firearm);
-  if (aimingGun) {
+  if (aimingGun || (player.swingT || 0) > 0) {
     ctx.rotate(player.aim || 0);
   } else {
     ctx.scale(player.facing || 1, 1);
@@ -2015,7 +2085,7 @@ function drawPlayer(ctx, px, py, player, time, game = null) {
   }
 
   // Arma en mano (detalle)
-  drawHeldWeapon(ctx, handId, time);
+  drawHeldWeapon(ctx, handId, time, player.swingT || 0);
 
   ctx.restore();
 }
@@ -2073,7 +2143,7 @@ function drawWornBody(ctx, wear) {
   ctx.fillRect(-9, -6, 5, 11);
 }
 
-function drawHeldWeapon(ctx, hand, time) {
+function drawHeldWeapon(ctx, hand, time, swingT = 0) {
   if (!hand) {
     ctx.strokeStyle = "#d2b08a";
     ctx.lineWidth = 2;
@@ -2083,7 +2153,7 @@ function drawHeldWeapon(ctx, hand, time) {
     ctx.stroke();
     return;
   }
-  const swing = Math.sin(time * 2) * 0.05;
+  const swing = swingT > 0 ? Math.sin((1 - Math.min(1, swingT / 0.22)) * Math.PI) * 1.15 : Math.sin(time * 2) * 0.05;
   ctx.save();
   ctx.translate(8, -1);
   ctx.rotate(-0.35 + swing);

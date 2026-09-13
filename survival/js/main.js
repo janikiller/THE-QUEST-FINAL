@@ -10,6 +10,8 @@ import {
   waveStatus,
   setToast,
   MAX_HEALTH,
+  invCapacity,
+  invUsed,
 } from "./game.js";
 import { createRenderer } from "./render.js";
 
@@ -143,6 +145,15 @@ function bindHudClicks() {
       const id = game.player.equip.body;
       game.player.equip.body = null;
       setToast(game, "Ropa guardada. T para cambiar.");
+    } else if (slot === "bag" && game.player.equip.bag) {
+      const prev = game.player.equip.bag;
+      game.player.equip.bag = null;
+      if (invUsed(game.player) > invCapacity(game.player)) {
+        game.player.equip.bag = prev;
+        setToast(game, "Vacía la mochila antes de quitártela.");
+      } else {
+        setToast(game, "Mochila guardada.");
+      }
     } else if (slot === "light" && game.player.equip.light) {
       game.player.equip.light = null;
       setToast(game, "Luz guardada.");
@@ -200,6 +211,7 @@ function syncHud(g) {
         <span class="hot-key">${s.key}</span>
         <span class="hot-icon">${s.icon || "·"}</span>
         <span class="hot-label">${s.label || "—"}</span>
+        ${s.ammo != null ? `<span class="hot-ammo">${s.ammo}</span>` : ""}
       </button>`
     )
     .join("");

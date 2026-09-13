@@ -431,8 +431,10 @@ const CONTAINER_LOOT = {
     { id: LOOT.RAINCOAT, w: 1 },
     { id: LOOT.PISTOL, w: 1 },
     { id: LOOT.SHOTGUN, w: 1 },
+    { id: LOOT.RIFLE, w: 1 },
     { id: LOOT.AMMO_9MM, w: 2 },
     { id: LOOT.AMMO_SHOT, w: 1 },
+    { id: LOOT.AMMO_RIFLE, w: 1 },
     { empty: true, w: 2 },
   ],
   desk: [

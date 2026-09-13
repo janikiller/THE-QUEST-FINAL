@@ -272,7 +272,7 @@ html, body {
   left: 1.2rem;
   bottom: 1.1rem;
   display: grid;
-  grid-template-columns: repeat(3, 4.4rem);
+  grid-template-columns: repeat(2, 4.6rem);
   gap: 0.35rem;
 }
 
@@ -413,6 +413,18 @@ html, body {
 
 .hot-slot.empty .hot-icon { color: rgba(228, 239, 230, 0.18); }
 
+.hot-slot .hot-ammo {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: var(--sand);
+  background: rgba(0, 0, 0, 0.45);
+  padding: 0 0.2rem;
+  line-height: 1.2;
+}
+
 .inv-strip {
   display: flex;
   gap: 0.35rem;
@@ -479,7 +491,7 @@ html, body {
     gap: 1.2rem;
   }
   .equip-panel {
-    grid-template-columns: repeat(3, 3.6rem);
+    grid-template-columns: repeat(2, 3.8rem);
     bottom: 6.8rem;
   }
   .vitals { bottom: 12.2rem; }

@@ -43,12 +43,13 @@ export function createGame(world) {
       hunger: 82,
       thirst: 78,
       stamina: 100,
-      inv: { food: 1, water: 1, scrap: 1, wood: 1, med: 1, shirt: 1, jacket: 1, bat: 1, pistol: 1, ammo_9mm: 24 },
-      equip: { hand: "pistol", body: "shirt", bag: null, light: null },
+      inv: { food: 1, water: 1, scrap: 2, wood: 2, med: 1, shirt: 1, bat: 1, pistol: 1, ammo_9mm: 8 },
+      equip: { hand: "bat", body: "shirt", bag: null, light: null },
       gearPhase: "clothes",
       gatherCd: 0,
       attackCd: 0,
       hurtFlash: 0,
+      swingT: 0,
     },
     zombies: [],
     time: 0.52 * DAY_LEN,
@@ -79,12 +80,16 @@ export function createGame(world) {
       label: "Lluvia",
     },
     bullets: [],
+    fx: [],
+    shake: 0,
+    waveBanner: "",
+    waveBannerT: 0,
     muzzleFlash: 0,
     mouse: { x: 0, y: 0, worldX: 0, worldY: 0, viewW: 0, viewH: 0, down: false, clicked: false },
   };
   game.player.aim = 0;
   seedZombies(game, 4);
-  setToast(game, "Oleada 1. Apunta con el ratón · clic izq. dispara · Q cuerpo a cuerpo.");
+  setToast(game, "Niebla Norte. Ratón apunta · clic dispara · Q melee · E saquea · B construye.");
   return game;
 }
 
@@ -139,10 +144,13 @@ export function updateGame(game, dt) {
   const phase = dayPhase(game);
   if (game.toastT > 0) game.toastT -= dt;
   game.noisePulse = Math.max(0, game.noisePulse - dt);
+  game.shake = Math.max(0, (game.shake || 0) - dt * 4);
+  if (game.waveBannerT > 0) game.waveBannerT -= dt;
 
   p.gatherCd = Math.max(0, p.gatherCd - dt);
   p.attackCd = Math.max(0, p.attackCd - dt);
   p.hurtFlash = Math.max(0, p.hurtFlash - dt);
+  p.swingT = Math.max(0, (p.swingT || 0) - dt);
 
   if (pressed(game, "b")) {
     const cur = BUILD_CYCLE.indexOf(game.buildMode);
@@ -153,7 +161,6 @@ export function updateGame(game, dt) {
     else if (next === "door") setToast(game, "Modo puerta — Enter para colocar.");
     else setToast(game, "Modo base — Enter para marcar.");
   }
-  if (pressed(game, "enter") && game.buildMode && p.gatherCd <= 0) build(game);
   if (pressed(game, "0") || pressed(game, "escape")) game.buildMode = null;
 
   // Hotbar de armas estilo Project Zomboid (1-5)
@@ -225,6 +232,7 @@ export function updateGame(game, dt) {
   game.justPressed.clear();
 
   updateBullets(game, dt);
+  updateFx(game, dt);
   game.muzzleFlash = Math.max(0, game.muzzleFlash - dt);
   updateZombies(game, dt, phase);
   updateWaves(game, dt, phase);
@@ -232,6 +240,8 @@ export function updateGame(game, dt) {
   if (p.health <= 0) {
     p.health = 0;
     game.dead = true;
+    game.shake = Math.max(game.shake || 0, 0.9);
+    p.hurtFlash = 0.8;
     if (p.thirst < 1) game.deathReason = "La sed te dejó sin escape.";
     else if (p.hunger < 1) game.deathReason = "El hambre te dobló en la acera.";
     else game.deathReason = "Los muertos de Niebla Norte te alcanzaron.";
@@ -391,26 +401,37 @@ function melee(game) {
   const meleeRange = weapon.firearm ? 1.2 : weapon.range;
   const meleeCd = weapon.firearm ? 0.4 : weapon.attackCd;
   p.attackCd = meleeCd;
+  p.swingT = 0.22;
   p.stamina = Math.max(0, p.stamina - (weapon.firearm ? 8 : weapon.stamina));
-  game.noisePulse = Math.max(game.noisePulse, weapon.firearm ? 2.2 : 3.5);
+  game.noisePulse = Math.max(game.noisePulse, weapon.firearm ? 1.6 : 2.2);
   let hit = false;
+  const aim = p.aim || 0;
+  const ax = Math.cos(aim);
+  const ay = Math.sin(aim);
 
   for (const z of game.zombies) {
     const dx = z.x - p.x;
     const dy = z.y - p.y;
-    if (Math.hypot(dx, dy) > meleeRange) continue;
-    if (p.facing > 0 && dx < -0.45) continue;
-    if (p.facing < 0 && dx > 0.45) continue;
+    const dist = Math.hypot(dx, dy);
+    if (dist > meleeRange || dist < 0.01) continue;
+    const dot = (dx / dist) * ax + (dy / dist) * ay;
+    if (dot < 0.15) continue;
     z.hp -= meleeDmg;
     z.stun = 0.35;
-    z.x += Math.sign(dx || p.facing) * 0.4;
+    z.hitFlash = 0.22;
+    z.x += ax * 0.35;
+    z.y += ay * 0.35;
+    spawnFx(game, z.x, z.y, "blood");
+    game.shake = Math.max(game.shake || 0, 0.14);
     hit = true;
   }
 
   game.zombies = game.zombies.filter((z) => {
     if (z.hp > 0) return true;
     game.kills += 1;
-    if (Math.random() < 0.28) {
+    spawnFx(game, z.x, z.y, "death");
+    game.shake = Math.max(game.shake || 0, 0.16);
+    if (Math.random() < 0.32) {
       const id = Math.random() < 0.55 ? LOOT.SCRAP : LOOT.FOOD;
       const key = `${Math.floor(z.x)},${Math.floor(z.y)}`;
       if (!game.world.loot.has(key)) game.world.loot.set(key, { id, amount: 1 });
@@ -418,7 +439,14 @@ function melee(game) {
     return false;
   });
 
-  setToast(game, hit ? (weapon.firearm ? `Culatazo con ${weapon.label.toLowerCase()}.` : `Golpeas con ${weapon.label.toLowerCase()}.`) : "Cortas el aire.");
+  setToast(
+    game,
+    hit
+      ? weapon.firearm
+        ? `Culatazo con ${weapon.label.toLowerCase()}.`
+        : `Golpeas con ${weapon.label.toLowerCase()}.`
+      : "Cortas el aire."
+  );
 }
 
 function build(game) {
@@ -427,8 +455,10 @@ function build(game) {
   const recipe = BUILD[game.buildMode];
   if (!recipe) return;
 
-  const bx = game.buildMode === "claim" ? Math.floor(p.x) : Math.floor(p.x + p.facing * 1.0);
-  const by = Math.floor(p.y);
+  const aimDx = Math.cos(p.aim || 0);
+  const aimDy = Math.sin(p.aim || 0);
+  const bx = game.buildMode === "claim" ? Math.floor(p.x) : Math.floor(p.x + aimDx * 1.15);
+  const by = game.buildMode === "claim" ? Math.floor(p.y) : Math.floor(p.y + aimDy * 1.15);
   const key = `${bx},${by}`;
   const current = tileAt(game.world, bx + 0.5, by + 0.5);
 
@@ -448,7 +478,7 @@ function build(game) {
     pay(p, recipe.cost);
     setTile(game.world, bx, by, TILE.BASE);
     game.baseClaimed = true;
-    setToast(game, "Base marcada. Cércala con barricadas (1) y puerta (2).");
+    setToast(game, "Base marcada. B → barricada / puerta · Enter coloca.");
     return;
   }
 
@@ -503,8 +533,9 @@ function makeZombie(x, y, wave = 0) {
     y,
     hp: (38 + ((Math.random() * 28) | 0)) * scaleHp,
     speed: (0.8 + Math.random() * 0.6) * scaleSpd,
-    damage: 13 * scaleDmg,
+    damage: 15 * scaleDmg,
     stun: 0,
+    hitFlash: 0,
     attackCd: 0,
     wanderT: 0,
     wx: x,
@@ -519,6 +550,7 @@ function updateZombies(game, dt, phase) {
 
   for (const z of game.zombies) {
     z.stun = Math.max(0, z.stun - dt);
+    z.hitFlash = Math.max(0, (z.hitFlash || 0) - dt);
     z.attackCd = Math.max(0, z.attackCd - dt);
     if (z.stun > 0) continue;
 
@@ -574,7 +606,8 @@ function updateZombies(game, dt, phase) {
       const biteMult = body?.biteMult ?? 1;
       const baseDmg = z.damage || 13;
       p.health -= (onBase ? baseDmg * 0.55 : baseDmg) * biteMult;
-      p.hurtFlash = 0.32;
+      p.hurtFlash = 0.4;
+      game.shake = Math.max(game.shake || 0, 0.35);
       z.attackCd = 0.95;
       setToast(game, "¡Un zombie te muerde!");
     }
@@ -591,6 +624,7 @@ function updateWaves(game, dt, phase) {
       game.waveSpawnStall = 0;
       game.wavePhase = "spawning";
       setToast(game, `Oleada ${game.wave}: llegan ${game.waveQuota} zombis.`);
+      showWaveBanner(game, `OLEADA ${game.wave}`, 2.2);
     }
     return;
   }
@@ -614,6 +648,7 @@ function updateWaves(game, dt, phase) {
       game.wavePhase = "clear";
       game.waveTimer = 1.2;
       setToast(game, `Oleada ${game.wave} limpia. Prepárate…`);
+      showWaveBanner(game, `OLEADA ${game.wave} LIMPIA`, 1.8);
     }
     return;
   }
@@ -628,7 +663,7 @@ function updateWaves(game, dt, phase) {
   }
 }
 
-function invUsed(p) {
+export function invUsed(p) {
   let n = 0;
   for (const [id, count] of Object.entries(p.inv)) {
     if (!count) continue;
@@ -704,8 +739,9 @@ function fireWeapon(game) {
   if (p.inv[ammoId] <= 0) delete p.inv[ammoId];
   p.attackCd = weapon.attackCd;
   p.stamina = Math.max(0, p.stamina - weapon.stamina);
-  game.noisePulse = Math.max(game.noisePulse, weapon.noise);
-  game.muzzleFlash = 0.08;
+  game.noisePulse = Math.max(game.noisePulse, Math.min(2.6, weapon.noise * 0.22));
+  game.muzzleFlash = 0.16;
+  game.shake = Math.max(game.shake || 0, weapon.pellets > 1 ? 0.28 : 0.14);
 
   const pellets = weapon.pellets || 1;
   for (let i = 0; i < pellets; i++) {
@@ -721,7 +757,9 @@ function fireWeapon(game) {
       from: "player",
     });
   }
-  setToast(game, `${weapon.label}: ${p.inv[ammoId] || 0} balas`);
+  const left = p.inv[ammoId] || 0;
+  if (left === 0) setToast(game, `${weapon.label}: sin balas.`);
+  else if (left <= 5) setToast(game, `${weapon.label}: ${left} balas.`);
 }
 
 function updateBullets(game, dt) {
@@ -740,8 +778,10 @@ function updateBullets(game, dt) {
     for (const z of game.zombies) {
       if (Math.hypot(z.x - b.x, z.y - b.y) < 0.45) {
         z.hp -= b.damage;
-        z.stun = Math.max(z.stun || 0, 0.25);
-        z.x += Math.sign(b.vx || 1) * 0.25;
+        z.stun = Math.max(z.stun || 0, 0.28);
+        z.hitFlash = 0.18;
+        z.x += Math.sign(b.vx || 1) * 0.28;
+        spawnFx(game, z.x, z.y, "blood");
         hit = true;
         break;
       }
@@ -753,12 +793,51 @@ function updateBullets(game, dt) {
   game.zombies = game.zombies.filter((z) => {
     if (z.hp > 0) return true;
     game.kills += 1;
-    if (Math.random() < 0.28) {
+    spawnFx(game, z.x, z.y, "death");
+    game.shake = Math.max(game.shake || 0, 0.12);
+    if (Math.random() < 0.32) {
       const id = Math.random() < 0.55 ? LOOT.SCRAP : LOOT.FOOD;
       const key = `${Math.floor(z.x)},${Math.floor(z.y)}`;
       if (!game.world.loot.has(key)) game.world.loot.set(key, { id, amount: 1 });
     }
     return false;
+  });
+}
+
+
+function spawnFx(game, x, y, kind) {
+  if (!game.fx) game.fx = [];
+  const n = kind === "death" ? 10 : 5;
+  for (let i = 0; i < n; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = kind === "death" ? 1.2 + Math.random() * 2.2 : 0.6 + Math.random() * 1.4;
+    game.fx.push({
+      x,
+      y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd,
+      life: kind === "death" ? 0.45 + Math.random() * 0.25 : 0.22 + Math.random() * 0.15,
+      max: 0.5,
+      kind,
+      size: kind === "death" ? 2 + Math.random() * 3 : 1.5 + Math.random() * 2,
+    });
+  }
+}
+
+function showWaveBanner(game, text, dur = 2) {
+  game.waveBanner = text;
+  game.waveBannerT = dur;
+}
+
+function updateFx(game, dt) {
+  if (!game.fx) return;
+  game.fx = game.fx.filter((f) => {
+    f.life -= dt;
+    f.x += f.vx * dt;
+    f.y += f.vy * dt;
+    f.vx *= 0.92;
+    f.vy *= 0.92;
+    return f.life > 0;
   });
 }
 
@@ -770,12 +849,14 @@ export function hotbarSlots(game) {
   for (let i = 0; i < 5; i++) {
     const id = owned[i] || null;
     const def = id ? itemDef(id) : null;
+    const ammoN = def?.firearm && def.ammo ? (p.inv[def.ammo] || 0) : null;
     slots.push({
       index: i,
       key: String(i + 1),
       id,
       label: def?.label || "",
       icon: def?.icon || "",
+      ammo: ammoN,
       active: id && p.equip.hand === id,
       empty: !id,
     });
