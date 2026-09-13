@@ -43,7 +43,7 @@ export function createGame(world) {
       hunger: 82,
       thirst: 78,
       stamina: 100,
-      inv: { food: 1, water: 1, scrap: 3, wood: 3, med: 1, shirt: 1, jacket: 1, bat: 1, crowbar: 1, knife: 1 },
+      inv: { food: 1, water: 1, scrap: 2, wood: 2, med: 1, shirt: 1, jacket: 1, bat: 1 },
       equip: { hand: "bat", body: "shirt", bag: null, light: null },
       gatherCd: 0,
       attackCd: 0,
