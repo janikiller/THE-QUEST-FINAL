@@ -34,6 +34,14 @@ python3 -m http.server 8080
 - Ciudad procedural (calles, edificios, parques, parking, canal)
 - Día/noche, clima y farolas
 - Oleadas de zombis cada vez más duras
+- **Jefes cada 3 oleadas** (El Bruto, El Aullador, El Blindado): más vida, carga telegráfica y botín
 - Armas melee y de fuego con munición
 - Ropa visible, mochila y linterna/farol equipables
 - Base: marca suelo, cercála con barricadas y puerta
+
+## Debug rápido (jefes)
+
+```bash
+# Salta cerca de la oleada 3 (con jefe) y acorta timers
+http://localhost:8080/survival/?auto=1&boss=1&fastwaves=1
+```

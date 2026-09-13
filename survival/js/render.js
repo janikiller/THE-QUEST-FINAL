@@ -1886,26 +1886,53 @@ function drawFx(ctx, game, camX, camY) {
 function drawZombie(ctx, px, py, time, z) {
   ctx.save();
   ctx.translate(px, py);
+  const boss = !!z.boss;
+  const scale = boss ? 1.55 + Math.min(0.35, (z.radius || 0.7) - 0.55) : 1;
+  ctx.scale(scale, scale);
   const flash = z.hitFlash || 0;
   if (flash > 0) ctx.globalAlpha = 0.85 + flash * 0.7;
+  if (z.telegraph > 0) {
+    ctx.strokeStyle = `rgba(255, 180, 60, ${0.35 + z.telegraph})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, 22 + (0.55 - Math.min(0.55, z.telegraph)) * 18, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  if (z.chargeT > 0) {
+    ctx.fillStyle = "rgba(255, 70, 40, 0.18)";
+    ctx.beginPath();
+    ctx.arc(0, 0, 26, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.beginPath();
-  ctx.ellipse(0, 12, 10, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 12, boss ? 14 : 10, boss ? 5 : 4, 0, 0, Math.PI * 2);
   ctx.fill();
-  const limp = Math.sin(time * 6 + z.x) * 2;
-  ctx.fillStyle = flash > 0 ? "#c85848" : "#3a4a34";
+  const limp = Math.sin(time * (boss ? 4.2 : 6) + z.x) * (boss ? 3 : 2);
+  const body = flash > 0 ? "#c85848" : boss ? z.color || "#6a2a28" : "#3a4a34";
+  const head = flash > 0 ? "#e8b0a0" : boss ? z.head || "#8a4a40" : "#6a7a5a";
+  ctx.fillStyle = body;
   ctx.fillRect(-7, -8, 14, 16);
-  ctx.fillStyle = flash > 0 ? "#e8b0a0" : "#6a7a5a";
+  ctx.fillStyle = head;
   ctx.beginPath();
-  ctx.arc(0, -14, 6.5, 0, Math.PI * 2);
+  ctx.arc(0, -14, boss ? 7.5 : 6.5, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "#8a2020";
+  ctx.fillStyle = boss ? "#ff3030" : "#8a2020";
   ctx.beginPath();
-  ctx.arc(-2.5, -14, 1.5, 0, Math.PI * 2);
-  ctx.arc(3, -14, 1.5, 0, Math.PI * 2);
+  ctx.arc(-2.5, -14, boss ? 2 : 1.5, 0, Math.PI * 2);
+  ctx.arc(3, -14, boss ? 2 : 1.5, 0, Math.PI * 2);
   ctx.fill();
+  if (boss) {
+    ctx.strokeStyle = "rgba(255, 210, 120, 0.85)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-10, -24, 20, 40);
+    ctx.fillStyle = "rgba(255, 220, 140, 0.95)";
+    ctx.font = "bold 8px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("JEFE", 0, -28);
+  }
   ctx.strokeStyle = flash > 0 ? "#6a2020" : "#2a3228";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = boss ? 4 : 3;
   ctx.beginPath();
   ctx.moveTo(-4, 6);
   ctx.lineTo(-5, 14 + limp);
@@ -1923,6 +1950,25 @@ function drawZombie(ctx, px, py, time, z) {
     ctx.strokeRect(-9, -22, 18, 36);
   }
   ctx.restore();
+
+  if (boss && z.maxHp > 0) {
+    const pct = Math.max(0, z.hp / z.maxHp);
+    const bw = 42;
+    const bx = px - bw / 2;
+    const by = py - 38 * scale;
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fillRect(bx - 1, by - 1, bw + 2, 6);
+    ctx.fillStyle = "#3a1010";
+    ctx.fillRect(bx, by, bw, 4);
+    ctx.fillStyle = pct > 0.35 ? "#d0a040" : "#d04540";
+    ctx.fillRect(bx, by, bw * pct, 4);
+    if (z.name) {
+      ctx.fillStyle = "rgba(255,235,200,0.9)";
+      ctx.font = "600 11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(z.name, px, by - 4);
+    }
+  }
 }
 
 
@@ -2305,8 +2351,11 @@ function drawMinimap(mctx, mini, game) {
       mctx.fillRect(x * scale, y * scale, scale + 0.6, scale + 0.6);
     }
   }
-  mctx.fillStyle = "#7dcea0";
-  for (const z of game.zombies) mctx.fillRect(z.x * scale - 0.8, z.y * scale - 0.8, 2, 2);
+  for (const z of game.zombies) {
+    mctx.fillStyle = z.boss ? "#e8a040" : "#7dcea0";
+    const s = z.boss ? 3.2 : 2;
+    mctx.fillRect(z.x * scale - s / 2, z.y * scale - s / 2, s, s);
+  }
   mctx.fillStyle = "#fff6e0";
   mctx.beginPath();
   mctx.arc(game.player.x * scale, game.player.y * scale, 2.5, 0, Math.PI * 2);

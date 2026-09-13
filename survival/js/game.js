@@ -28,6 +28,86 @@ const DEFAULT_WEAPON = {
   icon: "✊",
 };
 
+
+/** Jefes de oleada (cada 3 oleadas: 3, 6, 9…). Escalan con la oleada. */
+export const BOSS_TYPES = {
+  bruiser: {
+    id: "bruiser",
+    name: "El Bruto",
+    title: "JEFE · EL BRUTO",
+    color: "#6a2a28",
+    head: "#8a4a40",
+    hp: 320,
+    speed: 0.72,
+    damage: 28,
+    radius: 0.72,
+    attackCd: 1.15,
+    aggroBonus: 8,
+    chargeCd: 4.5,
+    chargeSpeed: 2.4,
+    chargeTime: 0.55,
+    knockback: 0.55,
+    loot: [
+      { id: LOOT.AMMO_9MM, amount: 12 },
+      { id: LOOT.MED, amount: 1 },
+      { id: LOOT.SCRAP, amount: 3 },
+    ],
+  },
+  screamer: {
+    id: "screamer",
+    name: "El Aullador",
+    title: "JEFE · EL AULLADOR",
+    color: "#4a3a58",
+    head: "#7a6a88",
+    hp: 210,
+    speed: 1.35,
+    damage: 18,
+    radius: 0.55,
+    attackCd: 0.7,
+    aggroBonus: 14,
+    chargeCd: 3.2,
+    chargeSpeed: 3.1,
+    chargeTime: 0.4,
+    knockback: 0.35,
+    screamNoise: 9,
+    loot: [
+      { id: LOOT.AMMO_SHOT, amount: 6 },
+      { id: LOOT.FOOD, amount: 2 },
+      { id: LOOT.WOOD, amount: 2 },
+    ],
+  },
+  tank: {
+    id: "tank",
+    name: "El Blindado",
+    title: "JEFE · EL BLINDADO",
+    color: "#3a4540",
+    head: "#5a6860",
+    hp: 480,
+    speed: 0.55,
+    damage: 34,
+    radius: 0.85,
+    attackCd: 1.35,
+    aggroBonus: 6,
+    chargeCd: 5.5,
+    chargeSpeed: 1.9,
+    chargeTime: 0.7,
+    knockback: 0.8,
+    loot: [
+      { id: LOOT.AMMO_RIFLE, amount: 8 },
+      { id: LOOT.VEST, amount: 1 },
+      { id: LOOT.SCRAP, amount: 4 },
+    ],
+  },
+};
+
+const BOSS_ROTATION = ["bruiser", "screamer", "tank"];
+
+/** Devuelve el tipo de jefe de una oleada, o null si no toca. */
+export function bossKindForWave(wave) {
+  if (wave < 3 || wave % 3 !== 0) return null;
+  return BOSS_ROTATION[(((wave / 3) | 0) - 1) % BOSS_ROTATION.length];
+}
+
 const BUILD_CYCLE = [null, "wall", "door", "claim"];
 
 
@@ -71,6 +151,8 @@ export function createGame(world) {
     waveTimer: 16,
     waveQuota: 0,
     waveSpawned: 0,
+    waveBossKind: null,
+    waveBossSpawned: false,
     weather: {
       kind: "rain",
       intensity: 0.55,
@@ -90,20 +172,49 @@ export function createGame(world) {
   game.player.aim = 0;
   seedZombies(game, 4);
   setToast(game, "Niebla Norte. Ratón apunta · clic dispara · Q melee · E saquea · B construye.");
+  applyWaveDebugFlags(game);
   return game;
+}
+
+/** ?boss=1 → oleada 3 con jefe pronto; ?fastwaves=1 → timers cortos. */
+function applyWaveDebugFlags(game) {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.has("fastwaves")) {
+      game.waveTimer = Math.min(game.waveTimer, 3);
+    }
+    if (q.has("boss")) {
+      game.wave = 2;
+      game.wavePhase = "countdown";
+      game.waveTimer = q.has("fastwaves") ? 2 : 5;
+      setToast(game, "Debug: oleada 3 con jefe en breve.");
+    }
+  } catch (_) {
+    /* SSR / tests */
+  }
 }
 
 /** Texto corto para el HUD de oleadas. */
 export function waveStatus(game) {
+  const bossAlive = game.zombies.some((z) => z.boss && z.hp > 0);
+  const bossName = game.waveBossKind ? BOSS_TYPES[game.waveBossKind]?.name : null;
   if (game.wavePhase === "countdown") {
     const n = Math.max(1, Math.ceil(game.waveTimer));
-    return game.wave === 0 ? `Oleada 1 en ${n}s` : `Oleada ${game.wave + 1} en ${n}s`;
+    const next = game.wave === 0 ? 1 : game.wave + 1;
+    const bossHint = bossKindForWave(next) ? " · jefe" : "";
+    return `Oleada ${next} en ${n}s${bossHint}`;
   }
   if (game.wavePhase === "spawning") {
-    return `Oleada ${game.wave}: ${game.waveSpawned}/${game.waveQuota}`;
+    const bossTag = game.waveBossKind
+      ? game.waveBossSpawned
+        ? " · jefe en campo"
+        : " · jefe pronto"
+      : "";
+    return `Oleada ${game.wave}: ${game.waveSpawned}/${game.waveQuota}${bossTag}`;
   }
   if (game.wavePhase === "fighting") {
     const left = game.zombies.filter((z) => z.wave > 0).length;
+    if (bossAlive && bossName) return `Oleada ${game.wave}: ¡${bossName}! · ${left} vivos`;
     return `Oleada ${game.wave}: ${left} vivos`;
   }
   return `Oleada ${game.wave} limpia`;
@@ -413,7 +524,7 @@ function melee(game) {
     const dx = z.x - p.x;
     const dy = z.y - p.y;
     const dist = Math.hypot(dx, dy);
-    if (dist > meleeRange || dist < 0.01) continue;
+    if (dist > meleeRange + (z.radius || 0.45) - 0.45 || dist < 0.01) continue;
     const dot = (dx / dist) * ax + (dy / dist) * ay;
     if (dot < 0.15) continue;
     z.hp -= meleeDmg;
@@ -428,14 +539,7 @@ function melee(game) {
 
   game.zombies = game.zombies.filter((z) => {
     if (z.hp > 0) return true;
-    game.kills += 1;
-    spawnFx(game, z.x, z.y, "death");
-    game.shake = Math.max(game.shake || 0, 0.16);
-    if (Math.random() < 0.32) {
-      const id = Math.random() < 0.55 ? LOOT.SCRAP : LOOT.FOOD;
-      const key = `${Math.floor(z.x)},${Math.floor(z.y)}`;
-      if (!game.world.loot.has(key)) game.world.loot.set(key, { id, amount: 1 });
-    }
+    onZombieKilled(game, z);
     return false;
   });
 
@@ -528,12 +632,15 @@ function makeZombie(x, y, wave = 0) {
   const scaleHp = 1 + Math.max(0, wave - 1) * 0.14;
   const scaleSpd = 1 + Math.max(0, wave - 1) * 0.07;
   const scaleDmg = 1 + Math.max(0, wave - 1) * 0.05;
+  const hp = (38 + ((Math.random() * 28) | 0)) * scaleHp;
   return {
     x,
     y,
-    hp: (38 + ((Math.random() * 28) | 0)) * scaleHp,
+    hp,
+    maxHp: hp,
     speed: (0.8 + Math.random() * 0.6) * scaleSpd,
     damage: 15 * scaleDmg,
+    radius: 0.45,
     stun: 0,
     hitFlash: 0,
     attackCd: 0,
@@ -541,20 +648,120 @@ function makeZombie(x, y, wave = 0) {
     wx: x,
     wy: y,
     wave,
+    boss: false,
+    bossKind: null,
+    chargeT: 0,
+    chargeCd: 0,
+    telegraph: 0,
   };
+}
+
+function makeBoss(x, y, wave, kind) {
+  const def = BOSS_TYPES[kind] || BOSS_TYPES.bruiser;
+  const scale = 1 + Math.max(0, wave - 3) * 0.12;
+  const hp = def.hp * scale;
+  return {
+    x,
+    y,
+    hp,
+    maxHp: hp,
+    speed: def.speed * (1 + Math.max(0, wave - 3) * 0.03),
+    damage: def.damage * (1 + Math.max(0, wave - 3) * 0.06),
+    radius: def.radius,
+    stun: 0,
+    hitFlash: 0,
+    attackCd: 0,
+    wanderT: 0,
+    wx: x,
+    wy: y,
+    wave,
+    boss: true,
+    bossKind: def.id,
+    name: def.name,
+    color: def.color,
+    head: def.head,
+    chargeT: 0,
+    chargeCd: 1.2,
+    telegraph: 0,
+    chargeSpeed: def.chargeSpeed,
+    chargeDuration: def.chargeTime,
+    chargeCooldown: def.chargeCd,
+    aggroBonus: def.aggroBonus,
+    knockback: def.knockback,
+    screamNoise: def.screamNoise || 0,
+    attackInterval: def.attackCd,
+    lootTable: def.loot,
+  };
+}
+
+function spawnBoss(game, wave, kind) {
+  const p = game.player;
+  for (let attempt = 0; attempt < 36; attempt++) {
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 14 + Math.random() * 12;
+    const x = p.x + Math.cos(ang) * dist;
+    const y = p.y + Math.sin(ang) * dist;
+    if (!canWalk(game.world, x, y, { zombie: true })) continue;
+    const boss = makeBoss(x, y, wave, kind);
+    game.zombies.push(boss);
+    return boss;
+  }
+  const boss = makeBoss(p.x + 10, p.y, wave, kind);
+  game.zombies.push(boss);
+  return boss;
+}
+
+function dropLootAt(game, x, y, id, amount) {
+  const key = `${Math.floor(x)},${Math.floor(y)}`;
+  const prev = game.world.loot.get(key);
+  if (prev && prev.id === id) {
+    prev.amount = (prev.amount || 1) + amount;
+    return;
+  }
+  if (!prev) {
+    game.world.loot.set(key, { id, amount });
+    return;
+  }
+  const key2 = `${Math.floor(x) + 1},${Math.floor(y)}`;
+  if (!game.world.loot.has(key2)) game.world.loot.set(key2, { id, amount });
+}
+
+function onZombieKilled(game, z) {
+  game.kills += 1;
+  spawnFx(game, z.x, z.y, "death");
+  game.shake = Math.max(game.shake || 0, z.boss ? 0.55 : 0.16);
+  if (z.boss) {
+    const drops = z.lootTable || BOSS_TYPES[z.bossKind]?.loot || [];
+    for (const drop of drops) {
+      const ox = (Math.random() - 0.5) * 1.6;
+      const oy = (Math.random() - 0.5) * 1.6;
+      dropLootAt(game, z.x + ox, z.y + oy, drop.id, drop.amount);
+    }
+    setToast(game, `¡${z.name || "Jefe"} abatido! Botín en el suelo.`);
+    showWaveBanner(game, "JEFE DERROTADO", 2.0);
+    return;
+  }
+  if (Math.random() < 0.32) {
+    const id = Math.random() < 0.55 ? LOOT.SCRAP : LOOT.FOOD;
+    dropLootAt(game, z.x, z.y, id, 1);
+  }
 }
 
 function updateZombies(game, dt, phase) {
   const p = game.player;
-  const aggro = (phase.night ? 11 : 7) + (game.noisePulse > 0 ? 6 : 0);
+  const baseAggro = (phase.night ? 11 : 7) + (game.noisePulse > 0 ? 6 : 0);
 
   for (const z of game.zombies) {
     z.stun = Math.max(0, z.stun - dt);
     z.hitFlash = Math.max(0, (z.hitFlash || 0) - dt);
     z.attackCd = Math.max(0, z.attackCd - dt);
+    z.chargeCd = Math.max(0, (z.chargeCd || 0) - dt);
+    z.telegraph = Math.max(0, (z.telegraph || 0) - dt);
+    if (z.chargeT > 0) z.chargeT = Math.max(0, z.chargeT - dt);
     if (z.stun > 0) continue;
 
     const dist = Math.hypot(z.x - p.x, z.y - p.y);
+    const aggro = baseAggro + (z.boss ? z.aggroBonus || 0 : 0);
     let tx = z.wx;
     let ty = z.wy;
     if (dist < aggro) {
@@ -569,7 +776,19 @@ function updateZombies(game, dt, phase) {
       }
     }
 
-    const spd = z.speed * (phase.night ? 1.28 : 1) * (dist < aggro ? 1.15 : 0.7);
+    // Jefe: telegráfica + carga
+    if (z.boss && dist < aggro && dist > 1.6 && z.chargeCd <= 0 && z.chargeT <= 0 && z.telegraph <= 0) {
+      z.telegraph = 0.55;
+      z.chargeCd = z.chargeCooldown || 4.5;
+      if (z.screamNoise) game.noisePulse = Math.max(game.noisePulse || 0, z.screamNoise);
+      setToast(game, `${z.name} prepara una carga…`);
+    }
+    if (z.boss && z.telegraph > 0 && z.telegraph - dt <= 0 && z.chargeT <= 0) {
+      z.chargeT = z.chargeDuration || 0.55;
+    }
+
+    let spd = z.speed * (phase.night ? 1.28 : 1) * (dist < aggro ? 1.15 : 0.7);
+    if (z.boss && z.chargeT > 0) spd = z.chargeSpeed || spd * 2.2;
     const dx = tx - z.x;
     const dy = ty - z.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -600,16 +819,23 @@ function updateZombies(game, dt, phase) {
     if (canWalk(game.world, nx, z.y, { zombie: true })) z.x = nx;
     if (canWalk(game.world, z.x, ny, { zombie: true })) z.y = ny;
 
-    if (dist < 0.55 && z.attackCd <= 0) {
+    const reach = (z.radius || 0.45) + 0.12;
+    if (dist < reach && z.attackCd <= 0) {
       const onBase = tileAt(game.world, p.x, p.y) === TILE.BASE;
       const body = itemDef(p.equip.body);
       const biteMult = body?.biteMult ?? 1;
       const baseDmg = z.damage || 13;
-      p.health -= (onBase ? baseDmg * 0.55 : baseDmg) * biteMult;
+      const charging = z.boss && z.chargeT > 0;
+      p.health -= (onBase ? baseDmg * 0.55 : baseDmg) * biteMult * (charging ? 1.35 : 1);
       p.hurtFlash = 0.4;
-      game.shake = Math.max(game.shake || 0, 0.35);
-      z.attackCd = 0.95;
-      setToast(game, "¡Un zombie te muerde!");
+      game.shake = Math.max(game.shake || 0, z.boss ? 0.55 : 0.35);
+      z.attackCd = z.boss ? z.attackInterval || 1.1 : 0.95;
+      if (z.boss && z.knockback) {
+        p.x += (dx / len) * z.knockback;
+        p.y += (dy / len) * z.knockback;
+      }
+      setToast(game, z.boss ? `¡${z.name} te golpea!` : "¡Un zombie te muerde!");
+      if (charging) z.chargeT = 0;
     }
   }
 }
@@ -622,9 +848,17 @@ function updateWaves(game, dt, phase) {
       game.waveQuota = Math.min(42, 5 + game.wave * 3 + (phase.night ? 2 : 0));
       game.waveSpawned = 0;
       game.waveSpawnStall = 0;
+      game.waveBossKind = bossKindForWave(game.wave);
+      game.waveBossSpawned = false;
       game.wavePhase = "spawning";
-      setToast(game, `Oleada ${game.wave}: llegan ${game.waveQuota} zombis.`);
-      showWaveBanner(game, `OLEADA ${game.wave}`, 2.2);
+      if (game.waveBossKind) {
+        const b = BOSS_TYPES[game.waveBossKind];
+        setToast(game, `Oleada ${game.wave}: ${game.waveQuota} zombis + jefe ${b.name}.`);
+        showWaveBanner(game, b.title, 2.6);
+      } else {
+        setToast(game, `Oleada ${game.wave}: llegan ${game.waveQuota} zombis.`);
+        showWaveBanner(game, `OLEADA ${game.wave}`, 2.2);
+      }
     }
     return;
   }
@@ -635,7 +869,22 @@ function updateWaves(game, dt, phase) {
     if (game.waveSpawned < game.waveQuota && Math.random() < dt * rate) {
       if (spawnZombie(game, game.wave)) game.waveSpawned += 1;
     }
-    if (game.waveSpawned >= game.waveQuota || game.waveSpawnStall > 18) {
+    // El jefe entra a mitad de la oleada (o al terminar el cupo)
+    const mid = game.waveQuota * 0.45;
+    if (
+      game.waveBossKind &&
+      !game.waveBossSpawned &&
+      (game.waveSpawned >= mid || game.waveSpawned >= game.waveQuota || game.waveSpawnStall > 12)
+    ) {
+      const boss = spawnBoss(game, game.wave, game.waveBossKind);
+      game.waveBossSpawned = true;
+      setToast(game, `¡Aparece ${boss.name}!`);
+      showWaveBanner(game, BOSS_TYPES[game.waveBossKind].title, 2.2);
+    }
+    if (
+      (game.waveSpawned >= game.waveQuota || game.waveSpawnStall > 18) &&
+      (!game.waveBossKind || game.waveBossSpawned)
+    ) {
       game.wavePhase = "fighting";
       game.waveSpawnStall = 0;
     }
@@ -647,6 +896,8 @@ function updateWaves(game, dt, phase) {
     if (waveLeft === 0) {
       game.wavePhase = "clear";
       game.waveTimer = 1.2;
+      game.waveBossKind = null;
+      game.waveBossSpawned = false;
       setToast(game, `Oleada ${game.wave} limpia. Prepárate…`);
       showWaveBanner(game, `OLEADA ${game.wave} LIMPIA`, 1.8);
     }
@@ -776,7 +1027,7 @@ function updateBullets(game, dt) {
 
     let hit = false;
     for (const z of game.zombies) {
-      if (Math.hypot(z.x - b.x, z.y - b.y) < 0.45) {
+      if (Math.hypot(z.x - b.x, z.y - b.y) < (z.radius || 0.45) + 0.05) {
         z.hp -= b.damage;
         z.stun = Math.max(z.stun || 0, 0.28);
         z.hitFlash = 0.18;
@@ -792,14 +1043,7 @@ function updateBullets(game, dt) {
   game.bullets = next;
   game.zombies = game.zombies.filter((z) => {
     if (z.hp > 0) return true;
-    game.kills += 1;
-    spawnFx(game, z.x, z.y, "death");
-    game.shake = Math.max(game.shake || 0, 0.12);
-    if (Math.random() < 0.32) {
-      const id = Math.random() < 0.55 ? LOOT.SCRAP : LOOT.FOOD;
-      const key = `${Math.floor(z.x)},${Math.floor(z.y)}`;
-      if (!game.world.loot.has(key)) game.world.loot.set(key, { id, amount: 1 });
-    }
+    onZombieKilled(game, z);
     return false;
   });
 }
