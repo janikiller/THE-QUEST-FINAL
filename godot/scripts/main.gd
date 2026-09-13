@@ -74,7 +74,7 @@ func _ready() -> void:
 
 
 func _fit_window_to_screen() -> void:
-	## Encaja la ventana en el área usable del monitor (evita que se salga de pantalla).
+	## Llena el monitor sin salirse ni recortar (stretch keep + fullscreen).
 	var screen := DisplayServer.window_get_current_screen()
 	var usable := DisplayServer.screen_get_usable_rect(screen)
 	if usable.size.x < 64 or usable.size.y < 64:
@@ -82,23 +82,9 @@ func _fit_window_to_screen() -> void:
 	var win := get_window()
 	if win == null:
 		return
-	win.mode = Window.MODE_WINDOWED
-	var max_w := int(usable.size.x * 0.96)
-	var max_h := int(usable.size.y * 0.96)
-	# Preferir 16:9 dentro del monitor; cae a lo que quepa.
-	var tw := mini(max_w, int(round(float(max_h) * 16.0 / 9.0)))
-	var th := int(round(float(tw) * 9.0 / 16.0))
-	if th > max_h:
-		th = max_h
-		tw = int(round(float(th) * 16.0 / 9.0))
-	tw = clampi(tw, mini(960, max_w), max_w)
-	th = clampi(th, mini(540, max_h), max_h)
-	win.size = Vector2i(tw, th)
-	win.position = Vector2i(
-		usable.position.x + int((usable.size.x - tw) * 0.5),
-		usable.position.y + int((usable.size.y - th) * 0.5)
-	)
-	print("WINDOW_FIT size=", win.size, " pos=", win.position, " usable=", usable)
+	# Fullscreen con aspect=keep: barras negras si hace falta, nunca crop ni overflow.
+	win.mode = Window.MODE_FULLSCREEN
+	print("WINDOW_FIT fullscreen screen=", screen, " usable=", usable, " win_size=", win.size)
 
 
 func _ground_shot() -> void:
@@ -1166,8 +1152,23 @@ func _arena_variety_shot() -> void:
 
 
 func _play_combat_live() -> void:
-	## Abre un combate jugable (sin auto-quit) para playtest de movimiento/sombras.
-	await get_tree().create_timer(1.0).timeout
+	## Sesión jugable: mapa → combate con varias cartas y turnos (para vídeo).
+	await get_tree().create_timer(0.8).timeout
+	print("PLAY_SESSION map")
+	$UI/UIRouter.show_map()
+	# Paseo corto por el mapa (WASD simulado moviendo al agente).
+	if player != null and is_instance_valid(player):
+		var start := player.global_position
+		for step in [
+			Vector2(120, 0), Vector2(80, -60), Vector2(100, 40), Vector2(-40, 80)
+		]:
+			var tw := create_tween()
+			tw.tween_property(player, "global_position", player.global_position + step, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			await tw.finished
+			await get_tree().create_timer(0.12).timeout
+		print("PLAY_SESSION walked from=", start, " to=", player.global_position)
+	await get_tree().create_timer(0.6).timeout
+
 	var tries := 0
 	while GameState.active_missions.is_empty() and tries < 40:
 		await get_tree().create_timer(0.25).timeout
@@ -1207,24 +1208,30 @@ func _play_combat_live() -> void:
 			})
 		m["suspects"] = suspects
 		GameState.active_missions[mid] = m
+
+	print("PLAY_SESSION enter_combat mid=", mid)
 	$UI/UIRouter.show_combat(mid, "alpha")
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await get_tree().create_timer(0.5).timeout
-	if CombatState.is_active() and CombatState.hand.size() >= 2:
-		CombatState.hand[0] = "punetazo"
-		CombatState.hand[1] = "bloqueo"
-		if CombatState.hand.size() >= 3:
-			CombatState.hand[2] = "punetazo"
+	if CombatState.is_active():
+		# Mano jugable variada
+		var want: Array = ["bloqueo", "punetazo", "codazo", "impulso", "esquiva"]
+		for i in range(mini(want.size(), CombatState.hand.size())):
+			CombatState.hand[i] = want[i]
+		while CombatState.hand.size() < 4:
+			CombatState.hand.append("punetazo")
 	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 	if combat:
 		combat._refresh()
 	print("PLAY_COMBAT_READY mid=", mid)
-	# Demo jugable automática corta: ataque + defensa + turno enemigo (para ver peso/sombras).
-	await get_tree().create_timer(1.2).timeout
+	await get_tree().create_timer(1.0).timeout
 	combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 	if combat == null or not CombatState.is_active():
+		print("PLAY_COMBAT_FAIL no combat")
 		return
+
+	# Turno 1: defensa + dos ataques (movimientos suaves visibles).
 	if CombatState.can_play_card("bloqueo"):
 		print("PLAY_COMBAT_DEMO guard")
 		combat._busy = true
@@ -1232,7 +1239,7 @@ func _play_combat_live() -> void:
 		CombatState.play_card("bloqueo")
 		combat._busy = false
 		combat._refresh()
-		await get_tree().create_timer(0.7).timeout
+		await get_tree().create_timer(0.55).timeout
 	if CombatState.can_play_card("punetazo"):
 		print("PLAY_COMBAT_DEMO punch")
 		var def: Dictionary = CardDB.get_card("punetazo")
@@ -1241,13 +1248,48 @@ func _play_combat_live() -> void:
 		CombatState.play_card("punetazo")
 		combat._busy = false
 		combat._refresh()
-		await get_tree().create_timer(0.8).timeout
+		await get_tree().create_timer(0.55).timeout
+	if CombatState.can_play_card("codazo"):
+		print("PLAY_COMBAT_DEMO elbow")
+		var def2: Dictionary = CardDB.get_card("codazo")
+		combat._busy = true
+		await combat._hero_attack_sequence(def2)
+		CombatState.play_card("codazo")
+		combat._busy = false
+		combat._refresh()
+		await get_tree().create_timer(0.55).timeout
+
 	print("PLAY_COMBAT_DEMO end_turn")
 	if combat.has_method("_on_end_turn"):
 		await combat._on_end_turn()
-	await get_tree().create_timer(2.5).timeout
+	await get_tree().create_timer(1.4).timeout
+
+	# Turno 2 si sigue activo: otro golpe + fin de turno.
+	combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	if combat != null and CombatState.is_active() and CombatState.phase == CombatState.Phase.PLAYER:
+		if CombatState.hand.is_empty() or not CombatState.can_play_card("punetazo"):
+			if CombatState.hand.size() < 1:
+				CombatState.hand.append("punetazo")
+			else:
+				CombatState.hand[0] = "punetazo"
+			combat._refresh()
+			await get_tree().process_frame
+		if CombatState.can_play_card("punetazo"):
+			print("PLAY_COMBAT_DEMO punch2")
+			var def3: Dictionary = CardDB.get_card("punetazo")
+			combat._busy = true
+			await combat._hero_attack_sequence(def3)
+			CombatState.play_card("punetazo")
+			combat._busy = false
+			combat._refresh()
+			await get_tree().create_timer(0.5).timeout
+		if combat.has_method("_on_end_turn"):
+			print("PLAY_COMBAT_DEMO end_turn2")
+			await combat._on_end_turn()
+		await get_tree().create_timer(1.8).timeout
+
 	print("PLAY_COMBAT_DEMO_DONE")
-	# Se queda abierto.
+	# Se queda abierto para el vídeo.
 
 
 func _combat_shot() -> void:
@@ -1390,9 +1432,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		var win := get_window()
 		if win != null:
 			if win.mode == Window.MODE_FULLSCREEN or win.mode == Window.MODE_EXCLUSIVE_FULLSCREEN:
-				_fit_window_to_screen()
+				win.mode = Window.MODE_WINDOWED
+				var screen := DisplayServer.window_get_current_screen()
+				var usable := DisplayServer.screen_get_usable_rect(screen)
+				var tw := mini(int(usable.size.x * 0.9), int(round(float(usable.size.y * 0.9) * 16.0 / 9.0)))
+				var th := int(round(float(tw) * 9.0 / 16.0))
+				win.size = Vector2i(clampi(tw, 960, int(usable.size.x)), clampi(th, 540, int(usable.size.y)))
+				win.position = Vector2i(
+					usable.position.x + int((usable.size.x - win.size.x) * 0.5),
+					usable.position.y + int((usable.size.y - win.size.y) * 0.5)
+				)
 			else:
-				win.mode = Window.MODE_FULLSCREEN
+				_fit_window_to_screen()
 			get_viewport().set_input_as_handled()
 		return
 	if not $UI/UIRouter/MapHud.visible:
