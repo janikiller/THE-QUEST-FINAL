@@ -28,6 +28,7 @@ let raf = 0;
 function start() {
   const world = generateWorld(96);
   game = createGame(world);
+  window.__crespo = game;
   boot.hidden = true;
   death.hidden = true;
   gameRoot.hidden = false;

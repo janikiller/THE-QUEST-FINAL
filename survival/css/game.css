@@ -42,6 +42,11 @@ body {
   z-index: 20;
 }
 
+#boot[hidden],
+#death[hidden] {
+  display: none !important;
+}
+
 .boot-inner,
 .death-inner {
   text-align: center;

@@ -105,8 +105,8 @@ export function updateGame(game, dt) {
   if (p.health <= 0) {
     p.health = 0;
     game.dead = true;
-    if (p.thirst <= 0) game.deathReason = "La sed te dobló las rodillas.";
-    else if (p.hunger <= 0) game.deathReason = "El hambre apagó tu cuerpo.";
+    if (p.thirst < 1) game.deathReason = "La sed te dobló las rodillas.";
+    else if (p.hunger < 1) game.deathReason = "El hambre apagó tu cuerpo.";
     else if (p.warmth < 20) game.deathReason = "El frío de Valmora te venció.";
     else game.deathReason = "Las sombras de la isla te alcanzaron.";
   }
@@ -137,7 +137,7 @@ function interact(game) {
   for (let oy = -1; oy <= 1; oy++) {
     for (let ox = -1; ox <= 1; ox++) {
       const t = tileAt(game.world, tx + ox + 0.5, ty + oy + 0.5);
-      if (TILE_META[t].drink) {
+      if (TILE_META[t]?.drink) {
         p.thirst = Math.min(100, p.thirst + 28);
         setToast(game, "Bebes agua dulce del arroyo.");
         return;
@@ -145,17 +145,17 @@ function interact(game) {
     }
   }
 
-  // Comer bayas del inventario si no hay recurso
-  const key = `${tx},${ty}`;
-  const res = game.world.resources.get(key);
-  if (res) {
-    p.inv[res.id] = (p.inv[res.id] || 0) + res.amount;
-    game.world.resources.delete(key);
-    setToast(game, `Recolectas ${resourceGatherText(res.id)}.`);
-    if (res.id === "berry") {
-      // auto-sugerencia
+  // Recolectar en la casilla o adyacentes
+  for (let oy = -1; oy <= 1; oy++) {
+    for (let ox = -1; ox <= 1; ox++) {
+      const key = `${tx + ox},${ty + oy}`;
+      const res = game.world.resources.get(key);
+      if (!res) continue;
+      p.inv[res.id] = (p.inv[res.id] || 0) + res.amount;
+      game.world.resources.delete(key);
+      setToast(game, `Recolectas ${resourceGatherText(res.id)}.`);
+      return;
     }
-    return;
   }
 
   if (p.inv.berry > 0) {

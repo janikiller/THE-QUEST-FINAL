@@ -31,11 +31,11 @@ export const RESOURCE = {
 };
 
 const RESOURCE_DEFS = {
-  [RESOURCE.BERRY]: { label: "Bayas", tile: TILE.GRASS, chance: 0.045, gather: "bayas silvestres" },
-  [RESOURCE.WOOD]: { label: "Madera", tile: TILE.FOREST, chance: 0.07, gather: "rama caída" },
-  [RESOURCE.STONE]: { label: "Piedra", tile: TILE.ROCK, chance: 0.06, gather: "piedra afilada" },
-  [RESOURCE.REED]: { label: "Juncos", tile: TILE.SWAMP, chance: 0.08, gather: "juncos" },
-  [RESOURCE.FLINT]: { label: "Pedernal", tile: TILE.RUIN, chance: 0.09, gather: "pedernal" },
+  [RESOURCE.BERRY]: { label: "Bayas", tile: TILE.GRASS, chance: 0.09, gather: "bayas silvestres" },
+  [RESOURCE.WOOD]: { label: "Madera", tile: TILE.FOREST, chance: 0.16, gather: "rama caída" },
+  [RESOURCE.STONE]: { label: "Piedra", tile: TILE.ROCK, chance: 0.14, gather: "piedra afilada" },
+  [RESOURCE.REED]: { label: "Juncos", tile: TILE.SWAMP, chance: 0.14, gather: "juncos" },
+  [RESOURCE.FLINT]: { label: "Pedernal", tile: TILE.RUIN, chance: 0.22, gather: "pedernal" },
 };
 
 export function generateWorld(size = 96, seed = (Math.random() * 1e9) | 0) {
@@ -60,10 +60,10 @@ export function generateWorld(size = 96, seed = (Math.random() * 1e9) | 0) {
       if (shaped > 0.12 && shaped < 0.22) t = TILE.WATER;
       else if (shaped >= 0.22 && shaped < 0.3) t = TILE.SAND;
       else if (shaped >= 0.3) {
-        if (shaped > 0.72 && ridge > 0.62) t = TILE.ROCK;
-        else if (m > 0.68 && shaped < 0.55) t = TILE.SWAMP;
-        else if (m < 0.38 && shaped > 0.4) t = TILE.FOREST;
-        else if (ridge > 0.78 && m > 0.45 && shaped > 0.48) t = TILE.RUIN;
+        if (shaped > 0.7 && ridge > 0.58) t = TILE.ROCK;
+        else if (m > 0.64 && shaped < 0.58) t = TILE.SWAMP;
+        else if (m < 0.48 && shaped > 0.36) t = TILE.FOREST;
+        else if (ridge > 0.74 && m > 0.4 && shaped > 0.45) t = TILE.RUIN;
         else t = TILE.GRASS;
       }
 
