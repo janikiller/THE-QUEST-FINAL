@@ -953,28 +953,33 @@ function putLoot(map, x, y, id) {
 
 function findSpawn(tiles, size, noise, canalY = (size / 2) | 0) {
   const candidates = [];
-  for (let y = 4; y < size - 4; y++) {
+  // Orilla norte del río: el agua debe verse en el primer viewport
+  const yMin = Math.max(4, canalY - 8);
+  const yMax = Math.min(size - 5, canalY - 3);
+  for (let y = yMin; y <= yMax; y++) {
     for (let x = 4; x < size - 4; x++) {
       const t = tiles[y * size + x];
-      if (t !== TILE.ROAD && t !== TILE.SIDEWALK && t !== TILE.CROSSWALK) continue;
+      if (t !== TILE.ROAD && t !== TILE.SIDEWALK && t !== TILE.CROSSWALK && t !== TILE.RUBBLE) continue;
       let nearDoor = false;
-      for (let oy = -5; oy <= 5 && !nearDoor; oy++) {
-        for (let ox = -5; ox <= 5; ox++) {
-          if (tiles[(y + oy) * size + (x + ox)] === TILE.DOOR) {
+      for (let oy = -6; oy <= 6 && !nearDoor; oy++) {
+        for (let ox = -6; ox <= 6; ox++) {
+          const yy = y + oy;
+          const xx = x + ox;
+          if (yy < 0 || xx < 0 || yy >= size || xx >= size) continue;
+          if (tiles[yy * size + xx] === TILE.DOOR) {
             nearDoor = true;
             break;
           }
         }
       }
-      if (!nearDoor) continue;
-      // Preferir orilla del río para ver el escenario apocalíptico al empezar
-      const riverBias = 1.4 - Math.min(1.4, Math.abs(y - canalY) / 18);
-      const score = noise.noise2(x * 0.2, y * 0.2) + riverBias;
+      const riverBias = 3 - Math.min(3, Math.abs(y - (canalY - 4)) / 5);
+      const doorBonus = nearDoor ? 0.4 : 0;
+      const score = noise.noise2(x * 0.2, y * 0.2) + riverBias + doorBonus;
       candidates.push({ x: x + 0.5, y: y + 0.5, score });
     }
   }
   candidates.sort((a, b) => b.score - a.score);
-  return candidates[0] || { x: size / 2 + 0.5, y: Math.max(6, canalY - 6) + 0.5 };
+  return candidates[0] || { x: size / 2 + 0.5, y: Math.max(6, canalY - 5) + 0.5 };
 }
 
 export function tileAt(world, x, y) {
