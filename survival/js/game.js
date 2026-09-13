@@ -342,7 +342,7 @@ export function updateGame(game, dt) {
   if (pressed(game, "t")) tryEquipGear(game);
   if (pressed(game, "i")) {
     game.inventoryOpen = !game.inventoryOpen;
-    setToast(game, game.inventoryOpen ? "Inventario abierto (I cierra)." : "Inventario cerrado.");
+    setToast(game, game.inventoryOpen ? "Equipo e inventario (I cierra)." : "Inventario cerrado.");
   }
   if (pressed(game, "escape") && game.inventoryOpen) {
     game.inventoryOpen = false;

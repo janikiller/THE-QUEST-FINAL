@@ -268,16 +268,14 @@ html, body {
 .bar[data-stat="thirst"] i::after { background: linear-gradient(90deg, #1f4d55, #7ea8a0); }
 .bar[data-stat="stamina"] i::after { background: linear-gradient(90deg, #2f4a34, #8fbf72); }
 
-/* Panel de equipo PZ */
+/* Equipo dentro del panel I */
 .equip-panel {
   pointer-events: auto;
-  position: absolute;
-  left: 1.2rem;
-  bottom: 1.1rem;
+  position: static;
   display: grid;
-  grid-template-columns: repeat(2, 4.6rem);
-  gap: 0.35rem;
-  z-index: 4;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
 }
 
 .equip-slot {
@@ -436,7 +434,7 @@ html, body {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(420px, 92vw);
+  width: min(520px, 94vw);
   padding: 0.85rem 1rem 1rem;
   background: rgba(10, 12, 10, 0.94);
   border: 1px solid rgba(200, 190, 150, 0.28);
@@ -537,8 +535,7 @@ html, body {
     gap: 1.2rem;
   }
   .equip-panel {
-    grid-template-columns: repeat(2, 3.8rem);
-    bottom: 6.8rem;
+    grid-template-columns: repeat(2, 1fr);
   }
   .vitals { top: 3.4rem; bottom: auto; width: min(200px, 46vw); }
   .hotbar-wrap { bottom: 0.7rem; }
