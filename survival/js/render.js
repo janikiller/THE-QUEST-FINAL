@@ -1095,7 +1095,7 @@ function drawProp(ctx, p, px, py, phase) {
     ctx.fillStyle = "#1a1a1a";
     roundRect(ctx, px - 6, py - 18, 12, 16, 2);
     ctx.fill();
-    ctx.fillStyle = phase.night ? "#ff4040" : "#803030";
+    ctx.fillStyle = phase.night ? "#602020" : "#803030";
     ctx.beginPath();
     ctx.arc(px, py - 13, 2.5, 0, Math.PI * 2);
     ctx.fill();
@@ -1103,7 +1103,7 @@ function drawProp(ctx, p, px, py, phase) {
     ctx.beginPath();
     ctx.arc(px, py - 8, 2.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = phase.night ? "#40c040" : "#306030";
+    ctx.fillStyle = phase.night ? "#204020" : "#306030";
     ctx.beginPath();
     ctx.arc(px, py - 3, 2.5, 0, Math.PI * 2);
     ctx.fill();
