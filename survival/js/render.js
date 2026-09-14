@@ -433,12 +433,13 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   m.setTransform(scale, 0, 0, scale, 0, 0);
   m.clearRect(0, 0, w, h);
   // Velo: más denso en interiores (casas cerradas, lejos de farolas)
+  // Interior: penumbra suave para que se lean yeso/suelo/muebles
   const veil = indoor
-    ? (phase.night ? Math.min(0.62, 0.38 + darkness * 0.3) : Math.min(0.34, 0.18 + darkness * 0.22))
+    ? (phase.night ? Math.min(0.42, 0.22 + darkness * 0.22) : Math.min(0.16, 0.08 + darkness * 0.12))
     : phase.night
       ? Math.min(0.2, 0.1 + darkness * 0.14)
       : Math.min(0.18, darkness * 0.28);
-  m.fillStyle = indoor ? `rgba(18, 14, 10, ${veil})` : `rgba(8, 12, 24, ${veil})`;
+  m.fillStyle = indoor ? `rgba(22, 18, 14, ${veil})` : `rgba(8, 12, 24, ${veil})`;
   m.fillRect(0, 0, w, h);
 
   m.globalCompositeOperation = "destination-out";
@@ -472,7 +473,7 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     const ly = p.y * TILE_PX - camY;
     if (lx < -80 || ly < -80 || lx > w + 80 || ly > h + 80) continue;
     const flick = p.flicker ? 0.82 + Math.sin(game.time * 9 + p.x * 7) * 0.18 : 0.92 + Math.sin(game.time * 3 + p.y) * 0.08;
-    const lr = p.type === "candle" ? 70 : 110;
+    const lr = p.type === "candle" ? 78 : 125;
     const hole = m.createRadialGradient(lx, ly, 4, lx, ly, lr);
     hole.addColorStop(0, `rgba(0,0,0,${0.95 * flick})`);
     hole.addColorStop(0.45, `rgba(0,0,0,${0.55 * flick})`);
@@ -480,6 +481,21 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     m.fillStyle = hole;
     m.beginPath();
     m.arc(lx, ly, lr, 0, Math.PI * 2);
+    m.fill();
+  }
+  // Luz ambiente de habitación (aunque no haya lámpara encendida)
+  if (indoor && _viewIndoor) {
+    const b = _viewIndoor;
+    const rx = ((b.x0 + b.x1 + 1) * 0.5) * TILE_PX - camX;
+    const ry = ((b.y0 + b.y1 + 1) * 0.5) * TILE_PX - camY;
+    const rr = Math.max(90, Math.min(b.x1 - b.x0, b.y1 - b.y0) * TILE_PX * 0.7);
+    const ambient = m.createRadialGradient(rx, ry, 8, rx, ry, rr);
+    ambient.addColorStop(0, phase.night ? "rgba(0,0,0,0.72)" : "rgba(0,0,0,0.88)");
+    ambient.addColorStop(0.55, phase.night ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.45)");
+    ambient.addColorStop(1, "rgba(0,0,0,0)");
+    m.fillStyle = ambient;
+    m.beginPath();
+    m.arc(rx, ry, rr, 0, Math.PI * 2);
     m.fill();
   }
 
@@ -1511,10 +1527,10 @@ function phaseIsDayish(name) {
 }
 
 function indoorPlaster(style) {
-  if (style === "warehouse") return "#6a6862";
-  if (style === "tower") return "#7a828c";
-  if (style === "shop") return "#8a7e72";
-  return "#c8b8a0";
+  if (style === "warehouse") return "#8a8880";
+  if (style === "tower") return "#9aa4b0";
+  if (style === "shop") return "#a89888";
+  return "#e2d2bc";
 }
 
 function drawIndoorWallTile(ctx, px, py, b, tx, ty) {
@@ -1601,20 +1617,18 @@ function drawEnteredInteriorShell(ctx, b, px, py, bw, bh, t, phase, litWindows) 
   if (roomW > 0 && roomH > 0) {
     // Lavado suave (no matar el suelo)
     if (phase.night) {
-      ctx.fillStyle = "rgba(18, 14, 12, 0.16)";
-      ctx.fillRect(roomX, roomY, roomW, roomH);
-      ctx.fillStyle = "rgba(255, 190, 110, 0.04)";
+      ctx.fillStyle = "rgba(255, 200, 130, 0.05)";
       ctx.fillRect(roomX, roomY, roomW, roomH);
     } else {
-      ctx.fillStyle = "rgba(255, 236, 200, 0.04)";
+      ctx.fillStyle = "rgba(255, 240, 210, 0.06)";
       ctx.fillRect(roomX, roomY, roomW, roomH);
     }
     const vg = ctx.createRadialGradient(
-      roomX + roomW * 0.5, roomY + roomH * 0.5, Math.min(roomW, roomH) * 0.22,
-      roomX + roomW * 0.5, roomY + roomH * 0.5, Math.max(roomW, roomH) * 0.7
+      roomX + roomW * 0.5, roomY + roomH * 0.5, Math.min(roomW, roomH) * 0.28,
+      roomX + roomW * 0.5, roomY + roomH * 0.5, Math.max(roomW, roomH) * 0.72
     );
     vg.addColorStop(0, "rgba(0,0,0,0)");
-    vg.addColorStop(1, phase.night ? "rgba(10,8,6,0.22)" : "rgba(30,24,18,0.1)");
+    vg.addColorStop(1, phase.night ? "rgba(10,8,6,0.14)" : "rgba(30,24,18,0.06)");
     ctx.fillStyle = vg;
     ctx.fillRect(roomX, roomY, roomW, roomH);
 

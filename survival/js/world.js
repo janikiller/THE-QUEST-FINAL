@@ -1424,7 +1424,7 @@ function decorateInterior({
     }
     for (const spot of lampSpots) {
       if (noise.noise2(spot.x + 3, spot.y + 5) < 0.28) continue;
-      const lit = noise.noise2(spot.x * 0.4, spot.y * 0.4) > 0.22;
+      const lit = noise.noise2(spot.x * 0.4, spot.y * 0.4) > 0.05;
       props.push({
         type: spot.kind,
         x: spot.x + 0.5,
