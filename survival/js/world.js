@@ -478,11 +478,13 @@ const ROAD_W = 2;
 
 const FACADE = ["#6b4f3a", "#4a5560", "#7a5a48", "#5a4a3a", "#3d4a52", "#6a5850", "#4e5a48", "#5c4a55", "#7a6a58", "#455060"];
 const AWNING = ["#8a3030", "#2a4a6a", "#6a4a20", "#3a5a48", "#5a3050", "#4a4a4a"];
-const BUILDING_NAMES = [
-  "Bloque Luna", "Edificio Sol", "Casa Mistral", "Torre Niebla", "Mercado Sur",
-  "Farmacia Alba", "Taller Río", "Residencial 9", "Almacén Norte", "Café Gris",
-  "Panadería Sur", "Clínica Niebla", "Bar El Canal", "Lofts Crespo", "Depósito Este",
-];
+const BUILDING_NAMES = {
+  warehouse: ["Almacén Norte", "Depósito Este", "Nave Sur", "Logística Río", "Hangar Niebla", "Silos Crespo"],
+  shop: ["Mercado Sur", "Farmacia Alba", "Café Gris", "Panadería Sur", "Bar El Canal", "Bazar Luna"],
+  residential: ["Casa Mistral", "Residencial 9", "Lofts Crespo", "Bloque Luna", "Casa Puerto", "Edificio Sol"],
+  tower: ["Torre Niebla", "Torre Crespo", "Oficinas Alba", "Centro Niebla", "Torre Norte", "Edificio Sol"],
+  block: ["Bloque Luna", "Edificio Sol", "Residencial 9", "Clínica Niebla", "Lofts Crespo", "Casa Mistral"],
+};
 const STREET_NAMES = ["Luna", "Sol", "Mistral", "Niebla", "Río", "Alba", "Crespo", "Norte", "Sur", "Puerto"];
 
 export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
@@ -814,7 +816,6 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, dec
   if (x1 - x0 < 3 || y1 - y0 < 3) return;
 
   const facade = FACADE[((bx * 17 + by * 31 + (seed * 3) + ((bx / BLOCK) | 0) * 7) >>> 0) % FACADE.length];
-  const name = BUILDING_NAMES[((bx * 5 + by * 11 + seed) >>> 0) % BUILDING_NAMES.length];
   const floors = 2 + (((noise.noise2(bx, by) * 4) | 0) % 4);
   const styleRoll = noise.noise2(bx * 0.31, by * 0.27);
   let style = "block";
@@ -822,6 +823,8 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, dec
   else if (styleRoll < 0.22) style = "shop";
   else if (styleRoll < 0.4) style = "warehouse";
   else if (styleRoll < 0.62) style = "residential";
+  const namePool = BUILDING_NAMES[style] || BUILDING_NAMES.block;
+  const name = namePool[((bx * 5 + by * 11 + seed * 3) >>> 0) % namePool.length];
   const tint = ((noise.noise2(bx * 0.17, by * 0.19) * 24) | 0) - 12;
   const awning = AWNING[((bx * 3 + by * 5 + seed) >>> 0) % AWNING.length];
   const facadeTinted = shadeHex(facade, tint);
@@ -1340,23 +1343,45 @@ function decorateInterior({
     placeRug(decor, midX, Math.max(iy0, midY - 1), 1, 1, accent, 2);
     put(ix1, midY, "plant");
   } else if (style === "warehouse") {
-    // Taquillas en una pared
+    // Nave industrial: pasillo central libre, racks a un lado, taquillas al otro
+    const aisleX = midX;
+    // Banco de taquillas en pared corta
     for (let y = iy0; y <= iy1; y++) {
-      if ((y + bx) % 2 === 0) put(ix0, y, "locker");
+      if (y === doorY && ix0 === doorX) continue;
+      put(ix0, y, "locker");
     }
-    // Estanterías opuestas
+    // Estanterías metálicas profundas en pared opuesta (cada 1 tile)
     for (let y = iy0; y <= iy1; y++) {
-      if ((y + by) % 2 === 1) put(ix1, y, "shelf");
+      if (y === doorY && ix1 === doorX) continue;
+      put(ix1, y, "shelf");
+      // Segunda fila de cajones delante del rack (pasillo de carga)
+      if (ix1 - 1 > aisleX && (y + by) % 2 === 0) put(ix1 - 1, y, "crate");
     }
-    // Cajones en fila
-    for (let x = ix0 + 1; x <= ix1 - 1; x++) {
-      if ((x + y0) % 2 === 0) put(x, midY, "crate");
+    // Oficina de almacén en esquina lejos de la puerta
+    put(farX === ix0 ? ix0 + 1 : farX, farY, "desk");
+    put(farX === ix0 ? ix0 + 1 : farX, farY === iy0 ? farY + 1 : farY - 1, "chair");
+    // Palé / cajones sueltos fuera del pasillo
+    if (aisleX - 1 > ix0) put(aisleX - 1, midY === doorY ? iy0 + 1 : midY, "crate");
+    // Felpudo industrial + franja de peligro en la entrada
+    if (tiles[nearDoorY * size + nearDoorX] === TILE.FLOOR) {
+      placeDecor(decor, nearDoorX, nearDoorY, "mat", "#2e2e2a", 1);
     }
-    put(midX, iy0, "table");
-    put(midX + 1, iy0, "chair");
-    // Esteras de goma
-    placeDecor(decor, midX, midY, "mat", "#3a3a36", 1);
-    placeDecor(decor, nearDoorX === midX ? ix0 + 1 : nearDoorX, nearDoorY === midY ? iy0 + 1 : nearDoorY, "mat", "#3a3a36", 1);
+    // Marcas de pasillo (hazard) a lo largo del eje central
+    for (let y = iy0; y <= iy1; y++) {
+      if (interiors.has(`${aisleX},${y}`)) continue;
+      if (decor.has(`${aisleX},${y}`)) continue;
+      if ((y + bx) % 2 === 0) placeDecor(decor, aisleX, y, "hazard", "#c8a020", (y + bx) % 2);
+    }
+    // Manchas de aceite industriales (pocas)
+    for (let y = iy0; y <= iy1; y++) {
+      for (let x = ix0; x <= ix1; x++) {
+        if (tiles[y * size + x] !== TILE.FLOOR) continue;
+        if (decor.has(`${x},${y}`) || interiors.has(`${x},${y}`)) continue;
+        if (noise.noise2(x * 0.7 + bx, y * 0.7 + by) > 0.82) {
+          placeDecor(decor, x, y, "oil", "#2a2820", (x + y) % 3);
+        }
+      }
+    }
   } else if (style === "tower") {
     // Oficina: escritorio, silla, alfombra, estantería, planta
     placeRug(decor, midX - (midX > ix0 ? 0 : 0), midY - (midY > iy0 ? 0 : 0), Math.min(2, ix1 - ix0), Math.min(2, iy1 - iy0), accent, 0);
@@ -1389,10 +1414,10 @@ function decorateInterior({
   const dustCut =
     style === "tower" ? 0.78 :
     style === "shop" ? 0.72 :
-    style === "warehouse" ? 0.62 :
+    style === "warehouse" ? 0.88 :
     0.68;
   const stainCut = dustCut - 0.1;
-  const rubbleCut = style === "warehouse" ? 0.52 : style === "tower" ? 0.95 : 0.58;
+  const rubbleCut = style === "warehouse" ? 0.92 : style === "tower" ? 0.95 : 0.58;
   for (let y = iy0; y <= iy1; y++) {
     for (let x = ix0; x <= ix1; x++) {
       if (tiles[y * size + x] !== TILE.FLOOR) continue;
@@ -1471,8 +1496,8 @@ function decorateIndoorWallArt({
   let artCount = 0;
   let posterCount = 0;
   // Pocos cuadros por habitación — el muro queda mayormente libre
-  const artBudget = style === "warehouse" ? 1 : style === "shop" ? 1 : 2;
-  const posterBudget = style === "shop" ? 2 : 1;
+  const artBudget = style === "warehouse" ? 0 : style === "shop" ? 1 : 2;
+  const posterBudget = style === "warehouse" ? 3 : style === "shop" ? 2 : 1;
 
   for (const s of spots) {
     const n = noise.noise2(s.x * 0.51 + bx, s.y * 0.47 + by + 4);
