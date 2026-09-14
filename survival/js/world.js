@@ -730,12 +730,59 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   // Índices cacheados para iluminación (evita escanear ~1700 props/frame)
   const lamps = props.filter((p) => p.type === "lamp");
   const indoorLights = props.filter((p) => p.type === "indoorLamp" || p.type === "candle");
+  const propGrid = buildPropGrid(props, size);
+  const buildingIndex = buildBuildingIndex(buildings, size);
 
   const spawn = findSpawn(tiles, size, noise, canalY);
   return {
     size, seed, tiles, loot, doors, buildings, props, interiors, decor, spawn, noise, canalY,
-    lamps, indoorLights, tileRev: 0,
+    lamps, indoorLights, propGrid, buildingIndex, tileRev: 0,
   };
+}
+
+const PROP_CHUNK = 4;
+
+function buildPropGrid(props, size) {
+  const cols = Math.ceil(size / PROP_CHUNK);
+  const chunks = Array.from({ length: cols * cols }, () => []);
+  for (const p of props) {
+    const cx = Math.max(0, Math.min(cols - 1, (p.x / PROP_CHUNK) | 0));
+    const cy = Math.max(0, Math.min(cols - 1, (p.y / PROP_CHUNK) | 0));
+    chunks[cy * cols + cx].push(p);
+  }
+  return { chunks, cols, chunk: PROP_CHUNK };
+}
+
+function buildBuildingIndex(buildings, size) {
+  const index = new Map();
+  for (const b of buildings) {
+    for (let y = b.y0; y <= b.y1; y++) {
+      for (let x = b.x0; x <= b.x1; x++) {
+        index.set(y * size + x, b);
+      }
+    }
+  }
+  return index;
+}
+
+/** Props visibles en un rectángulo de tiles (ya casi ordenados por Y). */
+export function propsInView(world, x0, y0, x1, y1) {
+  const grid = world.propGrid;
+  if (!grid) return world.props;
+  const { chunks, cols, chunk } = grid;
+  const cx0 = Math.max(0, (x0 / chunk) | 0);
+  const cy0 = Math.max(0, (y0 / chunk) | 0);
+  const cx1 = Math.min(cols - 1, (x1 / chunk) | 0);
+  const cy1 = Math.min(cols - 1, (y1 / chunk) | 0);
+  const out = [];
+  for (let cy = cy0; cy <= cy1; cy++) {
+    for (let cx = cx0; cx <= cx1; cx++) {
+      const bucket = chunks[cy * cols + cx];
+      for (let i = 0; i < bucket.length; i++) out.push(bucket[i]);
+    }
+  }
+  out.sort((a, b) => a.y - b.y);
+  return out;
 }
 
 function blockBounds(bx, by, size) {
@@ -1032,6 +1079,9 @@ export function lootGatherText(id) {
 export function buildingAt(world, x, y) {
   const ix = Math.floor(x);
   const iy = Math.floor(y);
+  if (world.buildingIndex) {
+    return world.buildingIndex.get(iy * world.size + ix) || null;
+  }
   return world.buildings.find((b) => ix >= b.x0 && ix <= b.x1 && iy >= b.y0 && iy <= b.y1) || null;
 }
 

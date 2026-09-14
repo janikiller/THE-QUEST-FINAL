@@ -266,7 +266,11 @@ function syncHud(g) {
 
 function setBar(el, value) {
   if (!el) return;
-  el.style.setProperty("--v", `${Math.max(0, Math.min(100, value))}%`);
+  const v = Math.max(0, Math.min(100, value));
+  const rounded = (v * 4 + 0.5) | 0; // ~0.25% steps — evita layout thrash
+  if (el._barV === rounded) return;
+  el._barV = rounded;
+  el.style.setProperty("--v", `${v}%`);
 }
 
 startBtn.addEventListener("click", start);

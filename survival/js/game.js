@@ -146,6 +146,11 @@ export function createGame(world) {
     kills: 0,
     noisePulse: 0,
     lastBuilding: null,
+    // Cámara suavizada (fluidez visual)
+    camX: world.spawn.x,
+    camY: world.spawn.y,
+    _phase: null,
+    _zFrame: 0,
     // Oleadas: cada una más fuerte
     wave: 0,
     wavePhase: "countdown", // countdown | spawning | fighting | clear
@@ -248,6 +253,10 @@ export function waveStatus(game) {
 }
 
 export function dayPhase(game) {
+  if (game._phase && game._phase._t === game.time && game._phase._w === game.weather.kind
+      && game._phase._th === game.weather.thunder && game._phase._g === game.weather.gust) {
+    return game._phase;
+  }
   const t = (game.time % game.dayLen) / game.dayLen;
   let phase;
   if (t < 0.18) phase = { name: "Amanecer", light: 0.45 + t * 2.8, night: false };
@@ -271,6 +280,10 @@ export function dayPhase(game) {
   phase.gust = w.gust || 0;
   phase.thunder = w.thunder;
   phase.weatherLabel = w.label;
+  phase._t = game.time;
+  phase._w = w.kind;
+  phase._th = w.thunder;
+  phase._g = w.gust;
   return phase;
 }
 
@@ -285,6 +298,11 @@ export function updateGame(game, dt) {
   game.time += dt;
   updateWeather(game, dt);
   const phase = dayPhase(game);
+  game._phase = phase;
+  // Cámara con lerp: movimiento más fluido aunque el framerate varíe
+  const camFollow = 1 - Math.exp(-14 * dt);
+  game.camX += (p.x - game.camX) * camFollow;
+  game.camY += (p.y - game.camY) * camFollow;
   if (game.toastT > 0) game.toastT -= dt;
   game.noisePulse = Math.max(0, game.noisePulse - dt);
   game.shake = Math.max(0, (game.shake || 0) - dt * 4);
@@ -847,8 +865,11 @@ function onZombieKilled(game, z) {
 function updateZombies(game, dt, phase) {
   const p = game.player;
   const baseAggro = (phase.night ? 11 : 7) + (game.noisePulse > 0 ? 6 : 0);
+  game._zFrame = (game._zFrame || 0) + 1;
+  const zFrame = game._zFrame;
 
-  for (const z of game.zombies) {
+  for (let zi = 0; zi < game.zombies.length; zi++) {
+    const z = game.zombies[zi];
     z.stun = Math.max(0, z.stun - dt);
     z.hitFlash = Math.max(0, (z.hitFlash || 0) - dt);
     z.attackCd = Math.max(0, z.attackCd - dt);
@@ -857,7 +878,13 @@ function updateZombies(game, dt, phase) {
     if (z.chargeT > 0) z.chargeT = Math.max(0, z.chargeT - dt);
     if (z.stun > 0) continue;
 
-    const dist = Math.hypot(z.x - p.x, z.y - p.y);
+    // Lejos: actualizar 1 de cada 3 frames (jefes siempre)
+    const roughDx = z.x - p.x;
+    const roughDy = z.y - p.y;
+    const roughD2 = roughDx * roughDx + roughDy * roughDy;
+    if (!z.boss && roughD2 > 900 && ((zi + zFrame) % 3) !== 0) continue;
+
+    const dist = Math.hypot(roughDx, roughDy);
     const aggro = baseAggro + (z.boss ? z.aggroBonus || 0 : 0);
     let tx = z.wx;
     let ty = z.wy;

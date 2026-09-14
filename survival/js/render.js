@@ -1,4 +1,4 @@
-import { TILE, TILE_META, buildingAt, furnitureType, furnitureLabel, nearestSearchable, itemDef } from "./world.js";
+import { TILE, TILE_META, buildingAt, furnitureType, furnitureLabel, nearestSearchable, itemDef, propsInView } from "./world.js";
 import { dayPhase } from "./game.js";
 
 const TILE_PX = 48;
@@ -8,7 +8,7 @@ const FONT_DISPLAY = '"Instrument Serif", Georgia, serif';
 export function createRenderer(canvas, miniCanvas) {
   const ctx = canvas.getContext("2d");
   const mctx = miniCanvas.getContext("2d");
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
 
   function resize() {
     const w = window.innerWidth;
@@ -34,12 +34,14 @@ export function createRenderer(canvas, miniCanvas) {
 function paint(ctx, mctx, canvas, mini, game, dpr) {
   const w = canvas.width / dpr;
   const h = canvas.height / dpr;
-  const phase = dayPhase(game);
+  const phase = game._phase || dayPhase(game);
   const shakeAmt = Math.min(10, (game.shake || 0) * 14);
   const shakeX = shakeAmt ? (Math.random() - 0.5) * 2 * shakeAmt : 0;
   const shakeY = shakeAmt ? (Math.random() - 0.5) * 2 * shakeAmt : 0;
-  const camX = game.player.x * TILE_PX - w / 2 + shakeX;
-  const camY = game.player.y * TILE_PX - h / 2 + shakeY;
+  const focusX = game.camX ?? game.player.x;
+  const focusY = game.camY ?? game.player.y;
+  const camX = focusX * TILE_PX - w / 2 + shakeX;
+  const camY = focusY * TILE_PX - h / 2 + shakeY;
   const raining = phase.rain > 0.15;
   const storming = phase.weather === "storm";
   const sanding = phase.weather === "sandstorm" || phase.sand > 0.2;
@@ -86,13 +88,16 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   const x1 = Math.min(game.world.size, Math.ceil((camX + w) / TILE_PX) + 2);
   const y1 = Math.min(game.world.size, Math.ceil((camY + h) / TILE_PX) + 2);
 
-  // Suelo
-  for (let ty = y0; ty < y1; ty++) {
-    for (let tx = x0; tx < x1; tx++) {
-      const tile = game.world.tiles[ty * game.world.size + tx];
-      drawGround(ctx, game, tile, tx, ty, tx * TILE_PX - camX, ty * TILE_PX - camY, phase);
-      if (raining && ((tx + ty) & 1) === 0 && (tile === TILE.ROAD || tile === TILE.CROSSWALK || tile === TILE.SIDEWALK)) {
-        drawWetSheen(ctx, tx * TILE_PX - camX, ty * TILE_PX - camY, game.time, tx, ty);
+  // Suelo cacheado (estático) + agua animada encima
+  drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1);
+  if (raining) {
+    for (let ty = y0; ty < y1; ty++) {
+      for (let tx = x0; tx < x1; tx++) {
+        if (((tx + ty) & 3) !== 0) continue;
+        const tile = game.world.tiles[ty * game.world.size + tx];
+        if (tile === TILE.ROAD || tile === TILE.CROSSWALK || tile === TILE.SIDEWALK) {
+          drawWetSheen(ctx, tx * TILE_PX - camX, ty * TILE_PX - camY, game.time, tx, ty);
+        }
       }
     }
   }
@@ -109,9 +114,10 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows);
   }
 
-  // Props: ya vienen ordenados por Y; cull sin map/filter/sort
+  // Props: grid espacial + cull
   const visibleProps = [];
-  for (const p of game.world.props) {
+  const propCandidates = propsInView(game.world, x0 - 2, y0 - 2, x1 + 2, y1 + 2);
+  for (const p of propCandidates) {
     const px = p.x * TILE_PX - camX;
     const py = p.y * TILE_PX - camY;
     if (px <= -70 || py <= -70 || px >= w + 70 || py >= h + 70) continue;
@@ -125,21 +131,14 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     drawProp(ctx, p, px, py, phase);
   }
 
-  // Loot
+  // Loot + barricadas / puertas (un solo barrido)
   for (let ty = y0; ty < y1; ty++) {
     for (let tx = x0; tx < x1; tx++) {
       const item = game.world.loot.get(`${tx},${ty}`);
-      if (!item) continue;
-      drawLoot(ctx, item.id, tx * TILE_PX - camX + TILE_PX / 2, ty * TILE_PX - camY + TILE_PX / 2, game.time);
-    }
-  }
-
-  // Barricadas / puertas
-  for (let ty = y0; ty < y1; ty++) {
-    for (let tx = x0; tx < x1; tx++) {
+      if (item) drawLoot(ctx, item.id, tx * TILE_PX - camX + TILE_PX / 2, ty * TILE_PX - camY + TILE_PX / 2, game.time);
       const tile = game.world.tiles[ty * game.world.size + tx];
       if (tile === TILE.BARRICADE) drawBarricade(ctx, tx * TILE_PX - camX, ty * TILE_PX - camY);
-      if (tile === TILE.DOOR) drawDoor(ctx, game, tx, ty, tx * TILE_PX - camX, ty * TILE_PX - camY);
+      else if (tile === TILE.DOOR) drawDoor(ctx, game, tx, ty, tx * TILE_PX - camX, ty * TILE_PX - camY);
     }
   }
 
@@ -186,7 +185,7 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   }
 
   // Oscuridad + iluminación (farolas, ventanas, linterna)
-  drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visibleProps, playerIndoor);
+  drawLighting(ctx, game, phase, camX, camY, w, h, litWindows.length > 12 ? litWindows.slice(0, 12) : litWindows, visibleProps, playerIndoor);
 
   // Clima exterior: dentro de casas no llueve ni entra arena
   if (!playerIndoor) {
@@ -258,7 +257,7 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   ctx.fillRect(0, 0, w, h);
 
   // Ceniza / polvo en suspensión (más con viento)
-  const ashN = sanding ? 55 : windy ? 40 : 28;
+  const ashN = playerIndoor ? 0 : sanding ? 28 : windy ? 18 : 12;
   const windPush = phase.wind * 40 + phase.gust * 60;
   ctx.fillStyle = sanding
     ? "rgba(210,170,110,0.12)"
@@ -272,8 +271,12 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     ctx.fillRect(ax, ay, sanding ? 3 : 2, sanding ? 2 : 2);
   }
 
-  drawMinimap(mctx, mini, game);
+  _frameN = (_frameN + 1) | 0;
+  if ((_frameN & 1) === 0) drawMinimap(mctx, mini, game);
 }
+
+let _frameN = 0;
+
 
 function drawWetSheen(ctx, px, py, time, tx, ty) {
   const pulse = 0.04 + Math.sin(time * 2 + tx + ty) * 0.02;
@@ -294,7 +297,7 @@ function drawSandstorm(ctx, w, h, game, phase) {
 
   ctx.strokeStyle = phase.night ? "rgba(200,160,100,0.22)" : "rgba(230,190,130,0.28)";
   ctx.lineWidth = 1.4;
-  const n = Math.min(110, Math.floor(50 + phase.sand * 70 + phase.gust * 40));
+  const n = Math.min(64, Math.floor(28 + phase.sand * 40 + phase.gust * 24));
   for (let i = 0; i < n; i++) {
     const seed = (i * 6151 + ((t * 280) | 0)) % 12000;
     const y = ((seed * 41 + t * (30 + (i % 9))) % (h + 20)) - 10;
@@ -322,7 +325,7 @@ function drawWindDust(ctx, w, h, game, phase) {
   const wind = 10 + phase.wind * 22 + phase.gust * 35;
   ctx.strokeStyle = phase.night ? "rgba(170,160,140,0.12)" : "rgba(140,130,110,0.14)";
   ctx.lineWidth = 1;
-  const n = Math.min(48, Math.floor(20 + phase.wind * 24));
+  const n = Math.min(28, Math.floor(12 + phase.wind * 16));
   for (let i = 0; i < n; i++) {
     const seed = (i * 5107 + ((t * 160) | 0)) % 9000;
     const y = ((seed * 37) % h);
@@ -350,7 +353,7 @@ function drawIndoorMotes(ctx, w, h, game, phase) {
 }
 
 function drawRain(ctx, w, h, game, phase) {
-  const n = Math.min(100, Math.floor(48 + phase.rain * 70));
+  const n = Math.min(64, Math.floor(32 + phase.rain * 48));
   const wind = phase.wind * 10;
   ctx.strokeStyle = phase.night
     ? phase.weather === "storm"
@@ -397,6 +400,16 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     if (lx < -lampMargin || ly < -lampMargin || lx > w + lampMargin || ly > h + lampMargin) continue;
     lamps.push({ p, lx, ly });
   }
+  if (lamps.length > 10) {
+    const px0 = game.player.x;
+    const py0 = game.player.y;
+    lamps.sort((a, b) => {
+      const da = (a.p.x - px0) ** 2 + (a.p.y - py0) ** 2;
+      const db = (b.p.x - px0) ** 2 + (b.p.y - py0) ** 2;
+      return da - db;
+    });
+    lamps.length = 10;
+  }
 
   const px = game.player.x * TILE_PX - camX;
   const py = game.player.y * TILE_PX - camY;
@@ -409,7 +422,7 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   const lightCool = hasLight ? lightDef.lightWarm === false : cool;
 
   // Máscara a media resolución (mucho más barata; se escala al componer)
-  const scale = 0.5;
+  const scale = 0.35;
   const mw = Math.max(1, (w * scale) | 0);
   const mh = Math.max(1, (h * scale) | 0);
   const mask = getLightMask(mw, mh);
@@ -522,13 +535,7 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     ctx.arc(cx, cy, lr, 0, Math.PI * 2);
     ctx.fill();
 
-    const core = ctx.createRadialGradient(cx, cy - 14, 0, cx, cy - 14, 20);
-    core.addColorStop(0, cool ? `rgba(250,252,255,${0.75 * flicker})` : `rgba(255,248,220,${0.75 * flicker})`);
-    core.addColorStop(1, "rgba(255,220,160,0)");
-    ctx.fillStyle = core;
-    ctx.beginPath();
-    ctx.arc(cx, cy - 14, 20, 0, Math.PI * 2);
-    ctx.fill();
+
   }
 
   if (hasLight && playerR > 0) {
@@ -591,6 +598,43 @@ function getLightMask(w, h) {
 
 function tileIndex(game, x, y) {
   return game.world.tiles[Math.floor(y) * game.world.size + Math.floor(x)];
+}
+
+
+let _groundCanvas = null;
+let _groundKey = "";
+
+function isAnimatedGround(tile) {
+  return tile === TILE.WATER;
+}
+
+function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
+  const gw = Math.max(1, (x1 - x0) * TILE_PX);
+  const gh = Math.max(1, (y1 - y0) * TILE_PX);
+  const key = `${game.world.seed}|${game.world.tileRev || 0}|${x0},${y0},${x1},${y1}|${phase.name}|${phase.night ? 1 : 0}`;
+  if (!_groundCanvas) _groundCanvas = document.createElement("canvas");
+  if (_groundKey !== key || _groundCanvas.width !== gw || _groundCanvas.height !== gh) {
+    _groundCanvas.width = gw;
+    _groundCanvas.height = gh;
+    const g = _groundCanvas.getContext("2d");
+    g.clearRect(0, 0, gw, gh);
+    for (let ty = y0; ty < y1; ty++) {
+      for (let tx = x0; tx < x1; tx++) {
+        const tile = game.world.tiles[ty * game.world.size + tx];
+        if (isAnimatedGround(tile)) continue;
+        drawGround(g, game, tile, tx, ty, (tx - x0) * TILE_PX, (ty - y0) * TILE_PX, phase);
+      }
+    }
+    _groundKey = key;
+  }
+  ctx.drawImage(_groundCanvas, x0 * TILE_PX - camX, y0 * TILE_PX - camY);
+  for (let ty = y0; ty < y1; ty++) {
+    for (let tx = x0; tx < x1; tx++) {
+      const tile = game.world.tiles[ty * game.world.size + tx];
+      if (!isAnimatedGround(tile)) continue;
+      drawGround(ctx, game, tile, tx, ty, tx * TILE_PX - camX, ty * TILE_PX - camY, phase);
+    }
+  }
 }
 
 function drawGround(ctx, game, tile, tx, ty, px, py, phase) {
