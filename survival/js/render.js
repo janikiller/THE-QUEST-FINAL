@@ -483,15 +483,15 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     m.arc(lx, ly, lr, 0, Math.PI * 2);
     m.fill();
   }
-  // Luz ambiente de habitación (aunque no haya lámpara encendida)
+  // Luz ambiente de habitación (suave; evita el “cuadrado blanco”)
   if (indoor && _viewIndoor) {
     const b = _viewIndoor;
     const rx = ((b.x0 + b.x1 + 1) * 0.5) * TILE_PX - camX;
     const ry = ((b.y0 + b.y1 + 1) * 0.5) * TILE_PX - camY;
-    const rr = Math.max(90, Math.min(b.x1 - b.x0, b.y1 - b.y0) * TILE_PX * 0.7);
-    const ambient = m.createRadialGradient(rx, ry, 8, rx, ry, rr);
-    ambient.addColorStop(0, phase.night ? "rgba(0,0,0,0.72)" : "rgba(0,0,0,0.88)");
-    ambient.addColorStop(0.55, phase.night ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.45)");
+    const rr = Math.max(100, Math.min(b.x1 - b.x0, b.y1 - b.y0) * TILE_PX * 0.78);
+    const ambient = m.createRadialGradient(rx, ry, rr * 0.15, rx, ry, rr);
+    ambient.addColorStop(0, phase.night ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.4)");
+    ambient.addColorStop(0.6, phase.night ? "rgba(0,0,0,0.22)" : "rgba(0,0,0,0.16)");
     ambient.addColorStop(1, "rgba(0,0,0,0)");
     m.fillStyle = ambient;
     m.beginPath();
