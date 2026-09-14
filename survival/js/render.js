@@ -1113,7 +1113,7 @@ function drawInteriorFloor(ctx, tile, px, py, b, floorStyle, tx, ty) {
   } else if (floorStyle === "concrete") {
     // Hormigón de nave: losas grandes, juntas y grano
     const slab = ((tx >> 1) + (ty >> 1)) & 1;
-    ctx.fillStyle = slab ? "#7a7872" : "#6e6c66";
+    ctx.fillStyle = slab ? "#6a6862" : "#5c5a54";
     ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
     // Grano
     ctx.fillStyle = "rgba(255,255,255,0.04)";
@@ -1632,7 +1632,7 @@ function phaseIsDayish(name) {
 }
 
 function indoorPlaster(style) {
-  if (style === "warehouse") return "#9a9890";
+  if (style === "warehouse") return "#8a8882";
   if (style === "tower") return "#9aa4b0";
   if (style === "shop") return "#a89888";
   return "#e2d2bc";
