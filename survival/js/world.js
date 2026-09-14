@@ -1096,6 +1096,21 @@ function placeDecor(decor, x, y, kind, color, variant = 0) {
   decor.set(`${x},${y}`, { kind, color, variant });
 }
 
+/** Decor de suelo en tile libre (no pisa muebles ni otro decor). */
+function placeFloorDecor(decor, interiors, x, y, kind, color, variant = 0) {
+  const key = `${x},${y}`;
+  if (interiors?.has(key)) return false;
+  if (decor.has(key)) return false;
+  placeDecor(decor, x, y, kind, color, variant);
+  return true;
+}
+
+/** Alfombra: puede quedar bajo mesa/silla, pero nunca bajo muebles altos. */
+const RUG_BLOCKERS = new Set([
+  "shelf", "cabinet", "locker", "fridge", "bed", "sofa", "counter",
+  "sink", "stove", "crate", "barrel", "plant", "drawer",
+]);
+
 function canPlace(tiles, size, interiors, x, y, x0, y0, x1, y1) {
   if (x <= x0 || x >= x1 || y <= y0 || y >= y1) return false;
   if (tiles[y * size + x] !== TILE.FLOOR) return false;
@@ -1103,16 +1118,29 @@ function canPlace(tiles, size, interiors, x, y, x0, y0, x1, y1) {
   return true;
 }
 
-function tryPlace(tiles, size, interiors, x, y, type, x0, y0, x1, y1) {
+function tryPlace(tiles, size, interiors, x, y, type, x0, y0, x1, y1, decor = null) {
   if (!canPlace(tiles, size, interiors, x, y, x0, y0, x1, y1)) return false;
   placeFurniture(interiors, x, y, type);
+  // Quitar felpudo/polvo del tile: el mueble manda
+  if (decor) {
+    const key = `${x},${y}`;
+    const d = decor.get(key);
+    if (d && (d.kind !== "rug" || RUG_BLOCKERS.has(type))) decor.delete(key);
+  }
   return true;
 }
 
-function placeRug(decor, x, y, w, h, color, variant = 0) {
+function placeRug(decor, x, y, w, h, color, variant = 0, interiors = null) {
   for (let dy = 0; dy < h; dy++) {
     for (let dx = 0; dx < w; dx++) {
-      placeDecor(decor, x + dx, y + dy, "rug", color, variant);
+      const tx = x + dx;
+      const ty = y + dy;
+      if (interiors) {
+        const ft = furnitureType(interiors.get(`${tx},${ty}`));
+        if (ft && RUG_BLOCKERS.has(ft)) continue;
+      }
+      if (decor.has(`${tx},${ty}`)) continue;
+      placeDecor(decor, tx, ty, "rug", color, variant);
     }
   }
 }
@@ -1245,78 +1273,142 @@ function decorateInterior({
 
   const midX = ((ix0 + ix1) / 2) | 0;
   const midY = ((iy0 + iy1) / 2) | 0;
-  // Esquina opuesta a la puerta = zona íntima / fondo
   const farX = side === 2 ? ix1 : side === 3 ? ix0 : midX;
   const farY = side === 0 ? iy1 : side === 1 ? iy0 : midY;
   const nearDoorX = side === 2 ? ix0 : side === 3 ? ix1 : midX;
   const nearDoorY = side === 0 ? iy0 : side === 1 ? iy1 : midY;
-  // Esquinas libres
   const cA = { x: ix0, y: iy0 };
   const cB = { x: ix1, y: iy0 };
   const cC = { x: ix0, y: iy1 };
   const cD = { x: ix1, y: iy1 };
   const corners = [cA, cB, cC, cD].filter((c) => !(c.x === doorX && c.y === doorY));
 
-  const put = (x, y, type) => tryPlace(tiles, size, interiors, x, y, type, x0, y0, x1, y1);
+  const put = (x, y, type) => tryPlace(tiles, size, interiors, x, y, type, x0, y0, x1, y1, decor);
+  const putOrElse = (type, spots) => {
+    for (const s of spots) {
+      if (put(s.x, s.y, type)) return true;
+    }
+    return false;
+  };
+  const free = (x, y) => !interiors.has(`${x},${y}`);
+  const matAt = (x, y, color) => {
+    if (tiles[y * size + x] !== TILE.FLOOR) return;
+    placeFloorDecor(decor, interiors, x, y, "mat", color, 0);
+  };
 
   if (style === "residential") {
-    // Dormitorio en la esquina más lejos de la puerta
+    // 1) Dormitorio en esquina lejos de la puerta
     const bedCorner = corners.reduce((best, c) => {
       const d = Math.abs(c.x - doorX) + Math.abs(c.y - doorY);
       const bd = Math.abs(best.x - doorX) + Math.abs(best.y - doorY);
       return d > bd ? c : best;
     }, corners[0]);
     put(bedCorner.x, bedCorner.y, "bed");
-    // Mesita junto a la cama
-    if (!put(bedCorner.x + 1, bedCorner.y, "nightstand")) put(bedCorner.x, bedCorner.y + (bedCorner.y < midY ? 1 : -1), "nightstand");
-    // Alfombra bajo/junto a la cama (2×2)
-    const rugX = Math.min(ix1 - 1, Math.max(ix0, bedCorner.x - (bedCorner.x > midX ? 1 : 0)));
-    const rugY = Math.min(iy1 - 1, Math.max(iy0, bedCorner.y - (bedCorner.y > midY ? 1 : 0)));
-    placeRug(decor, rugX, rugY, 2, 2, accent, 1);
-
-    // Armario en pared lateral
-    const wardrobeY = bedCorner.y === iy0 ? iy0 : bedCorner.y === iy1 ? iy1 : iy0;
-    put(bedCorner.x === ix0 ? ix1 : ix0, wardrobeY, "cabinet");
-
-    // Zona de estar: mesa + sillas + alfombra central
-    placeRug(decor, midX - (midX > ix0 ? 0 : 0), midY, Math.min(2, ix1 - midX + 1), Math.min(2, iy1 - midY + 1), accent, 0);
-    put(midX, midY, "table");
-    put(midX + 1, midY, "chair");
-    put(midX, midY + 1, "chair");
-
-    // Cómoda / sofá en pared libre
-    put(ix0 === bedCorner.x ? ix1 : ix0, midY, "drawer");
+    putOrElse("nightstand", [
+      { x: bedCorner.x + 1, y: bedCorner.y },
+      { x: bedCorner.x - 1, y: bedCorner.y },
+      { x: bedCorner.x, y: bedCorner.y + 1 },
+      { x: bedCorner.x, y: bedCorner.y - 1 },
+    ]);
+    // Alfombra solo en tiles libres junto a la cama (no debajo del colchón)
     {
-      const sofaY = iy0 === bedCorner.y ? iy1 : iy0;
-      const sofaX = midX;
-      if (!put(sofaX, sofaY, "sofa")) put(sofaX === ix0 ? ix1 : ix0, sofaY, "sofa");
+      const rx = Math.min(ix1, Math.max(ix0, bedCorner.x + (bedCorner.x <= midX ? 1 : -1)));
+      const ry = Math.min(iy1, Math.max(iy0, bedCorner.y));
+      if (free(rx, ry)) placeFloorDecor(decor, interiors, rx, ry, "rug", accent, 1);
     }
 
-    // Cocina cerca de la puerta: nevera + fregadero + cocina
+    // 2) Armario en esquina opuesta a la cama
+    putOrElse("cabinet", corners.filter((c) => c.x !== bedCorner.x || c.y !== bedCorner.y));
+
+    // 3) Zona de estar en el centro (mesa + sillas); alfombra bajo la mesa
+    put(midX, midY, "table");
+    putOrElse("chair", [
+      { x: midX + 1, y: midY },
+      { x: midX - 1, y: midY },
+      { x: midX, y: midY + 1 },
+      { x: midX, y: midY - 1 },
+    ]);
+    putOrElse("chair", [
+      { x: midX, y: midY + 1 },
+      { x: midX, y: midY - 1 },
+      { x: midX - 1, y: midY },
+      { x: midX + 1, y: midY },
+    ]);
+    placeRug(decor, midX, midY, 1, 1, accent, 0, interiors);
+
+    // 4) Sofá en pared LEJOS de la puerta y de la cama (no pelear con cocina)
+    {
+      const sofaWallY = bedCorner.y === iy0 ? iy1 : bedCorner.y === iy1 ? iy0 : (nearDoorY === iy0 ? iy1 : iy0);
+      // Preferir pared N/S distinta a la de la puerta
+      const sofaY = (side === 0) ? iy1 : (side === 1) ? iy0 : sofaWallY;
+      const sofaCandidates = [
+        { x: midX, y: sofaY },
+        { x: midX - 1, y: sofaY },
+        { x: midX + 1, y: sofaY },
+        { x: ix0, y: midY },
+        { x: ix1, y: midY },
+      ].filter((s) => !(s.x === bedCorner.x && s.y === bedCorner.y));
+      putOrElse("sofa", sofaCandidates);
+    }
+
+    // 5) Cómoda en pared lateral libre
+    putOrElse("drawer", [
+      { x: bedCorner.x === ix0 ? ix1 : ix0, y: midY },
+      { x: ix0, y: midY },
+      { x: ix1, y: midY },
+    ]);
+
+    // 6) Cocina en pared de la puerta, flanqueando el hueco (nunca en sofá/cama)
     if (side === 0 || side === 1) {
-      put(Math.max(ix0, Math.min(ix1, doorX - 1)), nearDoorY, "fridge");
-      put(Math.min(ix1, Math.max(ix0, doorX + 1)), nearDoorY, "sink");
-      if (ix1 - ix0 >= 3) put(Math.min(ix1, Math.max(ix0, doorX + 2)), nearDoorY, "stove");
+      putOrElse("fridge", [
+        { x: Math.max(ix0, doorX - 1), y: nearDoorY },
+        { x: Math.min(ix1, doorX + 1), y: nearDoorY },
+        { x: ix0, y: nearDoorY },
+      ]);
+      putOrElse("sink", [
+        { x: Math.min(ix1, doorX + 1), y: nearDoorY },
+        { x: Math.max(ix0, doorX - 1), y: nearDoorY },
+        { x: ix1, y: nearDoorY },
+      ]);
+      if (ix1 - ix0 >= 3) {
+        putOrElse("stove", [
+          { x: Math.min(ix1, doorX + 2), y: nearDoorY },
+          { x: Math.max(ix0, doorX - 2), y: nearDoorY },
+        ]);
+      }
     } else {
-      put(nearDoorX, Math.max(iy0, Math.min(iy1, doorY - 1)), "fridge");
-      put(nearDoorX, Math.min(iy1, Math.max(iy0, doorY + 1)), "sink");
-      if (iy1 - iy0 >= 3) put(nearDoorX, Math.min(iy1, Math.max(iy0, doorY + 2)), "stove");
+      putOrElse("fridge", [
+        { x: nearDoorX, y: Math.max(iy0, doorY - 1) },
+        { x: nearDoorX, y: Math.min(iy1, doorY + 1) },
+        { x: nearDoorX, y: iy0 },
+      ]);
+      putOrElse("sink", [
+        { x: nearDoorX, y: Math.min(iy1, doorY + 1) },
+        { x: nearDoorX, y: Math.max(iy0, doorY - 1) },
+        { x: nearDoorX, y: iy1 },
+      ]);
+      if (iy1 - iy0 >= 3) {
+        putOrElse("stove", [
+          { x: nearDoorX, y: Math.min(iy1, doorY + 2) },
+          { x: nearDoorX, y: Math.max(iy0, doorY - 2) },
+        ]);
+      }
     }
-    // Felpudo en la entrada
-    const matX = side === 2 ? ix0 : side === 3 ? ix1 : doorX;
-    const matY = side === 0 ? iy0 : side === 1 ? iy1 : doorY;
-    if (tiles[matY * size + matX] === TILE.FLOOR) placeDecor(decor, matX, matY, "mat", "#5a4a3a", 0);
 
-    // Planta en esquina libre
-    for (const c of corners) {
-      if (put(c.x, c.y, "plant")) break;
-    }
+    matAt(
+      side === 2 ? ix0 : side === 3 ? ix1 : doorX,
+      side === 0 ? iy0 : side === 1 ? iy1 : doorY,
+      "#5a4a3a",
+    );
+    putOrElse("plant", corners);
   } else if (style === "shop") {
-    // Felpudo entrada + mostrador frente a la puerta
-    const matX = side === 2 ? ix0 : side === 3 ? ix1 : doorX;
-    const matY = side === 0 ? iy0 : side === 1 ? iy1 : doorY;
-    if (tiles[matY * size + matX] === TILE.FLOOR) placeDecor(decor, matX, matY, "mat", "#4a3a28", 0);
+    matAt(
+      side === 2 ? ix0 : side === 3 ? ix1 : doorX,
+      side === 0 ? iy0 : side === 1 ? iy1 : doorY,
+      "#4a3a28",
+    );
 
+    // Mostrador en el centro (no en la pared de estanterías)
     if (side === 0 || side === 1) {
       put(midX, midY, "counter");
       put(midX - 1, midY, "counter");
@@ -1327,7 +1419,7 @@ function decorateInterior({
       put(midX, midY + 1, "counter");
     }
 
-    // Estanterías en la pared del fondo
+    // Estanterías en pared del fondo (cada 2 tiles)
     if (side === 0) {
       for (let x = ix0; x <= ix1; x++) if ((x + bx) % 2 === 0) put(x, iy1, "shelf");
     } else if (side === 1) {
@@ -1338,79 +1430,116 @@ function decorateInterior({
       for (let y = iy0; y <= iy1; y++) if ((y + by) % 2 === 0) put(ix0, y, "shelf");
     }
 
-    put(ix0, iy0 === matY ? iy1 : iy0, "fridge");
-    put(ix1, iy0 === matY ? iy1 : iy0, "crate");
-    placeRug(decor, midX, Math.max(iy0, midY - 1), 1, 1, accent, 2);
-    put(ix1, midY, "plant");
+    // Nevera / caja / planta en esquinas libres (nunca encima del mostrador)
+    putOrElse("fridge", corners);
+    putOrElse("crate", corners);
+    putOrElse("plant", [
+      { x: ix1, y: midY },
+      { x: ix0, y: midY },
+      ...corners,
+    ]);
+    // Alfombra pequeña en pasillo libre
+    {
+      const rx = midX;
+      const ry = side === 0 || side === 1 ? Math.max(iy0, midY - 1) : midY;
+      if (free(rx, ry)) placeFloorDecor(decor, interiors, rx, ry, "rug", accent, 2);
+    }
   } else if (style === "warehouse") {
-    // Nave industrial: pasillo central libre, racks a un lado, taquillas al otro
     const aisleX = midX;
-    // Banco de taquillas en pared corta
+    // Taquillas solo en pared oeste (dejar hueco de puerta)
     for (let y = iy0; y <= iy1; y++) {
       if (y === doorY && ix0 === doorX) continue;
       put(ix0, y, "locker");
     }
-    // Estanterías metálicas profundas en pared opuesta (cada 1 tile)
+    // Racks en pared este + cajones delante (sin invadir pasillo)
     for (let y = iy0; y <= iy1; y++) {
       if (y === doorY && ix1 === doorX) continue;
       put(ix1, y, "shelf");
-      // Segunda fila de cajones delante del rack (pasillo de carga)
       if (ix1 - 1 > aisleX && (y + by) % 2 === 0) put(ix1 - 1, y, "crate");
     }
-    // Oficina de almacén en esquina lejos de la puerta
-    put(farX === ix0 ? ix0 + 1 : farX, farY, "desk");
-    put(farX === ix0 ? ix0 + 1 : farX, farY === iy0 ? farY + 1 : farY - 1, "chair");
-    // Palé / cajones sueltos fuera del pasillo
-    if (aisleX - 1 > ix0) put(aisleX - 1, midY === doorY ? iy0 + 1 : midY, "crate");
-    // Felpudo industrial + franja de peligro en la entrada
-    if (tiles[nearDoorY * size + nearDoorX] === TILE.FLOOR) {
-      placeDecor(decor, nearDoorX, nearDoorY, "mat", "#2e2e2a", 1);
+    // Escritorio en el pasillo central, lejos de la puerta — nunca en columna de lockers/shelves
+    putOrElse("desk", [
+      { x: aisleX, y: farY },
+      { x: aisleX, y: midY },
+      { x: aisleX + (aisleX < ix1 ? 0 : 0), y: farY === iy0 ? iy0 + 1 : farY === iy1 ? iy1 - 1 : farY },
+      { x: Math.min(ix1 - 1, aisleX + 1), y: midY },
+      { x: Math.max(ix0 + 1, aisleX - 1), y: midY },
+    ]);
+    putOrElse("chair", [
+      { x: aisleX, y: farY === iy0 ? farY + 1 : farY - 1 },
+      { x: aisleX + 1, y: farY },
+      { x: aisleX - 1, y: farY },
+      { x: midX, y: midY + 1 },
+    ]);
+    if (aisleX - 1 > ix0) {
+      putOrElse("crate", [
+        { x: aisleX - 1, y: midY === doorY ? iy0 + 1 : midY },
+        { x: aisleX - 1, y: iy0 },
+        { x: aisleX - 1, y: iy1 },
+      ]);
     }
-    // Marcas de pasillo (hazard) a lo largo del eje central
+    matAt(nearDoorX, nearDoorY, "#2e2e2a");
     for (let y = iy0; y <= iy1; y++) {
-      if (interiors.has(`${aisleX},${y}`)) continue;
-      if (decor.has(`${aisleX},${y}`)) continue;
-      if ((y + bx) % 2 === 0) placeDecor(decor, aisleX, y, "hazard", "#c8a020", (y + bx) % 2);
+      if (!free(aisleX, y)) continue;
+      if ((y + bx) % 2 === 0) placeFloorDecor(decor, interiors, aisleX, y, "hazard", "#c8a020", (y + bx) % 2);
     }
-    // Manchas de aceite industriales (pocas)
     for (let y = iy0; y <= iy1; y++) {
       for (let x = ix0; x <= ix1; x++) {
         if (tiles[y * size + x] !== TILE.FLOOR) continue;
-        if (decor.has(`${x},${y}`) || interiors.has(`${x},${y}`)) continue;
+        if (!free(x, y) || decor.has(`${x},${y}`)) continue;
         if (noise.noise2(x * 0.7 + bx, y * 0.7 + by) > 0.82) {
-          placeDecor(decor, x, y, "oil", "#2a2820", (x + y) % 3);
+          placeFloorDecor(decor, interiors, x, y, "oil", "#2a2820", (x + y) % 3);
         }
       }
     }
   } else if (style === "tower") {
-    // Oficina: escritorio, silla, alfombra, estantería, planta
-    placeRug(decor, midX - (midX > ix0 ? 0 : 0), midY - (midY > iy0 ? 0 : 0), Math.min(2, ix1 - ix0), Math.min(2, iy1 - iy0), accent, 0);
     put(midX, midY, "desk");
-    if (midY + 1 <= iy1) put(midX, midY + 1, "chair");
-    else if (midY - 1 >= iy0) put(midX, midY - 1, "chair");
-    if (midX + 1 <= ix1) put(midX + 1, midY, "chair");
-    else if (midX - 1 >= ix0) put(midX - 1, midY, "chair");
-    put(ix0, iy0, "shelf");
-    put(ix1, iy0, "cabinet");
-    put(ix0, iy1, "plant");
-    put(ix1, iy1, "locker");
-    if (tiles[nearDoorY * size + nearDoorX] === TILE.FLOOR) placeDecor(decor, nearDoorX, nearDoorY, "mat", "#3a4050", 0);
+    putOrElse("chair", [
+      { x: midX, y: midY + 1 },
+      { x: midX, y: midY - 1 },
+      { x: midX + 1, y: midY },
+      { x: midX - 1, y: midY },
+    ]);
+    putOrElse("chair", [
+      { x: midX + 1, y: midY },
+      { x: midX - 1, y: midY },
+      { x: midX, y: midY - 1 },
+      { x: midX, y: midY + 1 },
+    ]);
+    placeRug(decor, midX, midY, 1, 1, accent, 0, interiors);
+    putOrElse("shelf", [{ x: ix0, y: iy0 }, { x: ix1, y: iy0 }, { x: ix0, y: midY }]);
+    putOrElse("cabinet", [{ x: ix1, y: iy0 }, { x: ix1, y: iy1 }, { x: ix0, y: iy0 }]);
+    putOrElse("plant", [{ x: ix0, y: iy1 }, { x: ix1, y: iy1 }, ...corners]);
+    putOrElse("locker", [{ x: ix1, y: iy1 }, { x: ix0, y: iy1 }, { x: ix1, y: midY }]);
+    matAt(nearDoorX, nearDoorY, "#3a4050");
   } else {
-    // Bloque mixto: salón sencillo
-    placeRug(decor, midX, midY, Math.min(2, ix1 - midX + 1), Math.min(2, iy1 - midY + 1), accent, 1);
+    // Bloque: cama lejos, sofá en lateral, mesa en centro — zonas disjuntas
     put(farX, farY, "bed");
-    put(farX === ix0 ? farX + 1 : farX - 1, farY, "nightstand");
-    put(ix0, midY, "sofa");
+    putOrElse("nightstand", [
+      { x: farX === ix0 ? farX + 1 : farX - 1, y: farY },
+      { x: farX, y: farY === iy0 ? farY + 1 : farY - 1 },
+    ]);
+    const sofaX = farX === ix0 ? ix1 : ix0;
+    putOrElse("sofa", [
+      { x: sofaX, y: midY },
+      { x: sofaX, y: midY - 1 },
+      { x: sofaX, y: midY + 1 },
+    ]);
     put(midX, midY, "table");
-    put(midX + 1, midY, "chair");
-    put(ix1, iy0, "cabinet");
-    put(ix1, iy1, "fridge");
-    put(ix0, iy0 === farY ? iy1 : iy0, "plant");
-    put(ix0, iy1 === farY ? iy0 : iy1, "drawer");
-    if (tiles[nearDoorY * size + nearDoorX] === TILE.FLOOR) placeDecor(decor, nearDoorX, nearDoorY, "mat", "#5a4038", 0);
+    putOrElse("chair", [
+      { x: midX + 1, y: midY },
+      { x: midX - 1, y: midY },
+      { x: midX, y: midY + 1 },
+    ]);
+    placeRug(decor, midX, midY, 1, 1, accent, 1, interiors);
+    putOrElse("cabinet", [{ x: ix1, y: iy0 }, { x: ix0, y: iy0 }, { x: ix1, y: iy1 }]);
+    putOrElse("fridge", [{ x: ix1, y: iy1 }, { x: ix0, y: iy1 }, { x: ix1, y: midY }]);
+    putOrElse("plant", corners);
+    putOrElse("drawer", corners);
+    matAt(nearDoorX, nearDoorY, "#5a4038");
   }
 
-  // Desgaste ligero (antes saturaba el suelo y mataba el estilo)
+  // Desgaste solo en suelo libre (nunca debajo de muebles)
   const dustCut =
     style === "tower" ? 0.78 :
     style === "shop" ? 0.72 :
@@ -1421,48 +1550,57 @@ function decorateInterior({
   for (let y = iy0; y <= iy1; y++) {
     for (let x = ix0; x <= ix1; x++) {
       if (tiles[y * size + x] !== TILE.FLOOR) continue;
-      if (decor.has(`${x},${y}`)) continue;
+      if (!free(x, y) || decor.has(`${x},${y}`)) continue;
       const r = noise.noise2(x * 0.55 + bx * 0.1, y * 0.55 + by * 0.1);
-      if (r > dustCut) placeDecor(decor, x, y, "dust", "#6a5a48", (x + y) % 3);
-      else if (r > stainCut) placeDecor(decor, x, y, "stain", "#3a2a22", (x * 3 + y) % 2);
+      if (r > dustCut) placeFloorDecor(decor, interiors, x, y, "dust", "#6a5a48", (x + y) % 3);
+      else if (r > stainCut) placeFloorDecor(decor, interiors, x, y, "stain", "#3a2a22", (x * 3 + y) % 2);
       else if (r > rubbleCut && style !== "tower" && style !== "shop") {
-        placeDecor(decor, x, y, "rubble", "#5a5048", (x + y * 2) % 3);
+        placeFloorDecor(decor, interiors, x, y, "rubble", "#5a5048", (x + y * 2) % 3);
       }
     }
   }
 
-  // Luces interiores (lámpara de mesa / vela) — atmósfera
   if (props) {
+    // Máx. 2 lámparas, solo sobre mesa/escritorio/mesita (no apilar en mostradores)
     const lampSpots = [];
     for (let y = iy0; y <= iy1; y++) {
       for (let x = ix0; x <= ix1; x++) {
-        const f = interiors.get(`${x},${y}`);
-        const t = typeof f === "string" ? f : f?.type;
-        if (t === "nightstand" || t === "desk" || t === "table" || t === "counter") {
+        const t = furnitureType(interiors.get(`${x},${y}`));
+        if (t === "nightstand" || t === "desk" || t === "table") {
           lampSpots.push({ x, y, kind: t === "nightstand" ? "candle" : "indoorLamp" });
         }
       }
     }
-    // Al menos una luz en casas grandes
-    if (!lampSpots.length && (ix1 - ix0) >= 2) {
-      lampSpots.push({ x: midX, y: midY, kind: style === "warehouse" ? "indoorLamp" : "candle" });
-    }
+    lampSpots.sort((a, b) => (a.x + a.y * 3) - (b.x + b.y * 3));
+    let lamps = 0;
     for (const spot of lampSpots) {
-      if (noise.noise2(spot.x + 3, spot.y + 5) < 0.28) continue;
-      const lit = noise.noise2(spot.x * 0.4, spot.y * 0.4) > 0.05;
+      if (lamps >= 2) break;
+      if (noise.noise2(spot.x + 3, spot.y + 5) < 0.28 && lamps > 0) continue;
       props.push({
         type: spot.kind,
         x: spot.x + 0.5,
         y: spot.y + 0.5,
-        lit,
+        lit: noise.noise2(spot.x * 0.4, spot.y * 0.4) > 0.05,
         indoor: true,
         flicker: spot.kind === "candle",
       });
+      lamps++;
     }
-    // Silla volcada / caja tirada ocasional
+    // Si no hay superficie, una vela en tile libre del centro
+    if (!lamps && free(midX, midY) && (ix1 - ix0) >= 2) {
+      props.push({
+        type: style === "warehouse" ? "indoorLamp" : "candle",
+        x: midX + 0.5,
+        y: midY + 0.5,
+        lit: true,
+        indoor: true,
+        flicker: style !== "warehouse",
+      });
+    }
+
     if (style === "residential" || style === "block") {
       for (const c of corners) {
-        if (interiors.has(`${c.x},${c.y}`)) continue;
+        if (!free(c.x, c.y)) continue;
         if (noise.noise2(c.x + 9, c.y + 2) > 0.62) {
           props.push({ type: "debris", x: c.x + 0.5, y: c.y + 0.55, tone: 1, indoor: true });
           break;
@@ -1470,17 +1608,16 @@ function decorateInterior({
       }
     }
 
-    // Arte / cuadros / carteles DENTRO, pegados a las paredes interiores
     decorateIndoorWallArt({
-      props, ix0, iy0, ix1, iy1, doorX, doorY,
+      props, interiors, ix0, iy0, ix1, iy1, doorX, doorY,
       style, accent, noise, bx, by,
     });
   }
 }
 
-/** Cuadros y carteles en paredes interiores (no en la calle). */
+/** Cuadros/carteles solo en muro libre (sin mueble en ese tile). */
 function decorateIndoorWallArt({
-  props, ix0, iy0, ix1, iy1, doorX, doorY,
+  props, interiors, ix0, iy0, ix1, iy1, doorX, doorY,
   style, accent, noise, bx, by,
 }) {
   const spots = [];
@@ -1495,11 +1632,13 @@ function decorateIndoorWallArt({
 
   let artCount = 0;
   let posterCount = 0;
-  // Pocos cuadros por habitación — el muro queda mayormente libre
   const artBudget = style === "warehouse" ? 0 : style === "shop" ? 1 : 2;
-  const posterBudget = style === "warehouse" ? 3 : style === "shop" ? 2 : 1;
+  const posterBudget = style === "warehouse" ? 2 : style === "shop" ? 2 : 1;
 
   for (const s of spots) {
+    const ft = furnitureType(interiors?.get(`${s.x},${s.y}`));
+    if (ft) continue; // muro ocupado por mueble — no pintar encima
+
     const n = noise.noise2(s.x * 0.51 + bx, s.y * 0.47 + by + 4);
     const n2 = noise.noise2(s.x * 0.8 + 2, s.y * 0.7 + by);
 
