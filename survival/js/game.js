@@ -13,7 +13,9 @@ import {
   lootGatherText,
   buildingAt,
   nearestContainer,
+  nearestSearchable,
   searchFurniture,
+  furnitureLabel,
   itemDef,
 } from "./world.js";
 
@@ -130,6 +132,14 @@ export function createGame(world) {
       attackCd: 0,
       hurtFlash: 0,
       swingT: 0,
+      vx: 0,
+      vy: 0,
+      walkPhase: 0,
+      sprinting: false,
+      moving: false,
+      lootProgress: 0,
+      lootTarget: null,
+      lootKind: null,
     },
     zombies: [],
     time: 0.52 * DAY_LEN,
@@ -179,7 +189,7 @@ export function createGame(world) {
   };
   game.player.aim = 0;
   seedZombies(game, 4);
-  setToast(game, "Niebla Norte. Ratón apunta · clic dispara · Q melee · E saquea · B construye.");
+  setToast(game, "Niebla Norte. WASD mueve · Espacio corre · E saquea (mantén en contenedores) · clic dispara.");
   applyWaveDebugFlags(game);
   return game;
 }
@@ -299,8 +309,9 @@ export function updateGame(game, dt) {
   updateWeather(game, dt);
   const phase = dayPhase(game);
   game._phase = phase;
-  // Cámara con lerp: movimiento más fluido aunque el framerate varíe
-  const camFollow = 1 - Math.exp(-14 * dt);
+  // Cámara con lerp: más reactiva al sprint / movimiento rápido
+  const camRate = 10 + Math.min(10, Math.hypot(p.vx || 0, p.vy || 0) * 2.2);
+  const camFollow = 1 - Math.exp(-camRate * dt);
   game.camX += (p.x - game.camX) * camFollow;
   game.camY += (p.y - game.camY) * camFollow;
   if (game.toastT > 0) game.toastT -= dt;
@@ -335,24 +346,52 @@ export function updateGame(game, dt) {
   if (game.keys.has("s") || game.keys.has("arrowdown")) my += 1;
   if (game.keys.has("a") || game.keys.has("arrowleft")) mx -= 1;
   if (game.keys.has("d") || game.keys.has("arrowright")) mx += 1;
-  const moving = mx !== 0 || my !== 0;
-  const sprint = game.keys.has(" ") && p.stamina > 2 && moving;
+  const wantMove = mx !== 0 || my !== 0;
+  const looting = Boolean(game.keys.has("e") && p.lootTarget);
+  const sprint = game.keys.has(" ") && p.stamina > 2 && wantMove && !looting;
   const tile = TILE_META[tileAt(game.world, p.x, p.y)] || TILE_META[TILE.ROAD];
-  const speed = (sprint ? 3.5 : 2.2) * (tile.speed ?? 1);
+  const tileSpd = tile.speed ?? 1;
+  const maxSpeed = (sprint ? 3.65 : looting ? 1.15 : 2.35) * tileSpd;
+  const accel = sprint ? 16 : looting ? 8 : 12;
+  const friction = wantMove ? accel : 18;
 
-  if (moving) {
+  if (wantMove) {
     const len = Math.hypot(mx, my) || 1;
     mx /= len;
     my /= len;
-    if (mx !== 0) p.facing = mx > 0 ? 1 : -1;
-    tryMove(game, p.x + mx * speed * dt, p.y);
-    tryMove(game, p.x, p.y + my * speed * dt);
-    p.stamina = Math.max(0, p.stamina - (sprint ? 16 : 3) * dt);
-    p.hunger = Math.max(0, p.hunger - (sprint ? 0.9 : 0.35) * dt);
-    p.thirst = Math.max(0, p.thirst - (sprint ? 1.1 : 0.45) * dt);
-    if (sprint) game.noisePulse = Math.max(game.noisePulse, 2.5);
+  }
+  const tx = wantMove ? mx * maxSpeed : 0;
+  const ty = wantMove ? my * maxSpeed : 0;
+  const blend = 1 - Math.exp(-(wantMove ? accel : friction) * dt);
+  p.vx += (tx - p.vx) * blend;
+  p.vy += (ty - p.vy) * blend;
+  if (Math.abs(p.vx) < 0.02) p.vx = 0;
+  if (Math.abs(p.vy) < 0.02) p.vy = 0;
+
+  const beforeX = p.x;
+  const beforeY = p.y;
+  if (p.vx !== 0) {
+    if (!tryMove(game, p.x + p.vx * dt, p.y)) p.vx = 0;
+  }
+  if (p.vy !== 0) {
+    if (!tryMove(game, p.x, p.y + p.vy * dt)) p.vy = 0;
+  }
+
+  const moved = Math.hypot(p.x - beforeX, p.y - beforeY);
+  p.moving = moved > 0.0005;
+  p.sprinting = sprint && p.moving;
+  if (p.moving) {
+    p.walkPhase = (p.walkPhase || 0) + moved * (sprint ? 10.5 : 8.2);
+    if (Math.abs(p.vx) > 0.05) p.facing = p.vx > 0 ? 1 : -1;
+    p.stamina = Math.max(0, p.stamina - (sprint ? 15 : 2.4) * dt);
+    p.hunger = Math.max(0, p.hunger - (sprint ? 0.85 : 0.32) * dt);
+    p.thirst = Math.max(0, p.thirst - (sprint ? 1.05 : 0.4) * dt);
+    if (sprint) {
+      game.noisePulse = Math.max(game.noisePulse, 2.5);
+      if (Math.random() < dt * 9) spawnDust(game, p.x, p.y);
+    }
   } else {
-    p.stamina = Math.min(100, p.stamina + 14 * dt);
+    p.stamina = Math.min(100, p.stamina + 15 * dt);
   }
 
   const bNow = buildingAt(game.world, p.x, p.y);
@@ -374,13 +413,15 @@ export function updateGame(game, dt) {
 
   // Apuntado al cursor (recalcula mundo si el jugador se movió)
   if (game.mouse.viewW) {
-    game.mouse.worldX = p.x + (game.mouse.x - game.mouse.viewW / 2) / 48;
-    game.mouse.worldY = p.y + (game.mouse.y - game.mouse.viewH / 2) / 48;
+    // Mira relativa a la cámara suavizada (más natural al moverse)
+    game.mouse.worldX = game.camX + (game.mouse.x - game.mouse.viewW / 2) / 48;
+    game.mouse.worldY = game.camY + (game.mouse.y - game.mouse.viewH / 2) / 48;
   }
   p.aim = Math.atan2(game.mouse.worldY - p.y, game.mouse.worldX - p.x);
   if (Math.cos(p.aim) !== 0) p.facing = Math.cos(p.aim) >= 0 ? 1 : -1;
 
-  if (pressed(game, "e") && p.gatherCd <= 0) interact(game);
+  updateLooting(game, dt);
+  if (pressed(game, "e") && p.gatherCd <= 0 && !p.lootTarget) beginLoot(game);
   if ((pressed(game, "q") || pressed(game, "f")) && p.attackCd <= 0) melee(game);
   if ((game.mouse.clicked || (game.mouse.down && isAutomaticFire(p))) && p.attackCd <= 0) {
     fireWeapon(game);
@@ -530,68 +571,206 @@ function tryMove(game, nx, ny) {
   if (pts.every(([x, y]) => canWalk(game.world, x, y))) {
     p.x = nx;
     p.y = ny;
+    return true;
+  }
+  return false;
+}
+
+function findNearestLoot(game) {
+  const p = game.player;
+  const tx = Math.floor(p.x);
+  const ty = Math.floor(p.y);
+  let best = null;
+  let bestD = 1.55;
+  for (let oy = -1; oy <= 1; oy++) {
+    for (let ox = -1; ox <= 1; ox++) {
+      const x = tx + ox;
+      const y = ty + oy;
+      const key = `${x},${y}`;
+      const item = game.world.loot.get(key);
+      if (!item) continue;
+      const d = Math.hypot(p.x - (x + 0.5), p.y - (y + 0.5));
+      if (d < bestD) {
+        bestD = d;
+        best = { kind: "loot", key, id: item.id, amount: item.amount || 1, x, y, d };
+      }
+    }
+  }
+  return best;
+}
+
+function findNearestDrink(game) {
+  const p = game.player;
+  const tx = Math.floor(p.x);
+  const ty = Math.floor(p.y);
+  let best = null;
+  let bestD = 1.45;
+  for (let oy = -1; oy <= 1; oy++) {
+    for (let ox = -1; ox <= 1; ox++) {
+      const x = tx + ox + 0.5;
+      const y = ty + oy + 0.5;
+      if (!TILE_META[tileAt(game.world, x, y)]?.drink) continue;
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d < bestD) {
+        bestD = d;
+        best = { kind: "drink", x, y, d };
+      }
+    }
+  }
+  return best;
+}
+
+function findLootTarget(game) {
+  const p = game.player;
+  const drink = findNearestDrink(game);
+  const loot = findNearestLoot(game);
+  const near = nearestSearchable(game.world, p.x, p.y);
+  let container = null;
+  if (near) {
+    const d = Math.hypot(p.x - (near.x + 0.5), p.y - (near.y + 0.5));
+    if (d <= 1.55) {
+      container = { kind: "container", key: near.key, furn: near.furn, x: near.x, y: near.y, d };
+    }
+  }
+  const opts = [drink, loot, container].filter(Boolean);
+  if (!opts.length) return null;
+  opts.sort((a, b) => a.d - b.d);
+  // Priorizar botín de suelo casi a los pies
+  if (loot && loot.d < 0.85) return loot;
+  return opts[0];
+}
+
+function beginLoot(game) {
+  const p = game.player;
+  const target = findLootTarget(game);
+  if (!target) {
+    p.gatherCd = 0.22;
+    const scanned = nearestContainer(game.world, p.x, p.y);
+    if (scanned) {
+      setToast(game, `${furnitureLabel(scanned.furn)}: ya lo registraste.`);
+      return;
+    }
+    setToast(
+      game,
+      game.buildMode
+        ? `Modo ${BUILD[game.buildMode].label} — pulsa B`
+        : "Nada cerca. Acércate a un contenedor o botín."
+    );
+    return;
+  }
+  if (target.kind === "loot") {
+    finishLoot(game, target);
+    return;
+  }
+  if (target.kind === "drink") {
+    p.gatherCd = 0.32;
+    p.thirst = Math.min(100, p.thirst + 20);
+    setToast(game, "Bebes del canal. Sabe a óxido.");
+    spawnDust(game, target.x, target.y, "loot");
+    return;
+  }
+  // Contenedor: mantener E
+  const preview = peekContainerLabel(target.furn);
+  p.lootTarget = target;
+  p.lootKind = "container";
+  p.lootProgress = 0;
+  setToast(game, `Registrando ${preview}… mantén E`);
+}
+
+function peekContainerLabel(furn) {
+  return (furnitureLabel(furn) || "contenedor").toLowerCase();
+}
+
+function updateLooting(game, dt) {
+  const p = game.player;
+  if (!p.lootTarget) return;
+  if (!game.keys.has("e")) {
+    if (p.lootProgress > 0.08) setToast(game, "Saqueo cancelado.");
+    p.lootTarget = null;
+    p.lootKind = null;
+    p.lootProgress = 0;
+    return;
+  }
+  const live = findLootTarget(game);
+  if (!live || live.kind !== "container" || live.key !== p.lootTarget.key) {
+    p.lootTarget = null;
+    p.lootProgress = 0;
+    return;
+  }
+  p.lootTarget = live;
+  p.lootProgress = Math.min(1, p.lootProgress + dt / 0.7);
+  if (p.lootProgress < 1) return;
+  finishLoot(game, live);
+  p.lootTarget = null;
+  p.lootProgress = 0;
+  if (game.keys.has("e") && p.gatherCd <= 0) {
+    const next = findLootTarget(game);
+    if (next?.kind === "container") {
+      p.lootTarget = next;
+      p.lootProgress = 0;
+      setToast(game, `Registrando ${peekContainerLabel(next.furn)}…`);
+    } else if (next?.kind === "loot") {
+      finishLoot(game, next);
+    }
   }
 }
 
-function interact(game) {
+function finishLoot(game, target) {
   const p = game.player;
-  p.gatherCd = 0.35;
-  const tx = Math.floor(p.x);
-  const ty = Math.floor(p.y);
-
-  for (let oy = -1; oy <= 1; oy++) {
-    for (let ox = -1; ox <= 1; ox++) {
-      if (TILE_META[tileAt(game.world, tx + ox + 0.5, ty + oy + 0.5)]?.drink) {
-        p.thirst = Math.min(100, p.thirst + 20);
-        setToast(game, "Bebes del canal. Sabe a óxido.");
-        return;
-      }
-    }
-  }
-
-  const near = nearestContainer(game.world, p.x, p.y);
-  if (near) {
-    p.gatherCd = 0.55;
-    const result = searchFurniture(near.furn);
-    game.noisePulse = Math.max(game.noisePulse, 1.4);
-    if (result.already) {
-      setToast(game, `${result.label}: ya lo registraste.`);
-      return;
-    }
-    if (result.empty) {
-      setToast(game, `Registras ${result.label.toLowerCase()}… vacío.`);
-      return;
-    }
-    if (!tryTakeItem(p, result.id, result.amount)) {
+  if (target.kind === "loot") {
+    p.gatherCd = 0.16;
+    if (!tryTakeItem(p, target.id, target.amount)) {
       setToast(game, "Inventario lleno. Equipa una mochila (T).");
       return;
     }
-    setToast(game, `En ${result.label.toLowerCase()}: ${lootGatherText(result.id)}.`);
+    game.world.loot.delete(target.key);
+    setToast(game, `Saqueas ${lootGatherText(target.id)}.`);
+    game.noisePulse = Math.max(game.noisePulse, 1.05);
+    spawnDust(game, target.x + 0.5, target.y + 0.5, "loot");
     return;
   }
-
-  for (let oy = -1; oy <= 1; oy++) {
-    for (let ox = -1; ox <= 1; ox++) {
-      const key = `${tx + ox},${ty + oy}`;
-      const item = game.world.loot.get(key);
-      if (!item) continue;
-      if (!tryTakeItem(p, item.id, item.amount)) {
-        setToast(game, "Inventario lleno. Necesitas más espacio.");
-        return;
-      }
-      game.world.loot.delete(key);
-      setToast(game, `Saqueas ${lootGatherText(item.id)}.`);
-      game.noisePulse = Math.max(game.noisePulse, 1.2);
-      return;
-    }
+  if (target.kind !== "container") return;
+  p.gatherCd = 0.25;
+  const result = searchFurniture(target.furn);
+  game.noisePulse = Math.max(game.noisePulse, 1.35);
+  spawnDust(game, target.x + 0.5, target.y + 0.5, "loot");
+  if (result.already) {
+    setToast(game, `${result.label}: ya lo registraste.`);
+    return;
   }
+  if (result.empty) {
+    setToast(game, `Registras ${result.label.toLowerCase()}… vacío.`);
+    return;
+  }
+  if (!tryTakeItem(p, result.id, result.amount)) {
+    if (typeof target.furn === "object") target.furn.searched = false;
+    setToast(game, "Inventario lleno. Equipa una mochila (T).");
+    return;
+  }
+  setToast(game, `En ${result.label.toLowerCase()}: ${lootGatherText(result.id)}.`);
+}
 
-  setToast(
-    game,
-    game.buildMode
-      ? `Modo ${BUILD[game.buildMode].label} — pulsa B`
-      : "Nada que saquear. E registrar · T equipar · Q atacar"
-  );
+function interact(game) {
+  beginLoot(game);
+}
+
+function spawnDust(game, x, y, kind = "dust") {
+  if (!game.fx) game.fx = [];
+  const n = kind === "loot" ? 6 : 3;
+  for (let i = 0; i < n; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = kind === "loot" ? 0.9 + Math.random() * 1.4 : 0.4 + Math.random() * 0.9;
+    game.fx.push({
+      x,
+      y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd - 0.45,
+      life: 0.28 + Math.random() * 0.2,
+      max: 0.45,
+      kind,
+      size: kind === "loot" ? 2 + Math.random() * 2.2 : 1.2 + Math.random() * 1.6,
+    });
+  }
 }
 
 function consume(game) {
@@ -762,6 +941,10 @@ function makeZombie(x, y, wave = 0) {
     wanderT: 0,
     wx: x,
     wy: y,
+    vx: 0,
+    vy: 0,
+    walkPhase: 0,
+    facing: 1,
     wave,
     boss: false,
     bossKind: null,
@@ -789,6 +972,10 @@ function makeBoss(x, y, wave, kind) {
     wanderT: 0,
     wx: x,
     wy: y,
+    vx: 0,
+    vy: 0,
+    walkPhase: 0,
+    facing: 1,
     wave,
     boss: true,
     bossKind: def.id,
@@ -916,8 +1103,15 @@ function updateZombies(game, dt, phase) {
     const dx = tx - z.x;
     const dy = ty - z.y;
     const len = Math.hypot(dx, dy) || 1;
-    const nx = z.x + (dx / len) * spd * dt;
-    const ny = z.y + (dy / len) * spd * dt;
+    const wantX = (dx / len) * spd;
+    const wantY = (dy / len) * spd;
+    const zBlend = 1 - Math.exp(-(z.boss && z.chargeT > 0 ? 20 : 9) * dt);
+    z.vx = (z.vx || 0) + (wantX - (z.vx || 0)) * zBlend;
+    z.vy = (z.vy || 0) + (wantY - (z.vy || 0)) * zBlend;
+    const nx = z.x + z.vx * dt;
+    const ny = z.y + z.vy * dt;
+    if (Math.abs(z.vx) > 0.04) z.facing = z.vx > 0 ? 1 : -1;
+    z.walkPhase = (z.walkPhase || 0) + Math.hypot(z.vx, z.vy) * dt * 7;
 
     // Solo la puerta delante / bajo el zombie (no iterar todas)
     {

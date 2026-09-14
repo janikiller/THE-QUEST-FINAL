@@ -1547,17 +1547,17 @@ export function nearestContainer(world, x, y) {
   const tx = Math.floor(x);
   const ty = Math.floor(y);
   let best = null;
-  let bestD = 99;
+  let bestD = 1.65;
   for (let oy = -1; oy <= 1; oy++) {
     for (let ox = -1; ox <= 1; ox++) {
       const key = `${tx + ox},${ty + oy}`;
       const furn = world.interiors.get(key);
       const t = furnitureType(furn);
       if (!t || !FURNITURE[t]?.searchable) continue;
-      const d = Math.abs(ox) + Math.abs(oy);
+      const d = Math.hypot(x - (tx + ox + 0.5), y - (ty + oy + 0.5));
       if (d < bestD) {
         bestD = d;
-        best = { key, furn, x: tx + ox, y: ty + oy };
+        best = { key, furn, x: tx + ox, y: ty + oy, d };
       }
     }
   }

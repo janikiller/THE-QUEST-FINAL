@@ -113,8 +113,8 @@ function bindMouse(g) {
     g.mouse.viewW = rect.width;
     g.mouse.viewH = rect.height;
     // Cámara centrada en el jugador
-    g.mouse.worldX = g.player.x + (x - rect.width / 2) / 48;
-    g.mouse.worldY = g.player.y + (y - rect.height / 2) / 48;
+    g.mouse.worldX = (g.camX ?? g.player.x) + (x - rect.width / 2) / 48;
+    g.mouse.worldY = (g.camY ?? g.player.y) + (y - rect.height / 2) / 48;
   };
 
   canvas.onmousemove = (e) => syncPos(e);

@@ -172,17 +172,9 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     ctx.font = `600 13px ${FONT_UI}`;
     ctx.textAlign = "center";
     ctx.fillText(inside.name, w / 2, 38);
-
-    const near = nearestSearchable(game.world, game.player.x, game.player.y);
-    if (near) {
-      const label = furnitureLabel(near.furn);
-      ctx.fillStyle = "rgba(20,18,14,0.78)";
-      ctx.fillRect(w / 2 - 110, 54, 220, 26);
-      ctx.fillStyle = "#f0d9a0";
-      ctx.font = `600 12px ${FONT_UI}`;
-      ctx.fillText(`E · registrar ${label.toLowerCase()}`, w / 2, 72);
-    }
   }
+
+  drawLootPrompt(ctx, game, camX, camY, w, h, playerIndoor);
 
   // Oscuridad + iluminación (farolas, ventanas, linterna)
   drawLighting(ctx, game, phase, camX, camY, w, h, litWindows.length > 12 ? litWindows.slice(0, 12) : litWindows, visibleProps, playerIndoor);
@@ -2553,7 +2545,11 @@ function drawFx(ctx, game, camX, camY) {
     ctx.fillStyle =
       f.kind === "death"
         ? `rgba(90, 20, 18, ${a * 0.85})`
-        : `rgba(160, 30, 28, ${a * 0.9})`;
+        : f.kind === "loot"
+          ? `rgba(240, 210, 120, ${a * 0.9})`
+          : f.kind === "dust"
+            ? `rgba(170, 150, 120, ${a * 0.55})`
+            : `rgba(160, 30, 28, ${a * 0.9})`;
     ctx.beginPath();
     ctx.arc(x, y, f.size || 2, 0, Math.PI * 2);
     ctx.fill();
@@ -2585,7 +2581,8 @@ function drawZombie(ctx, px, py, time, z) {
   ctx.beginPath();
   ctx.ellipse(0, 12, boss ? 14 : 10, boss ? 5 : 4, 0, 0, Math.PI * 2);
   ctx.fill();
-  const limp = Math.sin(time * (boss ? 4.2 : 6) + z.x) * (boss ? 3 : 2);
+  if ((z.facing || 1) < 0) ctx.scale(-1, 1);
+  const limp = Math.sin(z.walkPhase || time * (boss ? 4.2 : 6) + z.x) * (boss ? 3 : 2);
   const body = flash > 0 ? "#c85848" : boss ? z.color || "#6a2a28" : "#3a4a34";
   const head = flash > 0 ? "#e8b0a0" : boss ? z.head || "#8a4a40" : "#6a7a5a";
   ctx.fillStyle = body;
@@ -2719,6 +2716,66 @@ function drawAimAndBullets(ctx, game, camX, camY) {
   }
 }
 
+
+function drawLootPrompt(ctx, game, camX, camY, w, h, playerIndoor) {
+  const p = game.player;
+  if (!p) return;
+  const target = p.lootTarget;
+  // Progress ring while holding E
+  if (target && (p.lootProgress || 0) > 0) {
+    const tx = (target.x + 0.5) * TILE_PX - camX;
+    const ty = (target.y + 0.5) * TILE_PX - camY;
+    const prog = Math.max(0, Math.min(1, p.lootProgress));
+    ctx.save();
+    ctx.strokeStyle = "rgba(20,18,14,0.55)";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(tx, ty - 18, 14, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "#f0d9a0";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(tx, ty - 18, 14, -Math.PI / 2, -Math.PI / 2 + prog * Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  let tip = null;
+  if (target && target.kind === "container") {
+    tip = `Mantén E · ${furnitureLabel(target.furn).toLowerCase()}`;
+  } else {
+    const near = nearestSearchable(game.world, p.x, p.y);
+    if (near) tip = `E · registrar ${furnitureLabel(near.furn).toLowerCase()}`;
+    else {
+      // Botín en suelo cercano
+      const tx = Math.floor(p.x);
+      const ty = Math.floor(p.y);
+      let best = null;
+      let bestD = 1.35;
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          const item = game.world.loot.get(`${tx + ox},${ty + oy}`);
+          if (!item) continue;
+          const d = Math.hypot(p.x - (tx + ox + 0.5), p.y - (ty + oy + 0.5));
+          if (d < bestD) {
+            bestD = d;
+            best = item;
+          }
+        }
+      }
+      if (best) tip = `E · saquear`;
+    }
+  }
+  if (!tip) return;
+  const y = playerIndoor ? 54 : 22;
+  ctx.fillStyle = "rgba(20,18,14,0.78)";
+  ctx.fillRect(w / 2 - 120, y, 240, 26);
+  ctx.fillStyle = "#f0d9a0";
+  ctx.font = `600 12px ${FONT_UI}`;
+  ctx.textAlign = "center";
+  ctx.fillText(tip, w / 2, y + 18);
+}
+
 function drawPlayer(ctx, px, py, player, time, game = null) {
   ctx.save();
   ctx.translate(px, py);
@@ -2736,7 +2793,12 @@ function drawPlayer(ctx, px, py, player, time, game = null) {
   ctx.ellipse(0, 12, 11, 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const walk = Math.sin(time * 11) * (player.stamina < 100 ? 2 : 0);
+  const moving = player.moving || Math.hypot(player.vx || 0, player.vy || 0) > 0.15;
+  const phase = player.walkPhase || time * 8;
+  const amp = moving ? (player.sprinting ? 3.1 : 2.2) : 0;
+  const walk = Math.sin(phase) * amp;
+  const bob = moving ? Math.abs(Math.sin(phase)) * (player.sprinting ? 1.4 : 0.8) : 0;
+  ctx.translate(0, -bob);
   const bodyDef = itemDef(player.equip?.body);
   const wear = bodyDef?.wear || { style: "tee", fill: "#3a4a5a", trim: "#2a343c", accent: "#6a7a88" };
   const bagId = player.equip?.bag;
