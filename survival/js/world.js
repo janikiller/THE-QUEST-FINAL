@@ -1385,15 +1385,24 @@ function decorateInterior({
     if (tiles[nearDoorY * size + nearDoorX] === TILE.FLOOR) placeDecor(decor, nearDoorX, nearDoorY, "mat", "#5a4038", 0);
   }
 
-  // Desgaste post-colapso: polvo, manchas, escombros
+  // Desgaste ligero (antes saturaba el suelo y mataba el estilo)
+  const dustCut =
+    style === "tower" ? 0.78 :
+    style === "shop" ? 0.72 :
+    style === "warehouse" ? 0.62 :
+    0.68;
+  const stainCut = dustCut - 0.1;
+  const rubbleCut = style === "warehouse" ? 0.52 : style === "tower" ? 0.95 : 0.58;
   for (let y = iy0; y <= iy1; y++) {
     for (let x = ix0; x <= ix1; x++) {
       if (tiles[y * size + x] !== TILE.FLOOR) continue;
       if (decor.has(`${x},${y}`)) continue;
       const r = noise.noise2(x * 0.55 + bx * 0.1, y * 0.55 + by * 0.1);
-      if (r > 0.48) placeDecor(decor, x, y, "dust", "#6a5a48", (x + y) % 3);
-      else if (r > 0.34) placeDecor(decor, x, y, "stain", "#3a2a22", (x * 3 + y) % 2);
-      else if (r > 0.22 && style !== "tower") placeDecor(decor, x, y, "rubble", "#5a5048", (x + y * 2) % 3);
+      if (r > dustCut) placeDecor(decor, x, y, "dust", "#6a5a48", (x + y) % 3);
+      else if (r > stainCut) placeDecor(decor, x, y, "stain", "#3a2a22", (x * 3 + y) % 2);
+      else if (r > rubbleCut && style !== "tower" && style !== "shop") {
+        placeDecor(decor, x, y, "rubble", "#5a5048", (x + y * 2) % 3);
+      }
     }
   }
 

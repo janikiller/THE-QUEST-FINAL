@@ -5,6 +5,9 @@ const TILE_PX = 48;
 const FONT_UI = '"IBM Plex Sans", "Segoe UI", sans-serif';
 const FONT_DISPLAY = '"Instrument Serif", Georgia, serif';
 
+/** Edificio actual visto desde dentro (invalida caché de suelo). */
+let _viewIndoor = null;
+
 export function createRenderer(canvas, miniCanvas) {
   const ctx = canvas.getContext("2d");
   const mctx = miniCanvas.getContext("2d");
@@ -88,6 +91,12 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   const x1 = Math.min(game.world.size, Math.ceil((camX + w) / TILE_PX) + 2);
   const y1 = Math.min(game.world.size, Math.ceil((camY + h) / TILE_PX) + 2);
 
+  // Indoor antes del suelo (yeso vs fachada + invalidación de caché)
+  const inside = buildingAt(game.world, game.player.x, game.player.y);
+  const playerTile = tileIndex(game, game.player.x, game.player.y);
+  const playerIndoor = TILE_META[playerTile]?.indoor || playerTile === TILE.DOOR;
+  _viewIndoor = playerIndoor ? inside : null;
+
   // Suelo cacheado (estático) + agua animada encima
   drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1);
   if (raining) {
@@ -103,15 +112,17 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
   }
 
   // Edificios
-  const inside = buildingAt(game.world, game.player.x, game.player.y);
-  const playerTile = tileIndex(game, game.player.x, game.player.y);
-  const playerIndoor = TILE_META[playerTile]?.indoor || playerTile === TILE.DOOR;
   const litWindows = [];
 
   for (const b of game.world.buildings) {
     if (b.x1 < x0 - 1 || b.x0 > x1 + 1 || b.y1 < y0 - 1 || b.y0 > y1 + 1) continue;
     const entered = inside === b && playerIndoor;
     drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows);
+  }
+
+  // Muebles en capa viva (encima del lavado de habitación, fuera de caché)
+  if (playerIndoor && inside) {
+    drawLiveFurniture(ctx, game, camX, camY, x0, y0, x1, y1, inside);
   }
 
   // Props: grid espacial + cull
@@ -603,7 +614,8 @@ function isAnimatedGround(tile) {
 function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
   const gw = Math.max(1, (x1 - x0) * TILE_PX);
   const gh = Math.max(1, (y1 - y0) * TILE_PX);
-  const key = `${game.world.seed}|${game.world.tileRev || 0}|${x0},${y0},${x1},${y1}|${phase.name}|${phase.night ? 1 : 0}`;
+  const indoorKey = _viewIndoor ? `${_viewIndoor.x0},${_viewIndoor.y0},${_viewIndoor.style || ""}` : "out";
+  const key = `${game.world.seed}|${game.world.tileRev || 0}|${x0},${y0},${x1},${y1}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
   if (!_groundCanvas) _groundCanvas = document.createElement("canvas");
   if (_groundKey !== key || _groundCanvas.width !== gw || _groundCanvas.height !== gh) {
     _groundCanvas.width = gw;
@@ -659,8 +671,12 @@ function drawGround(ctx, game, tile, tx, ty, px, py, phase) {
     return;
   }
   if (tile === TILE.WALL) {
-    // Base de fachada + suciedad / grietas
     const b = buildingAt(game.world, tx + 0.5, ty + 0.5);
+    if (_viewIndoor && b === _viewIndoor) {
+      drawIndoorWallTile(ctx, px, py, b, tx, ty);
+      return;
+    }
+    // Base de fachada + suciedad / grietas
     ctx.fillStyle = b?.facade || "#4a4540";
     ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
     ctx.fillStyle = "rgba(0,0,0,0.16)";
@@ -1030,109 +1046,151 @@ function drawInterior(ctx, game, tile, tx, ty, px, py) {
     ctx.strokeRect(px + 5, py + 5, TILE_PX - 10, TILE_PX - 10);
   }
 
-  const furn = game.world.interiors.get(`${tx},${ty}`);
-  const fType = furnitureType(furn);
-  const searched = typeof furn === "object" && furn?.searched;
-  if (fType) drawFurniturePiece(ctx, fType, searched, px, py, b?.accent);
-
+  // Muebles: capa viva (drawLiveFurniture) — no en caché ni bajo fachada
   if (b && phaseIsDayish(phaseNameSafe(game))) {
-    ctx.fillStyle = "rgba(255, 230, 160, 0.07)";
+    ctx.fillStyle = "rgba(255, 236, 190, 0.04)";
     ctx.fillRect(px, py, TILE_PX, TILE_PX);
   }
 }
 
+function drawLiveFurniture(ctx, game, camX, camY, x0, y0, x1, y1, building) {
+  const target = game.player?.lootTarget;
+  const ix0 = Math.max(x0, building.x0 + 1);
+  const iy0 = Math.max(y0, building.y0 + 1);
+  const ix1 = Math.min(x1 - 1, building.x1 - 1);
+  const iy1 = Math.min(y1 - 1, building.y1 - 1);
+  for (let ty = iy0; ty <= iy1; ty++) {
+    for (let tx = ix0; tx <= ix1; tx++) {
+      const furn = game.world.interiors.get(`${tx},${ty}`);
+      const fType = furnitureType(furn);
+      if (!fType) continue;
+      const searched = typeof furn === "object" && furn?.searched;
+      const searching = target && target.kind === "container" && target.x === tx && target.y === ty;
+      drawFurniturePiece(ctx, fType, searched, tx * TILE_PX - camX, ty * TILE_PX - camY, building.accent, searching);
+    }
+  }
+}
 function drawInteriorFloor(ctx, tile, px, py, b, floorStyle, tx, ty) {
   if (tile === TILE.BASE) {
     ctx.fillStyle = "#4f6a40";
     ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
+    ctx.strokeStyle = "rgba(180, 210, 120, 0.45)";
+    ctx.strokeRect(px + 6, py + 6, TILE_PX - 12, TILE_PX - 12);
     return;
   }
+
+  const odd = ((tx + ty) & 1) === 0;
   if (floorStyle === "tile") {
-    const base = b ? shade(b.facade, 42) : "#8a8078";
-    ctx.fillStyle = base;
+    ctx.fillStyle = odd ? "#a89c90" : "#91867a";
     ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
-    const alt = ((tx + ty) & 1) === 0;
-    ctx.fillStyle = alt ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
-    ctx.fillRect(px + 1, py + 1, TILE_PX / 2 - 1, TILE_PX / 2 - 1);
-    ctx.fillRect(px + TILE_PX / 2 + 1, py + TILE_PX / 2 + 1, TILE_PX / 2 - 1, TILE_PX / 2 - 1);
-    ctx.strokeStyle = "rgba(40,30,25,0.2)";
+    ctx.strokeStyle = "rgba(48,40,34,0.45)";
+    ctx.lineWidth = 1;
     ctx.strokeRect(px + 0.5, py + 0.5, TILE_PX - 1, TILE_PX - 1);
     ctx.beginPath();
-    ctx.moveTo(px + TILE_PX / 2, py);
-    ctx.lineTo(px + TILE_PX / 2, py + TILE_PX);
-    ctx.moveTo(px, py + TILE_PX / 2);
-    ctx.lineTo(px + TILE_PX, py + TILE_PX / 2);
+    ctx.moveTo(px + TILE_PX / 2, py + 1);
+    ctx.lineTo(px + TILE_PX / 2, py + TILE_PX - 1);
+    ctx.moveTo(px + 1, py + TILE_PX / 2);
+    ctx.lineTo(px + TILE_PX - 1, py + TILE_PX / 2);
     ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.1)";
+    ctx.fillRect(px + 3, py + 3, 10, 3);
   } else if (floorStyle === "concrete") {
-    ctx.fillStyle = b ? shade(b.facade, 28) : "#6a6864";
+    ctx.fillStyle = odd ? "#74726e" : "#605e5a";
     ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
-    ctx.fillStyle = "rgba(0,0,0,0.08)";
-    ctx.fillRect(px + 4, py + 8, 14, 3);
-    ctx.fillRect(px + 22, py + 28, 18, 2);
+    ctx.fillStyle = "rgba(0,0,0,0.05)";
+    ctx.fillRect(px, py, TILE_PX, TILE_PX);
+    if (((tx * 3 + ty * 5) % 7) === 0) {
+      ctx.strokeStyle = "rgba(28,26,24,0.35)";
+      ctx.beginPath();
+      ctx.moveTo(px + 6, py + 10);
+      ctx.lineTo(px + 18, py + 22);
+      ctx.lineTo(px + 34, py + 16);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "rgba(0,0,0,0.14)";
+    ctx.strokeRect(px + 1, py + 1, TILE_PX - 2, TILE_PX - 2);
   } else if (floorStyle === "office") {
-    ctx.fillStyle = b ? shade(b.facade, 38) : "#6a6e74";
+    ctx.fillStyle = odd ? "#5c6672" : "#4c5662";
     ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
-    ctx.strokeStyle = "rgba(30,35,40,0.25)";
+    ctx.strokeStyle = "rgba(18,22,28,0.35)";
     ctx.beginPath();
     ctx.moveTo(px, py + TILE_PX);
     ctx.lineTo(px + TILE_PX, py);
     ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(px + 2, py + 2, TILE_PX - 4, 3);
+    ctx.fillStyle = "rgba(255,255,255,0.055)";
+    ctx.fillRect(px + 2, py + 2, TILE_PX - 4, 4);
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.fillRect(px + 4, py + TILE_PX - 6, TILE_PX - 8, 3);
   } else {
-    const base = b ? shade(b.facade, 32) : "#6e5a46";
-    ctx.fillStyle = base;
+    // Madera real (no teñida por fachada)
+    ctx.fillStyle = odd ? "#926e4c" : "#7d5c3c";
     ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
-    ctx.strokeStyle = "rgba(40,30,20,0.28)";
+    ctx.strokeStyle = "rgba(42,28,16,0.35)";
     ctx.lineWidth = 1;
     for (let i = 1; i < 4; i++) {
+      const yy = py + i * 12;
       ctx.beginPath();
-      ctx.moveTo(px, py + i * 12);
-      ctx.lineTo(px + TILE_PX, py + i * 12);
+      ctx.moveTo(px, yy);
+      ctx.lineTo(px + TILE_PX, yy);
+      ctx.stroke();
+      const jx = px + ((tx * 5 + i * 11) % 6) * 7 + 4;
+      ctx.beginPath();
+      ctx.moveTo(jx, yy - 12);
+      ctx.lineTo(jx, yy);
       ctx.stroke();
     }
-    ctx.strokeStyle = "rgba(255,220,160,0.05)";
+    ctx.strokeStyle = "rgba(255,220,160,0.08)";
     ctx.beginPath();
-    ctx.moveTo(px + 6, py + 4);
-    ctx.lineTo(px + 40, py + 8);
+    ctx.moveTo(px + 4, py + 5);
+    ctx.lineTo(px + 40, py + 9);
     ctx.stroke();
   }
 
-  // Desgaste del suelo (tablones/losas rotas)
-  const wear = (tx * 17 + ty * 31) % 11;
+  const wear = (tx * 17 + ty * 31) % 19;
   if (wear === 0) {
-    ctx.fillStyle = "rgba(0,0,0,0.12)";
-    ctx.fillRect(px + 6, py + 20, 18, 3);
-  } else if (wear === 3) {
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
-    ctx.fillRect(px + 22, py + 8, 14, 2);
+    ctx.fillStyle = "rgba(0,0,0,0.08)";
+    ctx.fillRect(px + 8, py + 22, 16, 2);
   } else if (wear === 7) {
-    ctx.fillStyle = "rgba(40, 30, 20, 0.16)";
-    ctx.beginPath();
-    ctx.ellipse(px + 30, py + 34, 8, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(px + 18, py + 10, 14, 2);
   }
 }
 
 function drawFloorDecor(ctx, dec, px, py) {
   if (dec.kind === "rug") {
     const c = dec.color || "#6a3a3a";
-    const inset = dec.variant === 2 ? 10 : 4;
-    ctx.globalAlpha = 0.82;
+    const inset = dec.variant === 2 ? 8 : 3;
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.fillRect(px + inset + 2, py + inset + 3, TILE_PX - inset * 2, TILE_PX - inset * 2);
     ctx.fillStyle = c;
     ctx.fillRect(px + inset, py + inset, TILE_PX - inset * 2, TILE_PX - inset * 2);
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = shade(c, 28);
+    ctx.strokeStyle = shade(c, 30);
     ctx.lineWidth = 2;
     ctx.strokeRect(px + inset + 1, py + inset + 1, TILE_PX - inset * 2 - 2, TILE_PX - inset * 2 - 2);
+    ctx.strokeStyle = shade(c, -20);
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px + inset + 4, py + inset + 4, TILE_PX - inset * 2 - 8, TILE_PX - inset * 2 - 8);
+    ctx.fillStyle = shade(c, 22);
+    ctx.globalAlpha = 0.45;
     if (dec.variant === 1) {
-      ctx.strokeStyle = shade(c, -25);
-      ctx.lineWidth = 1;
-      ctx.strokeRect(px + inset + 4, py + inset + 4, TILE_PX - inset * 2 - 8, TILE_PX - inset * 2 - 8);
-      ctx.fillStyle = shade(c, 18);
-      ctx.globalAlpha = 0.35;
-      ctx.fillRect(px + TILE_PX / 2 - 4, py + TILE_PX / 2 - 4, 8, 8);
-      ctx.globalAlpha = 1;
+      ctx.fillRect(px + TILE_PX / 2 - 5, py + TILE_PX / 2 - 5, 10, 10);
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(px + TILE_PX / 2, py + inset + 8);
+      ctx.lineTo(px + TILE_PX - inset - 8, py + TILE_PX / 2);
+      ctx.lineTo(px + TILE_PX / 2, py + TILE_PX - inset - 8);
+      ctx.lineTo(px + inset + 8, py + TILE_PX / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = shade(c, 10);
+    for (let i = 0; i < 5; i++) {
+      const fx = px + inset + 4 + i * ((TILE_PX - inset * 2 - 8) / 4);
+      ctx.beginPath();
+      ctx.moveTo(fx, py + inset);
+      ctx.lineTo(fx, py + inset - 3);
+      ctx.stroke();
     }
   } else if (dec.kind === "mat") {
     const c = dec.color || "#4a4038";
@@ -1143,24 +1201,17 @@ function drawFloorDecor(ctx, dec, px, py) {
     ctx.fillStyle = "rgba(255,255,255,0.08)";
     for (let i = 0; i < 4; i++) ctx.fillRect(px + 10 + i * 7, py + 16, 4, 16);
   } else if (dec.kind === "dust") {
-    ctx.fillStyle = "rgba(140, 115, 75, 0.38)";
+    ctx.fillStyle = "rgba(140, 115, 75, 0.16)";
     ctx.beginPath();
-    ctx.ellipse(px + 22 + (dec.variant || 0) * 3, py + 26, 16, 8, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(px + 22 + (dec.variant || 0) * 3, py + 28, 12, 5, 0.15, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "rgba(100, 80, 50, 0.22)";
-    ctx.fillRect(px + 8, py + 10, 14, 5);
-    ctx.fillRect(px + 28, py + 34, 10, 3);
   } else if (dec.kind === "stain") {
-    ctx.fillStyle = "rgba(45, 25, 18, 0.42)";
+    ctx.fillStyle = "rgba(45, 25, 18, 0.2)";
     ctx.beginPath();
-    ctx.ellipse(px + 24, py + 28, 12 + (dec.variant || 0) * 2, 7, -0.3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "rgba(70, 35, 25, 0.28)";
-    ctx.beginPath();
-    ctx.ellipse(px + 18, py + 20, 7, 3.5, 0.4, 0, Math.PI * 2);
+    ctx.ellipse(px + 24, py + 28, 9 + (dec.variant || 0), 5, -0.25, 0, Math.PI * 2);
     ctx.fill();
   } else if (dec.kind === "rubble") {
-    ctx.fillStyle = "rgba(0,0,0,0.28)";
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.fillRect(px + 10, py + 30, 22, 6);
     const tones = ["#5a5048", "#4a443c", "#6a5a50"];
     ctx.fillStyle = tones[(dec.variant || 0) % 3];
@@ -1173,30 +1224,39 @@ function drawFloorDecor(ctx, dec, px, py) {
     ctx.fill();
     ctx.fillStyle = "#3a342c";
     ctx.fillRect(px + 20, py + 24, 9, 6);
-    ctx.fillStyle = "#7a6a58";
-    ctx.fillRect(px + 14, py + 22, 5, 4);
   }
 }
 
-function drawFurniturePiece(ctx, fType, searched, px, py, accent) {
+function drawFurniturePiece(ctx, fType, searched, px, py, accent, searching = false) {
+  const soft = searched ? 0.82 : 1;
+  ctx.save();
+  ctx.globalAlpha = soft;
+
+  // Sombra elíptica común
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath();
+  ctx.ellipse(px + 24, py + 42, 16, 3.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
   if (fType === "table") {
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.fillRect(px + 10, py + 30, 28, 5);
-    ctx.fillStyle = "#6a4a32";
-    ctx.fillRect(px + 9, py + 14, 30, 18);
-    ctx.fillStyle = "#9a7a52";
-    ctx.fillRect(px + 11, py + 16, 26, 5);
-    ctx.fillStyle = "#3a2818";
-    ctx.fillRect(px + 11, py + 32, 4, 8);
-    ctx.fillRect(px + 33, py + 32, 4, 8);
+    ctx.fillStyle = "#5a3e2a";
+    ctx.fillRect(px + 10, py + 32, 4, 8);
+    ctx.fillRect(px + 34, py + 32, 4, 8);
+    ctx.fillStyle = "#7a5538";
+    ctx.fillRect(px + 8, py + 16, 32, 16);
+    ctx.fillStyle = "#a07a52";
+    ctx.fillRect(px + 10, py + 18, 28, 5);
     ctx.fillStyle = "#c8b090";
     ctx.beginPath();
-    ctx.arc(px + 24, py + 24, 4, 0, Math.PI * 2);
+    ctx.arc(px + 24, py + 26, 4, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.1)";
+    ctx.fillRect(px + 12, py + 19, 12, 2);
   } else if (fType === "desk") {
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.fillRect(px + 6, py + 32, 36, 5);
-    ctx.fillStyle = "#4a3a30";
+    ctx.fillStyle = "#3a2e26";
+    ctx.fillRect(px + 8, py + 32, 4, 8);
+    ctx.fillRect(px + 36, py + 32, 4, 8);
+    ctx.fillStyle = searched ? "#3a3028" : "#4a3a30";
     ctx.fillRect(px + 5, py + 16, 38, 18);
     ctx.fillStyle = "#7a6a58";
     ctx.fillRect(px + 7, py + 18, 34, 4);
@@ -1205,34 +1265,38 @@ function drawFurniturePiece(ctx, fType, searched, px, py, accent) {
     ctx.fillRect(px + 26, py + 24, 12, 8);
     if (!searched) {
       ctx.fillStyle = "#e8e0d0";
-      ctx.fillRect(px + 14, py + 12, 14, 6);
+      ctx.fillRect(px + 12, py + 12, 14, 6);
       ctx.fillStyle = "#4080a0";
-      ctx.fillRect(px + 30, py + 11, 6, 5);
+      ctx.fillRect(px + 30, py + 11, 7, 5);
     }
+    ctx.fillStyle = "#c8a868";
+    ctx.fillRect(px + 14, py + 27, 5, 2);
+    ctx.fillRect(px + 30, py + 27, 5, 2);
   } else if (fType === "chair") {
-    ctx.fillStyle = "rgba(0,0,0,0.18)";
-    ctx.fillRect(px + 14, py + 30, 20, 4);
-    ctx.fillStyle = "#5a4030";
-    ctx.fillRect(px + 15, py + 20, 18, 12);
-    ctx.fillStyle = accent ? shade(accent, 10) : "#7a5a48";
-    ctx.fillRect(px + 15, py + 10, 18, 12);
     ctx.fillStyle = "#3a2818";
     ctx.fillRect(px + 16, py + 32, 3, 8);
     ctx.fillRect(px + 29, py + 32, 3, 8);
+    ctx.fillStyle = "#5a4030";
+    ctx.fillRect(px + 15, py + 20, 18, 12);
+    ctx.fillStyle = accent ? shade(accent, 12) : "#7a5a48";
+    ctx.fillRect(px + 15, py + 8, 18, 14);
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.fillRect(px + 17, py + 10, 6, 8);
   } else if (fType === "sofa") {
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.fillRect(px + 4, py + 34, 40, 5);
     const cloth = accent || "#5a3a48";
     ctx.fillStyle = cloth;
-    ctx.fillRect(px + 4, py + 14, 40, 22);
-    ctx.fillStyle = shade(cloth, 18);
+    ctx.fillRect(px + 4, py + 14, 40, 24);
+    ctx.fillStyle = shade(cloth, -18);
+    ctx.fillRect(px + 4, py + 8, 40, 8);
+    ctx.fillStyle = shade(cloth, 16);
     ctx.fillRect(px + 6, py + 16, 12, 14);
     ctx.fillRect(px + 30, py + 16, 12, 14);
-    ctx.fillStyle = shade(cloth, -15);
-    ctx.fillRect(px + 4, py + 10, 40, 6);
+    ctx.fillStyle = shade(cloth, -28);
+    ctx.fillRect(px + 4, py + 14, 5, 22);
+    ctx.fillRect(px + 39, py + 14, 5, 22);
+    ctx.fillStyle = "rgba(255,255,255,0.07)";
+    ctx.fillRect(px + 18, py + 18, 12, 3);
   } else if (fType === "bed") {
-    ctx.fillStyle = "rgba(0,0,0,0.28)";
-    ctx.fillRect(px + 5, py + 38, 38, 5);
     ctx.fillStyle = "#3a2a28";
     ctx.fillRect(px + 5, py + 8, 38, 32);
     ctx.fillStyle = "#5a4038";
@@ -1246,14 +1310,12 @@ function drawFurniturePiece(ctx, fType, searched, px, py, accent) {
     ctx.fillRect(px + 8, py + 24, 32, 14);
     ctx.fillStyle = shade(quilt, 20);
     ctx.fillRect(px + 8, py + 24, 32, 3);
-    ctx.strokeStyle = shade(quilt, -20);
+    ctx.strokeStyle = shade(quilt, -22);
     ctx.beginPath();
     ctx.moveTo(px + 24, py + 24);
     ctx.lineTo(px + 24, py + 38);
     ctx.stroke();
   } else if (fType === "nightstand") {
-    ctx.fillStyle = "rgba(0,0,0,0.2)";
-    ctx.fillRect(px + 12, py + 34, 24, 4);
     ctx.fillStyle = searched ? "#4a3a30" : "#6a5040";
     ctx.fillRect(px + 12, py + 16, 24, 20);
     ctx.fillStyle = "#8a6a48";
@@ -1272,33 +1334,33 @@ function drawFurniturePiece(ctx, fType, searched, px, py, accent) {
     ctx.fillStyle = "#4a3a2a";
     ctx.fillRect(px + 6, py + 6, 36, 36);
     ctx.fillStyle = "#6a5040";
-    ctx.fillRect(px + 8, py + 10, 32, 6);
-    ctx.fillRect(px + 8, py + 22, 32, 6);
-    ctx.fillRect(px + 8, py + 34, 32, 6);
-    if (!searched) {
-      ctx.fillStyle = "#a05040";
-      ctx.fillRect(px + 12, py + 11, 6, 4);
-      ctx.fillStyle = "#4080a0";
-      ctx.fillRect(px + 22, py + 23, 8, 4);
-      ctx.fillStyle = "#c8a060";
-      ctx.fillRect(px + 14, py + 35, 10, 4);
+    for (let i = 0; i < 3; i++) {
+      const ly = py + 10 + i * 12;
+      ctx.fillRect(px + 8, ly, 32, 5);
+      if (!searched) {
+        const cols = ["#a05040", "#4080a0", "#c8a060", "#709070"];
+        ctx.fillStyle = cols[(i + (px | 0)) % cols.length];
+        ctx.fillRect(px + 12 + (i % 2) * 10, ly - 4, 8, 4);
+        ctx.fillStyle = "#6a5040";
+      }
     }
   } else if (fType === "crate") {
-    ctx.fillStyle = searched ? "#5a4828" : "#7a5a30";
+    ctx.fillStyle = searched ? "#5a4828" : "#8a6a48";
     ctx.fillRect(px + 12, py + 14, 24, 22);
     ctx.strokeStyle = "#3a2a18";
+    ctx.lineWidth = 2;
     ctx.strokeRect(px + 12, py + 14, 24, 22);
     ctx.beginPath();
     ctx.moveTo(px + 12, py + 25);
     ctx.lineTo(px + 36, py + 25);
     ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.fillRect(px + 14, py + 16, 20, 3);
     if (searched) {
-      ctx.fillStyle = "rgba(20,15,10,0.45)";
-      ctx.fillRect(px + 14, py + 16, 20, 10);
+      ctx.fillStyle = "rgba(20,15,10,0.4)";
+      ctx.fillRect(px + 14, py + 17, 20, 10);
     }
   } else if (fType === "cabinet") {
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.fillRect(px + 9, py + 40, 30, 5);
     ctx.fillStyle = searched ? "#5a4838" : "#6a5040";
     ctx.fillRect(px + 8, py + 4, 32, 38);
     ctx.fillStyle = searched ? "#3a3028" : "#4a3a30";
@@ -1314,12 +1376,10 @@ function drawFurniturePiece(ctx, fType, searched, px, py, accent) {
       ctx.arc(px + 20, py + 24, 1.8, 0, Math.PI * 2);
       ctx.arc(px + 28, py + 24, 1.8, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = "rgba(255, 210, 120, 0.35)";
+      ctx.fillStyle = "rgba(255, 210, 120, 0.3)";
       ctx.fillRect(px + 12, py + 10, 8, 6);
     }
   } else if (fType === "drawer") {
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.fillRect(px + 10, py + 38, 28, 5);
     ctx.fillStyle = searched ? "#5a4a38" : "#6e5640";
     ctx.fillRect(px + 9, py + 12, 30, 28);
     ctx.strokeStyle = "#3a2a1c";
@@ -1334,24 +1394,27 @@ function drawFurniturePiece(ctx, fType, searched, px, py, accent) {
     ctx.strokeStyle = "#c8d0d8";
     ctx.strokeRect(px + 18, py + 4, 12, 8);
   } else if (fType === "fridge") {
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.fillRect(px + 11, py + 40, 26, 4);
-    ctx.fillStyle = searched ? "#5a6068" : "#8a9098";
+    ctx.fillStyle = searched ? "#5a6068" : "#b0b8c0";
     ctx.fillRect(px + 10, py + 4, 28, 38);
-    ctx.fillStyle = searched ? "#3a4048" : "#6a7078";
-    ctx.fillRect(px + 12, py + 6, 24, 22);
-    ctx.fillRect(px + 12, py + 30, 24, 10);
+    ctx.fillStyle = searched ? "#3a4048" : "#d0d8e0";
+    ctx.fillRect(px + 12, py + 6, 24, 20);
+    ctx.fillRect(px + 12, py + 28, 24, 12);
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.fillRect(px + 12, py + 26, 24, 2);
     ctx.fillStyle = "#2a2e34";
-    ctx.fillRect(px + 32, py + 14, 3, 10);
+    ctx.fillRect(px + 32, py + 12, 3, 10);
+    ctx.fillRect(px + 32, py + 32, 3, 6);
     if (!searched) {
-      ctx.fillStyle = "rgba(180, 220, 255, 0.2)";
+      ctx.fillStyle = "rgba(180, 220, 255, 0.22)";
       ctx.fillRect(px + 14, py + 8, 20, 8);
     } else {
-      ctx.fillStyle = "rgba(20,20,24,0.5)";
-      ctx.fillRect(px + 14, py + 8, 20, 18);
+      ctx.fillStyle = "rgba(20,20,24,0.45)";
+      ctx.fillRect(px + 14, py + 8, 20, 16);
     }
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.fillRect(px + 12, py + 6, 4, 18);
   } else if (fType === "locker") {
-    ctx.fillStyle = searched ? "#3a4a3a" : "#4a5a48";
+    ctx.fillStyle = searched ? "#3a4a3a" : "#5a6a58";
     ctx.fillRect(px + 12, py + 4, 24, 40);
     ctx.strokeStyle = "#2a3228";
     ctx.strokeRect(px + 12, py + 4, 24, 40);
@@ -1360,19 +1423,22 @@ function drawFurniturePiece(ctx, fType, searched, px, py, accent) {
     ctx.lineTo(px + 24, py + 44);
     ctx.stroke();
     ctx.fillStyle = searched ? "#1a2018" : "#c8b060";
-    ctx.fillRect(px + 20, py + 22, 4, 6);
+    ctx.fillRect(px + 20, py + 22, 3, 5);
+    ctx.fillRect(px + 25, py + 22, 3, 5);
   } else if (fType === "counter") {
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.fillRect(px + 4, py + 34, 40, 5);
     ctx.fillStyle = "#5a4a3a";
     ctx.fillRect(px + 4, py + 18, 40, 18);
-    ctx.fillStyle = searched ? "#3a3028" : "#8a7a68";
+    ctx.fillStyle = searched ? "#3a3028" : "#a09080";
     ctx.fillRect(px + 4, py + 14, 40, 6);
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.fillRect(px + 6, py + 15, 20, 2);
     ctx.fillStyle = "#c8b090";
     ctx.fillRect(px + 8, py + 10, 10, 4);
     if (!searched) {
       ctx.fillStyle = "#a05040";
       ctx.fillRect(px + 22, py + 8, 8, 6);
+      ctx.fillStyle = "#8090a0";
+      ctx.fillRect(px + 34, py + 10, 8, 4);
     }
   } else if (fType === "sink") {
     ctx.fillStyle = "#5a6068";
@@ -1415,6 +1481,20 @@ function drawFurniturePiece(ctx, fType, searched, px, py, accent) {
     ctx.beginPath();
     ctx.arc(px + 28, py + 16, 2, 0, Math.PI * 2);
     ctx.fill();
+  } else {
+    ctx.fillStyle = searched ? "#3a342e" : "#5a4a40";
+    ctx.fillRect(px + 10, py + 12, 28, 28);
+  }
+
+  ctx.restore();
+
+  if (searching) {
+    ctx.strokeStyle = "#d4a85a";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px + 4, py + 4, 40, 40);
+  } else if (searched) {
+    ctx.fillStyle = "rgba(18,16,12,0.18)";
+    ctx.fillRect(px + 6, py + 8, 36, 32);
   }
 }
 
@@ -1430,6 +1510,154 @@ function phaseIsDayish(name) {
   return name === "Día" || name === "Amanecer";
 }
 
+function indoorPlaster(style) {
+  if (style === "warehouse") return "#6a6862";
+  if (style === "tower") return "#7a828c";
+  if (style === "shop") return "#8a7e72";
+  return "#c8b8a0";
+}
+
+function drawIndoorWallTile(ctx, px, py, b, tx, ty) {
+  const style = b?.style || "block";
+  let plaster = indoorPlaster(style);
+  if (((tx + ty) & 1) === 0) plaster = shade(plaster, style === "residential" || style === "block" ? 6 : -4);
+  ctx.fillStyle = plaster;
+  ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
+
+  // Zócalo
+  ctx.fillStyle = style === "tower" ? "#3a424c" : style === "warehouse" ? "#3a3834" : "#5a4030";
+  ctx.fillRect(px, py + TILE_PX - 7, TILE_PX, 7);
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.fillRect(px, py + TILE_PX - 7, TILE_PX, 2);
+
+  if (style === "warehouse") {
+    ctx.strokeStyle = "rgba(0,0,0,0.2)";
+    ctx.strokeRect(px + 4, py + 4, TILE_PX - 8, TILE_PX - 14);
+  } else if (style === "tower") {
+    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    ctx.fillRect(px + 3, py + 6, TILE_PX - 6, 4);
+    ctx.fillStyle = "rgba(0,0,0,0.1)";
+    ctx.fillRect(px + 3, py + 22, TILE_PX - 6, 2);
+  } else if (style === "shop") {
+    ctx.fillStyle = b?.accent ? shade(b.accent, -20) : "#6a3a2a";
+    ctx.globalAlpha = 0.3;
+    ctx.fillRect(px, py + 10, TILE_PX, 10);
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.strokeStyle = "rgba(90,70,50,0.16)";
+    ctx.strokeRect(px + 5, py + 5, TILE_PX - 10, TILE_PX - 16);
+    if (((tx * 7 + ty * 3) % 5) === 0) {
+      ctx.fillStyle = "rgba(120, 90, 70, 0.1)";
+      ctx.fillRect(px + 8, py + 8, TILE_PX - 16, TILE_PX - 22);
+    }
+  }
+}
+
+function drawEnteredInteriorShell(ctx, b, px, py, bw, bh, t, phase, litWindows) {
+  const style = b.style || "block";
+  const plaster = indoorPlaster(style);
+  const base = style === "tower" ? "#3a424c" : style === "warehouse" ? "#3a3834" : "#5a4030";
+
+  // Perímetro interior (yeso) — no fachada
+  ctx.fillStyle = plaster;
+  ctx.fillRect(px, py, bw, t);
+  ctx.fillRect(px, py + bh - t, bw, t);
+  ctx.fillRect(px, py, t, bh);
+  ctx.fillRect(px + bw - t, py, t, bh);
+
+  // Variación de panelado
+  ctx.fillStyle = shade(plaster, -8);
+  ctx.fillRect(px + 2, py + 2, bw - 4, 4);
+  ctx.fillRect(px + 2, py + bh - 6, bw - 4, 4);
+
+  // Zócalo interior
+  ctx.fillStyle = base;
+  ctx.fillRect(px + t, py + t - 6, bw - t * 2, 6);
+  ctx.fillRect(px + t, py + bh - t, bw - t * 2, 6);
+  ctx.fillRect(px + t - 6, py + t, 6, bh - t * 2);
+  ctx.fillRect(px + bw - t, py + t, 6, bh - t * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.fillRect(px + t, py + t - 6, bw - t * 2, 2);
+
+  // Detalles de pared (ventanas/cuadros) sobre el perímetro
+  const wallRoll = (x, y, salt) => ((x * 17 + y * 31 + b.x0 * 5 + salt) >>> 0) % 12;
+  for (let x = b.x0 + 1; x < b.x1; x++) {
+    const wx = px + (x - b.x0) * t + 12;
+    for (const [wy, salt] of [[py + 10, 1], [py + bh - t + 10, 4]]) {
+      drawInteriorWallFace(ctx, wx, wy, b, wallRoll(x, b.y0 + salt, salt), x + salt, litWindows);
+    }
+  }
+  for (let y = b.y0 + 1; y < b.y1; y++) {
+    for (const [ox, salt] of [[12, 2], [bw - t + 12, 7]]) {
+      const wy = py + (y - b.y0) * t + 10;
+      drawInteriorWallFace(ctx, px + ox, wy, b, wallRoll(b.x0 + salt, y, salt), y + salt, litWindows);
+    }
+  }
+
+  const roomX = px + t;
+  const roomY = py + t;
+  const roomW = bw - t * 2;
+  const roomH = bh - t * 2;
+  if (roomW > 0 && roomH > 0) {
+    // Lavado suave (no matar el suelo)
+    if (phase.night) {
+      ctx.fillStyle = "rgba(18, 14, 12, 0.16)";
+      ctx.fillRect(roomX, roomY, roomW, roomH);
+      ctx.fillStyle = "rgba(255, 190, 110, 0.04)";
+      ctx.fillRect(roomX, roomY, roomW, roomH);
+    } else {
+      ctx.fillStyle = "rgba(255, 236, 200, 0.04)";
+      ctx.fillRect(roomX, roomY, roomW, roomH);
+    }
+    const vg = ctx.createRadialGradient(
+      roomX + roomW * 0.5, roomY + roomH * 0.5, Math.min(roomW, roomH) * 0.22,
+      roomX + roomW * 0.5, roomY + roomH * 0.5, Math.max(roomW, roomH) * 0.7
+    );
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, phase.night ? "rgba(10,8,6,0.22)" : "rgba(30,24,18,0.1)");
+    ctx.fillStyle = vg;
+    ctx.fillRect(roomX, roomY, roomW, roomH);
+
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const win of litWindows) {
+      if (win.x < roomX - 20 || win.x > roomX + roomW + 20) continue;
+      if (win.y < roomY - 40 || win.y > roomY + roomH + 40) continue;
+      const beam = ctx.createRadialGradient(win.x, win.y, 2, win.x, win.y + 28, 64);
+      beam.addColorStop(0, phase.night ? "rgba(255, 200, 120, 0.18)" : "rgba(255, 240, 200, 0.1)");
+      beam.addColorStop(1, "rgba(255, 200, 120, 0)");
+      ctx.fillStyle = beam;
+      ctx.beginPath();
+      ctx.arc(win.x, win.y + 18, 64, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Puerta interior (marco de madera, no fachada)
+  const doorPx = px + (b.doorX - b.x0) * t;
+  const doorPy = py + (b.doorY - b.y0) * t;
+  ctx.fillStyle = plaster;
+  ctx.fillRect(doorPx, doorPy, t, t);
+  ctx.fillStyle = "#5a4030";
+  ctx.fillRect(doorPx + 6, doorPy + 2, 36, t - 4);
+  ctx.fillStyle = "#1a1410";
+  ctx.fillRect(doorPx + 10, doorPy + 4, 28, t - 6);
+  ctx.fillStyle = "#b8925a";
+  ctx.fillRect(doorPx + 14, doorPy + 8, 20, t - 14);
+  ctx.fillStyle = "#e0c080";
+  ctx.beginPath();
+  ctx.arc(doorPx + 28, doorPy + t / 2, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#3a3028";
+  ctx.fillRect(doorPx + 8, doorPy + t - 6, 32, 5);
+
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.font = `600 11px ${FONT_UI}`;
+  ctx.textAlign = "left";
+  ctx.fillText(b.name, px + t + 6, py + t - 8);
+}
+
 function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
   const px = b.x0 * TILE_PX - camX;
   const py = b.y0 * TILE_PX - camY;
@@ -1438,6 +1666,12 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
   const t = TILE_PX;
   const style = b.style || "block";
   const floors = b.floors || 2;
+
+  if (entered) {
+    drawEnteredInteriorShell(ctx, b, px, py, bw, bh, t, phase, litWindows);
+    return;
+  }
+
   const shadow = 6 + floors * 2;
 
   // Sombra de volumen
@@ -1708,45 +1942,60 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
 
 
 
-function drawInteriorWallFace(ctx, x, y, b, roll, seed) {
-  // Interior: muro mayormente vacío; alguna ventana y pocos cuadros
-  if (roll <= 1) {
-    // Ventana interior (cristal oscuro / cortina)
-    ctx.fillStyle = "rgba(22, 26, 32, 0.78)";
+function drawInteriorWallFace(ctx, x, y, b, roll, seed, litWindows = null) {
+  const style = b?.style || "block";
+  if (roll <= 2) {
+    ctx.fillStyle = "#2a241c";
+    ctx.fillRect(x, y + 1, 16, 18);
+    ctx.fillStyle = "rgba(150, 190, 215, 0.45)";
     ctx.fillRect(x + 2, y + 3, 12, 14);
-    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.strokeStyle = "#5a4030";
+    ctx.lineWidth = 2;
     ctx.strokeRect(x + 2, y + 3, 12, 14);
     ctx.beginPath();
     ctx.moveTo(x + 8, y + 3);
     ctx.lineTo(x + 8, y + 17);
+    ctx.moveTo(x + 2, y + 10);
+    ctx.lineTo(x + 14, y + 10);
     ctx.stroke();
-    ctx.fillStyle = "rgba(90, 70, 50, 0.35)";
-    ctx.fillRect(x + 3, y + 4, 3, 12);
-    return;
-  }
-  if (roll === 2) {
-    // Un cuadro
-    ctx.fillStyle = "#1e1812";
-    ctx.fillRect(x + 2, y + 3, 11, 13);
-    ctx.fillStyle = seed % 2 ? "#d2c4a4" : "#b8a888";
-    ctx.fillRect(x + 3, y + 4, 9, 11);
-    const cols = ["#6a4040", "#40506a", "#4a6040", "#5a4060"];
-    ctx.fillStyle = cols[seed % cols.length];
-    ctx.fillRect(x + 4, y + 5, 7, 9);
-    return;
-  }
-  if (roll === 3) {
-    // Mancha / humedad suave
-    ctx.fillStyle = "rgba(30, 50, 30, 0.18)";
+    ctx.fillStyle = style === "tower" ? "rgba(60,80,100,0.35)" : "rgba(120,70,50,0.4)";
+    ctx.fillRect(x + 3, y + 4, 4, 12);
+    if (litWindows) litWindows.push({ x: x + 8, y: y + 10 });
+    ctx.fillStyle = "rgba(255, 235, 190, 0.07)";
     ctx.beginPath();
-    ctx.ellipse(x + 8, y + 12, 5, 4, 0, 0, Math.PI * 2);
+    ctx.moveTo(x + 8, y + 17);
+    ctx.lineTo(x - 6, y + 34);
+    ctx.lineTo(x + 22, y + 34);
+    ctx.closePath();
     ctx.fill();
     return;
   }
-  // roll 4–11: pared limpia (solo zócalo muy sutil)
-  if (roll === 4) {
-    ctx.fillStyle = "rgba(0,0,0,0.08)";
-    ctx.fillRect(x - 1, y + 17, 16, 2);
+  if (roll === 3 || roll === 4) {
+    ctx.fillStyle = "#1a1510";
+    ctx.fillRect(x + 1, y + 2, 14, 16);
+    ctx.fillStyle = seed % 2 ? "#e0d2b4" : "#c8b898";
+    ctx.fillRect(x + 2, y + 3, 12, 14);
+    const palette = ["#7a4040", "#406080", "#4a6840", "#5a4070", "#8a6030"];
+    ctx.fillStyle = palette[seed % palette.length];
+    ctx.fillRect(x + 4, y + 5, 8, 10);
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    ctx.fillRect(x + 5, y + 6, 3, 3);
+    return;
+  }
+  if (roll === 5) {
+    ctx.fillStyle = "rgba(0,0,0,0.12)";
+    ctx.fillRect(x + 2, y + 5, 12, 2);
+    ctx.fillStyle = "#d8d0c0";
+    ctx.fillRect(x + 6, y + 12, 4, 6);
+    ctx.fillStyle = "#6a5a40";
+    ctx.fillRect(x + 7, y + 13, 2, 3);
+    return;
+  }
+  if (roll === 6) {
+    ctx.fillStyle = "rgba(40, 65, 45, 0.14)";
+    ctx.beginPath();
+    ctx.ellipse(x + 8, y + 14, 6, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
