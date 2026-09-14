@@ -45,6 +45,7 @@ let renderer = null;
 let audio = createAudio();
 let last = 0;
 let raf = 0;
+let hudKey = "";
 
 controlsBtn?.addEventListener("click", () => {
   const open = controlsPanel.hasAttribute("hidden");
@@ -187,6 +188,7 @@ function loop(now) {
 
 function syncHud(g) {
   const p = g.player;
+  // Barras: baratas, cada frame
   setBar(bars.health, (p.health / (p.maxHealth || MAX_HEALTH)) * 100);
   setBar(bars.hunger, p.hunger);
   setBar(bars.thirst, p.thirst);
@@ -195,57 +197,70 @@ function syncHud(g) {
   const phase = dayPhase(g);
   const seed = g.world.seed.toString(36).slice(0, 5);
   const weather = phase.weatherLabel ? ` · ${phase.weatherLabel}` : "";
-  clockEl.textContent = `${phase.name}${weather} · Niebla Norte #${seed}`;
-  if (killsEl) killsEl.textContent = `${g.kills} bajas · ${waveStatus(g)}`;
+  const wave = waveStatus(g);
+  const toastOn = g.toastT > 0 && g.toast ? g.toast : "";
+  const hot = hotbarSlots(g);
+  const eq = equipPanel(g);
+  const hotSig = hot.map((s) => `${s.icon}|${s.label}|${s.ammo ?? ""}|${s.active ? 1 : 0}`).join(";");
+  const eqSig = eq.map((s) => `${s.slot}|${s.icon}|${s.label}|${s.stat || ""}`).join(";");
+  const invSig = g.inventoryOpen ? inventorySlots(g).map((s) => `${s.kind}:${s.n}:${s.label}`).join(";") : "";
+  const key = `${phase.name}|${weather}|${g.kills}|${wave}|${g.buildMode || ""}|${hotSig}|${eqSig}|${g.inventoryOpen ? 1 : 0}|${invSig}|${toastOn}|${seed}`;
 
-  if (buildEl) {
-    if (g.buildMode) {
-      buildEl.hidden = false;
-      buildEl.textContent =
-        g.buildMode === "wall"
-          ? "Modo: BARRICADA (Enter)"
-          : g.buildMode === "door"
-            ? "Modo: PUERTA (Enter)"
-            : "Modo: MARCAR BASE (Enter)";
-    } else {
-      buildEl.hidden = true;
+  // Texto de reloj / bajas: solo si cambia la firma relevante
+  if (key !== hudKey) {
+    hudKey = key;
+    clockEl.textContent = `${phase.name}${weather} · Niebla Norte #${seed}`;
+    if (killsEl) killsEl.textContent = `${g.kills} bajas · ${wave}`;
+
+    if (buildEl) {
+      if (g.buildMode) {
+        buildEl.hidden = false;
+        buildEl.textContent =
+          g.buildMode === "wall"
+            ? "Modo: BARRICADA (Enter)"
+            : g.buildMode === "door"
+              ? "Modo: PUERTA (Enter)"
+              : "Modo: MARCAR BASE (Enter)";
+      } else {
+        buildEl.hidden = true;
+      }
     }
-  }
 
-  hotbarEl.innerHTML = hotbarSlots(g)
-    .map(
-      (s) => `<button type="button" class="hot-slot${s.active ? " active" : ""}${s.empty ? " empty" : ""}" data-hot="${s.index}">
+    hotbarEl.innerHTML = hot
+      .map(
+        (s) => `<button type="button" class="hot-slot${s.active ? " active" : ""}${s.empty ? " empty" : ""}" data-hot="${s.index}">
         <span class="hot-key">${s.key}</span>
         <span class="hot-icon">${s.icon || "·"}</span>
         <span class="hot-label">${s.label || "—"}</span>
         ${s.ammo != null ? `<span class="hot-ammo">${s.ammo}</span>` : ""}
       </button>`
-    )
-    .join("");
+      )
+      .join("");
 
-  equipEl.innerHTML = equipPanel(g)
-    .map(
-      (s) => `<button type="button" class="equip-slot${s.empty ? " empty" : ""}${s.primary ? " primary" : ""}" data-equip="${s.slot}">
+    equipEl.innerHTML = eq
+      .map(
+        (s) => `<button type="button" class="equip-slot${s.empty ? " empty" : ""}${s.primary ? " primary" : ""}" data-equip="${s.slot}">
         <span class="slot-tag">${s.tag}</span>
         <span class="slot-icon">${s.icon}</span>
         <span class="slot-name">${s.label}</span>
         <span class="slot-stat">${s.stat || ""}</span>
       </button>`
-    )
-    .join("");
-
-  if (inventoryEl) inventoryEl.hidden = !g.inventoryOpen;
-  if (inventoryGridEl) {
-    inventoryGridEl.innerHTML = inventorySlots(g)
-      .map((s) => `<div class="inv-slot inv-${s.kind}"><strong>${s.n}</strong>${s.label}</div>`)
+      )
       .join("");
-  }
 
-  if (g.toastT > 0 && g.toast) {
-    toastEl.hidden = false;
-    toastEl.textContent = g.toast;
-  } else {
-    toastEl.hidden = true;
+    if (inventoryEl) inventoryEl.hidden = !g.inventoryOpen;
+    if (inventoryGridEl && g.inventoryOpen) {
+      inventoryGridEl.innerHTML = inventorySlots(g)
+        .map((s) => `<div class="inv-slot inv-${s.kind}"><strong>${s.n}</strong>${s.label}</div>`)
+        .join("");
+    }
+
+    if (toastOn) {
+      toastEl.hidden = false;
+      toastEl.textContent = toastOn;
+    } else {
+      toastEl.hidden = true;
+    }
   }
 }
 

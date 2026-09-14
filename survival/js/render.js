@@ -8,7 +8,7 @@ const FONT_DISPLAY = '"Instrument Serif", Georgia, serif';
 export function createRenderer(canvas, miniCanvas) {
   const ctx = canvas.getContext("2d");
   const mctx = miniCanvas.getContext("2d");
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
 
   function resize() {
     const w = window.innerWidth;
@@ -91,7 +91,7 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     for (let tx = x0; tx < x1; tx++) {
       const tile = game.world.tiles[ty * game.world.size + tx];
       drawGround(ctx, game, tile, tx, ty, tx * TILE_PX - camX, ty * TILE_PX - camY, phase);
-      if (raining && (tile === TILE.ROAD || tile === TILE.CROSSWALK || tile === TILE.SIDEWALK)) {
+      if (raining && ((tx + ty) & 1) === 0 && (tile === TILE.ROAD || tile === TILE.CROSSWALK || tile === TILE.SIDEWALK)) {
         drawWetSheen(ctx, tx * TILE_PX - camX, ty * TILE_PX - camY, game.time, tx, ty);
       }
     }
@@ -109,18 +109,19 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows);
   }
 
-  // Props
-  const visibleProps = game.world.props
-    .map((p) => ({ p, px: p.x * TILE_PX - camX, py: p.y * TILE_PX - camY }))
-    .filter(({ px, py }) => px > -70 && py > -70 && px < w + 70 && py < h + 70)
-    .sort((a, b) => a.p.y - b.p.y);
-  for (const { p, px, py } of visibleProps) {
+  // Props: ya vienen ordenados por Y; cull sin map/filter/sort
+  const visibleProps = [];
+  for (const p of game.world.props) {
+    const px = p.x * TILE_PX - camX;
+    const py = p.y * TILE_PX - camY;
+    if (px <= -70 || py <= -70 || px >= w + 70 || py >= h + 70) continue;
     // Arte interior solo se ve dentro; basura/enredaderas de fachada no tapan el suelo interior.
     if (p.indoor && !playerIndoor) continue;
     if (playerIndoor && inside && p.wall && !p.indoor &&
         p.x >= inside.x0 && p.x <= inside.x1 + 1 && p.y >= inside.y0 && p.y <= inside.y1 + 1) {
       continue;
     }
+    visibleProps.push(p);
     drawProp(ctx, p, px, py, phase);
   }
 
@@ -154,8 +155,12 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     ctx.strokeRect(bx * TILE_PX - camX + 3, by * TILE_PX - camY + 3, TILE_PX - 6, TILE_PX - 6);
   }
 
+  const margin = 40;
   for (const z of game.zombies) {
-    drawZombie(ctx, z.x * TILE_PX - camX, z.y * TILE_PX - camY, game.time, z);
+    const zx = z.x * TILE_PX - camX;
+    const zy = z.y * TILE_PX - camY;
+    if (zx < -margin || zy < -margin || zx > w + margin || zy > h + margin) continue;
+    drawZombie(ctx, zx, zy, game.time, z);
   }
   drawFx(ctx, game, camX, camY);
   drawAimAndBullets(ctx, game, camX, camY);
@@ -289,7 +294,7 @@ function drawSandstorm(ctx, w, h, game, phase) {
 
   ctx.strokeStyle = phase.night ? "rgba(200,160,100,0.22)" : "rgba(230,190,130,0.28)";
   ctx.lineWidth = 1.4;
-  const n = Math.floor(90 + phase.sand * 140 + phase.gust * 80);
+  const n = Math.min(110, Math.floor(50 + phase.sand * 70 + phase.gust * 40));
   for (let i = 0; i < n; i++) {
     const seed = (i * 6151 + ((t * 280) | 0)) % 12000;
     const y = ((seed * 41 + t * (30 + (i % 9))) % (h + 20)) - 10;
@@ -301,9 +306,8 @@ function drawSandstorm(ctx, w, h, game, phase) {
     ctx.stroke();
   }
 
-  // Remolinos bajos
   ctx.fillStyle = "rgba(180,140,80,0.1)";
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 6; i++) {
     const seed = (i * 997 + ((t * 9) | 0)) % 4000;
     const x = ((seed * 23 + t * wind * 0.5) % (w + 60)) - 30;
     const y = h * 0.45 + (seed % Math.floor(h * 0.5));
@@ -318,7 +322,7 @@ function drawWindDust(ctx, w, h, game, phase) {
   const wind = 10 + phase.wind * 22 + phase.gust * 35;
   ctx.strokeStyle = phase.night ? "rgba(170,160,140,0.12)" : "rgba(140,130,110,0.14)";
   ctx.lineWidth = 1;
-  const n = Math.floor(36 + phase.wind * 40);
+  const n = Math.min(48, Math.floor(20 + phase.wind * 24));
   for (let i = 0; i < n; i++) {
     const seed = (i * 5107 + ((t * 160) | 0)) % 9000;
     const y = ((seed * 37) % h);
@@ -333,7 +337,7 @@ function drawWindDust(ctx, w, h, game, phase) {
 
 
 function drawIndoorMotes(ctx, w, h, game, phase) {
-  const n = phase.night ? 28 : 16;
+  const n = phase.night ? 14 : 8;
   const t = game.time;
   ctx.fillStyle = phase.night ? "rgba(255, 210, 140, 0.14)" : "rgba(200, 180, 140, 0.1)";
   for (let i = 0; i < n; i++) {
@@ -346,7 +350,7 @@ function drawIndoorMotes(ctx, w, h, game, phase) {
 }
 
 function drawRain(ctx, w, h, game, phase) {
-  const n = Math.floor(80 + phase.rain * 160);
+  const n = Math.min(100, Math.floor(48 + phase.rain * 70));
   const wind = phase.wind * 10;
   ctx.strokeStyle = phase.night
     ? phase.weather === "storm"
@@ -365,10 +369,9 @@ function drawRain(ctx, w, h, game, phase) {
     ctx.lineTo(x + wind * 0.6, y + len);
     ctx.stroke();
   }
-  // Salpicaduras en el suelo
   if (phase.rain > 0.4) {
     ctx.fillStyle = phase.night ? "rgba(180,200,230,0.15)" : "rgba(220,230,240,0.18)";
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 10; i++) {
       const seed = (i * 1301 + ((t * 12) | 0)) % 5000;
       const x = (seed * 17) % w;
       const y = h * 0.35 + (seed % Math.floor(h * 0.6));
@@ -386,8 +389,9 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
 
   const lampMargin = 220;
   const lamps = [];
-  for (const p of game.world.props) {
-    if (p.type !== "lamp") continue;
+  const lampSrc = game.world.lamps || game.world.props;
+  for (const p of lampSrc) {
+    if (p.type && p.type !== "lamp") continue;
     const lx = p.x * TILE_PX - camX;
     const ly = p.y * TILE_PX - camY;
     if (lx < -lampMargin || ly < -lampMargin || lx > w + lampMargin || ly > h + lampMargin) continue;
@@ -404,10 +408,13 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   const cool = phase.rain > 0.25 || phase.weather === "storm";
   const lightCool = hasLight ? lightDef.lightWarm === false : cool;
 
-  // Máscara aparte: destination-out no borra el mundo
-  const mask = getLightMask(w, h);
+  // Máscara a media resolución (mucho más barata; se escala al componer)
+  const scale = 0.5;
+  const mw = Math.max(1, (w * scale) | 0);
+  const mh = Math.max(1, (h * scale) | 0);
+  const mask = getLightMask(mw, mh);
   const m = mask.getContext("2d");
-  m.setTransform(1, 0, 0, 1, 0, 0);
+  m.setTransform(scale, 0, 0, scale, 0, 0);
   m.clearRect(0, 0, w, h);
   // Velo: más denso en interiores (casas cerradas, lejos de farolas)
   const veil = indoor
@@ -441,8 +448,9 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     m.arc(cx, cy, lr, 0, Math.PI * 2);
     m.fill();
   }
-  // Lámparas / velas interiores
-  for (const p of game.world.props) {
+  // Lámparas / velas interiores (lista cacheada)
+  const indoorSrc = game.world.indoorLights || game.world.props;
+  for (const p of indoorSrc) {
     if ((p.type !== "indoorLamp" && p.type !== "candle") || !p.lit) continue;
     const lx = p.x * TILE_PX - camX;
     const ly = p.y * TILE_PX - camY;
@@ -480,9 +488,12 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     m.fill();
   }
   m.globalCompositeOperation = "source-over";
-  ctx.drawImage(mask, 0, 0);
+  m.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(mask, 0, 0, w, h);
 
-  // Brillo de farolas encima
+  // Brillo de farolas (omitir de día en exterior: caro y apenas se nota)
+  const doGlow = indoor || phase.night || phase.thunder > 0 || darkness > 0.25;
+  if (!doGlow) return;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   for (const { p, lx, ly } of lamps) {
@@ -549,7 +560,7 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     ctx.fill();
   }
 
-  for (const p of game.world.props) {
+  for (const p of (game.world.indoorLights || game.world.props)) {
     if ((p.type !== "indoorLamp" && p.type !== "candle") || !p.lit) continue;
     const lx = p.x * TILE_PX - camX;
     const ly = p.y * TILE_PX - camY;
@@ -2962,21 +2973,38 @@ function drawHolsteredWeapons(ctx, player, handId) {
 }
 
 
+let _miniBase = null;
+let _miniSeed = null;
+let _miniRev = -1;
+let _miniSize = 0;
+
 function drawMinimap(mctx, mini, game) {
   const s = mini.width;
   const world = game.world;
   const scale = s / world.size;
-  mctx.clearRect(0, 0, s, s);
-  for (let y = 0; y < world.size; y++) {
-    for (let x = 0; x < world.size; x++) {
-      mctx.fillStyle = TILE_META[world.tiles[y * world.size + x]]?.color || "#222";
-      mctx.fillRect(x * scale, y * scale, scale + 0.6, scale + 0.6);
+  const rev = world.tileRev || 0;
+  if (!_miniBase || _miniSeed !== world.seed || _miniRev !== rev || _miniSize !== world.size || _miniBase.width !== s) {
+    if (!_miniBase) _miniBase = document.createElement("canvas");
+    _miniBase.width = s;
+    _miniBase.height = s;
+    const b = _miniBase.getContext("2d");
+    b.clearRect(0, 0, s, s);
+    for (let y = 0; y < world.size; y++) {
+      for (let x = 0; x < world.size; x++) {
+        b.fillStyle = TILE_META[world.tiles[y * world.size + x]]?.color || "#222";
+        b.fillRect(x * scale, y * scale, scale + 0.6, scale + 0.6);
+      }
     }
+    _miniSeed = world.seed;
+    _miniRev = rev;
+    _miniSize = world.size;
   }
+  mctx.clearRect(0, 0, s, s);
+  mctx.drawImage(_miniBase, 0, 0);
   for (const z of game.zombies) {
     mctx.fillStyle = z.boss ? "#e8a040" : "#7dcea0";
-    const s = z.boss ? 3.2 : 2;
-    mctx.fillRect(z.x * scale - s / 2, z.y * scale - s / 2, s, s);
+    const zs = z.boss ? 3.2 : 2;
+    mctx.fillRect(z.x * scale - zs / 2, z.y * scale - zs / 2, zs, zs);
   }
   mctx.fillStyle = "#fff6e0";
   mctx.beginPath();

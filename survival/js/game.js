@@ -892,15 +892,24 @@ function updateZombies(game, dt, phase) {
     const nx = z.x + (dx / len) * spd * dt;
     const ny = z.y + (dy / len) * spd * dt;
 
-    for (const [dk, door] of [...game.world.doors]) {
-      if (door.hp <= 0) continue;
-      const [dx0, dy0] = dk.split(",").map(Number);
-      if (Math.hypot(z.x - dx0 - 0.5, z.y - dy0 - 0.5) > 1.15) continue;
-      door.hp -= 10 * dt;
-      if (door.hp <= 0) {
-        setTile(game.world, dx0, dy0, TILE.RUBBLE);
-        game.world.doors.delete(dk);
-        setToast(game, "¡Una puerta ha cedido!");
+    // Solo la puerta delante / bajo el zombie (no iterar todas)
+    {
+      const candidates = [
+        `${Math.floor(z.x + (dx / len) * 0.7)},${Math.floor(z.y + (dy / len) * 0.7)}`,
+        `${Math.floor(z.x)},${Math.floor(z.y)}`,
+      ];
+      for (const dk of candidates) {
+        const door = game.world.doors.get(dk);
+        if (!door || door.hp <= 0) continue;
+        const [dx0, dy0] = dk.split(",").map(Number);
+        if (Math.hypot(z.x - dx0 - 0.5, z.y - dy0 - 0.5) > 1.15) continue;
+        door.hp -= 10 * dt;
+        if (door.hp <= 0) {
+          setTile(game.world, dx0, dy0, TILE.RUBBLE);
+          game.world.doors.delete(dk);
+          setToast(game, "¡Una puerta ha cedido!");
+        }
+        break;
       }
     }
 

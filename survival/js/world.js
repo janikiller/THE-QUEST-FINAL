@@ -727,9 +727,15 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   }
 
   props.sort((a, b) => a.y - b.y);
+  // Índices cacheados para iluminación (evita escanear ~1700 props/frame)
+  const lamps = props.filter((p) => p.type === "lamp");
+  const indoorLights = props.filter((p) => p.type === "indoorLamp" || p.type === "candle");
 
   const spawn = findSpawn(tiles, size, noise, canalY);
-  return { size, seed, tiles, loot, doors, buildings, props, interiors, decor, spawn, noise, canalY };
+  return {
+    size, seed, tiles, loot, doors, buildings, props, interiors, decor, spawn, noise, canalY,
+    lamps, indoorLights, tileRev: 0,
+  };
 }
 
 function blockBounds(bx, by, size) {
@@ -1011,6 +1017,7 @@ export function setTile(world, x, y, tile) {
   const iy = Math.floor(y);
   if (ix < 0 || iy < 0 || ix >= world.size || iy >= world.size) return false;
   world.tiles[iy * world.size + ix] = tile;
+  world.tileRev = (world.tileRev || 0) + 1;
   return true;
 }
 
