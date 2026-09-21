@@ -848,12 +848,30 @@ function drawRoad(ctx, game, tile, tx, ty, px, py, phase) {
 function drawSidewalk(ctx, game, tx, ty, px, py, phase) {
   const nightBoost = phase?.night ? 8 : 0;
   const base = 78 + ((tx * 3 + ty * 5) % 10) + nightBoost;
-  ctx.fillStyle = `rgb(${base},${base - 4},${base - 10})`;
+  // Baldosa modelada (bisel tipo Stardew): cara + sombra
+  ctx.fillStyle = `rgb(${base - 10},${base - 14},${base - 20})`;
   ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
-
-  ctx.strokeStyle = "rgba(20,18,16,0.4)";
-  ctx.lineWidth = 1;
   const h = TILE_PX / 2;
+  const pads = [
+    [0, 0], [h, 0], [0, h], [h, h],
+  ];
+  for (const [ox, oy] of pads) {
+    const v = ((tx * 3 + ty * 5 + ox + oy) % 5);
+    const face = base + v;
+    ctx.fillStyle = `rgb(${face},${face - 4},${face - 10})`;
+    ctx.fillRect(px + ox + 1, py + oy + 1, h - 2, h - 2);
+    // Highlight esquina superior
+    ctx.fillStyle = "rgba(220,210,190,0.18)";
+    ctx.fillRect(px + ox + 1, py + oy + 1, h - 2, 2);
+    ctx.fillRect(px + ox + 1, py + oy + 1, 2, h - 2);
+    // Sombra inferior
+    ctx.fillStyle = "rgba(20,18,14,0.22)";
+    ctx.fillRect(px + ox + 1, py + oy + h - 3, h - 2, 2);
+    ctx.fillRect(px + ox + h - 3, py + oy + 1, 2, h - 2);
+  }
+
+  ctx.strokeStyle = "rgba(20,18,16,0.35)";
+  ctx.lineWidth = 1;
   ctx.strokeRect(px + 0.5, py + 0.5, h - 1, h - 1);
   ctx.strokeRect(px + h + 0.5, py + 0.5, h - 1, h - 1);
   ctx.strokeRect(px + 0.5, py + h + 0.5, h - 1, h - 1);
@@ -965,25 +983,37 @@ function drawWater(ctx, game, tx, ty, px, py, time) {
 
 function drawGrass(ctx, tx, ty, px, py) {
   const g = 48 + ((tx * 3 + ty * 5) % 18);
-  ctx.fillStyle = `rgb(${28 + (g % 10)},${g},${22 + (g % 8)})`;
+  // Capa base + variación de relieve
+  ctx.fillStyle = `rgb(${24 + (g % 8)},${g - 6},${18 + (g % 6)})`;
   ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
+  ctx.fillStyle = `rgb(${28 + (g % 10)},${g},${22 + (g % 8)})`;
+  ctx.fillRect(px + 2, py + 2, TILE_PX - 4, TILE_PX - 4);
+  // Bisel suave
+  ctx.fillStyle = "rgba(120,160,80,0.12)";
+  ctx.fillRect(px + 2, py + 2, TILE_PX - 4, 3);
+  ctx.fillStyle = "rgba(10,20,8,0.18)";
+  ctx.fillRect(px + 2, py + TILE_PX - 5, TILE_PX - 4, 3);
 
   // Parche de tierra
   if (((tx * 5 + ty * 3) % 15) === 0) {
-    ctx.fillStyle = "rgba(90,70,40,0.35)";
+    ctx.fillStyle = "rgba(90,70,40,0.4)";
     ctx.beginPath();
     ctx.ellipse(px + 24, py + 26, 12, 8, 0.2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = "rgba(60,45,25,0.25)";
+    ctx.beginPath();
+    ctx.ellipse(px + 26, py + 28, 6, 4, 0.2, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  ctx.strokeStyle = "rgba(70,120,55,0.7)";
+  ctx.strokeStyle = "rgba(70,120,55,0.75)";
   ctx.lineWidth = 1.5;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 12; i++) {
     const gx = px + 4 + ((tx * 5 + i * 11 + ty * 3) % 40);
     const gy = py + 8 + ((ty * 7 + i * 9) % 32);
     ctx.beginPath();
     ctx.moveTo(gx, gy + 7);
-    ctx.lineTo(gx + ((i % 3) - 1), gy);
+    ctx.lineTo(gx + ((i % 3) - 1) * 1.4, gy);
     ctx.stroke();
   }
   if (((tx + ty * 2) % 11) === 0) {
@@ -2973,6 +3003,29 @@ function drawFx(ctx, game, camX, camY) {
     const a = Math.max(0, f.life / (f.max || 0.5));
     const x = f.x * TILE_PX - camX;
     const y = f.y * TILE_PX - camY;
+    if (f.kind === "slash") {
+      // Arco de golpe estilo Stardew
+      const progress = 1 - a;
+      const ang = f.ang || 0;
+      const sweep = -0.85 + progress * 1.7;
+      const r = (f.range || 1.4) * TILE_PX * 0.72;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ang + sweep);
+      ctx.strokeStyle = `rgba(255, 245, 210, ${0.15 + a * 0.65})`;
+      ctx.lineWidth = 5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.arc(0, 0, r, -0.55, 0.55);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255, 210, 120, ${a * 0.55})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.92, -0.4, 0.4);
+      ctx.stroke();
+      ctx.restore();
+      continue;
+    }
     ctx.fillStyle =
       f.kind === "death"
         ? `rgba(90, 20, 18, ${a * 0.85})`
@@ -3210,10 +3263,18 @@ function drawLootPrompt(ctx, game, camX, camY, w, h, playerIndoor) {
 function drawPlayer(ctx, px, py, player, time, game = null) {
   ctx.save();
   ctx.translate(px, py);
+  // Parpadeo de i-frames (Stardew)
+  if ((player.invulnT || 0) > 0 && Math.floor(time * 18) % 2 === 0) {
+    ctx.globalAlpha = 0.35;
+  }
   const handDef = itemDef(player.equip?.hand);
   const aimingGun = !!(handDef?.firearm);
-  if (aimingGun || (player.swingT || 0) > 0) {
+  const swinging = (player.swingT || 0) > 0;
+  if (aimingGun) {
     ctx.rotate(player.aim || 0);
+  } else if (swinging) {
+    // Durante el golpe: orientar al facing de movimiento
+    ctx.rotate(player.facingAng || player.aim || 0);
   } else {
     ctx.scale(player.facing || 1, 1);
   }
@@ -3301,7 +3362,7 @@ function drawPlayer(ctx, px, py, player, time, game = null) {
   }
 
   // Arma en mano (detalle)
-  drawHeldWeapon(ctx, handId, time, player.swingT || 0);
+  drawHeldWeapon(ctx, handId, time, player.swingT || 0, player.swingDur || 0.3);
 
   ctx.restore();
 }
@@ -3359,7 +3420,7 @@ function drawWornBody(ctx, wear) {
   ctx.fillRect(-9, -6, 5, 11);
 }
 
-function drawHeldWeapon(ctx, hand, time, swingT = 0) {
+function drawHeldWeapon(ctx, hand, time, swingT = 0, swingDur = 0.3) {
   if (!hand) {
     ctx.strokeStyle = "#d2b08a";
     ctx.lineWidth = 2;
@@ -3369,10 +3430,13 @@ function drawHeldWeapon(ctx, hand, time, swingT = 0) {
     ctx.stroke();
     return;
   }
-  const swing = swingT > 0 ? Math.sin((1 - Math.min(1, swingT / 0.22)) * Math.PI) * 1.15 : Math.sin(time * 2) * 0.05;
+  const dur = Math.max(0.18, swingDur || 0.3);
+  const swing = swingT > 0
+    ? Math.sin((1 - Math.min(1, swingT / dur)) * Math.PI) * 1.35
+    : Math.sin(time * 2) * 0.05;
   ctx.save();
   ctx.translate(8, -1);
-  ctx.rotate(-0.35 + swing);
+  ctx.rotate(-0.55 + swing);
 
   if (hand === "bat") {
     ctx.strokeStyle = "#8a5a28";

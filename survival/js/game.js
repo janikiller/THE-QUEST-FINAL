@@ -132,6 +132,12 @@ export function createGame(world) {
       attackCd: 0,
       hurtFlash: 0,
       swingT: 0,
+      swingDur: 0,
+      swingHit: null,
+      facingAng: 0,
+      invulnT: 0,
+      kbVx: 0,
+      kbVy: 0,
       vx: 0,
       vy: 0,
       walkPhase: 0,
@@ -189,7 +195,7 @@ export function createGame(world) {
   };
   game.player.aim = 0;
   seedZombies(game, 4);
-  setToast(game, "Niebla Norte. WASD mueve · Espacio corre · E saquea (mantén en contenedores) · clic dispara.");
+  setToast(game, "Niebla Norte. WASD mueve · clic golpea (Stardew) · Q melee · armas de fuego apuntan con ratón.");
   applyWaveDebugFlags(game);
   return game;
 }
@@ -322,7 +328,29 @@ export function updateGame(game, dt) {
   p.gatherCd = Math.max(0, p.gatherCd - dt);
   p.attackCd = Math.max(0, p.attackCd - dt);
   p.hurtFlash = Math.max(0, p.hurtFlash - dt);
-  p.swingT = Math.max(0, (p.swingT || 0) - dt);
+  p.invulnT = Math.max(0, (p.invulnT || 0) - dt);
+  const prevSwing = p.swingT || 0;
+  p.swingT = Math.max(0, prevSwing - dt);
+  if (prevSwing > 0 && p.swingT <= 0) {
+    const weapon = equippedWeapon(p);
+    if (p._swingLanded) {
+      setToast(
+        game,
+        weapon.firearm
+          ? `Culatazo con ${weapon.label.toLowerCase()}.`
+          : `Golpeas con ${weapon.label.toLowerCase()}.`
+      );
+    } else {
+      setToast(game, "Cortas el aire.");
+    }
+    p.swingHit = null;
+    p._swingLanded = false;
+  }
+  // Knockback se desvanece (estilo Stardew)
+  p.kbVx = (p.kbVx || 0) * Math.exp(-10 * dt);
+  p.kbVy = (p.kbVy || 0) * Math.exp(-10 * dt);
+  if (Math.abs(p.kbVx) < 0.05) p.kbVx = 0;
+  if (Math.abs(p.kbVy) < 0.05) p.kbVy = 0;
 
   if (pressed(game, "b")) {
     const cur = BUILD_CYCLE.indexOf(game.buildMode);
@@ -351,14 +379,18 @@ export function updateGame(game, dt) {
   const sprint = game.keys.has(" ") && p.stamina > 2 && wantMove && !looting;
   const tile = TILE_META[tileAt(game.world, p.x, p.y)] || TILE_META[TILE.ROAD];
   const tileSpd = tile.speed ?? 1;
-  const maxSpeed = (sprint ? 3.65 : looting ? 1.15 : 2.35) * tileSpd;
-  const accel = sprint ? 16 : looting ? 8 : 12;
-  const friction = wantMove ? accel : 18;
+  // Movimiento más deliberado (peso Stardew): caminar más lento, sprint claro
+  const maxSpeed = (sprint ? 3.25 : looting ? 1.05 : 2.05) * tileSpd;
+  const accel = sprint ? 14 : looting ? 7 : 11;
+  const friction = wantMove ? accel : 22;
 
   if (wantMove) {
     const len = Math.hypot(mx, my) || 1;
     mx /= len;
     my /= len;
+    // Facing 4 direcciones desde el movimiento (no desde el ratón)
+    p.facingAng = snapCardinalFacing(mx, my);
+    p.facing = Math.cos(p.facingAng) >= 0 ? 1 : -1;
   }
   const tx = wantMove ? mx * maxSpeed : 0;
   const ty = wantMove ? my * maxSpeed : 0;
@@ -370,11 +402,19 @@ export function updateGame(game, dt) {
 
   const beforeX = p.x;
   const beforeY = p.y;
-  if (p.vx !== 0) {
-    if (!tryMove(game, p.x + p.vx * dt, p.y)) p.vx = 0;
+  const stepX = p.vx * dt + (p.kbVx || 0) * dt;
+  const stepY = p.vy * dt + (p.kbVy || 0) * dt;
+  if (stepX !== 0) {
+    if (!tryMove(game, p.x + stepX, p.y)) {
+      p.vx = 0;
+      p.kbVx = 0;
+    }
   }
-  if (p.vy !== 0) {
-    if (!tryMove(game, p.x, p.y + p.vy * dt)) p.vy = 0;
+  if (stepY !== 0) {
+    if (!tryMove(game, p.x, p.y + stepY)) {
+      p.vy = 0;
+      p.kbVy = 0;
+    }
   }
 
   const moved = Math.hypot(p.x - beforeX, p.y - beforeY);
@@ -382,7 +422,6 @@ export function updateGame(game, dt) {
   p.sprinting = sprint && p.moving;
   if (p.moving) {
     p.walkPhase = (p.walkPhase || 0) + moved * (sprint ? 10.5 : 8.2);
-    if (Math.abs(p.vx) > 0.05) p.facing = p.vx > 0 ? 1 : -1;
     p.stamina = Math.max(0, p.stamina - (sprint ? 15 : 2.4) * dt);
     p.hunger = Math.max(0, p.hunger - (sprint ? 0.85 : 0.32) * dt);
     p.thirst = Math.max(0, p.thirst - (sprint ? 1.05 : 0.4) * dt);
@@ -411,18 +450,23 @@ export function updateGame(game, dt) {
   if (p.hunger < 8) p.health -= 3.5 * dt;
   if (p.thirst < 8) p.health -= 4.5 * dt;
 
-  // Apuntado al cursor (recalcula mundo si el jugador se movió)
+  // Apuntado: armas de fuego usan ratón; melee usa facing de movimiento
   if (game.mouse.viewW) {
-    // Mira relativa a la cámara suavizada (más natural al moverse)
     game.mouse.worldX = game.camX + (game.mouse.x - game.mouse.viewW / 2) / 48;
     game.mouse.worldY = game.camY + (game.mouse.y - game.mouse.viewH / 2) / 48;
   }
-  p.aim = Math.atan2(game.mouse.worldY - p.y, game.mouse.worldX - p.x);
-  if (Math.cos(p.aim) !== 0) p.facing = Math.cos(p.aim) >= 0 ? 1 : -1;
+  const handDef = itemDef(p.equip?.hand);
+  if (handDef?.firearm) {
+    p.aim = Math.atan2(game.mouse.worldY - p.y, game.mouse.worldX - p.x);
+    if (Math.cos(p.aim) !== 0) p.facing = Math.cos(p.aim) >= 0 ? 1 : -1;
+  } else {
+    p.aim = p.facingAng || 0;
+  }
 
   updateLooting(game, dt);
+  updateMeleeSwing(game, dt);
   if (pressed(game, "e") && p.gatherCd <= 0 && !p.lootTarget) beginLoot(game);
-  if ((pressed(game, "q") || pressed(game, "f")) && p.attackCd <= 0) melee(game);
+  if ((pressed(game, "q") || pressed(game, "f")) && p.attackCd <= 0) startMeleeSwing(game);
   if ((game.mouse.clicked || (game.mouse.down && isAutomaticFire(p))) && p.attackCd <= 0) {
     fireWeapon(game);
   }
@@ -799,52 +843,125 @@ function consume(game) {
 }
 
 function melee(game) {
+  startMeleeSwing(game);
+}
+
+/** Facing cardinal (4 dirs) como Stardew Valley. */
+function snapCardinalFacing(mx, my) {
+  if (Math.abs(mx) >= Math.abs(my)) return mx >= 0 ? 0 : Math.PI;
+  return my >= 0 ? Math.PI / 2 : -Math.PI / 2;
+}
+
+/** Inicia un golpe con ventana de hit activa (no daño instantáneo). */
+function startMeleeSwing(game) {
   const p = game.player;
+  if (p.attackCd > 0 || (p.swingT || 0) > 0) return;
   const weapon = equippedWeapon(p);
-  // Con arma de fuego, Q es culatazo corto (no el daño de bala)
-  const meleeDmg = weapon.firearm ? Math.max(12, Math.floor(weapon.damage * 0.28)) : weapon.damage;
-  const meleeRange = weapon.firearm ? 1.2 : weapon.range;
-  const meleeCd = weapon.firearm ? 0.4 : weapon.attackCd;
+  const meleeCd = weapon.firearm ? 0.42 : weapon.attackCd;
+  const swingDur = weapon.firearm ? 0.28 : Math.min(0.42, Math.max(0.26, weapon.attackCd * 0.72));
   p.attackCd = meleeCd;
-  p.swingT = 0.22;
+  p.swingT = swingDur;
+  p.swingDur = swingDur;
+  p.swingHit = new Set();
+  p._swingLanded = false;
   p.stamina = Math.max(0, p.stamina - (weapon.firearm ? 8 : weapon.stamina));
   game.noisePulse = Math.max(game.noisePulse, weapon.firearm ? 1.6 : 2.2);
-  let hit = false;
-  const aim = p.aim || 0;
-  const ax = Math.cos(aim);
-  const ay = Math.sin(aim);
+  game.shake = Math.max(game.shake || 0, 0.08);
+  spawnSlashFx(game, p);
+}
 
+function spawnSlashFx(game, p) {
+  if (!game.fx) game.fx = [];
+  const ang = p.facingAng || p.aim || 0;
+  game.fx.push({
+    kind: "slash",
+    x: p.x,
+    y: p.y,
+    ang,
+    life: p.swingDur || 0.3,
+    max: p.swingDur || 0.3,
+    range: equippedWeapon(p).firearm ? 1.15 : equippedWeapon(p).range,
+  });
+}
+
+/** Durante el swing: arco frontal, un hit por zombie, knockback. */
+function updateMeleeSwing(game, dt) {
+  const p = game.player;
+  if (!p.swingT || p.swingT <= 0) return;
+  const dur = p.swingDur || 0.3;
+  const progress = 1 - p.swingT / dur;
+  // Ventana activa ~18%–70% del swing (como frames de ataque en Stardew)
+  if (progress < 0.18 || progress > 0.7) return;
+
+  const weapon = equippedWeapon(p);
+  const meleeDmg = weapon.firearm ? Math.max(12, Math.floor(weapon.damage * 0.28)) : weapon.damage;
+  const meleeRange = (weapon.firearm ? 1.2 : weapon.range) + 0.08;
+  const baseAng = p.facingAng ?? p.aim ?? 0;
+  // El arco barre ±~50° durante la ventana activa
+  const sweepT = (progress - 0.18) / 0.52;
+  const hitAng = baseAng + (sweepT - 0.5) * 1.05;
+  const ax = Math.cos(hitAng);
+  const ay = Math.sin(hitAng);
+  const halfCone = 0.72; // ~41° a cada lado del borde del arco
+  const cosCone = Math.cos(halfCone);
+  if (!p.swingHit) p.swingHit = new Set();
+
+  let hit = false;
   for (const z of game.zombies) {
+    if (p.swingHit.has(z)) continue;
     const dx = z.x - p.x;
     const dy = z.y - p.y;
     const dist = Math.hypot(dx, dy);
-    if (dist > meleeRange + (z.radius || 0.45) - 0.45 || dist < 0.01) continue;
+    const reach = meleeRange + (z.radius || 0.45) * 0.35;
+    if (dist > reach || dist < 0.02) continue;
     const dot = (dx / dist) * ax + (dy / dist) * ay;
-    if (dot < 0.15) continue;
+    if (dot < cosCone) continue;
+
+    p.swingHit.add(z);
     z.hp -= meleeDmg;
-    z.stun = 0.35;
+    z.stun = 0.28 + Math.min(0.2, meleeDmg * 0.004);
     z.hitFlash = 0.22;
-    z.x += ax * 0.35;
-    z.y += ay * 0.35;
+    const kb = 0.42 + Math.min(0.35, meleeDmg * 0.006);
+    z.x += ax * kb;
+    z.y += ay * kb;
+    z.vx = (z.vx || 0) + ax * kb * 4;
+    z.vy = (z.vy || 0) + ay * kb * 4;
     spawnFx(game, z.x, z.y, "blood");
-    game.shake = Math.max(game.shake || 0, 0.14);
+    game.shake = Math.max(game.shake || 0, 0.16);
     hit = true;
   }
+
+  if (hit) p._swingLanded = true;
 
   game.zombies = game.zombies.filter((z) => {
     if (z.hp > 0) return true;
     onZombieKilled(game, z);
     return false;
   });
+}
 
-  setToast(
-    game,
-    hit
-      ? weapon.firearm
-        ? `Culatazo con ${weapon.label.toLowerCase()}.`
-        : `Golpeas con ${weapon.label.toLowerCase()}.`
-      : "Cortas el aire."
-  );
+/** Daño al jugador con i-frames + knockback (Stardew). */
+function hurtPlayer(game, fromX, fromY, damage, toastMsg) {
+  const p = game.player;
+  if ((p.invulnT || 0) > 0) return false;
+  p.health -= damage;
+  p.hurtFlash = 0.45;
+  p.invulnT = 0.55;
+  let dx = p.x - fromX;
+  let dy = p.y - fromY;
+  let len = Math.hypot(dx, dy);
+  if (len < 0.08) {
+    // Empuje hacia atrás respecto a tu facing si estás encima del zombie
+    const a = (p.facingAng || 0) + Math.PI;
+    dx = Math.cos(a);
+    dy = Math.sin(a);
+    len = 1;
+  }
+  p.kbVx = (dx / len) * 5.5;
+  p.kbVy = (dy / len) * 5.5;
+  game.shake = Math.max(game.shake || 0, 0.38);
+  if (toastMsg) setToast(game, toastMsg);
+  return true;
 }
 
 function build(game) {
@@ -1146,23 +1263,23 @@ function updateZombies(game, dt, phase) {
     if (canWalk(game.world, nx, z.y, { zombie: true })) z.x = nx;
     if (canWalk(game.world, z.x, ny, { zombie: true })) z.y = ny;
 
-    const reach = (z.radius || 0.45) + 0.12;
-    if (dist < reach && z.attackCd <= 0) {
+    const reach = (z.radius || 0.45) + 0.18;
+    if (dist < reach) {
       const onBase = tileAt(game.world, p.x, p.y) === TILE.BASE;
       const body = itemDef(p.equip.body);
       const biteMult = body?.biteMult ?? 1;
       const baseDmg = z.damage || 13;
       const charging = z.boss && z.chargeT > 0;
-      p.health -= (onBase ? baseDmg * 0.55 : baseDmg) * biteMult * (charging ? 1.35 : 1);
-      p.hurtFlash = 0.4;
-      game.shake = Math.max(game.shake || 0, z.boss ? 0.55 : 0.35);
-      z.attackCd = z.boss ? z.attackInterval || 1.1 : 0.95;
-      if (z.boss && z.knockback) {
-        p.x += (dx / len) * z.knockback;
-        p.y += (dy / len) * z.knockback;
+      const dmg = (onBase ? baseDmg * 0.55 : baseDmg) * biteMult * (charging ? 1.35 : 1);
+      const msg = z.boss ? `¡${z.name} te golpea!` : "¡Un zombie te alcanza!";
+      if (hurtPlayer(game, z.x, z.y, dmg, msg)) {
+        game.shake = Math.max(game.shake || 0, z.boss ? 0.55 : 0.35);
+        if (z.boss && z.knockback) {
+          p.kbVx = (p.kbVx || 0) + (dx / len) * z.knockback * 3;
+          p.kbVy = (p.kbVy || 0) + (dy / len) * z.knockback * 3;
+        }
+        if (charging) z.chargeT = 0;
       }
-      setToast(game, z.boss ? `¡${z.name} te golpea!` : "¡Un zombie te muerde!");
-      if (charging) z.chargeT = 0;
     }
   }
 }
@@ -1303,8 +1420,8 @@ function fireWeapon(game) {
   const p = game.player;
   const weapon = equippedWeapon(p);
   if (!weapon.firearm) {
-    // Clic con melee = mismo golpe
-    melee(game);
+    // Clic con melee = golpe Stardew (hacia donde miras)
+    startMeleeSwing(game);
     return;
   }
   const ammoId = weapon.ammo;
@@ -1404,10 +1521,11 @@ function updateFx(game, dt) {
   if (!game.fx) return;
   game.fx = game.fx.filter((f) => {
     f.life -= dt;
-    f.x += f.vx * dt;
-    f.y += f.vy * dt;
-    f.vx *= 0.92;
-    f.vy *= 0.92;
+    if (f.kind === "slash") return f.life > 0;
+    f.x += (f.vx || 0) * dt;
+    f.y += (f.vy || 0) * dt;
+    f.vx = (f.vx || 0) * 0.92;
+    f.vy = (f.vy || 0) * 0.92;
     return f.life > 0;
   });
 }
