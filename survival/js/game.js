@@ -104,10 +104,12 @@ export const BOSS_TYPES = {
 
 const BOSS_ROTATION = ["bruiser", "screamer", "tank"];
 
-/** Devuelve el tipo de jefe de una oleada, o null si no toca. */
+/** Devuelve el tipo de jefe de una oleada, o null si no toca.
+ *  Jefes jugables desde la oleada 1, luego en 3, 5, 7… */
 export function bossKindForWave(wave) {
-  if (wave < 3 || wave % 3 !== 0) return null;
-  return BOSS_ROTATION[(((wave / 3) | 0) - 1) % BOSS_ROTATION.length];
+  if (wave < 1) return null;
+  if ((wave & 1) === 0) return null; // pares sin jefe
+  return BOSS_ROTATION[(((wave - 1) / 2) | 0) % BOSS_ROTATION.length];
 }
 
 const BUILD_CYCLE = [null, "wall", "door", "claim"];
@@ -125,7 +127,7 @@ export function createGame(world) {
       hunger: 82,
       thirst: 78,
       stamina: 100,
-      inv: { food: 1, water: 1, scrap: 2, wood: 2, med: 1, shirt: 1, bat: 1, pistol: 1, ammo_9mm: 8 },
+      inv: { food: 2, water: 2, scrap: 2, wood: 2, med: 2, shirt: 1, bat: 1, pistol: 1, ammo_9mm: 16 },
       equip: { hand: "bat", body: "shirt", bag: null, light: null },
       gearPhase: "clothes",
       gatherCd: 0,
@@ -170,7 +172,7 @@ export function createGame(world) {
     // Oleadas: cada una más fuerte
     wave: 0,
     wavePhase: "countdown", // countdown | spawning | fighting | clear
-    waveTimer: 16,
+    waveTimer: 9,
     waveQuota: 0,
     waveSpawned: 0,
     waveBossKind: null,
@@ -195,23 +197,30 @@ export function createGame(world) {
   };
   game.player.aim = 0;
   seedZombies(game, 4);
-  setToast(game, "Niebla Norte. WASD mueve · clic golpea (Stardew) · Q melee · armas de fuego apuntan con ratón.");
+  setToast(game, "Niebla Norte. Oleada 1 trae jefe · WASD · clic golpea · armas apuntan con ratón.");
   applyWaveDebugFlags(game);
   return game;
 }
 
-/** ?boss=1 → oleada 3 con jefe pronto; ?fastwaves=1 → timers cortos; ?weather=sandstorm|storm|rain|wind|fog. */
+/** ?boss=1 → jefe ya; ?fastwaves=1 → timers cortos; ?weather=… */
 function applyWaveDebugFlags(game) {
   try {
     const q = new URLSearchParams(location.search);
     if (q.has("fastwaves")) {
-      game.waveTimer = Math.min(game.waveTimer, 3);
+      game.waveTimer = Math.min(game.waveTimer, 2);
     }
     if (q.has("boss")) {
-      game.wave = 2;
-      game.wavePhase = "countdown";
-      game.waveTimer = q.has("fastwaves") ? 2 : 5;
-      setToast(game, "Debug: oleada 3 con jefe en breve.");
+      // Pelea de jefe jugable al instante
+      game.wave = 1;
+      game.waveQuota = 3;
+      game.waveSpawned = 3;
+      game.waveBossKind = "bruiser";
+      game.waveBossSpawned = true;
+      game.wavePhase = "fighting";
+      game.waveTimer = 0;
+      spawnBoss(game, 1, "bruiser");
+      setToast(game, "¡El Bruto está aquí! Derrótalo.");
+      showWaveBanner(game, BOSS_TYPES.bruiser.title, 2.4);
     }
     const forced = q.get("weather");
     if (forced) forceWeather(game, forced);
@@ -1182,11 +1191,13 @@ function updateZombies(game, dt, phase) {
     if (z.chargeT > 0) z.chargeT = Math.max(0, z.chargeT - dt);
     if (z.stun > 0) continue;
 
-    // Lejos: actualizar 1 de cada 3 frames (jefes siempre)
     const roughDx = z.x - p.x;
     const roughDy = z.y - p.y;
     const roughD2 = roughDx * roughDx + roughDy * roughDy;
-    if (!z.boss && roughD2 > 900 && ((zi + zFrame) % 3) !== 0) continue;
+    if (!z.boss) {
+      if (roughD2 > 1600 && ((zi + zFrame) % 8) !== 0) continue;
+      if (roughD2 > 625 && ((zi + zFrame) % 4) !== 0) continue;
+    }
 
     const dist = Math.hypot(roughDx, roughDy);
     const aggro = baseAggro + (z.boss ? z.aggroBonus || 0 : 0);
@@ -1289,10 +1300,13 @@ function updateWaves(game, dt, phase) {
     game.waveTimer -= dt;
     if (game.waveTimer <= 0) {
       game.wave += 1;
-      game.waveQuota = Math.min(42, 5 + game.wave * 3 + (phase.night ? 2 : 0));
+      let quota = Math.min(28, 4 + game.wave * 2 + (phase.night ? 2 : 0));
+      game.waveBossKind = bossKindForWave(game.wave);
+      // En oleadas con jefe: menos basura, pelea más clara
+      if (game.waveBossKind) quota = Math.max(3, Math.floor(quota * 0.55));
+      game.waveQuota = quota;
       game.waveSpawned = 0;
       game.waveSpawnStall = 0;
-      game.waveBossKind = bossKindForWave(game.wave);
       game.waveBossSpawned = false;
       game.wavePhase = "spawning";
       if (game.waveBossKind) {
@@ -1309,24 +1323,25 @@ function updateWaves(game, dt, phase) {
 
   if (game.wavePhase === "spawning") {
     game.waveSpawnStall = (game.waveSpawnStall || 0) + dt;
-    const rate = 2.6 + game.wave * 0.18;
+    const rate = 2.8 + game.wave * 0.2;
     if (game.waveSpawned < game.waveQuota && Math.random() < dt * rate) {
       if (spawnZombie(game, game.wave)) game.waveSpawned += 1;
     }
-    // El jefe entra a mitad de la oleada (o al terminar el cupo)
-    const mid = game.waveQuota * 0.45;
+    // El jefe entra pronto (≈20% del cupo) para que se pueda pelear ya
+    const mid = Math.max(1, game.waveQuota * 0.2);
     if (
       game.waveBossKind &&
       !game.waveBossSpawned &&
-      (game.waveSpawned >= mid || game.waveSpawned >= game.waveQuota || game.waveSpawnStall > 12)
+      (game.waveSpawned >= mid || game.waveSpawned >= game.waveQuota || game.waveSpawnStall > 6)
     ) {
       const boss = spawnBoss(game, game.wave, game.waveBossKind);
       game.waveBossSpawned = true;
       setToast(game, `¡Aparece ${boss.name}!`);
       showWaveBanner(game, BOSS_TYPES[game.waveBossKind].title, 2.2);
+      game.noisePulse = Math.max(game.noisePulse || 0, 4);
     }
     if (
-      (game.waveSpawned >= game.waveQuota || game.waveSpawnStall > 18) &&
+      (game.waveSpawned >= game.waveQuota || game.waveSpawnStall > 14) &&
       (!game.waveBossKind || game.waveBossSpawned)
     ) {
       game.wavePhase = "fighting";
@@ -1339,11 +1354,14 @@ function updateWaves(game, dt, phase) {
     const waveLeft = game.zombies.filter((z) => z.wave > 0).length;
     if (waveLeft === 0) {
       game.wavePhase = "clear";
-      game.waveTimer = 1.2;
+      game.waveTimer = game.waveBossKind ? 2.2 : 1.2;
+      const hadBoss = Boolean(game.waveBossKind);
       game.waveBossKind = null;
       game.waveBossSpawned = false;
-      setToast(game, `Oleada ${game.wave} limpia. Prepárate…`);
-      showWaveBanner(game, `OLEADA ${game.wave} LIMPIA`, 1.8);
+      setToast(game, hadBoss
+        ? `¡Jefe abatido! Oleada ${game.wave} limpia.`
+        : `Oleada ${game.wave} limpia. Prepárate…`);
+      showWaveBanner(game, hadBoss ? `JEFE CAÍDO · OLEADA ${game.wave}` : `OLEADA ${game.wave} LIMPIA`, 1.8);
     }
     return;
   }
@@ -1352,8 +1370,14 @@ function updateWaves(game, dt, phase) {
     game.waveTimer -= dt;
     if (game.waveTimer <= 0) {
       game.wavePhase = "countdown";
-      game.waveTimer = Math.max(10, 20 - game.wave * 0.4);
-      setToast(game, `Siguiente oleada en ${Math.ceil(game.waveTimer)}s.`);
+      game.waveTimer = Math.max(8, 16 - game.wave * 0.35);
+      const nextBoss = bossKindForWave(game.wave + 1);
+      setToast(
+        game,
+        nextBoss
+          ? `Siguiente: oleada ${game.wave + 1} con ${BOSS_TYPES[nextBoss].name} en ${Math.ceil(game.waveTimer)}s.`
+          : `Siguiente oleada en ${Math.ceil(game.waveTimer)}s.`
+      );
     }
   }
 }
@@ -1519,6 +1543,8 @@ function showWaveBanner(game, text, dur = 2) {
 
 function updateFx(game, dt) {
   if (!game.fx) return;
+  // Tope de partículas (rendimiento)
+  if (game.fx.length > 64) game.fx.splice(0, game.fx.length - 64);
   game.fx = game.fx.filter((f) => {
     f.life -= dt;
     if (f.kind === "slash") return f.life > 0;
