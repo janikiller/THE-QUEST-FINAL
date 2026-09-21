@@ -23,7 +23,7 @@ func _ready() -> void:
 		"TQ_SMOKE", "TQ_INV", "TQ_PLAYTEST", "TQ_COMBAT_SHOT", "TQ_MAP_SHOT",
 		"TQ_BOSS_MARKET_SHOT", "TQ_BOSS_FIGHT", "TQ_ROSTER_SHOT", "TQ_ANIME_CARDS_SHOT",
 		"TQ_MARKET_ROULETTE_SHOT", "TQ_XP_PACK_SHOT", "TQ_FIX_SHOT", "TQ_ENEMY_CARDS_SHOT",
-		"TQ_GROUND_SHOT",
+		"TQ_GROUND_SHOT", "TQ_UI_STS_DISPATCH",
 	]:
 		if OS.get_environment(key) == "1":
 			mode = key
@@ -57,8 +57,62 @@ func _ready() -> void:
 			call_deferred("_enemy_cards_shot")
 		"TQ_GROUND_SHOT":
 			call_deferred("_ground_shot")
+		"TQ_UI_STS_DISPATCH":
+			call_deferred("_ui_sts_dispatch_shot")
 		_:
 			pass
+
+
+func _ui_sts_dispatch_shot() -> void:
+	## Evidencia UI: mapa Dispatch → combate STS.
+	await get_tree().create_timer(1.2).timeout
+	var tries := 0
+	while GameState.active_missions.size() < 2 and tries < 50:
+		await get_tree().create_timer(0.2).timeout
+		tries += 1
+	$UI/UIRouter.show_map()
+	await get_tree().process_frame
+	var markers := get_tree().get_nodes_in_group("mission_marker")
+	if not markers.is_empty():
+		var center := Vector2.ZERO
+		for m in markers:
+			center += (m as Node2D).global_position
+		center /= float(markers.size())
+		camera.global_position = center
+		camera.zoom = Vector2(1.05, 1.05)
+	await get_tree().create_timer(0.8).timeout
+	await _save_shot("ui_dispatch_map_live")
+	print("UI_STS map_ok dock=", $UI/UIRouter/MapHud.get_node_or_null("BottomDock") != null)
+	# Combate
+	var mid := ""
+	for m in GameState.active_missions.values():
+		if str(m.get("status", "")) == "open" and not bool(m.get("is_boss", false)):
+			mid = str(m.get("id", ""))
+			break
+	if mid == "" and not GameState.active_missions.is_empty():
+		mid = String(GameState.active_missions.keys()[0])
+	if mid == "":
+		print("UI_STS_FAIL no mission")
+		get_tree().quit(1)
+		return
+	var p: Dictionary = GameState.patrols.get("alpha", {})
+	p["status"] = "available"
+	p.erase("_awaiting_combat")
+	GameState.set_patrol(p)
+	$UI/UIRouter.show_combat(mid, "alpha")
+	await get_tree().process_frame
+	await get_tree().create_timer(1.0).timeout
+	await _save_shot("ui_sts_combat_live")
+	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
+	var orb := combat != null and combat.get_node_or_null("Bottom/BottomPanel/BottomRow/EnergyOrb") != null
+	var intents := 0
+	if combat:
+		for n in combat.find_children("IntentBadge", "", true, false):
+			intents += 1
+	print("UI_STS combat_orb=", orb, " intents=", intents)
+	await get_tree().create_timer(0.6).timeout
+	print("UI_STS_DISPATCH_OK")
+	get_tree().quit(0)
 
 
 func _ground_shot() -> void:
