@@ -62,6 +62,44 @@ func _setup_map_texture() -> void:
 	map_sprite_b.centered = false
 	map_sprite_b.position = Vector2.ZERO
 	map_sprite_b.modulate.a = 0.0
+	_apply_dispatch_map_material()
+
+
+func _apply_dispatch_map_material() -> void:
+	## Tinte wireframe verde (Dispatch) sobre el JPG del mapa.
+	var sh_path := "res://assets/shaders/dispatch_map.gdshader"
+	var shader: Shader = null
+	if ResourceLoader.exists(sh_path):
+		shader = load(sh_path) as Shader
+	else:
+		shader = Shader.new()
+		shader.code = """
+shader_type canvas_item;
+uniform vec4 base_tint : source_color = vec4(0.04, 0.12, 0.08, 1.0);
+uniform vec4 line_tint : source_color = vec4(0.25, 0.95, 0.55, 1.0);
+uniform float contrast = 1.55;
+uniform float edge_boost = 0.85;
+uniform float darkness = 0.42;
+void fragment() {
+	vec4 src = texture(TEXTURE, UV);
+	float luma = dot(src.rgb, vec3(0.299, 0.587, 0.114));
+	luma = clamp((luma - 0.08) * contrast, 0.0, 1.0);
+	vec2 px = 1.0 / vec2(textureSize(TEXTURE, 0));
+	float n = texture(TEXTURE, UV + vec2(0.0, -px.y)).r;
+	float s = texture(TEXTURE, UV + vec2(0.0, px.y)).r;
+	float e = texture(TEXTURE, UV + vec2(px.x, 0.0)).r;
+	float w = texture(TEXTURE, UV + vec2(-px.x, 0.0)).r;
+	float edge = clamp((abs(n - s) + abs(e - w)) * 4.5, 0.0, 1.0);
+	float mix_w = clamp(luma * 0.65 + edge * edge_boost, 0.0, 1.0);
+	vec3 col = mix(base_tint.rgb, line_tint.rgb, mix_w);
+	col = mix(vec3(0.015, 0.04, 0.03), col, 0.92);
+	COLOR = vec4(col, src.a);
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	map_sprite.material = mat
+	map_sprite_b.material = mat
 
 
 func map_size() -> Vector2:
@@ -121,6 +159,11 @@ func _place_hq() -> void:
 	var hq: Array = GameState.station.get("hq_pos", [748, 470])
 	hq_marker.position = Vector2(float(hq[0]), float(hq[1]))
 	var pulse: ColorRect = hq_marker.get_node("HQPulse")
+	if pulse:
+		pulse.color = Color(0.15, 0.85, 0.45, 0.28)
+	var building := hq_marker.get_node_or_null("HQBuilding") as ColorRect
+	if building:
+		building.color = Color(0.2, 0.95, 0.5, 0.9)
 	var tw := create_tween().set_loops()
 	tw.tween_property(pulse, "modulate:a", 0.25, 1.1).from(0.85)
 	tw.parallel().tween_property(pulse, "scale", Vector2(1.35, 1.35), 1.1).from(Vector2.ONE)

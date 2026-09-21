@@ -57,6 +57,11 @@ var _enemy_menu_enemy_index: int = -1
 var _enemy_hand_row: HBoxContainer
 var _enemy_hand_label: Label
 var _hand_label: Label
+var _energy_orb: PanelContainer
+var _energy_orb_label: Label
+var _draw_pile_panel: PanelContainer
+var _discard_pile_panel: PanelContainer
+var _sts_layout_ready: bool = false
 var _bg_anim: Control
 var _bg_fog: TextureRect
 var _bg_fog2: TextureRect
@@ -278,6 +283,7 @@ func _ready() -> void:
 	CombatState.log_message.connect(_on_log)
 	_style_end_btn()
 	_style_bottom_panel()
+	_apply_sts_layout()
 	_ensure_enemy_hand_ui()
 	_fx_layer = Control.new()
 	_fx_layer.name = "FxLayer"
@@ -501,9 +507,9 @@ func _ensure_player_block_bar() -> void:
 	var parent := player_hp_bar.get_parent()
 	if parent == null:
 		return
-	player_hp_bar.custom_minimum_size = Vector2(168, 14)
+	player_hp_bar.custom_minimum_size = Vector2(168, 16)
 	player_hp_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	player_hp_text.add_theme_font_size_override("font_size", 12)
+	player_hp_text.add_theme_font_size_override("font_size", 13)
 	player_hp_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_player_block_bar = ProgressBar.new()
 	_player_block_bar.name = "PlayerBlockBar"
@@ -521,14 +527,17 @@ func _ensure_player_block_bar() -> void:
 	_player_block_text.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
 	_player_block_text.visible = false
 	parent.add_child(_player_block_text)
-	# Orden: barras arriba, sprite abajo (pies al suelo)
+	# STS: sprite arriba, barras DEBAJO (vida bajo los pies)
 	var actor := parent.get_node_or_null("PlayerActor")
+	var marker := parent.get_node_or_null("PlayerMarker")
+	if marker:
+		parent.move_child(marker, 0)
 	if actor:
-		parent.move_child(player_hp_bar, 0)
-		parent.move_child(player_hp_text, 1)
-		parent.move_child(_player_block_bar, 2)
-		parent.move_child(_player_block_text, 3)
-		parent.move_child(actor, parent.get_child_count() - 1)
+		parent.move_child(actor, 1 if marker else 0)
+	parent.move_child(player_hp_bar, parent.get_child_count() - 1)
+	parent.move_child(player_hp_text, parent.get_child_count() - 1)
+	parent.move_child(_player_block_bar, parent.get_child_count() - 1)
+	parent.move_child(_player_block_text, parent.get_child_count() - 1)
 
 
 func _process(delta: float) -> void:
@@ -641,82 +650,212 @@ func close() -> void:
 func _style_bottom_panel() -> void:
 	var bottom := get_node_or_null("Bottom") as MarginContainer
 	if bottom:
-		# Altura normal del menú — no media pantalla
-		bottom.offset_top = -260.0
+		bottom.offset_top = -228.0
+		bottom.add_theme_constant_override("margin_left", 12)
+		bottom.add_theme_constant_override("margin_right", 12)
+		bottom.add_theme_constant_override("margin_bottom", 6)
 	var arena := get_node_or_null("Arena") as Control
 	if arena:
-		arena.offset_bottom = -260.0
+		arena.offset_bottom = -228.0
 	var panel := get_node_or_null("Bottom/BottomPanel")
 	if panel == null:
 		return
+	# STS: el suelo del combate se ve; el panel es casi transparente
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.035, 0.05, 0.08, 0.92)
-	sb.border_color = Color(1, 1, 1, 0.08)
+	sb.bg_color = Color(0.02, 0.02, 0.03, 0.35)
+	sb.border_color = Color(0.55, 0.42, 0.28, 0.35)
 	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(16)
-	sb.content_margin_left = 12
-	sb.content_margin_right = 12
-	sb.content_margin_top = 8
-	sb.content_margin_bottom = 8
+	sb.set_corner_radius_all(4)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
 	panel.add_theme_stylebox_override("panel", sb)
 
 
-func _ensure_enemy_hand_ui() -> void:
-	## Cartas enemigas en el hueco horizontal del menú (junto a TU MANO), sin subir la altura.
+func _apply_sts_layout() -> void:
+	## Layout Slay the Spire: orbe energía izq, abanico centro, fin turno der, pilas en esquinas.
+	if _sts_layout_ready:
+		return
+	_sts_layout_ready = true
+	_style_sts_top_hud()
+
 	var bottom_row := get_node_or_null("Bottom/BottomPanel/BottomRow") as HBoxContainer
-	var hand_col := get_node_or_null("Bottom/BottomPanel/BottomRow/HandCol") as VBoxContainer
 	if bottom_row == null:
 		return
-	# Limpiar layout apilado antiguo dentro de HandCol
-	if hand_col:
-		for child_name in ["EnemyHandLabel", "EnemyHandRow", "PlayerHandLabel"]:
-			var junk := hand_col.get_node_or_null(child_name)
-			if junk:
-				hand_col.remove_child(junk)
-				junk.free()
-	var col := bottom_row.get_node_or_null("EnemyHandCol") as VBoxContainer
-	if col == null:
-		col = VBoxContainer.new()
-		col.name = "EnemyHandCol"
-		col.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		col.add_theme_constant_override("separation", 2)
-		bottom_row.add_child(col)
-		# Entre Piles y HandCol = el hueco vacío de la izquierda
-		if hand_col:
-			bottom_row.move_child(col, hand_col.get_index())
-	_enemy_hand_label = col.get_node_or_null("EnemyHandLabel") as Label
-	if _enemy_hand_label == null:
-		_enemy_hand_label = Label.new()
-		_enemy_hand_label.name = "EnemyHandLabel"
-		_enemy_hand_label.text = "ELLOS"
-		_enemy_hand_label.add_theme_font_size_override("font_size", 11)
-		_enemy_hand_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.38))
-		_enemy_hand_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		col.add_child(_enemy_hand_label)
-	_enemy_hand_row = col.get_node_or_null("EnemyHandRow") as HBoxContainer
-	if _enemy_hand_row == null:
-		_enemy_hand_row = HBoxContainer.new()
-		_enemy_hand_row.name = "EnemyHandRow"
-		_enemy_hand_row.alignment = BoxContainer.ALIGNMENT_CENTER
-		_enemy_hand_row.add_theme_constant_override("separation", 8)
-		_enemy_hand_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		col.add_child(_enemy_hand_row)
+	bottom_row.add_theme_constant_override("separation", 10)
+
+	# Ocultar pilas del layout horizontal — van a esquinas absolutas
+	var piles := bottom_row.get_node_or_null("Piles") as Control
+	if piles:
+		piles.visible = false
+
+	# Orbe de energía (izq de la mano)
+	if _energy_orb == null:
+		_energy_orb = PanelContainer.new()
+		_energy_orb.name = "EnergyOrb"
+		_energy_orb.custom_minimum_size = Vector2(84, 84)
+		_energy_orb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var osb := StyleBoxFlat.new()
+		osb.bg_color = Color(0.12, 0.55, 0.72, 0.95)
+		osb.border_color = Color(0.55, 0.9, 1.0, 0.95)
+		osb.set_border_width_all(3)
+		osb.set_corner_radius_all(42)
+		osb.content_margin_left = 8
+		osb.content_margin_right = 8
+		osb.content_margin_top = 8
+		osb.content_margin_bottom = 8
+		_energy_orb.add_theme_stylebox_override("panel", osb)
+		_energy_orb_label = Label.new()
+		_energy_orb_label.name = "EnergyOrbLabel"
+		_energy_orb_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_energy_orb_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_energy_orb_label.add_theme_font_size_override("font_size", 26)
+		_energy_orb_label.add_theme_color_override("font_color", Color(0.95, 0.98, 1.0))
+		_energy_orb_label.text = "3/3"
+		_energy_orb.add_child(_energy_orb_label)
+		bottom_row.add_child(_energy_orb)
+		bottom_row.move_child(_energy_orb, 0)
+
+	# EnergyRow de pips ya no se usa como fila; se vacía y oculta
+	if energy_row:
+		energy_row.visible = false
+
+	var right := bottom_row.get_node_or_null("RightControls") as VBoxContainer
+	if right:
+		right.custom_minimum_size = Vector2(168, 0)
+		right.alignment = BoxContainer.ALIGNMENT_CENTER
+		var flavor := right.get_node_or_null("Flavor") as Label
+		if flavor:
+			flavor.visible = false
+
+	# Pilas en esquinas de pantalla (estilo STS)
+	_ensure_corner_piles()
+
+	# Log más discreto
+	if log_label:
+		log_label.add_theme_font_size_override("font_size", 12)
+		log_label.add_theme_color_override("font_color", Color(0.78, 0.72, 0.58))
+
+
+func _style_sts_top_hud() -> void:
+	var top := get_node_or_null("TopHud") as MarginContainer
+	if top == null:
+		return
+	top.offset_bottom = 72.0
+	top.add_theme_constant_override("margin_top", 6)
+	top.add_theme_constant_override("margin_left", 16)
+	top.add_theme_constant_override("margin_right", 16)
+	# Fondo fino tipo barra STS
+	var bar := top.get_node_or_null("StsBarBg") as Panel
+	if bar == null:
+		bar = Panel.new()
+		bar.name = "StsBarBg"
+		bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.z_index = -1
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.05, 0.04, 0.035, 0.82)
+		sb.border_color = Color(0.45, 0.35, 0.22, 0.5)
+		sb.border_width_bottom = 2
+		sb.set_corner_radius_all(0)
+		bar.add_theme_stylebox_override("panel", sb)
+		top.add_child(bar)
+		top.move_child(bar, 0)
+	if title_label:
+		title_label.add_theme_font_size_override("font_size", 18)
+		title_label.add_theme_color_override("font_color", Color(0.95, 0.88, 0.7))
+	if turn_label:
+		turn_label.add_theme_color_override("font_color", Color(0.75, 0.68, 0.5))
+	if hp_label:
+		hp_label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.35))
+	if block_label:
+		block_label.add_theme_color_override("font_color", Color(0.45, 0.75, 1.0))
+
+
+func _ensure_corner_piles() -> void:
+	if _draw_pile_panel == null:
+		_draw_pile_panel = _make_pile_badge("DrawPileCorner", Color(0.35, 0.55, 0.85))
+		_draw_pile_panel.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		_draw_pile_panel.offset_left = 18.0
+		_draw_pile_panel.offset_top = -118.0
+		_draw_pile_panel.offset_right = 98.0
+		_draw_pile_panel.offset_bottom = -28.0
+		add_child(_draw_pile_panel)
+	if _discard_pile_panel == null:
+		_discard_pile_panel = _make_pile_badge("DiscardPileCorner", Color(0.55, 0.45, 0.35))
+		_discard_pile_panel.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		_discard_pile_panel.offset_left = -98.0
+		_discard_pile_panel.offset_top = -118.0
+		_discard_pile_panel.offset_right = -18.0
+		_discard_pile_panel.offset_bottom = -28.0
+		add_child(_discard_pile_panel)
+	# Sincronizar labels de escena
+	if deck_count:
+		deck_count.visible = false
+	if discard_count:
+		discard_count.visible = false
+
+
+func _make_pile_badge(nm: String, accent: Color) -> PanelContainer:
+	var p := PanelContainer.new()
+	p.name = nm
+	p.z_index = 30
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.06, 0.05, 0.04, 0.92)
+	sb.border_color = Color(accent.r, accent.g, accent.b, 0.85)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
+	p.add_theme_stylebox_override("panel", sb)
+	var l := Label.new()
+	l.name = "Count"
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 16)
+	l.add_theme_color_override("font_color", Color(0.92, 0.9, 0.82))
+	l.text = "0"
+	p.add_child(l)
+	return p
+
+
+func _ensure_enemy_hand_ui() -> void:
+	## STS: intenciones van encima del enemigo — ocultamos la mano enemiga del dock.
+	var bottom_row := get_node_or_null("Bottom/BottomPanel/BottomRow") as HBoxContainer
+	if bottom_row:
+		var col := bottom_row.get_node_or_null("EnemyHandCol") as Control
+		if col:
+			col.visible = false
+	_enemy_hand_row = null
+	_enemy_hand_label = null
 	_hand_label = null
 
 
 func _style_end_btn() -> void:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.12, 0.45, 0.92)
-	sb.set_corner_radius_all(12)
-	sb.content_margin_left = 16
-	sb.content_margin_right = 16
-	sb.content_margin_top = 12
-	sb.content_margin_bottom = 12
+	sb.bg_color = Color(0.55, 0.18, 0.14, 0.95)
+	sb.border_color = Color(0.9, 0.55, 0.35, 0.9)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = 14
+	sb.content_margin_right = 14
+	sb.content_margin_top = 14
+	sb.content_margin_bottom = 14
 	end_turn_btn.add_theme_stylebox_override("normal", sb)
 	var h := sb.duplicate()
-	h.bg_color = Color(0.22, 0.55, 1.0)
+	h.bg_color = Color(0.72, 0.28, 0.18, 0.98)
 	end_turn_btn.add_theme_stylebox_override("hover", h)
-	end_turn_btn.add_theme_font_size_override("font_size", 14)
+	var p := sb.duplicate()
+	p.bg_color = Color(0.4, 0.12, 0.1, 0.98)
+	end_turn_btn.add_theme_stylebox_override("pressed", p)
+	end_turn_btn.add_theme_font_size_override("font_size", 15)
+	end_turn_btn.add_theme_color_override("font_color", Color(1.0, 0.92, 0.82))
+	end_turn_btn.custom_minimum_size = Vector2(0, 64)
+	end_turn_btn.text = "FIN DE TURNO"
 
 
 func _on_log(text: String) -> void:
@@ -792,6 +931,7 @@ func _refresh() -> void:
 	log_label.text = str(snap.get("last_log", ""))
 	deck_count.text = "MAZO\n%d" % int(snap.get("draw_count", 0))
 	discard_count.text = "DESCARTES\n%d" % int(snap.get("discard_count", 0))
+	_update_corner_piles(int(snap.get("draw_count", 0)), int(snap.get("discard_count", 0)))
 	_style_player_bars(p)
 
 	var php := int(p.get("hp", 0))
@@ -815,7 +955,19 @@ func _refresh() -> void:
 
 	var can_act: bool = int(snap.get("phase", 0)) == CombatState.Phase.PLAYER and bool(snap.get("active", false)) and not _busy
 	end_turn_btn.disabled = not can_act
-	end_turn_btn.text = "FINALIZAR TURNO" if can_act else "..."
+	end_turn_btn.text = "FIN DE TURNO" if can_act else "..."
+
+
+func _update_corner_piles(draw_n: int, discard_n: int) -> void:
+	_ensure_corner_piles()
+	if _draw_pile_panel:
+		var l: Label = _draw_pile_panel.get_node_or_null("Count") as Label
+		if l:
+			l.text = "MAZO\n%d" % draw_n
+	if _discard_pile_panel:
+		var l2: Label = _discard_pile_panel.get_node_or_null("Count") as Label
+		if l2:
+			l2.text = "DESC\n%d" % discard_n
 
 
 func _style_bar(bar: ProgressBar, fill_col: Color, h: float = 12.0, w: float = -1.0) -> void:
@@ -848,26 +1000,27 @@ func _style_player_bars(p: Dictionary) -> void:
 	var hp_max := int(p.get("max_hp", 50))
 	player_hp_bar.max_value = float(hp_max)
 	player_hp_bar.value = float(hp_now)
-	# Color por umbral de vida
-	var hp_col := Color(0.25, 0.82, 0.42)
+	# STS: barra roja clásica
+	var hp_col := Color(0.85, 0.18, 0.18)
 	var ratio := float(hp_now) / maxf(1.0, float(hp_max))
 	if ratio <= 0.35:
-		hp_col = Color(0.95, 0.28, 0.28)
+		hp_col = Color(0.95, 0.12, 0.12)
 	elif ratio <= 0.65:
-		hp_col = Color(0.95, 0.72, 0.22)
-	_style_bar(player_hp_bar, hp_col, 14.0, 168.0)
+		hp_col = Color(0.9, 0.45, 0.15)
+	_style_bar(player_hp_bar, hp_col, 16.0, 172.0)
 	player_hp_text.text = "%d/%d" % [hp_now, hp_max]
-	player_hp_text.add_theme_font_size_override("font_size", 12)
-	player_hp_text.add_theme_color_override("font_color", Color(0.92, 0.96, 1.0))
+	player_hp_text.add_theme_font_size_override("font_size", 13)
+	player_hp_text.add_theme_color_override("font_color", Color(1.0, 0.92, 0.85))
 	var blk := int(p.get("block", 0))
 	if _player_block_bar:
 		_player_block_bar.visible = blk > 0
 		_player_block_bar.max_value = maxf(float(hp_max), float(blk))
 		_player_block_bar.value = float(blk)
-		_style_bar(_player_block_bar, Color(0.35, 0.78, 1.0), 10.0, 168.0)
+		_style_bar(_player_block_bar, Color(0.35, 0.72, 1.0), 10.0, 172.0)
 	if _player_block_text:
 		_player_block_text.visible = blk > 0
-		_player_block_text.text = "ESCUDO %d" % blk
+		_player_block_text.text = "BLOQUEO %d" % blk if blk > 0 else ""
+		_player_block_text.add_theme_color_override("font_color", Color(0.55, 0.82, 1.0))
 
 
 func _ensure_animated_bg() -> void:
@@ -1173,15 +1326,9 @@ func _sync_enemy_stats(snap: Dictionary) -> void:
 		if hp_bar:
 			hp_bar.max_value = float(hp_max)
 			hp_bar.value = float(hp_now)
-			var ratio := float(hp_now) / maxf(1.0, float(hp_max))
 			var is_boss := bool(panel.get_meta("is_boss", false))
-			var hp_col := Color(0.95, 0.4, 0.2) if is_boss else Color(0.3, 0.82, 0.4)
-			if not is_boss:
-				if ratio <= 0.35:
-					hp_col = Color(0.95, 0.22, 0.22)
-				elif ratio <= 0.65:
-					hp_col = Color(0.95, 0.7, 0.22)
-			_style_bar(hp_bar, hp_col, 12.0 if is_boss else 11.0, 180.0 if is_boss else 148.0)
+			var hp_col := Color(0.85, 0.18, 0.18)
+			_style_bar(hp_bar, hp_col, 14.0 if is_boss else 12.0, 180.0 if is_boss else 148.0)
 		var hp_txt: Label = panel.find_child("HpText", true, false) as Label
 		if hp_txt:
 			hp_txt.text = "%d/%d" % [hp_now, hp_max]
@@ -1194,7 +1341,10 @@ func _sync_enemy_stats(snap: Dictionary) -> void:
 		var blk_txt: Label = panel.find_child("BlockText", true, false) as Label
 		if blk_txt:
 			blk_txt.visible = blk_now > 0
-			blk_txt.text = "ESCUDO %d" % blk_now
+			blk_txt.text = "BLOQUEO %d" % blk_now
+		var intent_host: Control = panel.find_child("IntentHost", true, false) as Control
+		if intent_host:
+			_refresh_enemy_intent_host(intent_host, e, i)
 		panel.modulate = Color(1.08, 1.08, 1.0) if i == selected else Color.WHITE
 		if bool(e.get("detained", false)) or bool(e.get("fled", false)) or hp_now <= 0:
 			panel.modulate = Color(0.55, 0.55, 0.6, 0.75)
@@ -1319,94 +1469,43 @@ func _animate_enemy_death(panel: Control, dmg: int) -> void:
 func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	var is_boss := bool(e.get("is_boss", false))
 	var wrap := VBoxContainer.new()
-	wrap.custom_minimum_size = Vector2(260 if is_boss else 200, 380 if is_boss else 340)
+	wrap.custom_minimum_size = Vector2(260 if is_boss else 200, 400 if is_boss else 360)
 	wrap.alignment = BoxContainer.ALIGNMENT_END
-	# No expandir: evita barras de vida estiradas a todo el ancho.
 	wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	wrap.add_theme_constant_override("separation", 4)
+	wrap.add_theme_constant_override("separation", 3)
 	wrap.set_meta("enemy_index", index)
 	wrap.set_meta("is_boss", is_boss)
 	wrap.set_meta("pose_attack", str(e.get("pose_attack", "")))
 	wrap.set_meta("pose_hurt", str(e.get("pose_hurt", "")))
 	wrap.set_meta("idle_sprite", str(e.get("sprite", "")))
 
+	# STS: intención ENCIMA de la cabeza
+	var intent_host := Control.new()
+	intent_host.name = "IntentHost"
+	intent_host.custom_minimum_size = Vector2(120, 44)
+	intent_host.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	wrap.add_child(intent_host)
+	_refresh_enemy_intent_host(intent_host, e, index)
+
 	var name_l := Label.new()
 	name_l.text = str(e.get("name", "Sospechoso"))
 	if is_boss:
 		name_l.text = "★ " + name_l.text
 		name_l.add_theme_color_override("font_color", Color(1.0, 0.78, 0.32))
-		name_l.add_theme_font_size_override("font_size", 16)
+		name_l.add_theme_font_size_override("font_size", 15)
 	elif selected and int(e.get("hp", 0)) > 0:
 		name_l.text = "▸ " + name_l.text
-		name_l.add_theme_color_override("font_color", Color(0.65, 0.95, 1.0))
-		name_l.add_theme_font_size_override("font_size", 13)
+		name_l.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
+		name_l.add_theme_font_size_override("font_size", 12)
 	else:
-		name_l.add_theme_color_override("font_color", Color(0.88, 0.92, 0.98))
+		name_l.add_theme_color_override("font_color", Color(0.9, 0.88, 0.8))
 		name_l.add_theme_font_size_override("font_size", 12)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	wrap.add_child(name_l)
 
-	var alias := str(e.get("alias", ""))
-	if alias != "":
-		var alias_l := Label.new()
-		alias_l.text = alias
-		alias_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		alias_l.add_theme_font_size_override("font_size", 10)
-		alias_l.add_theme_color_override("font_color", Color(0.7, 0.78, 0.88, 0.9))
-		wrap.add_child(alias_l)
-
-	# Barras ENCIMA del cuerpo, ancho fijo y centradas.
-	var bars := VBoxContainer.new()
-	bars.name = "Bars"
-	bars.alignment = BoxContainer.ALIGNMENT_CENTER
-	bars.add_theme_constant_override("separation", 2)
-	bars.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var bar_w := 180.0 if is_boss else 148.0
-	var hp_now := maxi(0, int(e.get("hp", 0)))
-	var hp_max := int(e.get("max_hp", 1))
-	var hp_bar := ProgressBar.new()
-	hp_bar.name = "HpBar"
-	hp_bar.max_value = float(hp_max)
-	hp_bar.value = float(hp_now)
-	var hp_col := Color(0.95, 0.4, 0.2) if is_boss else Color(0.9, 0.28, 0.3)
-	var ratio := float(hp_now) / maxf(1.0, float(hp_max))
-	if not is_boss:
-		if ratio <= 0.35:
-			hp_col = Color(0.95, 0.22, 0.22)
-		elif ratio <= 0.65:
-			hp_col = Color(0.95, 0.7, 0.22)
-		else:
-			hp_col = Color(0.3, 0.82, 0.4)
-	_style_bar(hp_bar, hp_col, 12.0 if is_boss else 11.0, bar_w)
-	bars.add_child(hp_bar)
-	var hp_t := Label.new()
-	hp_t.name = "HpText"
-	hp_t.text = "%d/%d" % [hp_now, hp_max]
-	hp_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_t.add_theme_font_size_override("font_size", 11 if is_boss else 10)
-	hp_t.add_theme_color_override("font_color", Color(1.0, 0.88, 0.55) if is_boss else Color(0.9, 0.93, 0.98))
-	bars.add_child(hp_t)
-	var blk := int(e.get("block", 0))
-	var blk_bar := ProgressBar.new()
-	blk_bar.name = "BlockBar"
-	blk_bar.max_value = maxf(float(hp_max), float(maxi(blk, 1)))
-	blk_bar.value = float(blk)
-	blk_bar.visible = blk > 0
-	_style_bar(blk_bar, Color(0.35, 0.78, 1.0), 8.0, bar_w)
-	bars.add_child(blk_bar)
-	var blk_t := Label.new()
-	blk_t.name = "BlockText"
-	blk_t.text = "ESCUDO %d" % blk
-	blk_t.visible = blk > 0
-	blk_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	blk_t.add_theme_font_size_override("font_size", 9)
-	blk_t.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
-	bars.add_child(blk_t)
-	wrap.add_child(bars)
-
 	var actor_w := 260.0 if is_boss else 210.0
 	var ground_y := GROUND_Y + (18.0 if is_boss else 0.0)
-	var actor_h := ground_y  # sin hueco bajo los pies
+	var actor_h := ground_y
 	var actor := Control.new()
 	actor.name = "ActorSlot"
 	actor.custom_minimum_size = Vector2(actor_w, actor_h)
@@ -1434,10 +1533,8 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	btn.clip_contents = false
 	var tex := TextureRect.new()
 	tex.name = "EnemySprite"
-	# Pies anclados al suelo (aspect completo, sin crop COVERED)
 	var slot := Vector2(actor_w, ground_y)
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Prioridad: sprite propio del enemigo (boss) → pack por índice
 	var sp := str(e.get("sprite", ""))
 	if sp == "" or not (ResourceLoader.exists(sp) or FileAccess.file_exists(sp)):
 		sp = PACK_FOE + "enemy_%d.png" % (index % 7)
@@ -1447,14 +1544,53 @@ func _make_enemy_panel(e: Dictionary, index: int, selected: bool) -> Control:
 	if loaded:
 		tex.texture = loaded
 	_bottom_plant_texture(tex, slot)
-	# Convención: assets enemigo miran a la IZQUIERDA (hacia García).
-	# Si algún enemigo viene con face=right, se espeja.
 	tex.flip_h = str(e.get("face", "left")) == "right"
 	btn.add_child(tex)
 	btn.pressed.connect(func(): CombatState.select_enemy(index))
 	actor.add_child(btn)
 	wrap.add_child(actor)
 	wrap.set_meta("sprite_base", tex.get_meta("plant_pos", tex.position))
+
+	# STS: barras DEBAJO del cuerpo
+	var bars := VBoxContainer.new()
+	bars.name = "Bars"
+	bars.alignment = BoxContainer.ALIGNMENT_CENTER
+	bars.add_theme_constant_override("separation", 1)
+	bars.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var bar_w := 180.0 if is_boss else 148.0
+	var hp_now := maxi(0, int(e.get("hp", 0)))
+	var hp_max := int(e.get("max_hp", 1))
+	var hp_bar := ProgressBar.new()
+	hp_bar.name = "HpBar"
+	hp_bar.max_value = float(hp_max)
+	hp_bar.value = float(hp_now)
+	var hp_col := Color(0.85, 0.18, 0.18)
+	_style_bar(hp_bar, hp_col, 14.0 if is_boss else 12.0, bar_w)
+	bars.add_child(hp_bar)
+	var hp_t := Label.new()
+	hp_t.name = "HpText"
+	hp_t.text = "%d/%d" % [hp_now, hp_max]
+	hp_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hp_t.add_theme_font_size_override("font_size", 12 if is_boss else 11)
+	hp_t.add_theme_color_override("font_color", Color(1.0, 0.9, 0.8))
+	bars.add_child(hp_t)
+	var blk := int(e.get("block", 0))
+	var blk_bar := ProgressBar.new()
+	blk_bar.name = "BlockBar"
+	blk_bar.max_value = maxf(float(hp_max), float(maxi(blk, 1)))
+	blk_bar.value = float(blk)
+	blk_bar.visible = blk > 0
+	_style_bar(blk_bar, Color(0.35, 0.72, 1.0), 8.0, bar_w)
+	bars.add_child(blk_bar)
+	var blk_t := Label.new()
+	blk_t.name = "BlockText"
+	blk_t.text = "BLOQUEO %d" % blk
+	blk_t.visible = blk > 0
+	blk_t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	blk_t.add_theme_font_size_override("font_size", 9)
+	blk_t.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0))
+	bars.add_child(blk_t)
+	wrap.add_child(bars)
 
 	if bool(e.get("detained", false)) or bool(e.get("fled", false)):
 		wrap.modulate = Color(0.55, 0.55, 0.58, 0.85)
@@ -1466,43 +1602,55 @@ func _rebuild_hand(snap: Dictionary) -> void:
 		c.queue_free()
 	var hand: Array = snap.get("hand", [])
 	var can_act: bool = int(snap.get("phase", 0)) == CombatState.Phase.PLAYER and bool(snap.get("active", false)) and not _busy
-	for card_id in hand:
-		var cid := str(card_id)
-		hand_row.add_child(_make_card(cid, can_act and CombatState.can_play_card(cid)))
+	hand_row.add_theme_constant_override("separation", -22)
+	hand_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var n := hand.size()
+	for i in range(n):
+		var cid := str(hand[i])
+		var card := _make_card(cid, can_act and CombatState.can_play_card(cid))
+		var mid := (n - 1) * 0.5
+		var t := float(i) - mid
+		# Contenedor para abanico: HBox no respeta position.y del hijo
+		var slot := Control.new()
+		slot.custom_minimum_size = Vector2(118, 210)
+		slot.mouse_filter = Control.MOUSE_FILTER_PASS
+		card.pivot_offset = Vector2(64, 200)
+		card.rotation_degrees = t * 5.0
+		card.position = Vector2(-6.0, absf(t) * 8.0)
+		slot.add_child(card)
+		hand_row.add_child(slot)
 
 
-func _rebuild_enemy_hand(snap: Dictionary) -> void:
+func _rebuild_enemy_hand(_snap: Dictionary) -> void:
+	## Intenciones van encima de cada enemigo (STS); no duplicar en el dock.
 	_ensure_enemy_hand_ui()
-	if _enemy_hand_row == null:
-		return
-	for c in _enemy_hand_row.get_children():
-		c.queue_free()
-	var enemies: Array = snap.get("enemies", [])
-	var shown := 0
-	for i in range(enemies.size()):
-		var e: Dictionary = enemies[i]
-		if int(e.get("hp", 0)) <= 0 or bool(e.get("detained", false)) or bool(e.get("fled", false)):
-			continue
-		var cid := str(e.get("next_card", ""))
-		if cid == "":
-			continue
-		var def: Dictionary = CardDB.get_enemy_card(cid)
-		if def.is_empty():
-			def = {
-				"id": cid,
-				"name": str(e.get("next_card_name", cid)),
-				"effect": str(e.get("next_card_effect", "")),
-				"kind": "attack",
-			}
-		_enemy_hand_row.add_child(_make_bottom_enemy_card(def, str(e.get("name", "Sospechoso")), i))
-		shown += 1
-	if _enemy_hand_label:
-		_enemy_hand_label.text = "ELLOS" if shown > 0 else "ELLOS · —"
-	if shown == 0:
-		var empty := Label.new()
-		empty.text = "—"
-		empty.add_theme_color_override("font_color", Color(0.5, 0.55, 0.6))
-		_enemy_hand_row.add_child(empty)
+	return
+
+
+func _rebuild_energy(snap: Dictionary) -> void:
+	_apply_sts_layout()
+	var p: Dictionary = snap.get("player", {})
+	var cur := int(p.get("energy", 0))
+	var mx := int(p.get("energy_max", 3))
+	if _energy_orb_label:
+		_energy_orb_label.text = "%d/%d" % [cur, mx]
+	if _energy_orb:
+		var osb := StyleBoxFlat.new()
+		var filled := cur > 0
+		osb.bg_color = Color(0.12, 0.55, 0.72, 0.95) if filled else Color(0.12, 0.16, 0.2, 0.9)
+		osb.border_color = Color(0.55, 0.9, 1.0, 0.95) if filled else Color(0.35, 0.4, 0.45, 0.7)
+		osb.set_border_width_all(3)
+		osb.set_corner_radius_all(42)
+		osb.content_margin_left = 8
+		osb.content_margin_right = 8
+		osb.content_margin_top = 8
+		osb.content_margin_bottom = 8
+		_energy_orb.add_theme_stylebox_override("panel", osb)
+	# Limpiar pips legacy
+	if energy_row:
+		for c in energy_row.get_children():
+			c.queue_free()
+		energy_row.visible = false
 
 
 func _make_bottom_enemy_card(def: Dictionary, owner_name: String, enemy_index: int) -> Control:
@@ -1637,25 +1785,79 @@ func _build_enemy_intent_content(e: Dictionary, enemy_index: int = -1) -> Contro
 		return _enemy_intent_status("HUYÓ", Color(0.8, 0.8, 0.85))
 	if int(e.get("hp", 0)) <= 0:
 		return _enemy_intent_status("", Color.WHITE)
+	# STS: badge compacto encima de la cabeza (no carta completa)
 	var cid := str(e.get("next_card", ""))
-	if cid != "":
-		return _make_enemy_intent_card(e, enemy_index)
-	# Fallback a intent clásico sin carta
 	var intent_id := int(e.get("intent", 0))
 	var val := int(e.get("intent_value", 0))
 	var is_boss := bool(e.get("is_boss", false))
-	var txt := CombatState.intent_label(intent_id)
-	var col := Color(0.9, 0.92, 0.96)
-	if intent_id == CombatState.Intent.ATTACK and val > 0:
-		txt = ("◆  %d" % val) if is_boss else ("●  %d" % val)
-		col = Color(1.0, 0.38, 0.38)
-	elif intent_id == CombatState.Intent.BLOCK and val > 0:
-		txt = "◈  %d" % val
-		col = Color(0.45, 0.8, 1.0)
-	elif intent_id == CombatState.Intent.FLEE:
-		txt = "→ HUIR"
-		col = Color(1.0, 0.78, 0.35)
-	return _enemy_intent_status(txt, col)
+	var kind := "attack"
+	var def: Dictionary = {}
+	if cid != "":
+		def = CardDB.get_enemy_card(cid)
+		kind = CardDB.enemy_card_intent_kind(def) if not def.is_empty() else "attack"
+		if val <= 0:
+			val = int(def.get("value", def.get("damage", 0)))
+	else:
+		match intent_id:
+			CombatState.Intent.BLOCK:
+				kind = "block"
+			CombatState.Intent.FLEE:
+				kind = "flee"
+			_:
+				kind = "attack"
+	return _make_sts_intent_badge(kind, val, is_boss, enemy_index, cid)
+
+
+func _make_sts_intent_badge(kind: String, val: int, is_boss: bool, enemy_index: int, card_id: String) -> Control:
+	var accent := _enemy_kind_accent(kind, is_boss)
+	var panel := PanelContainer.new()
+	panel.name = "IntentBadge"
+	panel.custom_minimum_size = Vector2(72, 40)
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.08, 0.06, 0.05, 0.92)
+	sb.border_color = Color(accent.r, accent.g, accent.b, 0.95)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
+	panel.add_theme_stylebox_override("panel", sb)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 6)
+	panel.add_child(row)
+	var icon := Label.new()
+	match kind:
+		"block":
+			icon.text = "◈"
+		"heal":
+			icon.text = "+"
+		"flee":
+			icon.text = "→"
+		"weaken", "vulnerable", "stun", "status":
+			icon.text = "※"
+		_:
+			icon.text = "⚔"
+	icon.add_theme_font_size_override("font_size", 18)
+	icon.add_theme_color_override("font_color", accent)
+	row.add_child(icon)
+	if val > 0 and kind in ["attack", "block", "heal"]:
+		var num := Label.new()
+		num.text = str(val)
+		num.add_theme_font_size_override("font_size", 18)
+		num.add_theme_color_override("font_color", Color(1.0, 0.95, 0.88))
+		row.add_child(num)
+	if card_id != "" and enemy_index >= 0:
+		var btn := Button.new()
+		btn.flat = true
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		btn.tooltip_text = "Ver carta enemiga"
+		btn.pressed.connect(func(): _open_enemy_card_menu(enemy_index))
+		panel.add_child(btn)
+	return panel
 
 
 func _enemy_intent_status(text: String, col: Color) -> Control:
@@ -2726,18 +2928,3 @@ func _spawn_dmg_number(node: CanvasItem, dmg: int) -> void:
 	tw.parallel().tween_property(lab, "modulate:a", 0.0, 0.5)
 	tw.tween_callback(lab.queue_free)
 
-
-func _rebuild_energy(snap: Dictionary) -> void:
-	for c in energy_row.get_children():
-		c.queue_free()
-	var p: Dictionary = snap.get("player", {})
-	var cur := int(p.get("energy", 0))
-	var mx := int(p.get("energy_max", 3))
-	for i in range(mx):
-		var pip := Panel.new()
-		pip.custom_minimum_size = Vector2(18, 18)
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.35, 0.82, 1.0) if i < cur else Color(0.12, 0.16, 0.22)
-		sb.set_corner_radius_all(9)
-		pip.add_theme_stylebox_override("panel", sb)
-		energy_row.add_child(pip)
