@@ -169,8 +169,9 @@ stretch_mode = 5
 
 [node name="PlayerHpBar" type="ProgressBar" parent="Arena/PlayerCol"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 18)
+custom_minimum_size = Vector2(168, 14)
 layout_mode = 2
+size_flags_horizontal = 4
 max_value = 50.0
 value = 50.0
 show_percentage = false
@@ -178,7 +179,8 @@ show_percentage = false
 [node name="PlayerHpText" type="Label" parent="Arena/PlayerCol"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 13
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 12
 horizontal_alignment = 1
 text = "50/50"
 

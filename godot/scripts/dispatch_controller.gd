@@ -201,6 +201,18 @@ func _on_combat_ended(victory: bool) -> void:
 		if str(patrol.get("specialty", "")) == str(mission.get("category", "")):
 			bonus = 2
 		GameState.add_prestige(bonus + int(mission.get("xp", 50) / 100))
+		GameState.add_credits(4 + int(mission.get("xp", 50) / 80))
+		if bool(mission.get("is_boss", false)):
+			var gained: Array = GameState.grant_boss_rewards(pid)
+			var names: Array = []
+			for cid in gained:
+				names.append(str(CardDB.get_card(str(cid)).get("name", cid)))
+			report += "  |  LEGENDARIAS: " + ", ".join(names)
+			mission["outcome_report"] = report
+			GameState.update_mission(mission)
+			RadioBus.push("Boss derrotado. Cartas legendarias al mazo.", "resolve")
+
+	GameState.advance_after_mission(mission)
 
 	patrol["status"] = "returning"
 	patrol["report"] = report
@@ -290,6 +302,11 @@ func _resolve_scene(patrol: Dictionary, delta: float) -> void:
 		if str(patrol.get("specialty", "")) == str(mission.get("category", "")):
 			bonus = 2
 		GameState.add_prestige(bonus + int(mission.get("xp", 50) / 100))
+		GameState.add_credits(3 + int(mission.get("xp", 50) / 100))
+		if bool(mission.get("is_boss", false)):
+			GameState.grant_boss_rewards(pid)
+
+	GameState.advance_after_mission(mission)
 
 	patrol["status"] = "returning"
 	patrol["report"] = report
