@@ -260,30 +260,27 @@ func _enemy_cards_shot() -> void:
 		print("ENEMY_CARDS_FAIL no next_card")
 		get_tree().quit(1)
 		return
-	# Verifica mini-cartas visuales en la UI de combate
+	# Verifica badges de intención STS encima de enemigos
 	var combat = $UI/UIRouter.get_node_or_null("CombatScreen")
 	var visible_cards := 0
 	if combat:
-		for n in combat.find_children("EnemyIntentCard", "", true, false):
+		for n in combat.find_children("IntentBadge", "", true, false):
 			visible_cards += 1
+		if visible_cards < 1:
+			for n in combat.find_children("IntentHost", "", true, false):
+				if n.get_child_count() > 0:
+					visible_cards += 1
 	print("ENEMY_CARDS visible_ui=", visible_cards)
 	if visible_cards < 1:
-		print("ENEMY_CARDS_FAIL no visible cards")
+		print("ENEMY_CARDS_FAIL no visible intents")
 		get_tree().quit(1)
 		return
-	# Panel inferior: cartas enemigas en el menú grande
-	var bottom_n := 0
-	if combat:
-		var erow = combat.find_child("EnemyHandRow", true, false)
-		if erow:
-			bottom_n = erow.get_child_count()
-	print("ENEMY_CARDS bottom_menu=", bottom_n)
-	if bottom_n < 1:
-		print("ENEMY_CARDS_FAIL no bottom menu cards")
-		get_tree().quit(1)
-		return
+	# Orbe STS + pilas en esquinas
+	var orb_ok := combat != null and combat.get_node_or_null("Bottom/BottomPanel/BottomRow/EnergyOrb") != null
+	var pile_ok := combat != null and combat.get_node_or_null("DrawPileCorner") != null
+	print("ENEMY_CARDS sts_orb=", orb_ok, " sts_piles=", pile_ok)
 	await _save_shot("enemigos_cartas_visibles")
-	await _save_shot("enemigos_cartas_panel_inferior")
+	await _save_shot("sts_combat_intents")
 	# Fuerza un turno enemigo jugando cartas
 	if CombatState.is_active():
 		CombatState.end_player_turn()
@@ -778,6 +775,14 @@ func _map_shot() -> void:
 		print("MAP_SHOT_FAIL no markers")
 		get_tree().quit(1)
 		return
+	var hud = $UI/UIRouter.get_node_or_null("MapHud")
+	var roster := 0
+	if hud:
+		var dock = hud.get_node_or_null("BottomDock")
+		if dock:
+			roster = 1
+		var scan = hud.get_node_or_null("Scanlines")
+		print("MAP_SHOT dispatch_dock=", roster, " scanlines=", scan != null)
 	var center := Vector2.ZERO
 	for m in markers:
 		center += (m as Node2D).global_position
@@ -786,6 +791,7 @@ func _map_shot() -> void:
 	camera.zoom = Vector2(0.95, 0.95)
 	await get_tree().create_timer(0.5).timeout
 	await _save_shot("map_tactical_markers")
+	await _save_shot("dispatch_map_hud")
 	# Acercar a un marcador
 	var first: Node2D = markers[0]
 	camera.global_position = first.global_position
@@ -817,6 +823,7 @@ func _combat_shot() -> void:
 	await get_tree().process_frame
 	await get_tree().create_timer(0.8).timeout
 	await _save_shot("combat_turno1")
+	await _save_shot("sts_combat_layout")
 	# Asegurar cartas de ataque y defensa en mano
 	if CombatState.is_active() and CombatState.hand.size() >= 2:
 		CombatState.hand[0] = "strike"
