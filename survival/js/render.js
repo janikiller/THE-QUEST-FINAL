@@ -643,8 +643,8 @@ function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
   const size = game.world.size;
   const PAD = 12;
   const indoorKey = _viewIndoor ? `${_viewIndoor.x0},${_viewIndoor.y0},${_viewIndoor.style || ""}` : "out";
-  // v6 = minimapa local ampliado + orillas sin esquinas recortadas
-  const baseKey = `v6|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
+  // v7 = parques orgánicos + minimapa de formas contínuas
+  const baseKey = `v7|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
   const outOfBounds =
     x0 < _groundMeta.x0 ||
     y0 < _groundMeta.y0 ||
@@ -1956,13 +1956,13 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
 
   // Sombra de volumen suave
   ctx.fillStyle = "rgba(0,0,0,0.3)";
-  fillRound(ctx, px + shadow, py + shadow, bw, bh, 8);
+  fillRound(ctx, px + shadow, py + shadow, bw, bh, 14);
 
   // Cuerpo del edificio redondeado (el tejado tapa el centro)
   const wall = shade(b.facade, style === "warehouse" ? -22 : -12);
   ctx.fillStyle = wall;
-  fillRound(ctx, px, py, bw, bh, 7);
-  strokeRound(ctx, px, py, bw, bh, 7, "rgba(20,16,12,0.35)", 1.4);
+  fillRound(ctx, px, py, bw, bh, 12);
+  strokeRound(ctx, px, py, bw, bh, 12, "rgba(20,16,12,0.35)", 1.4);
 
   if (style === "warehouse") {
     ctx.strokeStyle = "rgba(0,0,0,0.22)";
@@ -3860,8 +3860,8 @@ function drawHolsteredWeapons(ctx, player, handId) {
 function drawMinimap(mctx, mini, game) {
   const s = mini.width;
   const world = game.world;
-  // Minimapa LOCAL ampliado (no ciudad entera a 1px/tile → se veía pixelar)
-  const VIEW = 36; // tiles de radio visible
+  // Vista local — formas contínuas (edificios enteros, calles como trazos, blur fuerte)
+  const VIEW = 32;
   const px = game.player.x;
   const py = game.player.y;
   const x0 = Math.max(0, Math.floor(px - VIEW / 2));
@@ -3875,67 +3875,44 @@ function drawMinimap(mctx, mini, game) {
   mctx.clearRect(0, 0, s, s);
   mctx.imageSmoothingEnabled = true;
   mctx.imageSmoothingQuality = "high";
-  mctx.fillStyle = "#1e281e";
-  mctx.fillRect(0, 0, s, s);
 
-  // Hi-res offscreen del área local
-  const hi = 3;
-  const hs = s * hi;
+  const hi = 4;
+  const hs = Math.round(s * hi);
   const big = document.createElement("canvas");
   big.width = hs;
   big.height = hs;
   const b = big.getContext("2d");
   b.imageSmoothingEnabled = true;
-  b.fillStyle = "#1e281e";
+  b.imageSmoothingQuality = "high";
+  b.fillStyle = "#24322a";
   b.fillRect(0, 0, hs, hs);
   const sc = hs / Math.max(vw, vh);
-  const pad = sc * 0.7;
 
-  const colorFor = (tile) => {
-    if (tile === TILE.PARK) return "#2f5a30";
-    if (tile === TILE.ROAD || tile === TILE.CROSSWALK) return "#3a3e48";
-    if (tile === TILE.SIDEWALK) return "#6a6860";
-    if (tile === TILE.WATER) return "#1a3a2a";
-    if (tile === TILE.PARKING) return "#50545c";
-    if (tile === TILE.ALLEY || tile === TILE.RUBBLE) return "#44444a";
-    if (tile === TILE.WALL || tile === TILE.DOOR || tile === TILE.FLOOR || tile === TILE.BASE) return "#6a6560";
-    return null;
-  };
-
+  // 1) Terreno abierto como manchas elípticas (no celdas)
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
       const tile = world.tiles[y * world.size + x];
-      const col = colorFor(tile);
-      if (!col) continue;
-      const bx = (x - x0) * sc;
-      const by = (y - y0) * sc;
+      let col = null;
+      let rx = sc * 0.72;
+      let ry = sc * 0.62;
+      if (tile === TILE.PARK) { col = "#2f5a30"; rx = sc * 0.95; ry = sc * 0.85; }
+      else if (tile === TILE.WATER) { col = "#1a3a2a"; rx = sc * 0.9; ry = sc * 0.7; }
+      else if (tile === TILE.SIDEWALK || tile === TILE.PARKING) { col = "#6a6860"; rx = sc * 0.8; ry = sc * 0.75; }
+      else if (tile === TILE.ALLEY || tile === TILE.RUBBLE) { col = "#4a4a50"; }
+      else if (tile === TILE.ROAD || tile === TILE.CROSSWALK) { col = "#3a3e48"; rx = sc * 0.55; ry = sc * 0.55; }
+      else continue;
+      const cx = (x - x0 + 0.5) * sc;
+      const cy = (y - y0 + 0.5) * sc;
       b.fillStyle = col;
-      if (tile === TILE.WALL || tile === TILE.DOOR || tile === TILE.FLOOR || tile === TILE.BASE) {
-        const building = buildingAt(world, x + 0.5, y + 0.5);
-        b.fillStyle = building?.facade || col;
-        const r = Math.min(5, sc * 0.22);
-        const rx = bx + 1, ry = by + 1, rw = sc - 2, rh = sc - 2;
-        b.beginPath();
-        b.moveTo(rx + r, ry);
-        b.arcTo(rx + rw, ry, rx + rw, ry + rh, r);
-        b.arcTo(rx + rw, ry + rh, rx, ry + rh, r);
-        b.arcTo(rx, ry + rh, rx, ry, r);
-        b.arcTo(rx, ry, rx + rw, ry, r);
-        b.closePath();
-        b.fill();
-      } else if (tile === TILE.PARK || tile === TILE.WATER) {
-        b.beginPath();
-        b.ellipse(bx + sc / 2, by + sc / 2, sc * 0.7, sc * 0.62, 0.15, 0, Math.PI * 2);
-        b.fill();
-      } else {
-        b.fillRect(bx - pad * 0.35, by - pad * 0.35, sc + pad, sc + pad);
-      }
+      b.beginPath();
+      b.ellipse(cx, cy, rx, ry, ((x + y) % 5) * 0.15, 0, Math.PI * 2);
+      b.fill();
     }
   }
 
-  // Calles como trazos contínuos dentro de la vista
-  b.strokeStyle = "#32363e";
-  b.lineWidth = sc * 0.95;
+  // 2) Calles como líneas contínuas gruesas y redondeadas
+  b.strokeStyle = "#2e323a";
+  b.lineWidth = sc * 1.15;
   b.lineCap = "round";
   b.lineJoin = "round";
   for (let y = y0; y < y1; y++) {
@@ -3946,8 +3923,8 @@ function drawMinimap(mctx, mini, game) {
       if (isRoad && run < 0) run = x;
       if (!isRoad && run >= 0) {
         b.beginPath();
-        b.moveTo((run - x0) * sc + sc * 0.15, (y - y0) * sc + sc * 0.5);
-        b.lineTo((x - 1 - x0) * sc + sc * 0.85, (y - y0) * sc + sc * 0.5);
+        b.moveTo((run - x0) * sc + sc * 0.1, (y - y0) * sc + sc * 0.5);
+        b.lineTo((x - 1 - x0) * sc + sc * 0.9, (y - y0) * sc + sc * 0.5);
         b.stroke();
         run = -1;
       }
@@ -3961,39 +3938,58 @@ function drawMinimap(mctx, mini, game) {
       if (isRoad && run < 0) run = y;
       if (!isRoad && run >= 0) {
         b.beginPath();
-        b.moveTo((x - x0) * sc + sc * 0.5, (run - y0) * sc + sc * 0.15);
-        b.lineTo((x - x0) * sc + sc * 0.5, (y - 1 - y0) * sc + sc * 0.85);
+        b.moveTo((x - x0) * sc + sc * 0.5, (run - y0) * sc + sc * 0.1);
+        b.lineTo((x - x0) * sc + sc * 0.5, (y - 1 - y0) * sc + sc * 0.9);
         b.stroke();
         run = -1;
       }
     }
   }
 
+  // 3) Cada edificio = UN bloque redondeado (no rejilla de tiles)
+  for (const building of world.buildings || []) {
+    if (building.x1 < x0 || building.x0 >= x1 || building.y1 < y0 || building.y0 >= y1) continue;
+    const bx = (building.x0 - x0) * sc;
+    const by = (building.y0 - y0) * sc;
+    const bw = Math.max(sc * 1.2, (building.x1 - building.x0 + 1) * sc);
+    const bh = Math.max(sc * 1.2, (building.y1 - building.y0 + 1) * sc);
+    const r = Math.min(sc * 0.55, bw / 2.4, bh / 2.4);
+    b.fillStyle = building.facade || "#6a6560";
+    b.beginPath();
+    b.moveTo(bx + r, by);
+    b.arcTo(bx + bw, by, bx + bw, by + bh, r);
+    b.arcTo(bx + bw, by + bh, bx, by + bh, r);
+    b.arcTo(bx, by + bh, bx, by, r);
+    b.arcTo(bx, by, bx + bw, by, r);
+    b.closePath();
+    b.fill();
+  }
+
+  // Blur fuerte → lectura lineal, no píxeles
   const mid = document.createElement("canvas");
   mid.width = hs;
   mid.height = hs;
   const mc = mid.getContext("2d");
   mc.imageSmoothingEnabled = true;
-  try { mc.filter = "blur(1.8px)"; } catch (_) {}
+  try { mc.filter = "blur(3.2px)"; } catch (_) {}
   mc.drawImage(big, 0, 0);
   mctx.drawImage(mid, 0, 0, hs, hs, 0, 0, s, s);
 
-  // Entidades
   for (const z of game.zombies) {
     if (z.x < x0 || z.y < y0 || z.x >= x1 || z.y >= y1) continue;
     mctx.fillStyle = z.boss ? "#e8a040" : "#7dcea0";
-    const zs = z.boss ? 4 : 2.6;
+    const zs = z.boss ? 4.2 : 2.8;
     mctx.beginPath();
     mctx.arc((z.x - x0) * scale, (z.y - y0) * scale, zs / 2, 0, Math.PI * 2);
     mctx.fill();
   }
   mctx.fillStyle = "#fff6e0";
   mctx.beginPath();
-  mctx.arc((px - x0) * scale, (py - y0) * scale, 3.2, 0, Math.PI * 2);
+  mctx.arc((px - x0) * scale, (py - y0) * scale, 3.4, 0, Math.PI * 2);
   mctx.fill();
-  mctx.strokeStyle = "rgba(0,0,0,0.5)";
+  mctx.strokeStyle = "rgba(0,0,0,0.45)";
   mctx.lineWidth = 1.2;
   mctx.beginPath();
-  mctx.arc((px - x0) * scale, (py - y0) * scale, 3.2, 0, Math.PI * 2);
+  mctx.arc((px - x0) * scale, (py - y0) * scale, 3.4, 0, Math.PI * 2);
   mctx.stroke();
 }

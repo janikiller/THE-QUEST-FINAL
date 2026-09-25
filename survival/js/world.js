@@ -944,36 +944,60 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, dec
 
 function pavePark(tiles, size, bx, by, props, noise) {
   const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
-  const midX = ((x0 + x1) / 2) | 0;
-  const midY = ((y0 + y1) / 2) | 0;
-  const diagonal = noise.noise2(bx, by) > 0.5;
+  const midX = (x0 + x1) * 0.5;
+  const midY = (y0 + y1) * 0.5;
+  // Camino orgánico (curva), NO cruz que parte el parque en 4 cuadrados
+  const pathAxis = noise.noise2(bx * 0.4, by * 0.4) > 0.45 ? "h" : "v";
+  const wobbleAmp = 1.1 + noise.noise2(bx + 1, by + 2) * 0.8;
+
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
-      const onCross = x === midX || y === midY;
-      const onDiag = diagonal && Math.abs((x - midX) - (y - midY)) <= 0;
-      if (onCross || onDiag) tiles[y * size + x] = TILE.SIDEWALK;
-      else tiles[y * size + x] = TILE.PARK;
-      if (tiles[y * size + x] === TILE.PARK && noise.noise2(x * 0.9, y * 0.9) > 0.68) {
-        props.push({
-          type: "tree",
-          x: x + 0.35 + noise.noise2(x, y) * 0.3,
-          y: y + 0.35 + noise.noise2(y, x) * 0.3,
-          r: 11 + noise.noise2(x, y) * 9,
-          tone: noise.noise2(x + 3, y) > 0.35 ? 2 : (noise.noise2(x + 3, y) > 0.5 ? 0 : 1), // 2 = muerto
-        });
+      // Césped contínuo por defecto
+      tiles[y * size + x] = TILE.PARK;
+
+      // Sendero ondulado (banda suave, no líneas rectas de baldosas)
+      let onPath = false;
+      if (pathAxis === "h") {
+        const wave = Math.sin((x - x0) * 0.55 + bx * 0.2) * wobbleAmp;
+        onPath = Math.abs(y - (midY + wave)) < 0.85;
+      } else {
+        const wave = Math.sin((y - y0) * 0.55 + by * 0.2) * wobbleAmp;
+        onPath = Math.abs(x - (midX + wave)) < 0.85;
       }
+      // Claros irregulares en el borde (rompe silueta rectangular del parche)
+      const edgeDist = Math.min(x - x0, x1 - x, y - y0, y1 - y);
+      const notch = noise.noise2(x * 0.7, y * 0.7);
+      if (edgeDist <= 1 && notch > 0.62) {
+        tiles[y * size + x] = TILE.SIDEWALK;
+        continue;
+      }
+      if (onPath) tiles[y * size + x] = TILE.SIDEWALK;
     }
   }
-  props.push({ type: "bench", x: midX - 1.2, y: midY + 0.5 });
-  props.push({ type: "bench", x: midX + 1.2, y: midY + 0.5 });
-  props.push({ type: "bench", x: midX + 0.5, y: midY - 1.3, rot: 1 });
-  props.push({ type: "fountain", x: midX + 0.5, y: midY + 0.5 });
-  // Jardineras en las esquinas del parque
-  props.push({ type: "planter", x: x0 + 1.5, y: y0 + 1.5, tone: 0 });
-  props.push({ type: "planter", x: x1 - 0.5, y: y0 + 1.5, tone: 1 });
-  props.push({ type: "planter", x: x0 + 1.5, y: y1 - 0.5, tone: 1 });
-  props.push({ type: "planter", x: x1 - 0.5, y: y1 - 0.5, tone: 0 });
-  // Parque: sin farola fija (la noche se siente más vacía)
+
+  // Árboles solo sobre césped, posiciones orgánicas
+  for (let y = y0 + 1; y <= y1 - 1; y++) {
+    for (let x = x0 + 1; x <= x1 - 1; x++) {
+      if (tiles[y * size + x] !== TILE.PARK) continue;
+      if (noise.noise2(x * 0.9, y * 0.9) <= 0.68) continue;
+      props.push({
+        type: "tree",
+        x: x + 0.35 + noise.noise2(x, y) * 0.3,
+        y: y + 0.35 + noise.noise2(y, x) * 0.3,
+        r: 11 + noise.noise2(x, y) * 9,
+        tone: noise.noise2(x + 3, y) > 0.35 ? 2 : (noise.noise2(x + 3, y) > 0.5 ? 0 : 1),
+      });
+    }
+  }
+
+  // Bancos / fuente a lo largo del sendero (no en cruz rígida)
+  const pathY = pathAxis === "h" ? midY : midY + Math.sin(0.3) * wobbleAmp;
+  const pathX = pathAxis === "v" ? midX : midX + Math.sin(0.3) * wobbleAmp;
+  props.push({ type: "bench", x: pathX - 1.4, y: pathY + (pathAxis === "h" ? 1.1 : 0.2) });
+  props.push({ type: "bench", x: pathX + 1.4, y: pathY + (pathAxis === "h" ? 1.1 : -0.2), rot: pathAxis === "v" ? 1 : 0 });
+  props.push({ type: "fountain", x: pathX + 0.15, y: pathY + 0.1 });
+  props.push({ type: "planter", x: x0 + 1.6, y: y0 + 1.6, tone: 0 });
+  props.push({ type: "planter", x: x1 - 0.6, y: y1 - 0.6, tone: 1 });
 }
 
 function paveParking(tiles, size, bx, by, props, noise) {
