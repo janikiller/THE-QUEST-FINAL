@@ -965,24 +965,22 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       }
     }
   }
-  // Buffer: si un muro toca asfalto/cebra, convertir el muro en acera (edificio no invade calzada)
+  // Halo de acera: ningún muro debe tocar asfalto/cebra (edificio separado de la calzada).
+  // No estrechar las avenidas principales (ejes N-S / E-O).
   for (let y = 1; y < size - 1; y++) {
     for (let x = 1; x < size - 1; x++) {
-      if (tiles[y * size + x] !== TILE.WALL) continue;
-      let touchesRoad = false;
-      for (let oy = -1; oy <= 1 && !touchesRoad; oy++) {
-        for (let ox = -1; ox <= 1; ox++) {
-          if (!ox && !oy) continue;
-          const n = tiles[(y + oy) * size + (x + ox)];
-          if (n === TILE.ROAD || n === TILE.CROSSWALK) { touchesRoad = true; break; }
-        }
+      if (tiles[y * size + x] !== TILE.WALL && tiles[y * size + x] !== TILE.DOOR) continue;
+      for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + ox, ny = y + oy;
+        const n = tiles[ny * size + nx];
+        if (n !== TILE.ROAD && n !== TILE.CROSSWALK) continue;
+        if (isOnAxisRoad(nx, vRoads) || isOnAxisRoad(ny, hRoads)) continue;
+        tiles[ny * size + nx] = TILE.SIDEWALK;
       }
-      if (touchesRoad) tiles[y * size + x] = TILE.SIDEWALK;
     }
   }
-  // Ajustar bounding boxes de edificios si perdimos muros perimetrales
+  // Ajustar bounding boxes de edificios a muros/suelos reales
   for (const b of buildings) {
-    // Recortar bbox a tiles que siguen siendo edificio
     let minX = b.x1, minY = b.y1, maxX = b.x0, maxY = b.y0;
     let any = false;
     for (let y = b.y0; y <= b.y1; y++) {
@@ -1215,7 +1213,7 @@ function pavePark(tiles, size, bx0, by0, bx1, by1, props, noise) {
         x: x + 0.35 + noise.noise2(x, y) * 0.3,
         y: y + 0.35 + noise.noise2(y, x) * 0.3,
         r: 11 + noise.noise2(x, y) * 9,
-        tone: noise.noise2(x + 3, y) > 0.35 ? 2 : (noise.noise2(x + 3, y) > 0.5 ? 0 : 1),
+        tone: noise.noise2(x + 3, y) > 0.5 ? 1 : 0, // siempre con hojas
       });
     }
   }
@@ -1233,13 +1231,10 @@ function paveParking(tiles, size, bx0, by0, bx1, by1, props, noise) {
   const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx0, by0, bx1, by1);
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
-      tiles[y * size + x] = noise.noise2(x * 1.3, y * 1.1) > 0.72 ? TILE.RUBBLE : TILE.PARKING;
-      if ((x + y) % 4 === 0 && noise.noise2(x, y) > 0.55) {
-        props.push({ type: "debris", x: x + 0.5, y: y + 0.5, tone: (x * 3 + y) % 3 });
-      }
+      tiles[y * size + x] = TILE.PARKING;
     }
   }
-  if (noise.noise2(bx0, by0 + 3) > 0.4) {
+  if (noise.noise2(bx0, by0 + 3) > 0.55) {
     props.push({ type: "dumpster", x: x1 - 0.6, y: y1 - 0.8, color: "#3a3a42" });
   }
 }
@@ -1267,26 +1262,19 @@ function paveQuay(tiles, size, bx0, by0, bx1, by1, props, noise) {
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
       if (tiles[y * size + x] === TILE.WATER) continue;
-      tiles[y * size + x] = noise.noise2(x * 0.5, y * 0.5) > 0.38 ? TILE.RUBBLE : TILE.SIDEWALK;
+      tiles[y * size + x] = TILE.SIDEWALK;
     }
   }
   for (let x = x0 + 1; x < x1; x += 2) {
-    if (noise.noise2(x * 0.4, by0) > 0.25) {
-      props.push({ type: "railing", x: x + 0.5, y: y0 + 1.2, broken: noise.noise2(x, by0 + 1) > 0.4 });
+    if (noise.noise2(x * 0.4, by0) > 0.35) {
+      props.push({ type: "railing", x: x + 0.5, y: y0 + 1.2, broken: false });
     }
   }
-  props.push({ type: "debris", x: (x0 + x1) / 2, y: y0 + 2.2, tone: 1 });
-  if (noise.noise2(bx0 + 1, by0) > 0.35) {
-    props.push({ type: "barrel", x: x0 + 2.2, y: y0 + 2.4, toxic: true });
-  }
-  if (noise.noise2(bx0 + 2, by0) > 0.4) {
-    props.push({ type: "barricadeJunk", x: x1 - 2.1, y: y0 + 2.6 });
-  }
-  if (noise.noise2(bx0 + 4, by0) > 0.55) {
+  if (noise.noise2(bx0 + 4, by0) > 0.45) {
     props.push({ type: "lamp", x: (x0 + x1) / 2, y: y0 + 1.8 });
   }
-  if (noise.noise2(bx0, by0) > 0.45) {
-    props.push({ type: "debris", x: (x0 + x1) / 2 + 1.2, y: y0 + 2.8, tone: 2 });
+  if (noise.noise2(bx0, by0) > 0.5) {
+    props.push({ type: "bench", x: (x0 + x1) / 2, y: y0 + 2.4 });
   }
 }
 
@@ -1478,8 +1466,8 @@ function decorateFacadeWalls({
     const n2 = noise.noise2(e.x * 0.9, e.y * 0.7 + 3);
     const corner = (e.x === x0 || e.x === x1) && (e.y === y0 || e.y === y1);
 
-    // Suciedad puntual (no toda la fachada)
-    if (n2 > 0.72) {
+    // Suciedad puntual muy rara (fachada limpia)
+    if (n2 > 0.92) {
       props.push({
         type: "wallGrime",
         x: e.x + 0.5,
@@ -1489,20 +1477,20 @@ function decorateFacadeWalls({
       });
     }
 
-    // Enredadera: sobre todo esquinas
-    if ((corner && n > 0.35) || n > 0.82) {
+    // Enredadera viva solo en alguna esquina (sin aspecto apocalíptico)
+    if (corner && n > 0.78) {
       props.push({
         type: "vine",
         x: e.x + 0.5,
         y: e.y + 0.5,
         wall: e.wall,
-        growth: 0.55 + n * 0.5,
-        dead: n2 > 0.6,
+        growth: 0.4 + n * 0.25,
+        dead: false,
       });
     }
 
-    // Graffiti callejero (fuera), máximo 1–2 por edificio
-    if (graffitiOnBuilding < 2 && n > 0.78 && n2 > 0.5) {
+    // Graffiti: máximo 1 por edificio, poco frecuente
+    if (graffitiOnBuilding < 1 && n > 0.9 && n2 > 0.75) {
       const tag = GRAFFITI_TAGS[((e.x * 13 + e.y * 7 + bx) >>> 0) % GRAFFITI_TAGS.length];
       props.push({
         type: "graffiti",
@@ -1539,23 +1527,23 @@ function decorateFacadeWalls({
     }
   }
 
-  // Árbol / mata seca en esquina exterior
-  if (noise.noise2(bx + 4, by + 4) > 0.55) {
+  // Árbol vivo en esquina exterior (sin troncos muertos)
+  if (noise.noise2(bx + 4, by + 4) > 0.62) {
     props.push({
       type: "tree",
       x: x0 - 0.35,
       y: y0 - 0.25,
       r: 10 + noise.noise2(bx, by) * 7,
-      tone: 2,
+      tone: 0,
     });
   }
-  if (noise.noise2(bx + 7, by + 2) > 0.78) {
+  if (noise.noise2(bx + 7, by + 2) > 0.85) {
     props.push({
       type: "tree",
       x: x1 + 0.35,
       y: y1 + 0.3,
       r: 8 + noise.noise2(bx + 1, by) * 5,
-      tone: 2,
+      tone: 1,
     });
   }
   if (noise.noise2(bx + 1, by + 8) > 0.6) {
