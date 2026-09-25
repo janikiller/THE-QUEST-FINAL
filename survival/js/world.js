@@ -62,13 +62,20 @@ export const LOOT = {
   AMMO_9MM: "ammo_9mm",
   AMMO_SHOT: "ammo_shot",
   AMMO_RIFLE: "ammo_rifle",
+  // Legendarias (drop de jefes)
+  ECLIPSE_BAT: "eclipse_bat",
+  WAIL_SCYTHE: "wail_scythe",
+  IRONHOWL: "ironhowl",
 };
 
 /** Ropa ciclable con T / panel Ropa */
 export const CLOTHES = [LOOT.VEST, LOOT.RAINCOAT, LOOT.JACKET, LOOT.HOODIE, LOOT.SHIRT];
 
-/** Orden de armas en hotbar (mano primaria) */
+/** Orden de armas en hotbar (mano primaria) — legendarias primero */
 export const WEAPON_HOTBAR = [
+  LOOT.ECLIPSE_BAT,
+  LOOT.WAIL_SCYTHE,
+  LOOT.IRONHOWL,
   LOOT.PISTOL,
   LOOT.SHOTGUN,
   LOOT.RIFLE,
@@ -334,6 +341,57 @@ const LOOT_DEFS = {
     kind: "stack",
     weight: 0.18,
     icon: "🟠",
+  },
+  // ——— Legendarias de jefes ———
+  [LOOT.ECLIPSE_BAT]: {
+    label: "Bate Eclipse",
+    gather: "el Bate Eclipse",
+    kind: "equip",
+    slot: "hand",
+    weapon: true,
+    legendary: true,
+    damage: 96,
+    range: 1.85,
+    attackCd: 0.46,
+    stamina: 10,
+    knockback: 0.85,
+    weight: 1,
+    icon: "🏏",
+  },
+  [LOOT.WAIL_SCYTHE]: {
+    label: "Guadaña del Aullido",
+    gather: "la Guadaña del Aullido",
+    kind: "equip",
+    slot: "hand",
+    weapon: true,
+    legendary: true,
+    damage: 74,
+    range: 2.05,
+    attackCd: 0.3,
+    stamina: 7,
+    knockback: 0.55,
+    weight: 1,
+    icon: "☠",
+  },
+  [LOOT.IRONHOWL]: {
+    label: "Aullido de Hierro",
+    gather: "el Aullido de Hierro",
+    kind: "equip",
+    slot: "hand",
+    weapon: true,
+    firearm: true,
+    legendary: true,
+    damage: 36,
+    range: 6.8,
+    attackCd: 0.72,
+    stamina: 5,
+    weight: 2,
+    icon: "🔫",
+    ammo: LOOT.AMMO_SHOT,
+    pellets: 7,
+    spread: 0.16,
+    bulletSpeed: 20,
+    noise: 16,
   },
 };
 

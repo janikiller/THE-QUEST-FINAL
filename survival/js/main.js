@@ -59,7 +59,10 @@ controlsBtn?.addEventListener("click", () => {
 });
 
 function start() {
-  const world = generateWorld(96);
+  const q = new URLSearchParams(location.search);
+  const seedParam = Number(q.get("seed"));
+  const seed = Number.isFinite(seedParam) && seedParam > 0 ? (seedParam | 0) : undefined;
+  const world = generateWorld(96, seed);
   game = createGame(world);
   window.__crespo = game;
   boot.hidden = true;
@@ -228,10 +231,10 @@ function syncHud(g) {
 
     hotbarEl.innerHTML = hot
       .map(
-        (s) => `<button type="button" class="hot-slot${s.active ? " active" : ""}${s.empty ? " empty" : ""}" data-hot="${s.index}">
+        (s) => `<button type="button" class="hot-slot${s.active ? " active" : ""}${s.empty ? " empty" : ""}${s.legendary ? " legendary" : ""}" data-hot="${s.index}">
         <span class="hot-key">${s.key}</span>
         <span class="hot-icon">${s.icon || "·"}</span>
-        <span class="hot-label">${s.label || "—"}</span>
+        <span class="hot-label">${s.legendary ? "★ " : ""}${s.label || "—"}</span>
         ${s.ammo != null ? `<span class="hot-ammo">${s.ammo}</span>` : ""}
       </button>`
       )

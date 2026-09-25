@@ -391,6 +391,19 @@ html, body {
   background: rgba(216, 192, 120, 0.08);
 }
 
+.hot-slot.legendary {
+  border-color: rgba(255, 190, 60, 0.75);
+  background: rgba(255, 180, 40, 0.1);
+  box-shadow: 0 0 10px rgba(255, 180, 40, 0.22);
+}
+.hot-slot.legendary.active {
+  border-color: rgba(255, 210, 90, 0.95);
+  box-shadow: 0 0 14px rgba(255, 190, 60, 0.4), inset 0 0 0 1px rgba(255, 220, 120, 0.45);
+}
+.hot-slot.legendary .hot-label {
+  color: #f0d080;
+}
+
 .hot-slot .hot-key {
   position: absolute;
   top: 2px;

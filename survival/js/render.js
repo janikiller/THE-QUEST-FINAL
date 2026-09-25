@@ -2961,6 +2961,49 @@ function drawLoot(ctx, id, px, py, time) {
     ctx.fill();
     ctx.fillStyle = "#5a3a28";
     ctx.fillRect(-2, 5, 4, 5);
+  } else if (id === "eclipse_bat" || id === "wail_scythe" || id === "ironhowl") {
+    // Glow legendario
+    const pulse = 0.35 + Math.sin(time * 5) * 0.2;
+    ctx.fillStyle = `rgba(255, 200, 80, ${pulse})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+    ctx.fill();
+    if (id === "eclipse_bat") {
+      ctx.strokeStyle = "#e8c040";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(-10, 7);
+      ctx.lineTo(11, -9);
+      ctx.stroke();
+      ctx.strokeStyle = "#fff6c0";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(4, -4);
+      ctx.lineTo(12, -10);
+      ctx.stroke();
+    } else if (id === "wail_scythe") {
+      ctx.strokeStyle = "#c060e0";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-4, 8);
+      ctx.lineTo(2, -2);
+      ctx.lineTo(12, -10);
+      ctx.stroke();
+      ctx.fillStyle = "#e8d0ff";
+      ctx.beginPath();
+      ctx.moveTo(4, -4);
+      ctx.lineTo(14, -12);
+      ctx.lineTo(10, -2);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.fillStyle = "#2a2030";
+      ctx.fillRect(-12, -3, 20, 6);
+      ctx.fillStyle = "#e8a040";
+      ctx.fillRect(-12, -2, 5, 4);
+      ctx.fillStyle = "#ffd070";
+      ctx.fillRect(6, -2, 4, 4);
+    }
   } else if (id === "jacket") {
     ctx.fillStyle = "#3a4a5a";
     ctx.fillRect(-8, -6, 16, 12);
@@ -3531,6 +3574,53 @@ function drawHeldWeapon(ctx, hand, time, swingT = 0, swingDur = 0.3) {
       ctx.fillStyle = "#5a4030";
       ctx.fillRect(2, -3, 8, 2);
     }
+  } else if (hand === "eclipse_bat") {
+    ctx.strokeStyle = "#e8c040";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(18, -12);
+    ctx.stroke();
+    ctx.strokeStyle = "#fff6c0";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(12, -8);
+    ctx.lineTo(19, -13);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 220, 100, 0.35)";
+    ctx.beginPath();
+    ctx.arc(16, -10, 5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (hand === "wail_scythe") {
+    ctx.strokeStyle = "#6a3a78";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(12, -8);
+    ctx.stroke();
+    ctx.fillStyle = "#e0c0ff";
+    ctx.beginPath();
+    ctx.moveTo(8, -12);
+    ctx.lineTo(20, -14);
+    ctx.lineTo(14, -4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(200, 120, 255, 0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(14, -10, 7, -0.8, 0.6);
+    ctx.stroke();
+  } else if (hand === "ironhowl") {
+    ctx.fillStyle = "#2a2030";
+    ctx.fillRect(0, -3, 18, 5);
+    ctx.fillStyle = "#1a1420";
+    ctx.fillRect(-3, -2, 5, 6);
+    ctx.fillStyle = "#e8a040";
+    ctx.fillRect(14, -2, 5, 3);
+    ctx.fillStyle = "rgba(255, 180, 60, 0.4)";
+    ctx.beginPath();
+    ctx.arc(18, -0.5, 4, 0, Math.PI * 2);
+    ctx.fill();
   } else if (hand === "pan") {
     ctx.strokeStyle = "#8a9098";
     ctx.lineWidth = 2.5;

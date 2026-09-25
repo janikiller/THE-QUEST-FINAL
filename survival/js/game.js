@@ -41,14 +41,14 @@ export const BOSS_TYPES = {
     head: "#8a4a40",
     hp: 320,
     speed: 0.72,
-    damage: 28,
-    radius: 0.72,
+    damage: 22,
     attackCd: 1.15,
     aggroBonus: 8,
     chargeCd: 4.5,
     chargeSpeed: 2.4,
     chargeTime: 0.55,
     knockback: 0.55,
+    legendary: LOOT.ECLIPSE_BAT,
     loot: [
       { id: LOOT.AMMO_9MM, amount: 12 },
       { id: LOOT.MED, amount: 1 },
@@ -72,6 +72,7 @@ export const BOSS_TYPES = {
     chargeTime: 0.4,
     knockback: 0.35,
     screamNoise: 9,
+    legendary: LOOT.WAIL_SCYTHE,
     loot: [
       { id: LOOT.AMMO_SHOT, amount: 6 },
       { id: LOOT.FOOD, amount: 2 },
@@ -94,7 +95,9 @@ export const BOSS_TYPES = {
     chargeSpeed: 1.9,
     chargeTime: 0.7,
     knockback: 0.8,
+    legendary: LOOT.IRONHOWL,
     loot: [
+      { id: LOOT.AMMO_SHOT, amount: 14 },
       { id: LOOT.AMMO_RIFLE, amount: 8 },
       { id: LOOT.VEST, amount: 1 },
       { id: LOOT.SCRAP, amount: 4 },
@@ -127,7 +130,7 @@ export function createGame(world) {
       hunger: 82,
       thirst: 78,
       stamina: 100,
-      inv: { food: 2, water: 2, scrap: 2, wood: 2, med: 2, shirt: 1, bat: 1, pistol: 1, ammo_9mm: 16 },
+      inv: { food: 2, water: 2, scrap: 1, wood: 1, med: 2, shirt: 1, bat: 1, pistol: 1, ammo_9mm: 12 },
       equip: { hand: "bat", body: "shirt", bag: null, light: null },
       gearPhase: "clothes",
       gatherCd: 0,
@@ -930,7 +933,8 @@ function updateMeleeSwing(game, dt) {
     z.hp -= meleeDmg;
     z.stun = 0.28 + Math.min(0.2, meleeDmg * 0.004);
     z.hitFlash = 0.22;
-    const kb = 0.42 + Math.min(0.35, meleeDmg * 0.006);
+    const kbMult = weapon.knockback > 0 ? weapon.knockback : 0.42;
+    const kb = kbMult + Math.min(0.4, meleeDmg * 0.006);
     z.x += ax * kb;
     z.y += ay * kb;
     z.vx = (z.vx || 0) + ax * kb * 4;
@@ -955,7 +959,7 @@ function hurtPlayer(game, fromX, fromY, damage, toastMsg) {
   if ((p.invulnT || 0) > 0) return false;
   p.health -= damage;
   p.hurtFlash = 0.45;
-  p.invulnT = 0.55;
+  p.invulnT = 0.7;
   let dx = p.x - fromX;
   let dy = p.y - fromY;
   let len = Math.hypot(dx, dy);
@@ -1159,14 +1163,31 @@ function onZombieKilled(game, z) {
   spawnFx(game, z.x, z.y, "death");
   game.shake = Math.max(game.shake || 0, z.boss ? 0.55 : 0.16);
   if (z.boss) {
-    const drops = z.lootTable || BOSS_TYPES[z.bossKind]?.loot || [];
+    const def = BOSS_TYPES[z.bossKind] || {};
+    const drops = z.lootTable || def.loot || [];
     for (const drop of drops) {
       const ox = (Math.random() - 0.5) * 1.6;
       const oy = (Math.random() - 0.5) * 1.6;
       dropLootAt(game, z.x + ox, z.y + oy, drop.id, drop.amount);
     }
-    setToast(game, `¡${z.name || "Jefe"} abatido! Botín en el suelo.`);
-    showWaveBanner(game, "JEFE DERROTADO", 2.0);
+    // Arma legendaria garantizada del jefe (siempre entra al inventario)
+    const legendId = def.legendary;
+    if (legendId) {
+      const p = game.player;
+      const legendDef = itemDef(legendId);
+      p.inv[legendId] = (p.inv[legendId] || 0) + 1;
+      p.equip.hand = legendId;
+      // Munición extra si es de fuego
+      if (legendDef?.firearm && legendDef.ammo) {
+        p.inv[legendDef.ammo] = (p.inv[legendDef.ammo] || 0) + 10;
+      }
+      setToast(game, `★ LEGENDARIA · ${legendDef?.label || legendId}! Equipada.`);
+      showWaveBanner(game, `★ ${legendDef?.label || "ARMA LEGENDARIA"}`, 2.4);
+      spawnFx(game, z.x, z.y, "death");
+    } else {
+      setToast(game, `¡${z.name || "Jefe"} abatido! Botín en el suelo.`);
+      showWaveBanner(game, "JEFE DERROTADO", 2.0);
+    }
     return;
   }
   if (Math.random() < 0.32) {
@@ -1430,9 +1451,11 @@ function equippedWeapon(p) {
       spread: def.spread || 0,
       bulletSpeed: def.bulletSpeed || 20,
       noise: def.noise || 4,
+      legendary: !!def.legendary,
+      knockback: def.knockback || 0,
     };
   }
-  return { id: null, firearm: false, ammo: null, pellets: 1, spread: 0, bulletSpeed: 20, noise: 2, ...DEFAULT_WEAPON };
+  return { id: null, firearm: false, ammo: null, pellets: 1, spread: 0, bulletSpeed: 20, noise: 2, legendary: false, knockback: 0, ...DEFAULT_WEAPON };
 }
 
 function isAutomaticFire(p) {
@@ -1574,6 +1597,7 @@ export function hotbarSlots(game) {
       ammo: ammoN,
       active: id && p.equip.hand === id,
       empty: !id,
+      legendary: Boolean(def?.legendary),
     });
   }
   return slots;
@@ -1590,15 +1614,16 @@ export function equipPanel(game) {
       slot: "hand",
       tag: "Primaria",
       id: p.equip.hand,
-      label: weapon.label,
+      label: weapon.legendary ? `★ ${weapon.label}` : weapon.label,
       icon: weapon.icon || "✊",
       stat: p.equip.hand
         ? weapon.firearm
           ? `${weapon.damage} dmg · ${p.inv[weapon.ammo] || 0} balas`
-          : `${weapon.damage} dmg`
+          : `${weapon.damage} dmg${weapon.legendary ? " · LEG" : ""}`
         : "sin arma",
       empty: !p.equip.hand,
       primary: true,
+      legendary: Boolean(weapon.legendary),
     },
     {
       slot: "body",
