@@ -463,15 +463,22 @@ export function updateGame(game, dt) {
   if (p.hunger < 8) p.health -= 3.5 * dt;
   if (p.thirst < 8) p.health -= 4.5 * dt;
 
-  // Apuntado: armas de fuego usan ratón; melee usa facing de movimiento
+  // Apuntado: armas de fuego siempre al ratón; melee al ratón al golpear (clic),
+  // si no, facing de movimiento (Stardew).
   if (game.mouse.viewW) {
     game.mouse.worldX = game.camX + (game.mouse.x - game.mouse.viewW / 2) / 48;
     game.mouse.worldY = game.camY + (game.mouse.y - game.mouse.viewH / 2) / 48;
   }
   const handDef = itemDef(p.equip?.hand);
+  const mouseAim = Math.atan2(game.mouse.worldY - p.y, game.mouse.worldX - p.x);
   if (handDef?.firearm) {
-    p.aim = Math.atan2(game.mouse.worldY - p.y, game.mouse.worldX - p.x);
+    p.aim = mouseAim;
     if (Math.cos(p.aim) !== 0) p.facing = Math.cos(p.aim) >= 0 ? 1 : -1;
+  } else if (game.mouse.clicked || game.mouse.down) {
+    // Clic melee: golpeas hacia el cursor (más jugable + kiting)
+    p.aim = mouseAim;
+    p.facingAng = snapCardinalFacing(Math.cos(mouseAim), Math.sin(mouseAim));
+    p.facing = Math.cos(p.facingAng) >= 0 ? 1 : -1;
   } else {
     p.aim = p.facingAng || 0;
   }
@@ -479,7 +486,14 @@ export function updateGame(game, dt) {
   updateLooting(game, dt);
   updateMeleeSwing(game, dt);
   if (pressed(game, "e") && p.gatherCd <= 0 && !p.lootTarget) beginLoot(game);
-  if ((pressed(game, "q") || pressed(game, "f")) && p.attackCd <= 0) startMeleeSwing(game);
+  if ((pressed(game, "q") || pressed(game, "f")) && p.attackCd <= 0) {
+    // Q/F también apuntan al cursor si hay ratón activo
+    if (game.mouse.viewW) {
+      p.aim = mouseAim;
+      p.facingAng = snapCardinalFacing(Math.cos(mouseAim), Math.sin(mouseAim));
+    }
+    startMeleeSwing(game);
+  }
   if ((game.mouse.clicked || (game.mouse.down && isAutomaticFire(p))) && p.attackCd <= 0) {
     fireWeapon(game);
   }
@@ -909,7 +923,8 @@ function updateMeleeSwing(game, dt) {
   const weapon = equippedWeapon(p);
   const meleeDmg = weapon.firearm ? Math.max(12, Math.floor(weapon.damage * 0.28)) : weapon.damage;
   const meleeRange = (weapon.firearm ? 1.2 : weapon.range) + 0.08;
-  const baseAng = p.facingAng ?? p.aim ?? 0;
+  // Prefer aim (ratón) for the hit arc — facingAng is only 4-dir
+  const baseAng = p.aim ?? p.facingAng ?? 0;
   // El arco barre ±~50° durante la ventana activa
   const sweepT = (progress - 0.18) / 0.52;
   const hitAng = baseAng + (sweepT - 0.5) * 1.05;
