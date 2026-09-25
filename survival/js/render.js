@@ -651,20 +651,20 @@ function getLightMask(w, h) {
 
 /** Sombra elíptica proyectada según el sol. */
 function drawCastShadow(ctx, x, y, rx, ry, phase, height = 1) {
-  const a = (phase?.shadowAlpha ?? 0.22) * Math.min(1.25, 0.7 + height * 0.2);
+  const a = Math.min(0.55, (phase?.shadowAlpha ?? 0.24) * Math.min(1.4, 0.85 + height * 0.25));
   if (a < 0.04) return;
-  const len = (phase?.shadowLen ?? 1) * (4 + height * 5);
+  const len = Math.max(5, (phase?.shadowLen ?? 1) * (7 + height * 6));
   const ox = (phase?.sunDx ?? 0.35) * len;
   const oy = (phase?.sunDy ?? 0.55) * len;
-  const stretch = 1 + (phase?.shadowLen ?? 1) * 0.45;
+  const stretch = 1 + Math.max(0.2, phase?.shadowLen ?? 1) * 0.55;
   ctx.fillStyle = `rgba(0,0,0,${a})`;
   ctx.beginPath();
   ctx.ellipse(
-    x + ox * 0.85,
-    y + oy * 0.85,
+    x + ox * 0.9,
+    y + oy * 0.9,
     rx * stretch,
-    ry * (0.9 + (phase?.shadowLen ?? 1) * 0.12),
-    Math.atan2(oy, ox) * 0.35,
+    ry * (0.95 + (phase?.shadowLen ?? 1) * 0.15),
+    Math.atan2(oy, ox) * 0.4,
     0,
     Math.PI * 2
   );
@@ -673,10 +673,10 @@ function drawCastShadow(ctx, x, y, rx, ry, phase, height = 1) {
 
 /** Sombras de volumen de edificios sobre acera/calzada. */
 function drawBuildingCastShadows(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
-  if ((phase.shadowAlpha ?? 0) < 0.06) return;
-  const len = (phase.shadowLen ?? 1) * 18;
-  const ox = (phase.sunDx ?? 0.35) * len;
-  const oy = (phase.sunDy ?? 0.55) * len;
+  if ((phase.shadowAlpha ?? 0) < 0.04) return;
+  const baseLen = Math.max(16, (phase.shadowLen ?? 1) * 32);
+  const ox = (phase.sunDx ?? 0.35) * baseLen;
+  const oy = (phase.sunDy ?? 0.55) * baseLen;
   for (const b of game.world.buildings) {
     if (b.x1 < x0 - 2 || b.x0 > x1 + 2 || b.y1 < y0 - 2 || b.y0 > y1 + 2) continue;
     const floors = b.floors || 2;
@@ -684,18 +684,32 @@ function drawBuildingCastShadows(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
     const py = b.y0 * TILE_PX - camY;
     const bw = (b.x1 - b.x0 + 1) * TILE_PX;
     const bh = (b.y1 - b.y0 + 1) * TILE_PX;
-    const fl = 0.7 + floors * 0.22;
-    const a = (phase.shadowAlpha ?? 0.2) * (0.55 + floors * 0.08);
-    const cx = px + bw * 0.5 + ox * 0.55 * fl;
-    const cy = py + bh * 0.55 + oy * 0.55 * fl;
-    ctx.fillStyle = `rgba(0,0,0,${Math.min(0.42, a)})`;
+    const fl = 0.85 + floors * 0.28;
+    const a = Math.min(0.48, (phase.shadowAlpha ?? 0.22) * (0.95 + floors * 0.12));
+    // Mancha principal proyectada fuera del footprint
+    const cx = px + bw * 0.5 + ox * 0.95 * fl;
+    const cy = py + bh * 0.62 + oy * 0.95 * fl;
+    ctx.fillStyle = `rgba(0,0,0,${a})`;
     ctx.beginPath();
     ctx.ellipse(
       cx,
       cy,
-      bw * 0.42 + Math.abs(ox) * 0.35 * fl,
-      bh * 0.2 + Math.abs(oy) * 0.22 * fl,
-      Math.atan2(oy, ox) * 0.4,
+      bw * 0.38 + Math.abs(ox) * 0.55 * fl,
+      Math.max(10, bh * 0.16 + Math.abs(oy) * 0.35 * fl),
+      Math.atan2(oy, ox) * 0.45,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    // Contacto suave bajo el borde soleado
+    ctx.fillStyle = `rgba(0,0,0,${a * 0.45})`;
+    ctx.beginPath();
+    ctx.ellipse(
+      px + bw * 0.5 + ox * 0.25,
+      py + bh * 0.72 + oy * 0.2,
+      bw * 0.46,
+      8 + floors * 2,
+      0,
       0,
       Math.PI * 2
     );
@@ -3743,6 +3757,10 @@ function drawPlayer(ctx, px, py, player, time, game = null) {
   ctx.scale(1.12, 1.12);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+  // Sombra en espacio mundo (antes de rotar el sprite)
+  const dayPh = game?._phase || (game ? dayPhase(game) : null);
+  drawCastShadow(ctx, 0, 13, 11, 4, dayPh, 1.1);
+
   // Parpadeo de i-frames (Stardew)
   if ((player.invulnT || 0) > 0 && Math.floor(time * 18) % 2 === 0) {
     ctx.globalAlpha = 0.35;
@@ -3757,10 +3775,6 @@ function drawPlayer(ctx, px, py, player, time, game = null) {
   } else {
     ctx.scale(player.facing || 1, 1);
   }
-
-  // Sombra elíptica proyectada según el sol
-  const dayPh = game?._phase || (game ? dayPhase(game) : null);
-  drawCastShadow(ctx, 0, 13, 10, 3.6, dayPh, 1.05);
 
   const moving = player.moving || Math.hypot(player.vx || 0, player.vy || 0) > 0.15;
   const phase = player.walkPhase || time * 8;

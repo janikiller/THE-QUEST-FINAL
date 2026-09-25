@@ -369,13 +369,15 @@ export function dayPhase(game) {
   phase.sunDx = sunDx;
   phase.sunDy = sunDy;
   phase.shadowLen = useMoon
-    ? 0.35
-    : (1.2 - sunElev * 0.9) * (night ? 0.45 : 1);
-  phase.shadowAlpha = useMoon
-    ? 0.1
+    ? 0.4
     : night
-      ? 0.14
-      : 0.16 + (1 - sunElev) * 0.28;
+      ? 0.55
+      : Math.max(0.35, (1.25 - sunElev * 0.85));
+  phase.shadowAlpha = useMoon
+    ? 0.14
+    : night
+      ? 0.16
+      : 0.22 + (1 - sunElev) * 0.28;
 
   // Tinte atmosférico (grading)
   if (name === "Amanecer") {
