@@ -42,6 +42,7 @@ export const BOSS_TYPES = {
     hp: 320,
     speed: 0.72,
     damage: 22,
+    radius: 0.72,
     attackCd: 1.15,
     aggroBonus: 8,
     chargeCd: 4.5,
