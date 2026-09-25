@@ -759,6 +759,21 @@ function paintTerrainBase(ctx, game, tile, tx, ty, px, py, phase) {
   if (flat) {
     ctx.fillStyle = flat;
     ctx.fillRect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
+    // Parque: manchas elípticas grandes → rompe el escalón de 48px en el borde
+    if (tile === TILE.PARK) {
+      const seed = (tx * 13 + ty * 7) & 15;
+      ctx.beginPath();
+      ctx.ellipse(
+        px + TILE_PX * 0.5 + ((seed % 5) - 2) * 3,
+        py + TILE_PX * 0.5 + (((seed * 3) % 5) - 2) * 3,
+        TILE_PX * 0.72 + (seed % 4),
+        TILE_PX * 0.62 + ((seed * 2) % 4),
+        seed * 0.2,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+    }
     return;
   }
   ctx.fillStyle = TILE_META[tile]?.color || "#333";
@@ -1114,16 +1129,20 @@ function drawGrassDetail(ctx, game, tx, ty, px, py) {
       [-1, 1],
       [1, 1],
     ];
-    ctx.fillStyle = "rgba(32,62,30,0.72)";
+    ctx.fillStyle = "rgba(32,62,30,0.85)";
     for (const [dx, dy] of dirs) {
       const n = neighborTile(game, tx + dx, ty + dy);
       if (n === TILE.PARK || n === TILE.WALL || n === TILE.DOOR || n === TILE.WATER) continue;
-      const ox = px + TILE_PX / 2 + dx * 22;
-      const oy = py + TILE_PX / 2 + dy * 22;
-      const rx = 14 + ((tx * 3 + ty + dx) % 5);
-      const ry = 10 + ((ty * 2 + tx + dy) % 4);
+      const ox = px + TILE_PX / 2 + dx * 26;
+      const oy = py + TILE_PX / 2 + dy * 26;
+      const rx = 18 + ((tx * 3 + ty + dx) % 7);
+      const ry = 14 + ((ty * 2 + tx + dy) % 6);
       ctx.beginPath();
-      ctx.ellipse(ox, oy, rx, ry, (tx + ty) * 0.2, 0, Math.PI * 2);
+      ctx.ellipse(ox, oy, rx, ry, (tx + ty) * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+      // Segunda mancha offset para romper el patrón
+      ctx.beginPath();
+      ctx.ellipse(ox + dy * 8, oy - dx * 8, rx * 0.65, ry * 0.7, (tx + 3) * 0.3, 0, Math.PI * 2);
       ctx.fill();
     }
   }
