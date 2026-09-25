@@ -681,15 +681,21 @@ function drawBuildingCastShadows(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
     const py = b.y0 * TILE_PX - camY;
     const bw = (b.x1 - b.x0 + 1) * TILE_PX;
     const bh = (b.y1 - b.y0 + 1) * TILE_PX;
-    const len = Math.max(12, (phase.shadowLen ?? 1) * (14 + floors * 6));
-    const ox = (phase.sunDx ?? 0.35) * len;
-    const oy = (phase.sunDy ?? 0.55) * len;
-    const a = Math.min(0.42, (phase.shadowAlpha ?? 0.22) * (0.9 + floors * 0.1));
-    // Drop-shadow clásico: footprint desplazado (la parte bajo el edificio se tapa al pintar el techo)
-    ctx.fillStyle = `rgba(0,0,0,${a})`;
+    const len = Math.max(28, (phase.shadowLen ?? 1) * (28 + floors * 10));
+    let ox = (phase.sunDx ?? 0.35) * len;
+    let oy = (phase.sunDy ?? 0.55) * len;
+    const mag = Math.hypot(ox, oy) || 1;
+    const minMag = 22 + floors * 5;
+    if (mag < minMag) {
+      ox *= minMag / mag;
+      oy *= minMag / mag;
+    }
+    const a = Math.min(0.5, (phase.shadowAlpha ?? 0.22) * (1.05 + floors * 0.12));
+    // Drop-shadow del footprint: la franja que sobresale del edificio se ve en acera/calle
+    ctx.fillStyle = `rgba(8,6,12,${a})`;
     fillRound(ctx, px + ox, py + oy, bw, bh, 6);
-    ctx.fillStyle = `rgba(0,0,0,${a * 0.4})`;
-    fillRound(ctx, px + ox * 1.4, py + oy * 1.4, bw, bh, 8);
+    ctx.fillStyle = `rgba(8,6,12,${a * 0.45})`;
+    fillRound(ctx, px + ox * 1.55, py + oy * 1.55, bw, bh, 10);
   }
 }
 
