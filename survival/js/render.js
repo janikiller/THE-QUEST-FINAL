@@ -643,8 +643,8 @@ function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
   const size = game.world.size;
   const PAD = 12;
   const indoorKey = _viewIndoor ? `${_viewIndoor.x0},${_viewIndoor.y0},${_viewIndoor.style || ""}` : "out";
-  // v4 = orillas orgánicas + minimapa hi-res
-  const baseKey = `v4|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
+  // v5 = césped orgánico + minimapa por redes contínuas
+  const baseKey = `v5|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
   const outOfBounds =
     x0 < _groundMeta.x0 ||
     y0 < _groundMeta.y0 ||
@@ -3909,8 +3909,8 @@ function drawMinimap(mctx, mini, game) {
     _miniBase.width = s;
     _miniBase.height = s;
 
-    // Render a 4× para luego bajar con suavizado → mapa lineal, no píxeles
-    const hi = 4;
+    // Hi-res: redes contínuas (calles/parques) en vez de celdas
+    const hi = 5;
     const hs = s * hi;
     const big = document.createElement("canvas");
     big.width = hs;
@@ -3918,79 +3918,100 @@ function drawMinimap(mctx, mini, game) {
     const b = big.getContext("2d");
     b.imageSmoothingEnabled = true;
     b.imageSmoothingQuality = "high";
-    b.fillStyle = "#1e241c";
+    b.fillStyle = "#243028";
     b.fillRect(0, 0, hs, hs);
 
     const sc = hs / world.size;
-    const pad = Math.max(2.5, sc * 0.95);
 
-    const colorFor = (tile) => {
-      if (tile === TILE.PARK) return "#2a4a28";
-      if (tile === TILE.ROAD || tile === TILE.CROSSWALK) return "#353840";
-      if (tile === TILE.SIDEWALK) return "#5a5850";
-      if (tile === TILE.WATER) return "#1a3a2a";
-      if (tile === TILE.PARKING) return "#4a4c52";
-      if (tile === TILE.ALLEY || tile === TILE.RUBBLE) return "#3a3a40";
-      return null;
-    };
-
+    // 1) Manchas de ciudad (muros) como mancha contínua, sin contorno por edificio
+    b.fillStyle = "#5a5650";
     for (let y = 0; y < world.size; y++) {
       for (let x = 0; x < world.size; x++) {
         const tile = world.tiles[y * world.size + x];
-        if (tile === TILE.WALL || tile === TILE.DOOR || tile === TILE.FLOOR || tile === TILE.BASE) continue;
-        const col = colorFor(tile);
-        if (!col) continue;
-        b.fillStyle = col;
-        b.fillRect(x * sc - pad * 0.4, y * sc - pad * 0.4, sc + pad, sc + pad);
+        if (tile !== TILE.WALL && tile !== TILE.DOOR && tile !== TILE.FLOOR && tile !== TILE.BASE) continue;
+        b.beginPath();
+        b.arc(x * sc + sc * 0.5, y * sc + sc * 0.5, sc * 0.85, 0, Math.PI * 2);
+        b.fill();
       }
     }
 
-    // Edificios redondeados a alta resolución
-    for (const building of world.buildings || []) {
-      const bx = building.x0 * sc;
-      const by = building.y0 * sc;
-      const bw = Math.max(6, (building.x1 - building.x0) * sc);
-      const bh = Math.max(6, (building.y1 - building.y0) * sc);
-      const r = Math.min(10, bw / 2.8, bh / 2.8);
-      b.fillStyle = building.facade || "#6a6560";
-      b.beginPath();
-      b.moveTo(bx + r, by);
-      b.arcTo(bx + bw, by, bx + bw, by + bh, r);
-      b.arcTo(bx + bw, by + bh, bx, by + bh, r);
-      b.arcTo(bx, by + bh, bx, by, r);
-      b.arcTo(bx, by, bx + bw, by, r);
-      b.closePath();
-      b.fill();
+    // 2) Acera / parking como banda suave
+    b.fillStyle = "#6a6860";
+    for (let y = 0; y < world.size; y++) {
+      for (let x = 0; x < world.size; x++) {
+        const tile = world.tiles[y * world.size + x];
+        if (tile !== TILE.SIDEWALK && tile !== TILE.PARKING && tile !== TILE.ALLEY) continue;
+        b.beginPath();
+        b.arc(x * sc + sc * 0.5, y * sc + sc * 0.5, sc * 0.9, 0, Math.PI * 2);
+        b.fill();
+      }
     }
 
-    // Orillas de agua
-    b.strokeStyle = "rgba(70,130,90,0.45)";
-    b.lineWidth = 3.5;
+    // 3) Calles como trazo contínuo grueso (el “mapa lineal”)
+    b.strokeStyle = "#3a3e46";
+    b.lineWidth = sc * 1.35;
     b.lineCap = "round";
     b.lineJoin = "round";
+    // Horizontal runs
+    for (let y = 0; y < world.size; y++) {
+      let run = -1;
+      for (let x = 0; x <= world.size; x++) {
+        const tile = x < world.size ? world.tiles[y * world.size + x] : -1;
+        const isRoad = tile === TILE.ROAD || tile === TILE.CROSSWALK;
+        if (isRoad && run < 0) run = x;
+        if (!isRoad && run >= 0) {
+          b.beginPath();
+          b.moveTo(run * sc + sc * 0.2, y * sc + sc * 0.5);
+          b.lineTo((x - 1) * sc + sc * 0.8, y * sc + sc * 0.5);
+          b.stroke();
+          run = -1;
+        }
+      }
+    }
+    // Vertical runs
+    for (let x = 0; x < world.size; x++) {
+      let run = -1;
+      for (let y = 0; y <= world.size; y++) {
+        const tile = y < world.size ? world.tiles[y * world.size + x] : -1;
+        const isRoad = tile === TILE.ROAD || tile === TILE.CROSSWALK;
+        if (isRoad && run < 0) run = y;
+        if (!isRoad && run >= 0) {
+          b.beginPath();
+          b.moveTo(x * sc + sc * 0.5, run * sc + sc * 0.2);
+          b.lineTo(x * sc + sc * 0.5, (y - 1) * sc + sc * 0.8);
+          b.stroke();
+          run = -1;
+        }
+      }
+    }
+
+    // 4) Parques / agua como blobs
+    b.fillStyle = "#2e5530";
+    for (let y = 0; y < world.size; y++) {
+      for (let x = 0; x < world.size; x++) {
+        if (world.tiles[y * world.size + x] !== TILE.PARK) continue;
+        b.beginPath();
+        b.ellipse(x * sc + sc * 0.5, y * sc + sc * 0.5, sc * 1.05, sc * 0.9, 0.2, 0, Math.PI * 2);
+        b.fill();
+      }
+    }
+    b.fillStyle = "#1a3a2a";
     for (let y = 0; y < world.size; y++) {
       for (let x = 0; x < world.size; x++) {
         if (world.tiles[y * world.size + x] !== TILE.WATER) continue;
-        const up = y > 0 ? world.tiles[(y - 1) * world.size + x] : TILE.WALL;
-        if (up === TILE.WATER) continue;
-        const x0 = x * sc;
-        const y0 = y * sc;
         b.beginPath();
-        b.moveTo(x0, y0);
-        b.quadraticCurveTo(x0 + sc * 0.5, y0 - 1.5, x0 + sc, y0);
-        b.stroke();
+        b.ellipse(x * sc + sc * 0.5, y * sc + sc * 0.5, sc * 1.1, sc * 0.85, -0.15, 0, Math.PI * 2);
+        b.fill();
       }
     }
 
-    // Blur + downscale a canvas final
+    // Blur fuerte + downscale
     const mid = document.createElement("canvas");
     mid.width = hs;
     mid.height = hs;
     const mc = mid.getContext("2d");
     mc.imageSmoothingEnabled = true;
-    try {
-      mc.filter = "blur(1.6px)";
-    } catch (_) {}
+    try { mc.filter = "blur(2.8px)"; } catch (_) {}
     mc.drawImage(big, 0, 0);
 
     const out = _miniBase.getContext("2d");
