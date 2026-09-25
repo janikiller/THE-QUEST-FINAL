@@ -835,7 +835,7 @@ function softTileEdges(ctx, game, tx, ty, px, py, selfTile) {
 
     // Banda de relleno ondulada (mezcla visual, no línea recta)
     ctx.fillStyle = flatN;
-    ctx.globalAlpha = waterish ? 0.42 : grassish ? 0.38 : 0.28;
+    ctx.globalAlpha = waterish ? 0.28 : grassish ? 0.22 : 0.14;
     ctx.beginPath();
     if (e.horiz) {
       const yEdge = e.dy < 0 ? py : py + TILE_PX;
