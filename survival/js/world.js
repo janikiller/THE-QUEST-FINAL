@@ -939,21 +939,66 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   }
 
   props.sort((a, b) => a.y - b.y);
-  // Quitar escombros / basura suelta que haya caído sobre calzada o acera
+  // Quitar escombros / basura / árboles que hayan caído sobre calzada o acera de paso
+  const keepOnRoad = new Set(["manhole", "streetSign", "traffic", "busStop", "lamp"]);
   for (let i = props.length - 1; i >= 0; i--) {
     const p = props[i];
-    if (p.type !== "debris" && p.type !== "barricadeJunk") continue;
-    const tx = p.x | 0;
-    const ty = p.y | 0;
+    const tx = Math.floor(p.x);
+    const ty = Math.floor(p.y);
     if (tx < 0 || ty < 0 || tx >= size || ty >= size) continue;
     const t = tiles[ty * size + tx];
-    if (t === TILE.ROAD || t === TILE.CROSSWALK || t === TILE.SIDEWALK) props.splice(i, 1);
+    if (t === TILE.ROAD || t === TILE.CROSSWALK) {
+      if (!keepOnRoad.has(p.type)) props.splice(i, 1);
+      continue;
+    }
+    if ((p.type === "debris" || p.type === "barricadeJunk") && t === TILE.SIDEWALK) {
+      props.splice(i, 1);
+    }
   }
-  // Garantizar ejes de calle sin huecos de escombros
+  // Garantizar ejes de calle sin huecos de escombros ni muros
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      if (tiles[y * size + x] !== TILE.RUBBLE) continue;
-      if (isOnAxisRoad(x, vRoads) || isOnAxisRoad(y, hRoads)) tiles[y * size + x] = TILE.ROAD;
+      if (!isOnAxisRoad(x, vRoads) && !isOnAxisRoad(y, hRoads)) continue;
+      const t = tiles[y * size + x];
+      if (t === TILE.RUBBLE || t === TILE.WALL || t === TILE.FLOOR || t === TILE.BASE) {
+        tiles[y * size + x] = TILE.ROAD;
+      }
+    }
+  }
+  // Buffer: si un muro toca asfalto/cebra, convertir el muro en acera (edificio no invade calzada)
+  for (let y = 1; y < size - 1; y++) {
+    for (let x = 1; x < size - 1; x++) {
+      if (tiles[y * size + x] !== TILE.WALL) continue;
+      let touchesRoad = false;
+      for (let oy = -1; oy <= 1 && !touchesRoad; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          if (!ox && !oy) continue;
+          const n = tiles[(y + oy) * size + (x + ox)];
+          if (n === TILE.ROAD || n === TILE.CROSSWALK) { touchesRoad = true; break; }
+        }
+      }
+      if (touchesRoad) tiles[y * size + x] = TILE.SIDEWALK;
+    }
+  }
+  // Ajustar bounding boxes de edificios si perdimos muros perimetrales
+  for (const b of buildings) {
+    // Recortar bbox a tiles que siguen siendo edificio
+    let minX = b.x1, minY = b.y1, maxX = b.x0, maxY = b.y0;
+    let any = false;
+    for (let y = b.y0; y <= b.y1; y++) {
+      for (let x = b.x0; x <= b.x1; x++) {
+        const t = tiles[y * size + x];
+        if (t === TILE.WALL || t === TILE.FLOOR || t === TILE.DOOR || t === TILE.BASE) {
+          any = true;
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (any) {
+      b.x0 = minX; b.y0 = minY; b.x1 = maxX; b.y1 = maxY;
     }
   }
   const lamps = props.filter((p) => p.type === "lamp");

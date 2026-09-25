@@ -643,8 +643,8 @@ function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
   const size = game.world.size;
   const PAD = 12;
   const indoorKey = _viewIndoor ? `${_viewIndoor.x0},${_viewIndoor.y0},${_viewIndoor.style || ""}` : "out";
-  // v9 = calles limpias (sin cicatrices / cebras pulidas)
-  const baseKey = `v9|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
+  // v10 = edificios sin invadir calzada + calles limpias
+  const baseKey = `v10|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
   const outOfBounds =
     x0 < _groundMeta.x0 ||
     y0 < _groundMeta.y0 ||
@@ -744,9 +744,9 @@ function paintTerrainBase(ctx, game, tile, tx, ty, px, py, phase) {
       drawIndoorWallTile(ctx, px, py, b, tx, ty);
       return;
     }
-    // Fachada continua del mismo edificio = mismo color
+    // Fachada continua del mismo edificio = mismo color (sin sangrar a la calzada)
     ctx.fillStyle = b?.facade || "#4a4540";
-    ctx.fillRect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
+    ctx.fillRect(px - 2, py - 2, TILE_PX + 4, TILE_PX + 4);
     return;
   }
   if (tile === TILE.DOOR) {
@@ -2079,17 +2079,17 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
     return;
   }
 
-  const shadow = 6 + floors * 2;
+  const shadow = 4 + Math.min(4, floors);
 
-  // Sombra de volumen suave
-  ctx.fillStyle = "rgba(0,0,0,0.3)";
-  fillRound(ctx, px + shadow, py + shadow, bw, bh, 14);
+  // Sombra de volumen — sin salirse a la calzada
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  fillRound(ctx, px + shadow, py + shadow, bw, bh, 8);
 
-  // Cuerpo del edificio redondeado (el tejado tapa el centro)
+  // Cuerpo del edificio (esquinas suaves, sin overhang hacia la calle)
   const wall = shade(b.facade, style === "warehouse" ? -22 : -12);
   ctx.fillStyle = wall;
-  fillRound(ctx, px, py, bw, bh, 12);
-  strokeRound(ctx, px, py, bw, bh, 12, "rgba(20,16,12,0.35)", 1.4);
+  fillRound(ctx, px + 1, py + 1, bw - 2, bh - 2, 6);
+  strokeRound(ctx, px + 1, py + 1, bw - 2, bh - 2, 6, "rgba(20,16,12,0.3)", 1.2);
 
   if (style === "warehouse") {
     ctx.strokeStyle = "rgba(0,0,0,0.22)";
@@ -2129,22 +2129,15 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
     }
   }
 
-  // Cornisa suave
+  // Cornisa suave (dentro del footprint)
   ctx.fillStyle = shade(b.facade, 28);
-  fillRound(ctx, px - 2, py - 4, bw + 4, 5, 2);
-  fillRound(ctx, px - 2, py + bh - 2, bw + 4, 4, 2);
+  fillRound(ctx, px + 2, py + 1, bw - 4, 4, 2);
+  fillRound(ctx, px + 2, py + bh - 5, bw - 4, 3, 2);
   if (style === "tower") {
     ctx.fillStyle = shade(b.facade, -28);
     for (let i = 0; i < 4; i++) {
-      fillRound(ctx, px + 10 + i * ((bw - 30) / 3), py - 14, 12, 12, 3);
+      fillRound(ctx, px + 12 + i * ((bw - 36) / 3), py + 2, 10, 10, 2);
     }
-    ctx.strokeStyle = "#8a9098";
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(px + bw * 0.5, py - 14);
-    ctx.lineTo(px + bw * 0.5, py - 28);
-    ctx.stroke();
   }
 
   // Algunas ventanas; el resto muro vacío o un detalle suelto (no llenar la pared)
