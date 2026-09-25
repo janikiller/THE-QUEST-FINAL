@@ -228,6 +228,21 @@ function applyWaveDebugFlags(game) {
     }
     const forced = q.get("weather");
     if (forced) forceWeather(game, forced);
+    const timeQ = q.get("time");
+    if (timeQ != null) {
+      const named = {
+        dawn: 0.06, amanecer: 0.06,
+        day: 0.3, dia: 0.3, día: 0.3,
+        dusk: 0.52, atardecer: 0.52,
+        evening: 0.62, anochecer: 0.62,
+        night: 0.82, noche: 0.82,
+      };
+      const frac = named[String(timeQ).toLowerCase()] ?? Number(timeQ);
+      if (Number.isFinite(frac)) {
+        game.time = ((frac % 1) + 1) % 1 * game.dayLen;
+        game._phase = null;
+      }
+    }
   } catch (_) {
     /* SSR / tests */
   }
@@ -281,18 +296,99 @@ export function waveStatus(game) {
   return `Oleada ${game.wave} limpia`;
 }
 
+function smoothstep(a, b, x) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+/** Reloj 24h a partir de la fracción del día (t=0 ≈ 05:00). Buckets de 10 min. */
+function clockFromDayT(t) {
+  const frac = ((t % 1) + 1) % 1;
+  const hours = (5 + frac * 24) % 24;
+  const h = Math.floor(hours);
+  const m = Math.floor((hours - h) * 60 / 10) * 10;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 export function dayPhase(game) {
   if (game._phase && game._phase._t === game.time && game._phase._w === game.weather.kind
       && game._phase._th === game.weather.thunder && game._phase._g === game.weather.gust) {
     return game._phase;
   }
   const t = (game.time % game.dayLen) / game.dayLen;
-  let phase;
-  if (t < 0.18) phase = { name: "Amanecer", light: 0.45 + t * 2.8, night: false };
-  else if (t < 0.48) phase = { name: "Día", light: 1, night: false };
-  else if (t < 0.6) phase = { name: "Atardecer", light: 0.78 - (t - 0.48) * 1.5, night: false };
-  else if (t < 0.72) phase = { name: "Anochecer", light: 0.52 - (t - 0.6) * 1.2, night: true };
-  else phase = { name: "Noche", light: 0.42, night: true };
+  let name;
+  let light;
+  let night;
+  // Curva continua: amanecer → día → atardecer → anochecer → noche
+  if (t < 0.14) {
+    name = "Amanecer";
+    light = lerp(0.28, 1, smoothstep(0, 0.14, t));
+    night = false;
+  } else if (t < 0.46) {
+    name = "Día";
+    light = 1;
+    night = false;
+  } else if (t < 0.58) {
+    name = "Atardecer";
+    light = lerp(1, 0.52, smoothstep(0.46, 0.58, t));
+    night = false;
+  } else if (t < 0.68) {
+    name = "Anochecer";
+    light = lerp(0.52, 0.26, smoothstep(0.58, 0.68, t));
+    night = true;
+  } else {
+    name = "Noche";
+    const mid = smoothstep(0.68, 0.88, t);
+    light = lerp(0.26, 0.22, mid);
+    if (t > 0.94) light = lerp(0.22, 0.28, smoothstep(0.94, 1, t));
+    night = true;
+  }
+
+  // Elevación / azimut del sol (y luna débil de noche) → sombras direccionales
+  let sunElev;
+  if (t < 0.14) sunElev = smoothstep(0, 0.14, t) * 0.85;
+  else if (t < 0.46) sunElev = 0.85 + Math.sin(((t - 0.14) / 0.32) * Math.PI) * 0.15;
+  else if (t < 0.68) sunElev = lerp(1, 0.05, smoothstep(0.46, 0.68, t));
+  else sunElev = 0.08;
+  const daySweep = Math.max(0, Math.min(1, (t - 0.02) / 0.64));
+  const azi = Math.PI * (0.12 + daySweep * 0.88);
+  const moonAzi = Math.PI * (1.05 + ((t - 0.68) / 0.32) * 0.5);
+  const useMoon = night && t >= 0.68;
+  const aziUse = useMoon ? moonAzi : azi;
+  const sunDx = -Math.cos(aziUse);
+  const sunDy = 0.42 + Math.abs(Math.sin(aziUse)) * 0.28;
+
+  const phase = { name, light, night };
+  phase.t = t;
+  phase.clock = clockFromDayT(t);
+  phase.sunElev = sunElev;
+  phase.sunDx = sunDx;
+  phase.sunDy = sunDy;
+  phase.shadowLen = useMoon
+    ? 0.35
+    : (1.2 - sunElev * 0.9) * (night ? 0.45 : 1);
+  phase.shadowAlpha = useMoon
+    ? 0.1
+    : night
+      ? 0.14
+      : 0.16 + (1 - sunElev) * 0.28;
+
+  // Tinte atmosférico (grading)
+  if (name === "Amanecer") {
+    phase.grade = { r: 255, g: 170, b: 120, a: 0.22 + (1 - light) * 0.12 };
+  } else if (name === "Atardecer") {
+    phase.grade = { r: 255, g: 130, b: 70, a: 0.28 + (1 - light) * 0.18 };
+  } else if (name === "Anochecer") {
+    phase.grade = { r: 120, g: 70, b: 140, a: 0.22 };
+  } else if (night) {
+    phase.grade = { r: 40, g: 55, b: 110, a: 0.32 };
+  } else {
+    phase.grade = { r: 200, g: 210, b: 230, a: 0.06 };
+  }
 
   const w = game.weather;
   if (w.kind === "cloudy") phase.light *= 0.94;

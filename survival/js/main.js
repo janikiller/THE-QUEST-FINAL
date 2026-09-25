@@ -208,11 +208,17 @@ function syncHud(g) {
   const eqSig = eq.map((s) => `${s.slot}|${s.icon}|${s.label}|${s.stat || ""}`).join(";");
   const invSig = g.inventoryOpen ? inventorySlots(g).map((s) => `${s.kind}:${s.n}:${s.label}`).join(";") : "";
   const key = `${phase.name}|${weather}|${g.kills}|${wave}|${g.buildMode || ""}|${hotSig}|${eqSig}|${g.inventoryOpen ? 1 : 0}|${invSig}|${toastOn}|${seed}`;
+  const clockKey = `${phase.clock}|${phase.name}|${weather}|${seed}`;
 
-  // Texto de reloj / bajas: solo si cambia la firma relevante
+  // Reloj: barato, se actualiza al cambiar minuto/fase
+  if (clockKey !== (syncHud._clockKey || "")) {
+    syncHud._clockKey = clockKey;
+    clockEl.textContent = `${phase.clock || ""} · ${phase.name}${weather} · Niebla Norte #${seed}`;
+  }
+
+  // Texto de bajas / paneles: solo si cambia la firma relevante
   if (key !== hudKey) {
     hudKey = key;
-    clockEl.textContent = `${phase.name}${weather} · Niebla Norte #${seed}`;
     if (killsEl) killsEl.textContent = `${g.kills} bajas · ${wave}`;
 
     if (buildEl) {

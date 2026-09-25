@@ -68,18 +68,29 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     sky.addColorStop(0, phase.night ? "#2a2218" : "#6a5340");
     sky.addColorStop(0.5, phase.night ? "#3a2e20" : "#8a6a48");
     sky.addColorStop(1, phase.night ? "#1a1410" : "#4a3828");
+  } else if (phase.name === "Amanecer") {
+    sky.addColorStop(0, raining ? "#4a5568" : "#6a88b8");
+    sky.addColorStop(0.4, raining ? "#6a6070" : "#e8a878");
+    sky.addColorStop(0.75, raining ? "#5a5058" : "#f0c898");
+    sky.addColorStop(1, raining ? "#3a3834" : "#c89068");
+  } else if (phase.name === "Atardecer") {
+    sky.addColorStop(0, raining ? "#3a3038" : "#3a2a58");
+    sky.addColorStop(0.35, raining ? "#5a4048" : "#c85838");
+    sky.addColorStop(0.7, raining ? "#4a3838" : "#e88848");
+    sky.addColorStop(1, raining ? "#2a2018" : "#6a3020");
+  } else if (phase.name === "Anochecer") {
+    sky.addColorStop(0, "#1a1830");
+    sky.addColorStop(0.5, raining ? "#2a2438" : "#3a2848");
+    sky.addColorStop(1, "#121018");
   } else if (phase.night) {
     if (storming) {
-      sky.addColorStop(0, "#12151e");
-      sky.addColorStop(1, "#1a1822");
+      sky.addColorStop(0, "#0c1018");
+      sky.addColorStop(1, "#12141c");
     } else {
-      sky.addColorStop(0, "#151c28");
-      sky.addColorStop(1, "#1e1a16");
+      sky.addColorStop(0, "#0a1220");
+      sky.addColorStop(0.55, "#121820");
+      sky.addColorStop(1, "#0e1014");
     }
-  } else if (phase.name === "Atardecer" || phase.name === "Anochecer") {
-    sky.addColorStop(0, raining ? "#3a3038" : "#5a3828");
-    sky.addColorStop(0.55, raining ? "#4a4048" : "#8a5030");
-    sky.addColorStop(1, "#2a2018");
   } else if (raining) {
     sky.addColorStop(0, "#5a646c");
     sky.addColorStop(1, "#3a4248");
@@ -87,10 +98,10 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     sky.addColorStop(0, "#5a5852");
     sky.addColorStop(1, "#3a3834");
   } else {
-    // Día ceniciento post-colapso
-    sky.addColorStop(0, "#4a4e52");
-    sky.addColorStop(0.45, "#5a5854");
-    sky.addColorStop(1, "#3a3834");
+    // Día limpio (menos ceniza)
+    sky.addColorStop(0, "#6a8498");
+    sky.addColorStop(0.45, "#7a8890");
+    sky.addColorStop(1, "#5a6458");
   }
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, w, h);
@@ -119,6 +130,11 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
         }
       }
     }
+  }
+
+  // Sombras proyectadas en el suelo (antes de edificios / props)
+  if (!playerIndoor) {
+    drawBuildingCastShadows(ctx, game, phase, camX, camY, x0, y0, x1, y1);
   }
 
   // Edificios
@@ -180,7 +196,7 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
     const zx = z.x * TILE_PX - camX;
     const zy = z.y * TILE_PX - camY;
     if (zx < -margin || zy < -margin || zx > w + margin || zy > h + margin) continue;
-    drawZombie(ctx, zx, zy, game.time, z);
+    drawZombie(ctx, zx, zy, game.time, z, phase);
   }
   drawFx(ctx, game, camX, camY);
   drawAimAndBullets(ctx, game, camX, camY);
@@ -199,6 +215,12 @@ function paint(ctx, mctx, canvas, mini, game, dpr) {
 
   // Oscuridad + iluminación (farolas, ventanas, linterna)
   drawLighting(ctx, game, phase, camX, camY, w, h, litWindows.length > 12 ? litWindows.slice(0, 12) : litWindows, visibleProps, playerIndoor);
+
+  // Bloom solar/lunar + grading día→noche
+  if (!playerIndoor) {
+    drawSunMoonBloom(ctx, w, h, phase, raining || sanding);
+    drawDayGrade(ctx, w, h, phase);
+  }
 
   // Clima exterior: dentro de casas no llueve ni entra arena
   if (!playerIndoor) {
@@ -403,7 +425,7 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   // De día en exterior casi no hay velo; en interior siempre hay penumbra
   if (darkness < 0.04 && phase.thunder <= 0 && !indoor) return;
 
-  const lampMargin = 220;
+  const lampMargin = 260;
   const lamps = [];
   const lampSrc = game.world.lamps || game.world.props;
   for (const p of lampSrc) {
@@ -413,7 +435,7 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     if (lx < -lampMargin || ly < -lampMargin || lx > w + lampMargin || ly > h + lampMargin) continue;
     lamps.push({ p, lx, ly });
   }
-  if (lamps.length > 10) {
+  if (lamps.length > 12) {
     const px0 = game.player.x;
     const py0 = game.player.y;
     lamps.sort((a, b) => {
@@ -421,7 +443,7 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
       const db = (b.p.x - px0) ** 2 + (b.p.y - py0) ** 2;
       return da - db;
     });
-    lamps.length = 10;
+    lamps.length = 12;
   }
 
   const px = game.player.x * TILE_PX - camX;
@@ -429,7 +451,7 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   const lightDef = itemDef(game.player.equip?.light);
   const hasLight = Boolean(lightDef?.lightRadius);
   const playerR = hasLight
-    ? lightDef.lightRadius * (indoor ? 0.85 : phase.night ? 1 : 0.7)
+    ? lightDef.lightRadius * (indoor ? 0.85 : phase.night ? 1.1 : 0.7)
     : 0;
   const cool = phase.rain > 0.25 || phase.weather === "storm";
   const lightCool = hasLight ? lightDef.lightWarm === false : cool;
@@ -442,14 +464,17 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   const m = mask.getContext("2d");
   m.setTransform(scale, 0, 0, scale, 0, 0);
   m.clearRect(0, 0, w, h);
-  // Velo: más denso en interiores (casas cerradas, lejos de farolas)
-  // Interior: penumbra suave para que se lean yeso/suelo/muebles
+  // Velo: más denso de noche / penumbra interior
   const veil = indoor
-    ? (phase.night ? Math.min(0.42, 0.22 + darkness * 0.22) : Math.min(0.16, 0.08 + darkness * 0.12))
+    ? (phase.night ? Math.min(0.48, 0.24 + darkness * 0.28) : Math.min(0.18, 0.08 + darkness * 0.14))
     : phase.night
-      ? Math.min(0.2, 0.1 + darkness * 0.14)
-      : Math.min(0.18, darkness * 0.28);
-  m.fillStyle = indoor ? `rgba(22, 18, 14, ${veil})` : `rgba(8, 12, 24, ${veil})`;
+      ? Math.min(0.58, 0.28 + darkness * 0.42)
+      : Math.min(0.28, darkness * 0.4);
+  m.fillStyle = indoor
+    ? `rgba(22, 18, 14, ${veil})`
+    : phase.night
+      ? `rgba(4, 8, 22, ${veil})`
+      : `rgba(12, 10, 28, ${veil})`;
   m.fillRect(0, 0, w, h);
 
   m.globalCompositeOperation = "destination-out";
@@ -464,11 +489,11 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
       phase.weather === "storm" ? 0.85 + Math.sin(game.time * 16 + p.x * 9) * 0.15 : 1;
     const cx = lx + 10;
     const cy = ly + 4;
-    const lr = 165;
-    const hole = m.createRadialGradient(cx, cy, 10, cx, cy, lr);
-    hole.addColorStop(0, `rgba(0,0,0,${0.98 * flicker})`);
-    hole.addColorStop(0.4, `rgba(0,0,0,${0.7 * flicker})`);
-    hole.addColorStop(0.75, `rgba(0,0,0,${0.28 * flicker})`);
+    const lr = phase.night ? 210 : 165;
+    const hole = m.createRadialGradient(cx, cy, 8, cx, cy, lr);
+    hole.addColorStop(0, `rgba(0,0,0,${0.99 * flicker})`);
+    hole.addColorStop(0.35, `rgba(0,0,0,${0.78 * flicker})`);
+    hole.addColorStop(0.7, `rgba(0,0,0,${0.32 * flicker})`);
     hole.addColorStop(1, "rgba(0,0,0,0)");
     m.fillStyle = hole;
     m.beginPath();
@@ -520,9 +545,9 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
     m.fill();
   }
   for (const win of litWindows) {
-    const wr = 42;
+    const wr = 52;
     const hole = m.createRadialGradient(win.x, win.y, 1, win.x, win.y, wr);
-    hole.addColorStop(0, "rgba(0,0,0,0.65)");
+    hole.addColorStop(0, "rgba(0,0,0,0.7)");
     hole.addColorStop(1, "rgba(0,0,0,0)");
     m.fillStyle = hole;
     m.beginPath();
@@ -534,7 +559,7 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   ctx.drawImage(mask, 0, 0, w, h);
 
   // Brillo de farolas (omitir de día en exterior: caro y apenas se nota)
-  const doGlow = indoor || phase.night || phase.thunder > 0 || darkness > 0.25;
+  const doGlow = indoor || phase.night || phase.thunder > 0 || darkness > 0.18;
   if (!doGlow) return;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
@@ -548,23 +573,22 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
       phase.weather === "storm" ? 0.85 + Math.sin(game.time * 16 + p.x * 9) * 0.15 : 1;
     const cx = lx + 10;
     const cy = ly + 4;
-    const lr = 155;
+    const lr = phase.night ? 195 : 155;
+    const glowStr = phase.night ? 1.15 : 0.85;
     const lg = ctx.createRadialGradient(cx, cy - 8, 2, cx, cy, lr);
     if (cool) {
-      lg.addColorStop(0, `rgba(225, 238, 255, ${0.42 * flicker})`);
-      lg.addColorStop(0.4, `rgba(175, 205, 245, ${0.18 * flicker})`);
+      lg.addColorStop(0, `rgba(225, 238, 255, ${0.5 * flicker * glowStr})`);
+      lg.addColorStop(0.35, `rgba(175, 205, 245, ${0.22 * flicker * glowStr})`);
       lg.addColorStop(1, "rgba(140, 170, 220, 0)");
     } else {
-      lg.addColorStop(0, `rgba(255, 238, 190, ${0.4 * flicker})`);
-      lg.addColorStop(0.4, `rgba(255, 205, 130, ${0.16 * flicker})`);
-      lg.addColorStop(1, "rgba(255, 170, 80, 0)");
+      lg.addColorStop(0, `rgba(255, 236, 180, ${0.52 * flicker * glowStr})`);
+      lg.addColorStop(0.35, `rgba(255, 200, 110, ${0.22 * flicker * glowStr})`);
+      lg.addColorStop(1, "rgba(255, 160, 70, 0)");
     }
     ctx.fillStyle = lg;
     ctx.beginPath();
     ctx.arc(cx, cy, lr, 0, Math.PI * 2);
     ctx.fill();
-
-
   }
 
   if (hasLight && playerR > 0) {
@@ -585,10 +609,10 @@ function drawLighting(ctx, game, phase, camX, camY, w, h, litWindows, visiblePro
   }
 
   for (const win of litWindows) {
-    const wr = indoor ? 48 : 32;
+    const wr = indoor ? 56 : 40;
     const wg = ctx.createRadialGradient(win.x, win.y, 1, win.x, win.y, wr);
-    wg.addColorStop(0, indoor ? "rgba(255, 210, 140, 0.34)" : "rgba(255, 220, 140, 0.26)");
-    wg.addColorStop(0.55, indoor ? "rgba(255, 180, 100, 0.12)" : "rgba(255, 185, 100, 0.08)");
+    wg.addColorStop(0, indoor ? "rgba(255, 210, 140, 0.4)" : "rgba(255, 220, 140, 0.32)");
+    wg.addColorStop(0.55, indoor ? "rgba(255, 180, 100, 0.14)" : "rgba(255, 185, 100, 0.1)");
     wg.addColorStop(1, "rgba(255, 160, 70, 0)");
     ctx.fillStyle = wg;
     ctx.beginPath();
@@ -625,6 +649,120 @@ function getLightMask(w, h) {
   return _lightMask;
 }
 
+/** Sombra elíptica proyectada según el sol. */
+function drawCastShadow(ctx, x, y, rx, ry, phase, height = 1) {
+  const a = (phase?.shadowAlpha ?? 0.22) * Math.min(1.25, 0.7 + height * 0.2);
+  if (a < 0.04) return;
+  const len = (phase?.shadowLen ?? 1) * (4 + height * 5);
+  const ox = (phase?.sunDx ?? 0.35) * len;
+  const oy = (phase?.sunDy ?? 0.55) * len;
+  const stretch = 1 + (phase?.shadowLen ?? 1) * 0.45;
+  ctx.fillStyle = `rgba(0,0,0,${a})`;
+  ctx.beginPath();
+  ctx.ellipse(
+    x + ox * 0.85,
+    y + oy * 0.85,
+    rx * stretch,
+    ry * (0.9 + (phase?.shadowLen ?? 1) * 0.12),
+    Math.atan2(oy, ox) * 0.35,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+}
+
+/** Sombras de volumen de edificios sobre acera/calzada. */
+function drawBuildingCastShadows(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
+  if ((phase.shadowAlpha ?? 0) < 0.06) return;
+  const len = (phase.shadowLen ?? 1) * 18;
+  const ox = (phase.sunDx ?? 0.35) * len;
+  const oy = (phase.sunDy ?? 0.55) * len;
+  for (const b of game.world.buildings) {
+    if (b.x1 < x0 - 2 || b.x0 > x1 + 2 || b.y1 < y0 - 2 || b.y0 > y1 + 2) continue;
+    const floors = b.floors || 2;
+    const px = b.x0 * TILE_PX - camX;
+    const py = b.y0 * TILE_PX - camY;
+    const bw = (b.x1 - b.x0 + 1) * TILE_PX;
+    const bh = (b.y1 - b.y0 + 1) * TILE_PX;
+    const fl = 0.7 + floors * 0.22;
+    const a = (phase.shadowAlpha ?? 0.2) * (0.55 + floors * 0.08);
+    const cx = px + bw * 0.5 + ox * 0.55 * fl;
+    const cy = py + bh * 0.55 + oy * 0.55 * fl;
+    ctx.fillStyle = `rgba(0,0,0,${Math.min(0.42, a)})`;
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      cy,
+      bw * 0.42 + Math.abs(ox) * 0.35 * fl,
+      bh * 0.2 + Math.abs(oy) * 0.22 * fl,
+      Math.atan2(oy, ox) * 0.4,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  }
+}
+
+/** Bloom del sol/luna en una esquina (luz direccional atmosférica). */
+function drawSunMoonBloom(ctx, w, h, phase, muted) {
+  if (muted) return;
+  const elev = phase.sunElev ?? 0.5;
+  const night = phase.night;
+  const strength = night
+    ? 0.1 + elev * 0.08
+    : phase.name === "Atardecer" || phase.name === "Amanecer"
+      ? 0.22 + (1 - elev) * 0.18
+      : 0.1 + elev * 0.06;
+  if (strength < 0.04) return;
+  // Sol/luna “viene” desde el lado opuesto a la sombra
+  const sx = w * 0.5 - (phase.sunDx ?? 0.3) * w * 0.42;
+  const sy = h * 0.18 - (phase.sunDy ?? 0.5) * h * 0.08;
+  const r = Math.max(w, h) * (night ? 0.35 : 0.48);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  const g = ctx.createRadialGradient(sx, sy, 4, sx, sy, r);
+  if (night) {
+    g.addColorStop(0, `rgba(180, 200, 255, ${0.14 * strength * 4})`);
+    g.addColorStop(0.4, `rgba(100, 130, 200, ${0.06 * strength * 4})`);
+    g.addColorStop(1, "rgba(60, 80, 140, 0)");
+  } else if (phase.name === "Atardecer" || phase.name === "Anochecer") {
+    g.addColorStop(0, `rgba(255, 170, 80, ${strength})`);
+    g.addColorStop(0.35, `rgba(255, 110, 50, ${strength * 0.45})`);
+    g.addColorStop(1, "rgba(200, 60, 30, 0)");
+  } else if (phase.name === "Amanecer") {
+    g.addColorStop(0, `rgba(255, 210, 150, ${strength})`);
+    g.addColorStop(0.4, `rgba(255, 160, 100, ${strength * 0.4})`);
+    g.addColorStop(1, "rgba(220, 140, 90, 0)");
+  } else {
+    g.addColorStop(0, `rgba(255, 250, 230, ${strength * 0.7})`);
+    g.addColorStop(0.45, `rgba(220, 230, 255, ${strength * 0.25})`);
+    g.addColorStop(1, "rgba(180, 200, 230, 0)");
+  }
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+}
+
+/** Grading de color según fase del día. */
+function drawDayGrade(ctx, w, h, phase) {
+  const g = phase.grade;
+  if (!g || g.a < 0.02) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "soft-light";
+  ctx.fillStyle = `rgba(${g.r | 0},${g.g | 0},${g.b | 0},${g.a})`;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+  // Segunda pasada suave al anochecer/noche para profundidad
+  if (phase.night || phase.name === "Atardecer") {
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    const a = phase.night ? 0.18 + (1 - phase.light) * 0.12 : 0.08;
+    ctx.fillStyle = phase.night ? `rgba(18, 22, 40, ${a})` : `rgba(60, 32, 28, ${a})`;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+}
+
 function tileIndex(game, x, y) {
   return game.world.tiles[Math.floor(y) * game.world.size + Math.floor(x)];
 }
@@ -643,8 +781,9 @@ function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
   const size = game.world.size;
   const PAD = 12;
   const indoorKey = _viewIndoor ? `${_viewIndoor.x0},${_viewIndoor.y0},${_viewIndoor.style || ""}` : "out";
-  // v10 = edificios sin invadir calzada + calles limpias
-  const baseKey = `v10|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
+  // v12 = sombras / ciclo día-noche
+  const lightBucket = Math.round((phase.light ?? 1) * 5);
+  const baseKey = `v12|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${lightBucket}|${indoorKey}`;
   const outOfBounds =
     x0 < _groundMeta.x0 ||
     y0 < _groundMeta.y0 ||
@@ -709,23 +848,29 @@ function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
 
 /** Color plano por tipo — sin variación por tile (rompe la grilla). */
 function terrainFlatColor(tile, phase) {
-  const night = phase?.night ? 8 : 0;
+  const night = phase?.night ? -22 : 0;
+  const dusk = phase?.name === "Atardecer" || phase?.name === "Anochecer" ? -8 : 0;
+  const dawn = phase?.name === "Amanecer" ? 4 : 0;
+  const warmR = phase?.name === "Atardecer" || phase?.name === "Amanecer" ? 10 : 0;
+  const coolB = phase?.night ? 10 : 0;
+  const d = night + dusk + dawn;
+  const clamp = (n) => Math.max(8, Math.min(220, n | 0));
   switch (tile) {
     case TILE.ROAD:
     case TILE.CROSSWALK:
-      return `rgb(${52 + night},${56 + night},${64 + night})`;
+      return `rgb(${clamp(52 + d + warmR * 0.3)},${clamp(56 + d)},${clamp(64 + d + coolB)})`;
     case TILE.SIDEWALK:
-      return `rgb(${138 + night},${134 + night},${126 + night})`;
+      return `rgb(${clamp(138 + d + warmR)},${clamp(134 + d)},${clamp(126 + d + coolB * 0.4)})`;
     case TILE.PARK:
-      return `rgb(${42},${78},${40})`;
+      return `rgb(${clamp(42 + d * 0.5)},${clamp(78 + d * 0.4)},${clamp(40 + d * 0.3)})`;
     case TILE.PARKING:
-      return `rgb(${78 + night},${82 + night},${90 + night})`;
+      return `rgb(${clamp(78 + d)},${clamp(82 + d)},${clamp(90 + d + coolB)})`;
     case TILE.ALLEY:
-      return `rgb(${62 + night},${62 + night},${68 + night})`;
+      return `rgb(${clamp(62 + d)},${clamp(62 + d)},${clamp(68 + d + coolB)})`;
     case TILE.RUBBLE:
-      return `rgb(${100},${94},${86})`;
+      return `rgb(${clamp(100 + d)},${clamp(94 + d)},${clamp(86 + d)})`;
     case TILE.WATER:
-      return "#163428";
+      return phase?.night ? "#0e221c" : "#163428";
     default:
       return null;
   }
@@ -2087,9 +2232,11 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
   ctx.rect(px - 1, py - 1, bw + 2, bh + 2);
   ctx.clip();
 
-  // Sombra de volumen — contenida en el footprint
-  ctx.fillStyle = "rgba(0,0,0,0.2)";
-  fillRound(ctx, px + shadow, py + shadow, Math.max(4, bw - shadow), Math.max(4, bh - shadow), 6);
+  // Sombra de volumen interior (suave; la proyectada va en el suelo)
+  const sox = (phase.sunDx ?? 0.3) * shadow * 1.2;
+  const soy = (phase.sunDy ?? 0.5) * shadow * 1.2;
+  ctx.fillStyle = `rgba(0,0,0,${0.12 + (phase.shadowAlpha ?? 0.2) * 0.35})`;
+  fillRound(ctx, px + 2 + sox, py + 2 + soy, Math.max(4, bw - 4), Math.max(4, bh - 4), 6);
 
   // Cuerpo del edificio (sin overhang hacia la calle)
   const wall = shade(b.facade, style === "warehouse" ? -22 : -12);
@@ -2555,10 +2702,7 @@ function drawProp(ctx, p, px, py, phase) {
     ctx.strokeRect(px - 12, py - 6, 24, 10);
   } else if (p.type === "tree") {
     const r = p.r || 12;
-    ctx.fillStyle = "rgba(0,0,0,0.28)";
-    ctx.beginPath();
-    ctx.ellipse(px, py + 10, r * 0.75, r * 0.35, 0, 0, Math.PI * 2);
-    ctx.fill();
+    drawCastShadow(ctx, px, py + 10, r * 0.75, r * 0.35, phase, 1.4);
     ctx.fillStyle = "#5a3a20";
     fillRound(ctx, px - 3, py + 2, 6, 14, 2);
     if (p.tone === 2) {
@@ -2636,10 +2780,7 @@ function drawProp(ctx, p, px, py, phase) {
     }
   } else if (p.type === "lamp") {
     // Farola lineal suave
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.beginPath();
-    ctx.ellipse(px, py + 12, 7, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
+    drawCastShadow(ctx, px, py + 12, 7, 3, phase, 1.6);
     ctx.strokeStyle = "#2a2c30";
     ctx.lineWidth = 3.2;
     ctx.lineCap = "round";
@@ -2670,10 +2811,7 @@ function drawProp(ctx, p, px, py, phase) {
       ctx.fill();
     }
   } else if (p.type === "dumpster") {
-    ctx.fillStyle = "rgba(0,0,0,0.28)";
-    ctx.beginPath();
-    ctx.ellipse(px, py + 8, 14, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
+    drawCastShadow(ctx, px, py + 8, 14, 4, phase, 1.1);
     ctx.fillStyle = p.color || "#2f5a38";
     fillRound(ctx, px - 13, py - 10, 26, 18, 4);
     strokeRound(ctx, px - 13, py - 10, 26, 18, 4, "rgba(10,20,12,0.4)", 1.1);
@@ -3363,7 +3501,7 @@ function drawFx(ctx, game, camX, camY) {
   }
 }
 
-function drawZombie(ctx, px, py, time, z) {
+function drawZombie(ctx, px, py, time, z, phase = null) {
   ctx.save();
   ctx.translate(px, py);
   const boss = !!z.boss;
@@ -3386,10 +3524,7 @@ function drawZombie(ctx, px, py, time, z) {
     ctx.arc(0, 0, 26, 0, Math.PI * 2);
     ctx.fill();
   }
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
-  ctx.beginPath();
-  ctx.ellipse(0, 13, boss ? 13 : 9, boss ? 4.5 : 3.5, 0, 0, Math.PI * 2);
-  ctx.fill();
+  drawCastShadow(ctx, 0, 13, boss ? 13 : 9, boss ? 4.5 : 3.5, phase, boss ? 1.5 : 1);
   if ((z.facing || 1) < 0) ctx.scale(-1, 1);
   const limp = Math.sin(z.walkPhase || time * (boss ? 4.2 : 6) + z.x) * (boss ? 3 : 2);
   const body = flash > 0 ? "#c85848" : boss ? z.color || "#6a2a28" : "#3a4a34";
@@ -3623,11 +3758,9 @@ function drawPlayer(ctx, px, py, player, time, game = null) {
     ctx.scale(player.facing || 1, 1);
   }
 
-  // Sombra elíptica suave
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
-  ctx.beginPath();
-  ctx.ellipse(0, 13, 10, 3.6, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // Sombra elíptica proyectada según el sol
+  const dayPh = game?._phase || (game ? dayPhase(game) : null);
+  drawCastShadow(ctx, 0, 13, 10, 3.6, dayPh, 1.05);
 
   const moving = player.moving || Math.hypot(player.vx || 0, player.vy || 0) > 0.15;
   const phase = player.walkPhase || time * 8;
