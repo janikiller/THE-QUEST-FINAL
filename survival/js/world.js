@@ -531,7 +531,6 @@ export const BUILD = {
   claim: { label: "Marcar base", tile: TILE.BASE, cost: { scrap: 1, wood: 1 }, hint: "1 chatarra + 1 tabla" },
 };
 
-const BLOCK = 10;
 const ROAD_W = 2;
 
 const FACADE = ["#6b4f3a", "#4a5560", "#7a5a48", "#5a4a3a", "#3d4a52", "#6a5850", "#4e5a48", "#5c4a55", "#7a6a58", "#455060"];
@@ -545,6 +544,44 @@ const BUILDING_NAMES = {
 };
 const STREET_NAMES = ["Luna", "Sol", "Mistral", "Niebla", "Río", "Alba", "Crespo", "Norte", "Sur", "Puerto"];
 
+/** Ejes de calle con huecos irregulares (rompe la retícula cuadrada). */
+function buildStreetAxes(size, noise, minGap = 6, maxGap = 15) {
+  const axes = [0];
+  let p = ROAD_W + minGap; // evita doble banda en el borde
+  let i = 0;
+  while (p < size - ROAD_W - 2) {
+    axes.push(p);
+    const n = Math.abs(noise.noise2(p * 0.37 + i * 1.9, i * 2.3 + 4.1));
+    const frac = n - Math.floor(n); // 0..1 estable
+    const gap = minGap + ((frac * (maxGap - minGap + 1)) | 0);
+    p += Math.max(minGap, Math.min(maxGap, gap || minGap));
+    i++;
+  }
+  // Cierre al borde si queda hueco grande
+  const last = axes[axes.length - 1];
+  if (size - last > maxGap + ROAD_W) axes.push(size - ROAD_W);
+  return axes;
+}
+
+function isOnAxisRoad(pos, axes, roadW = ROAD_W) {
+  for (const a of axes) {
+    if (pos >= a && pos < a + roadW) return true;
+  }
+  return false;
+}
+
+function axisIndexAt(pos, axes, roadW = ROAD_W) {
+  for (let i = 0; i < axes.length; i++) {
+    if (pos >= axes[i] && pos < axes[i] + roadW) return i;
+  }
+  return -1;
+}
+
+/** Centro del canal ondulado (forma lineal, no banda recta). */
+function canalCenterAt(x, baseY, noise) {
+  return baseY + Math.sin(x * 0.09) * 5.5 + Math.sin(x * 0.031 + 1.2) * 2.2 + noise.noise2(x * 0.08, 9.1) * 1.8;
+}
+
 export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   const noise = createNoise(seed);
   const tiles = new Uint8Array(size * size);
@@ -552,63 +589,77 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   const doors = new Map();
   const buildings = [];
   const props = [];
-  const interiors = new Map(); // "x,y" -> { type, searched }
-  const decor = new Map(); // "x,y" -> { kind: "rug"|"mat", color, variant }
+  const interiors = new Map();
+  const decor = new Map();
 
   tiles.fill(TILE.SIDEWALK);
 
-  // Río tóxico post-colapso (ancho, atraviesa la ciudad)
-  const canalY = Math.max(18, Math.min(size - 20, ((size * 0.52) | 0) + ((noise.noise2(3, 7) * 8) | 0)));
-  const canalHalf = 3; // 7 tiles de ancho — bien visible desde el spawn
+  const vRoads = buildStreetAxes(size, noise, 6, 15);
+  // Ejes horizontales con semilla distinta (mismo API de ruido)
+  const hNoise = { noise2: (a, b) => noise.noise2(a + 40.7, b + 11.3) };
+  const hRoads = buildStreetAxes(size, hNoise, 6, 14);
+
+  // Río tóxico sinuoso
+  const canalY = Math.max(22, Math.min(size - 24, ((size * 0.52) | 0) + ((noise.noise2(3, 7) * 6) | 0)));
+  const canalHalf = 3;
   for (let x = 0; x < size; x++) {
+    const cy = canalCenterAt(x, canalY, noise);
     for (let dy = -canalHalf; dy <= canalHalf; dy++) {
-      const y = canalY + dy;
+      const y = (cy + dy + 0.5) | 0;
       if (y >= 0 && y < size) tiles[y * size + x] = TILE.WATER;
     }
   }
 
-  // Calles en retícula
+  // Calles irregulares (no retícula fija)
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       if (tiles[y * size + x] === TILE.WATER) continue;
-      const onV = x % BLOCK < ROAD_W;
-      const onH = y % BLOCK < ROAD_W;
-      if (onV || onH) tiles[y * size + x] = TILE.ROAD;
+      if (isOnAxisRoad(x, vRoads) || isOnAxisRoad(y, hRoads)) tiles[y * size + x] = TILE.ROAD;
     }
   }
 
-  // Pasos de cebra en cruces
+  // Cruces / cebra
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       if (tiles[y * size + x] !== TILE.ROAD) continue;
-      const nearV = x % BLOCK < ROAD_W;
-      const nearH = y % BLOCK < ROAD_W;
-      if (nearV && nearH) tiles[y * size + x] = TILE.CROSSWALK;
+      if (isOnAxisRoad(x, vRoads) && isOnAxisRoad(y, hRoads)) tiles[y * size + x] = TILE.CROSSWALK;
     }
   }
 
-  // Manzanas
-  for (let by = ROAD_W; by < size - ROAD_W; by += BLOCK) {
-    for (let bx = ROAD_W; bx < size - ROAD_W; bx += BLOCK) {
-      if (by <= canalY + canalHalf + 2 && by + BLOCK >= canalY - canalHalf - 1) {
-        paveQuay(tiles, size, bx, by, props, noise);
+  // Manzanas entre ejes (tamaños variables → formas distintas)
+  for (let hi = 0; hi < hRoads.length - 1; hi++) {
+    for (let vi = 0; vi < vRoads.length - 1; vi++) {
+      const bx0 = vRoads[vi] + ROAD_W;
+      const by0 = hRoads[hi] + ROAD_W;
+      const bx1 = vRoads[vi + 1] - 1;
+      const by1 = hRoads[hi + 1] - 1;
+      if (bx1 - bx0 < 3 || by1 - by0 < 3) continue;
+
+      // ¿Toca el canal?
+      let touchesCanal = false;
+      for (let x = bx0; x <= bx1 && !touchesCanal; x++) {
+        const cy = canalCenterAt(x, canalY, noise);
+        if (by0 <= cy + canalHalf + 2 && by1 >= cy - canalHalf - 1) touchesCanal = true;
+      }
+      if (touchesCanal) {
+        paveQuay(tiles, size, bx0, by0, bx1, by1, props, noise);
         continue;
       }
-      const roll = noise.noise2(bx * 0.13, by * 0.13);
-      if (roll < 0.16) pavePark(tiles, size, bx, by, props, noise);
-      else if (roll < 0.26) paveParking(tiles, size, bx, by, props, noise);
-      else if (roll < 0.34) paveAlley(tiles, size, bx, by, props, noise);
-      else carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, decor, props, noise, seed);
+      const roll = noise.noise2(bx0 * 0.13, by0 * 0.13);
+      if (roll < 0.16) pavePark(tiles, size, bx0, by0, bx1, by1, props, noise);
+      else if (roll < 0.26) paveParking(tiles, size, bx0, by0, bx1, by1, props, noise);
+      else if (roll < 0.34) paveAlley(tiles, size, bx0, by0, bx1, by1, props, noise);
+      else carveCityBuilding(tiles, size, bx0, by0, bx1, by1, doors, buildings, interiors, decor, props, noise, seed);
     }
   }
 
-  // Puentes del río (solo bajo las avenidas N-S)
+  // Puentes solo en avenidas N-S
   for (let x = 0; x < size; x++) {
-    if (x % BLOCK < ROAD_W) {
-      for (let dy = -canalHalf; dy <= canalHalf; dy++) {
-        const y = canalY + dy;
-        if (y >= 0 && y < size) tiles[y * size + x] = TILE.ROAD;
-      }
+    if (!isOnAxisRoad(x, vRoads)) continue;
+    const cy = canalCenterAt(x, canalY, noise);
+    for (let dy = -canalHalf; dy <= canalHalf; dy++) {
+      const y = (cy + dy + 0.5) | 0;
+      if (y >= 0 && y < size) tiles[y * size + x] = TILE.ROAD;
     }
   }
 
@@ -625,7 +676,6 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       }
       if (!nearRoad) continue;
       const n = noise.noise2(x * 0.4, y * 0.4);
-      // Farolas regulares en acera (cada ~8 tiles) para pozos de luz nocturnos
       const lampRow = y % 8 === 3 && x % 4 !== 1;
       const lampCol = x % 8 === 3 && y % 4 !== 1;
       if (lampRow || lampCol) {
@@ -638,18 +688,20 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Paradas de bus en tramos largos de calle
-  for (let y = ROAD_W; y < size - ROAD_W; y += BLOCK) {
-    for (let x = ROAD_W + 3; x < size - 3; x += BLOCK * 2) {
-      if (tiles[y * size + x] !== TILE.SIDEWALK && tiles[(y + ROAD_W) * size + x] !== TILE.SIDEWALK) continue;
-      const sy = tiles[(y + ROAD_W) * size + x] === TILE.SIDEWALK ? y + ROAD_W : y;
+  // Paradas de bus en ejes horizontales
+  for (let hi = 0; hi < hRoads.length; hi++) {
+    const y = hRoads[hi];
+    for (let vi = 0; vi < vRoads.length - 1; vi += 2) {
+      const x = vRoads[vi] + ROAD_W + 2;
+      if (x >= size - 2) continue;
+      const sy = Math.min(size - 2, y + ROAD_W);
       if (tiles[sy * size + x] === TILE.SIDEWALK) {
         props.push({ type: "busStop", x: x + 0.5, y: sy + 0.5 });
       }
     }
   }
 
-  // Loot en el suelo (pocas cosas dentro: el botín está en armarios)
+  // Loot
   for (let y = 1; y < size - 1; y++) {
     for (let x = 1; x < size - 1; x++) {
       const t = tiles[y * size + x];
@@ -665,24 +717,23 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Semáforos solo en cruces principales (cada 2 manzanas)
-  for (let by = 0; by < size; by += BLOCK * 2) {
-    for (let bx = 0; bx < size; bx += BLOCK * 2) {
+  // Semáforos / placas en cruces de ejes
+  for (let hi = 0; hi < hRoads.length; hi += 2) {
+    for (let vi = 0; vi < vRoads.length; vi += 2) {
+      const bx = vRoads[vi];
+      const by = hRoads[hi];
       if (bx + 1 >= size || by + 1 >= size) continue;
       if (tiles[by * size + bx] !== TILE.CROSSWALK && tiles[by * size + bx] !== TILE.ROAD) continue;
       props.push({ type: "traffic", x: bx + ROAD_W + 0.35, y: by + ROAD_W + 0.35 });
-      // Placa de calle
-      {
-        const a = (bx / BLOCK + by / BLOCK) % STREET_NAMES.length;
-        const b = (((bx / BLOCK) * 3 + (by / BLOCK) * 5) + 1) % STREET_NAMES.length;
-        props.push({
-          type: "streetSign",
-          x: bx + ROAD_W + 0.85,
-          y: by + ROAD_W + 0.2,
-          label: STREET_NAMES[a],
-          label2: STREET_NAMES[b === a ? (a + 1) % STREET_NAMES.length : b],
-        });
-      }
+      const a = (vi + hi) % STREET_NAMES.length;
+      const b = (vi * 3 + hi * 5 + 1) % STREET_NAMES.length;
+      props.push({
+        type: "streetSign",
+        x: bx + ROAD_W + 0.85,
+        y: by + ROAD_W + 0.2,
+        label: STREET_NAMES[a],
+        label2: STREET_NAMES[b === a ? (a + 1) % STREET_NAMES.length : b],
+      });
     }
   }
 
@@ -694,8 +745,7 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-
-  // Cicatrices del colapso: escombros y barricadas rotas en calles
+  // Cicatrices del colapso
   for (let y = 2; y < size - 2; y++) {
     for (let x = 2; x < size - 2; x++) {
       const t = tiles[y * size + x];
@@ -711,36 +761,33 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Restaurar el río tras manzanas/escombros (los bloques no deben taparlo)
+  // Restaurar río ondulado + puentes
   for (let x = 0; x < size; x++) {
-    const isBridge = x % BLOCK < ROAD_W;
+    const isBridge = isOnAxisRoad(x, vRoads);
+    const cy = canalCenterAt(x, canalY, noise);
     for (let dy = -canalHalf; dy <= canalHalf; dy++) {
-      const y = canalY + dy;
+      const y = (cy + dy + 0.5) | 0;
       if (y < 0 || y >= size) continue;
-      if (isBridge) {
-        tiles[y * size + x] = TILE.ROAD;
-      } else {
-        tiles[y * size + x] = TILE.WATER;
-      }
+      tiles[y * size + x] = isBridge ? TILE.ROAD : TILE.WATER;
     }
-    // Orillas ruinosas
-    for (const bank of [canalY - canalHalf - 1, canalY + canalHalf + 1]) {
-      if (bank < 1 || bank >= size - 1) continue;
-      if (isBridge) continue;
+    for (const bankOff of [-canalHalf - 1, canalHalf + 1]) {
+      const bank = (cy + bankOff + 0.5) | 0;
+      if (bank < 1 || bank >= size - 1 || isBridge) continue;
       const t = tiles[bank * size + x];
       if (t === TILE.WATER || t === TILE.ROAD || t === TILE.CROSSWALK) continue;
       if (noise.noise2(x * 0.4, bank * 0.4) > 0.35) tiles[bank * size + x] = TILE.RUBBLE;
     }
   }
 
-  // Assets post-apocalípticos del río (barcas, muelles, tuberías, barriles)
+  // Assets del río
   for (let x = 3; x < size - 3; x += 3) {
-    if (x % BLOCK < ROAD_W + 1) continue;
+    if (isOnAxisRoad(x, vRoads) || isOnAxisRoad(x - 1, vRoads)) continue;
+    const cy = canalCenterAt(x, canalY, noise);
     if (noise.noise2(x * 0.2, canalY) > 0.12) {
       props.push({
         type: "boat",
         x: x + 0.5 + noise.noise2(x, 1) * 0.4,
-        y: canalY + 0.5 + (noise.noise2(x, 2) - 0.5) * (canalHalf - 0.6),
+        y: cy + 0.5 + (noise.noise2(x, 2) - 0.5) * (canalHalf - 0.6),
         wreck: true,
       });
     }
@@ -748,46 +795,25 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       props.push({
         type: "riverDebris",
         x: x + 0.3 + noise.noise2(x, 5) * 0.4,
-        y: canalY + 0.5 + (noise.noise2(x, 4) - 0.5) * canalHalf,
+        y: cy + 0.5 + (noise.noise2(x, 4) - 0.5) * canalHalf,
         tone: (x * 3) % 3,
       });
     }
     if (noise.noise2(x * 0.25, canalY - 2) > 0.25) {
-      props.push({
-        type: "barrel",
-        x: x + 0.6,
-        y: canalY - canalHalf - 0.55,
-        toxic: noise.noise2(x, 8) > 0.35,
-      });
+      props.push({ type: "barrel", x: x + 0.6, y: cy - canalHalf - 0.55, toxic: noise.noise2(x, 8) > 0.35 });
     }
     if (noise.noise2(x * 0.22, canalY + 3) > 0.3) {
-      props.push({
-        type: "barrel",
-        x: x + 0.4,
-        y: canalY + canalHalf + 0.55,
-        toxic: true,
-      });
+      props.push({ type: "barrel", x: x + 0.4, y: cy + canalHalf + 0.55, toxic: true });
     }
     if (x % 6 === 0 || noise.noise2(x, 11) > 0.55) {
-      props.push({
-        type: "dock",
-        x: x + 0.5,
-        y: canalY - canalHalf - 0.1,
-        broken: true,
-      });
+      props.push({ type: "dock", x: x + 0.5, y: cy - canalHalf - 0.1, broken: true });
     }
     if (x % 5 === 2 || noise.noise2(x, 12) > 0.5) {
-      props.push({
-        type: "pipe",
-        x: x + 0.5,
-        y: canalY + canalHalf + 0.15,
-        toxic: true,
-      });
+      props.push({ type: "pipe", x: x + 0.5, y: cy + canalHalf + 0.15, toxic: true });
     }
   }
 
   props.sort((a, b) => a.y - b.y);
-  // Índices cacheados para iluminación (evita escanear ~1700 props/frame)
   const lamps = props.filter((p) => p.type === "lamp");
   const indoorLights = props.filter((p) => p.type === "indoorLamp" || p.type === "candle");
   const propGrid = buildPropGrid(props, size);
@@ -797,6 +823,7 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   return {
     size, seed, tiles, loot, doors, buildings, props, interiors, decor, spawn, noise, canalY,
     lamps, indoorLights, propGrid, buildingIndex, tileRev: 0,
+    vRoads, hRoads,
   };
 }
 
@@ -845,16 +872,7 @@ export function propsInView(world, x0, y0, x1, y1) {
   return out;
 }
 
-function blockBounds(bx, by, size) {
-  const x0 = bx;
-  const y0 = by;
-  const x1 = Math.min(size - 1, bx + BLOCK - ROAD_W - 1);
-  const y1 = Math.min(size - 1, by + BLOCK - ROAD_W - 1);
-  return { x0, y0, x1, y1 };
-}
-
-function paveSidewalkRing(tiles, size, bx, by) {
-  const { x0, y0, x1, y1 } = blockBounds(bx, by, size);
+function paveSidewalkRing(tiles, size, x0, y0, x1, y1) {
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
       if (tiles[y * size + x] === TILE.ROAD || tiles[y * size + x] === TILE.WATER || tiles[y * size + x] === TILE.CROSSWALK) continue;
@@ -864,27 +882,32 @@ function paveSidewalkRing(tiles, size, bx, by) {
   return { x0, y0, x1, y1 };
 }
 
-function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, decor, props, noise, seed) {
-  const ring = paveSidewalkRing(tiles, size, bx, by);
-  // Edificio inset 1 tile (deja acera)
-  const x0 = ring.x0 + 1;
-  const y0 = ring.y0 + 1;
-  const x1 = ring.x1 - 1;
-  const y1 = ring.y1 - 1;
+function carveCityBuilding(tiles, size, bx0, by0, bx1, by1, doors, buildings, interiors, decor, props, noise, seed) {
+  const ring = paveSidewalkRing(tiles, size, bx0, by0, bx1, by1);
+  // Edificio inset 1 tile (deja acera) — recortes irregulares en esquinas
+  let x0 = ring.x0 + 1;
+  let y0 = ring.y0 + 1;
+  let x1 = ring.x1 - 1;
+  let y1 = ring.y1 - 1;
+  // Variar el inset para romper rectángulos idénticos
+  if (noise.noise2(bx0 * 0.2, by0 * 0.2) > 0.55 && x1 - x0 > 5) x0 += 1;
+  if (noise.noise2(bx0 * 0.21, by0 * 0.19) > 0.6 && x1 - x0 > 5) x1 -= 1;
+  if (noise.noise2(bx0 * 0.18, by0 * 0.22) > 0.55 && y1 - y0 > 5) y0 += 1;
+  if (noise.noise2(bx0 * 0.23, by0 * 0.17) > 0.6 && y1 - y0 > 5) y1 -= 1;
   if (x1 - x0 < 3 || y1 - y0 < 3) return;
 
-  const facade = FACADE[((bx * 17 + by * 31 + (seed * 3) + ((bx / BLOCK) | 0) * 7) >>> 0) % FACADE.length];
-  const floors = 2 + (((noise.noise2(bx, by) * 4) | 0) % 4);
-  const styleRoll = noise.noise2(bx * 0.31, by * 0.27);
+  const facade = FACADE[((bx0 * 17 + by0 * 31 + (seed * 3) + ((bx0 / 8) | 0) * 7) >>> 0) % FACADE.length];
+  const floors = 2 + (((noise.noise2(bx0, by0) * 4) | 0) % 4);
+  const styleRoll = noise.noise2(bx0 * 0.31, by0 * 0.27);
   let style = "block";
   if (floors >= 4) style = "tower";
   else if (styleRoll < 0.22) style = "shop";
   else if (styleRoll < 0.4) style = "warehouse";
   else if (styleRoll < 0.62) style = "residential";
   const namePool = BUILDING_NAMES[style] || BUILDING_NAMES.block;
-  const name = namePool[((bx * 5 + by * 11 + seed * 3) >>> 0) % namePool.length];
-  const tint = ((noise.noise2(bx * 0.17, by * 0.19) * 24) | 0) - 12;
-  const awning = AWNING[((bx * 3 + by * 5 + seed) >>> 0) % AWNING.length];
+  const name = namePool[((bx0 * 5 + by0 * 11 + seed * 3) >>> 0) % namePool.length];
+  const tint = ((noise.noise2(bx0 * 0.17, by0 * 0.19) * 24) | 0) - 12;
+  const awning = AWNING[((bx0 * 3 + by0 * 5 + seed) >>> 0) % AWNING.length];
   const facadeTinted = shadeHex(facade, tint);
   const floorStyle =
     style === "warehouse" ? "concrete" :
@@ -892,48 +915,74 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, dec
     style === "tower" ? "office" :
     "wood";
   const rugPalette = RUG_PALETTES[style] || RUG_PALETTES.block;
-  const accent = rugPalette[((bx * 7 + by * 3 + seed) >>> 0) % rugPalette.length];
+  const accent = rugPalette[((bx0 * 7 + by0 * 3 + seed) >>> 0) % rugPalette.length];
+
+  // Recorte de esquina tipo L (~30% de edificios)
+  const cutCorner = noise.noise2(bx0 * 0.4, by0 * 0.4) > 0.7 && (x1 - x0) >= 5 && (y1 - y0) >= 5;
+  const cutW = cutCorner ? 2 + ((noise.noise2(bx0, by0 + 3) * 2) | 0) : 0;
+  const cutH = cutCorner ? 2 + ((noise.noise2(bx0 + 2, by0) * 2) | 0) : 0;
+  const cutSide = ((noise.noise2(bx0 + 1, by0 + 1) * 4) | 0); // 0=NW 1=NE 2=SW 3=SE
 
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
-      const edge = x === x0 || x === x1 || y === y0 || y === y1;
+      if (cutCorner) {
+        const inCut =
+          (cutSide === 0 && x < x0 + cutW && y < y0 + cutH) ||
+          (cutSide === 1 && x > x1 - cutW && y < y0 + cutH) ||
+          (cutSide === 2 && x < x0 + cutW && y > y1 - cutH) ||
+          (cutSide === 3 && x > x1 - cutW && y > y1 - cutH);
+        if (inCut) {
+          tiles[y * size + x] = TILE.SIDEWALK;
+          continue;
+        }
+      }
+      const edge = x === x0 || x === x1 || y === y0 || y === y1 ||
+        (cutCorner && (
+          (cutSide === 0 && ((x === x0 + cutW && y < y0 + cutH) || (y === y0 + cutH && x < x0 + cutW))) ||
+          (cutSide === 1 && ((x === x1 - cutW && y < y0 + cutH) || (y === y0 + cutH && x > x1 - cutW))) ||
+          (cutSide === 2 && ((x === x0 + cutW && y > y1 - cutH) || (y === y1 - cutH && x < x0 + cutW))) ||
+          (cutSide === 3 && ((x === x1 - cutW && y > y1 - cutH) || (y === y1 - cutH && x > x1 - cutW)))
+        ));
       tiles[y * size + x] = edge ? TILE.WALL : TILE.FLOOR;
     }
   }
 
   // Puerta hacia la calle más cercana
-  const side = (noise.noise2(bx * 0.5, by * 0.5) * 4) | 0;
+  const side = (noise.noise2(bx0 * 0.5, by0 * 0.5) * 4) | 0;
   let dx = ((x0 + x1) / 2) | 0;
   let dy = ((y0 + y1) / 2) | 0;
   if (side === 0) dy = y0;
   else if (side === 1) dy = y1;
   else if (side === 2) dx = x0;
   else dx = x1;
+  // Evitar puerta en el recorte
+  if (tiles[dy * size + dx] === TILE.SIDEWALK) {
+    dx = ((x0 + x1) / 2) | 0;
+    dy = side < 2 ? (side === 0 ? y0 : y1) : dy;
+  }
   tiles[dy * size + dx] = TILE.DOOR;
   doors.set(`${dx},${dy}`, { hp: 50 });
 
   decorateInterior({
     tiles, size, interiors, decor, props,
     x0, y0, x1, y1, doorX: dx, doorY: dy, side,
-    style, accent, noise, bx, by,
+    style, accent, noise, bx: bx0, by: by0,
   });
 
-  // Mobiliario urbano en acera
-  if (noise.noise2(bx + 2, by + 2) > 0.45) {
+  if (noise.noise2(bx0 + 2, by0 + 2) > 0.45) {
     props.push({ type: "dumpster", x: ring.x0 + 0.5, y: ((y0 + y1) / 2) + 0.15 });
   }
-  if (noise.noise2(bx + 5, by + 1) > 0.55) {
+  if (noise.noise2(bx0 + 5, by0 + 1) > 0.55) {
     props.push({ type: "sign", x: dx + (side === 2 ? -0.7 : side === 3 ? 0.7 : 0), y: dy + (side === 0 ? -0.7 : side === 1 ? 0.7 : 0), label: name.split(" ")[0] });
   }
   props.push({ type: "awning", x: dx + 0.5, y: dy + 0.5, side, color: awning, wide: style === "shop" });
-  if (style === "residential" && noise.noise2(bx + 8, by) > 0.4) {
+  if (style === "residential" && noise.noise2(bx0 + 8, by0) > 0.4) {
     props.push({ type: "planter", x: dx + (side >= 2 ? 0 : side === 0 ? 0.2 : -0.2) + 0.5, y: dy + (side < 2 ? 0 : 0.2) + 0.5, tone: 1 });
   }
 
-
   decorateFacadeWalls({
     props, x0, y0, x1, y1, doorX: dx, doorY: dy, side,
-    style, noise, bx, by, name,
+    style, noise, bx: bx0, by: by0, name,
   });
 
   buildings.push({
@@ -942,29 +991,24 @@ function carveCityBuilding(tiles, size, bx, by, doors, buildings, interiors, dec
   });
 }
 
-function pavePark(tiles, size, bx, by, props, noise) {
-  const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
+function pavePark(tiles, size, bx0, by0, bx1, by1, props, noise) {
+  const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx0, by0, bx1, by1);
   const midX = (x0 + x1) * 0.5;
   const midY = (y0 + y1) * 0.5;
-  // Camino orgánico (curva), NO cruz que parte el parque en 4 cuadrados
-  const pathAxis = noise.noise2(bx * 0.4, by * 0.4) > 0.45 ? "h" : "v";
-  const wobbleAmp = 1.1 + noise.noise2(bx + 1, by + 2) * 0.8;
+  const pathAxis = noise.noise2(bx0 * 0.4, by0 * 0.4) > 0.45 ? "h" : "v";
+  const wobbleAmp = 1.1 + noise.noise2(bx0 + 1, by0 + 2) * 0.8;
 
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
-      // Césped contínuo por defecto
       tiles[y * size + x] = TILE.PARK;
-
-      // Sendero ondulado (banda suave, no líneas rectas de baldosas)
       let onPath = false;
       if (pathAxis === "h") {
-        const wave = Math.sin((x - x0) * 0.55 + bx * 0.2) * wobbleAmp;
+        const wave = Math.sin((x - x0) * 0.55 + bx0 * 0.2) * wobbleAmp;
         onPath = Math.abs(y - (midY + wave)) < 0.85;
       } else {
-        const wave = Math.sin((y - y0) * 0.55 + by * 0.2) * wobbleAmp;
+        const wave = Math.sin((y - y0) * 0.55 + by0 * 0.2) * wobbleAmp;
         onPath = Math.abs(x - (midX + wave)) < 0.85;
       }
-      // Claros irregulares en el borde (rompe silueta rectangular del parche)
       const edgeDist = Math.min(x - x0, x1 - x, y - y0, y1 - y);
       const notch = noise.noise2(x * 0.7, y * 0.7);
       if (edgeDist <= 1 && notch > 0.62) {
@@ -975,7 +1019,6 @@ function pavePark(tiles, size, bx, by, props, noise) {
     }
   }
 
-  // Árboles solo sobre césped, posiciones orgánicas
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
       if (tiles[y * size + x] !== TILE.PARK) continue;
@@ -990,7 +1033,6 @@ function pavePark(tiles, size, bx, by, props, noise) {
     }
   }
 
-  // Bancos / fuente a lo largo del sendero (no en cruz rígida)
   const pathY = pathAxis === "h" ? midY : midY + Math.sin(0.3) * wobbleAmp;
   const pathX = pathAxis === "v" ? midX : midX + Math.sin(0.3) * wobbleAmp;
   props.push({ type: "bench", x: pathX - 1.4, y: pathY + (pathAxis === "h" ? 1.1 : 0.2) });
@@ -1000,29 +1042,23 @@ function pavePark(tiles, size, bx, by, props, noise) {
   props.push({ type: "planter", x: x1 - 0.6, y: y1 - 0.6, tone: 1 });
 }
 
-function paveParking(tiles, size, bx, by, props, noise) {
-  const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
+function paveParking(tiles, size, bx0, by0, bx1, by1, props, noise) {
+  const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx0, by0, bx1, by1);
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
-      // Parking abandonado: más escombros que asfalto limpio
       tiles[y * size + x] = noise.noise2(x * 1.3, y * 1.1) > 0.72 ? TILE.RUBBLE : TILE.PARKING;
       if ((x + y) % 4 === 0 && noise.noise2(x, y) > 0.55) {
-        props.push({
-          type: "debris",
-          x: x + 0.5,
-          y: y + 0.5,
-          tone: (x * 3 + y) % 3,
-        });
+        props.push({ type: "debris", x: x + 0.5, y: y + 0.5, tone: (x * 3 + y) % 3 });
       }
     }
   }
-  if (noise.noise2(bx, by + 3) > 0.4) {
+  if (noise.noise2(bx0, by0 + 3) > 0.4) {
     props.push({ type: "dumpster", x: x1 - 0.6, y: y1 - 0.8, color: "#3a3a42" });
   }
 }
 
-function paveAlley(tiles, size, bx, by, props, noise) {
-  const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
+function paveAlley(tiles, size, bx0, by0, bx1, by1, props, noise) {
+  const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx0, by0, bx1, by1);
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
       tiles[y * size + x] = noise.noise2(x, y) > 0.65 ? TILE.RUBBLE : TILE.ALLEY;
@@ -1031,40 +1067,38 @@ function paveAlley(tiles, size, bx, by, props, noise) {
   props.push({ type: "dumpster", x: ((x0 + x1) / 2) + 0.5, y: y0 + 1.5 });
   props.push({ type: "dumpster", x: ((x0 + x1) / 2) - 0.2, y: y1 - 0.8, color: "#3a4a58" });
   props.push({ type: "trash", x: x0 + 1.4, y: ((y0 + y1) / 2) });
-  if (noise.noise2(bx, by) > 0.4) {
+  if (noise.noise2(bx0, by0) > 0.4) {
     props.push({ type: "graffiti", x: x0 + 1.5, y: y0 + 2.2, wall: "w", text: "XX" });
   }
-  if (noise.noise2(bx + 2, by) > 0.5) {
+  if (noise.noise2(bx0 + 2, by0) > 0.5) {
     props.push({ type: "graffiti", x: x1 - 1.2, y: y1 - 1.5, wall: "e", text: "CRESPO" });
   }
 }
 
-function paveQuay(tiles, size, bx, by, props, noise) {
-  const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx, by);
+function paveQuay(tiles, size, bx0, by0, bx1, by1, props, noise) {
+  const { x0, y0, x1, y1 } = paveSidewalkRing(tiles, size, bx0, by0, bx1, by1);
   for (let y = y0 + 1; y <= y1 - 1; y++) {
     for (let x = x0 + 1; x <= x1 - 1; x++) {
       if (tiles[y * size + x] === TILE.WATER) continue;
       tiles[y * size + x] = noise.noise2(x * 0.5, y * 0.5) > 0.38 ? TILE.RUBBLE : TILE.SIDEWALK;
     }
   }
-  // Barandillas rotas / oxidadas
   for (let x = x0 + 1; x < x1; x += 2) {
-    if (noise.noise2(x * 0.4, by) > 0.25) {
-      props.push({ type: "railing", x: x + 0.5, y: y0 + 1.2, broken: noise.noise2(x, by + 1) > 0.4 });
+    if (noise.noise2(x * 0.4, by0) > 0.25) {
+      props.push({ type: "railing", x: x + 0.5, y: y0 + 1.2, broken: noise.noise2(x, by0 + 1) > 0.4 });
     }
   }
-  // Orilla saqueada: barriles, escombros, farolas caídas
   props.push({ type: "debris", x: (x0 + x1) / 2, y: y0 + 2.2, tone: 1 });
-  if (noise.noise2(bx + 1, by) > 0.35) {
+  if (noise.noise2(bx0 + 1, by0) > 0.35) {
     props.push({ type: "barrel", x: x0 + 2.2, y: y0 + 2.4, toxic: true });
   }
-  if (noise.noise2(bx + 2, by) > 0.4) {
+  if (noise.noise2(bx0 + 2, by0) > 0.4) {
     props.push({ type: "barricadeJunk", x: x1 - 2.1, y: y0 + 2.6 });
   }
-  if (noise.noise2(bx + 4, by) > 0.55) {
+  if (noise.noise2(bx0 + 4, by0) > 0.55) {
     props.push({ type: "lamp", x: (x0 + x1) / 2, y: y0 + 1.8 });
   }
-  if (noise.noise2(bx, by) > 0.45) {
+  if (noise.noise2(bx0, by0) > 0.45) {
     props.push({ type: "debris", x: (x0 + x1) / 2 + 1.2, y: y0 + 2.8, tone: 2 });
   }
 }
