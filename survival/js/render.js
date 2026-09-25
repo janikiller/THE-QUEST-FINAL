@@ -812,39 +812,118 @@ function neighborTile(game, tx, ty) {
   return game.world.tiles[ty * game.world.size + tx];
 }
 
-/** Orillas suaves entre tipos de suelo (rompe la grilla cuadrada). */
+/** Orillas orgánicas: banda suave + esquinas redondeadas (rompe silueta cuadrada). */
 function softTileEdges(ctx, game, tx, ty, px, py, selfTile) {
   const edges = [
-    [0, -1, px, py, TILE_PX, 0, true],
-    [0, 1, px, py + TILE_PX, TILE_PX, 0, true],
-    [-1, 0, px, py, 0, TILE_PX, false],
-    [1, 0, px + TILE_PX, py, 0, TILE_PX, false],
+    { dx: 0, dy: -1, horiz: true, inward: 1 },
+    { dx: 0, dy: 1, horiz: true, inward: -1 },
+    { dx: -1, dy: 0, horiz: false, inward: 1 },
+    { dx: 1, dy: 0, horiz: false, inward: -1 },
   ];
   ctx.lineCap = "round";
-  for (const [dx, dy, x0, y0, spanX, spanY, horiz] of edges) {
-    const n = neighborTile(game, tx + dx, ty + dy);
+  ctx.lineJoin = "round";
+
+  for (const e of edges) {
+    const n = neighborTile(game, tx + e.dx, ty + e.dy);
     if (n === selfTile) continue;
-    // No fundir pared/puerta con suelo abierto
     if (n === TILE.WALL || n === TILE.DOOR || selfTile === TILE.WALL) continue;
+    const flatN = terrainFlatColor(n, null) || TILE_META[n]?.color || "#333";
     const grassish = selfTile === TILE.PARK || n === TILE.PARK;
     const waterish = selfTile === TILE.WATER || n === TILE.WATER;
-    ctx.strokeStyle = waterish
-      ? "rgba(40,70,48,0.55)"
-      : grassish
-        ? "rgba(36,70,32,0.4)"
-        : "rgba(50,48,44,0.28)";
-    ctx.lineWidth = waterish ? 5 : grassish ? 4.5 : 3;
+    const depth = waterish ? 9 : grassish ? 8 : 5.5;
+    const seed = (tx * 17 + ty * 13 + e.dx * 3 + e.dy * 7) & 15;
+
+    // Banda de relleno ondulada (mezcla visual, no línea recta)
+    ctx.fillStyle = flatN;
+    ctx.globalAlpha = waterish ? 0.42 : grassish ? 0.38 : 0.28;
     ctx.beginPath();
-    if (horiz) {
-      ctx.moveTo(x0 - 1, y0);
-      ctx.quadraticCurveTo(x0 + spanX * 0.35, y0 + (dy < 0 ? -2.5 : 2.5), x0 + spanX * 0.55, y0);
-      ctx.quadraticCurveTo(x0 + spanX * 0.8, y0 + (dy < 0 ? 2 : -2), x0 + spanX + 1, y0);
+    if (e.horiz) {
+      const yEdge = e.dy < 0 ? py : py + TILE_PX;
+      const dir = e.inward;
+      ctx.moveTo(px - 2, yEdge);
+      for (let i = 0; i <= 6; i++) {
+        const t = i / 6;
+        const x = px + t * TILE_PX;
+        const wobble = Math.sin(t * Math.PI * 2 + seed) * (depth * 0.35) + depth * 0.55;
+        ctx.lineTo(x, yEdge + dir * wobble);
+      }
+      ctx.lineTo(px + TILE_PX + 2, yEdge);
+      ctx.closePath();
     } else {
-      ctx.moveTo(x0, y0 - 1);
-      ctx.quadraticCurveTo(x0 + (dx < 0 ? -2.5 : 2.5), y0 + spanY * 0.35, x0, y0 + spanY * 0.55);
-      ctx.quadraticCurveTo(x0 + (dx < 0 ? 2 : -2), y0 + spanY * 0.8, x0, y0 + spanY + 1);
+      const xEdge = e.dx < 0 ? px : px + TILE_PX;
+      const dir = e.inward;
+      ctx.moveTo(xEdge, py - 2);
+      for (let i = 0; i <= 6; i++) {
+        const t = i / 6;
+        const y = py + t * TILE_PX;
+        const wobble = Math.sin(t * Math.PI * 2 + seed) * (depth * 0.35) + depth * 0.55;
+        ctx.lineTo(xEdge + dir * wobble, y);
+      }
+      ctx.lineTo(xEdge, py + TILE_PX + 2);
+      ctx.closePath();
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Trazo de borde curvo encima
+    ctx.strokeStyle = waterish
+      ? "rgba(40,70,48,0.5)"
+      : grassish
+        ? "rgba(36,70,32,0.35)"
+        : "rgba(50,48,44,0.22)";
+    ctx.lineWidth = waterish ? 4.5 : grassish ? 3.8 : 2.6;
+    ctx.beginPath();
+    if (e.horiz) {
+      const yEdge = e.dy < 0 ? py : py + TILE_PX;
+      const dir = e.inward;
+      ctx.moveTo(px - 1, yEdge);
+      ctx.quadraticCurveTo(px + TILE_PX * 0.28, yEdge + dir * 3.2, px + TILE_PX * 0.5, yEdge + dir * 0.5);
+      ctx.quadraticCurveTo(px + TILE_PX * 0.78, yEdge - dir * 2.4, px + TILE_PX + 1, yEdge);
+    } else {
+      const xEdge = e.dx < 0 ? px : px + TILE_PX;
+      const dir = e.inward;
+      ctx.moveTo(xEdge, py - 1);
+      ctx.quadraticCurveTo(xEdge + dir * 3.2, py + TILE_PX * 0.28, xEdge + dir * 0.5, py + TILE_PX * 0.5);
+      ctx.quadraticCurveTo(xEdge - dir * 2.4, py + TILE_PX * 0.78, xEdge, py + TILE_PX + 1);
     }
     ctx.stroke();
+  }
+
+  // Esquinas exteriores: redondear silueta del parche
+  const cornerDirs = [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ];
+  for (const [cx, cy] of cornerDirs) {
+    const nx = neighborTile(game, tx + cx, ty);
+    const ny = neighborTile(game, tx, ty + cy);
+    if (nx === selfTile || ny === selfTile) continue;
+    if (nx === TILE.WALL || ny === TILE.WALL || nx === TILE.DOOR || ny === TILE.DOOR) continue;
+    const ox = cx < 0 ? px : px + TILE_PX;
+    const oy = cy < 0 ? py : py + TILE_PX;
+    const flatN = terrainFlatColor(nx, null) || terrainFlatColor(ny, null) || "#333";
+    ctx.fillStyle = flatN;
+    ctx.globalAlpha = selfTile === TILE.PARK ? 0.55 : 0.4;
+    ctx.beginPath();
+    ctx.moveTo(ox, oy);
+    if (cx < 0 && cy < 0) {
+      ctx.lineTo(ox + 13, oy);
+      ctx.quadraticCurveTo(ox + 2, oy + 2, ox, oy + 13);
+    } else if (cx > 0 && cy < 0) {
+      ctx.lineTo(ox - 13, oy);
+      ctx.quadraticCurveTo(ox - 2, oy + 2, ox, oy + 13);
+    } else if (cx < 0 && cy > 0) {
+      ctx.lineTo(ox + 13, oy);
+      ctx.quadraticCurveTo(ox + 2, oy - 2, ox, oy - 13);
+    } else {
+      ctx.lineTo(ox - 13, oy);
+      ctx.quadraticCurveTo(ox - 2, oy - 2, ox, oy - 13);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -1087,23 +1166,23 @@ function drawGrassDetail(ctx, tx, ty, px, py) {
   }
 }
 
-/** Parking: solo líneas de plaza alineadas (sin cajas por tile). */
+/** Parking: una sola línea de plaza por columna (sin rejilla de cajas). */
 function drawParkingDetail(ctx, tx, ty, px, py) {
   ctx.lineCap = "round";
-  ctx.strokeStyle = "rgba(220,218,205,0.42)";
-  ctx.lineWidth = 1.7;
-  // Líneas verticales que atraviesan el tile → filas contínuas
-  ctx.beginPath();
-  ctx.moveTo(px + 6, py - 1);
-  ctx.lineTo(px + 6, py + TILE_PX + 1);
-  ctx.moveTo(px + TILE_PX - 6, py - 1);
-  ctx.lineTo(px + TILE_PX - 6, py + TILE_PX + 1);
-  ctx.stroke();
-  // Tope superior solo en el borde de la fila
-  if (((ty * 3 + tx) % 2) === 0) {
+  ctx.strokeStyle = "rgba(220,218,205,0.38)";
+  ctx.lineWidth = 1.6;
+  // Solo el borde izquierdo de cada plaza → líneas contínuas, no dobles
+  if ((tx % 2) === 0) {
     ctx.beginPath();
-    ctx.moveTo(px + 6, py + 5);
-    ctx.lineTo(px + TILE_PX - 6, py + 5);
+    ctx.moveTo(px + 2, py - 2);
+    ctx.lineTo(px + 2, py + TILE_PX + 2);
+    ctx.stroke();
+  }
+  // Tope horizontal cada 2 tiles en Y
+  if ((ty % 2) === 0) {
+    ctx.beginPath();
+    ctx.moveTo(px - 1, py + 3);
+    ctx.lineTo(px + TILE_PX + 1, py + 3);
     ctx.stroke();
   }
 }
@@ -3786,56 +3865,50 @@ function drawMinimap(mctx, mini, game) {
     if (!_miniBase) _miniBase = document.createElement("canvas");
     _miniBase.width = s;
     _miniBase.height = s;
-    const b = _miniBase.getContext("2d");
+
+    // Render a 4× para luego bajar con suavizado → mapa lineal, no píxeles
+    const hi = 4;
+    const hs = s * hi;
+    const big = document.createElement("canvas");
+    big.width = hs;
+    big.height = hs;
+    const b = big.getContext("2d");
     b.imageSmoothingEnabled = true;
     b.imageSmoothingQuality = "high";
-    b.clearRect(0, 0, s, s);
     b.fillStyle = "#1e241c";
-    b.fillRect(0, 0, s, s);
+    b.fillRect(0, 0, hs, hs);
 
-    // Terreno continuo: solape grande + sin bordes por celda
-    const pad = Math.max(1.2, scale * 0.85);
+    const sc = hs / world.size;
+    const pad = Math.max(2.5, sc * 0.95);
+
+    const colorFor = (tile) => {
+      if (tile === TILE.PARK) return "#2a4a28";
+      if (tile === TILE.ROAD || tile === TILE.CROSSWALK) return "#353840";
+      if (tile === TILE.SIDEWALK) return "#5a5850";
+      if (tile === TILE.WATER) return "#1a3a2a";
+      if (tile === TILE.PARKING) return "#4a4c52";
+      if (tile === TILE.ALLEY || tile === TILE.RUBBLE) return "#3a3a40";
+      return null;
+    };
+
     for (let y = 0; y < world.size; y++) {
       for (let x = 0; x < world.size; x++) {
         const tile = world.tiles[y * world.size + x];
         if (tile === TILE.WALL || tile === TILE.DOOR || tile === TILE.FLOOR || tile === TILE.BASE) continue;
-        let col = "#2a3228";
-        if (tile === TILE.PARK) col = "#2a4a28";
-        else if (tile === TILE.ROAD || tile === TILE.CROSSWALK) col = "#353840";
-        else if (tile === TILE.SIDEWALK) col = "#5a5850";
-        else if (tile === TILE.WATER) col = "#1a3a2a";
-        else if (tile === TILE.PARKING) col = "#4a4c52";
-        else if (tile === TILE.ALLEY || tile === TILE.RUBBLE) col = "#3a3a40";
-        else {
-          const meta = TILE_META[tile];
-          if (!meta) continue;
-          col = meta.color || "#222";
-        }
+        const col = colorFor(tile);
+        if (!col) continue;
         b.fillStyle = col;
-        b.fillRect(x * scale - pad * 0.35, y * scale - pad * 0.35, scale + pad, scale + pad);
+        b.fillRect(x * sc - pad * 0.4, y * sc - pad * 0.4, sc + pad, sc + pad);
       }
     }
 
-    // Suavizado leve → mapa lineal, no píxeles
-    try {
-      const soft = document.createElement("canvas");
-      soft.width = s;
-      soft.height = s;
-      const sc = soft.getContext("2d");
-      sc.imageSmoothingEnabled = true;
-      sc.filter = "blur(0.85px)";
-      sc.drawImage(_miniBase, 0, 0);
-      b.clearRect(0, 0, s, s);
-      b.drawImage(soft, 0, 0);
-    } catch (_) { /* filter no disponible */ }
-
-    // Edificios como bloques redondeados (forma lineal tipo mapa Stardew)
+    // Edificios redondeados a alta resolución
     for (const building of world.buildings || []) {
-      const bx = building.x0 * scale;
-      const by = building.y0 * scale;
-      const bw = Math.max(2.5, (building.x1 - building.x0) * scale);
-      const bh = Math.max(2.5, (building.y1 - building.y0) * scale);
-      const r = Math.min(3.2, bw / 3.2, bh / 3.2);
+      const bx = building.x0 * sc;
+      const by = building.y0 * sc;
+      const bw = Math.max(6, (building.x1 - building.x0) * sc);
+      const bh = Math.max(6, (building.y1 - building.y0) * sc);
+      const r = Math.min(10, bw / 2.8, bh / 2.8);
       b.fillStyle = building.facade || "#6a6560";
       b.beginPath();
       b.moveTo(bx + r, by);
@@ -3845,14 +3918,11 @@ function drawMinimap(mctx, mini, game) {
       b.arcTo(bx, by, bx + bw, by, r);
       b.closePath();
       b.fill();
-      b.strokeStyle = "rgba(0,0,0,0.28)";
-      b.lineWidth = 0.7;
-      b.stroke();
     }
 
-    // Orillas de agua como trazo curvo suave
-    b.strokeStyle = "rgba(70,130,90,0.4)";
-    b.lineWidth = 1.4;
+    // Orillas de agua
+    b.strokeStyle = "rgba(70,130,90,0.45)";
+    b.lineWidth = 3.5;
     b.lineCap = "round";
     b.lineJoin = "round";
     for (let y = 0; y < world.size; y++) {
@@ -3860,14 +3930,32 @@ function drawMinimap(mctx, mini, game) {
         if (world.tiles[y * world.size + x] !== TILE.WATER) continue;
         const up = y > 0 ? world.tiles[(y - 1) * world.size + x] : TILE.WALL;
         if (up === TILE.WATER) continue;
-        const x0 = x * scale;
-        const y0 = y * scale;
+        const x0 = x * sc;
+        const y0 = y * sc;
         b.beginPath();
         b.moveTo(x0, y0);
-        b.quadraticCurveTo(x0 + scale * 0.5, y0 - 0.6, x0 + scale, y0);
+        b.quadraticCurveTo(x0 + sc * 0.5, y0 - 1.5, x0 + sc, y0);
         b.stroke();
       }
     }
+
+    // Blur + downscale a canvas final
+    const mid = document.createElement("canvas");
+    mid.width = hs;
+    mid.height = hs;
+    const mc = mid.getContext("2d");
+    mc.imageSmoothingEnabled = true;
+    try {
+      mc.filter = "blur(1.6px)";
+    } catch (_) {}
+    mc.drawImage(big, 0, 0);
+
+    const out = _miniBase.getContext("2d");
+    out.imageSmoothingEnabled = true;
+    out.imageSmoothingQuality = "high";
+    out.clearRect(0, 0, s, s);
+    out.drawImage(mid, 0, 0, hs, hs, 0, 0, s, s);
+
     _miniSeed = world.seed;
     _miniRev = rev;
     _miniSize = world.size;
