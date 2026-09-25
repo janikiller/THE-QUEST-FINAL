@@ -794,26 +794,9 @@ function paintTerrainBase(ctx, game, tile, tx, ty, px, py, phase) {
           ctx.fillStyle = flat;
           ctx.fillRect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
         }
-      } else if (tile === TILE.SIDEWALK && !onRotaApproach && d > rota.r - 0.2 && d < rota.r + 1.35) {
-        // Acera perimetral solo en los cuadrantes (no tapa las bocas)
-        const ang = Math.atan2(ty + 0.5 - rota.y, tx + 0.5 - rota.x);
-        const mouth = 0.55;
-        let inMouth = false;
-        for (let i = 0; i < 4; i++) {
-          const mid = -Math.PI / 2 + i * (Math.PI / 2);
-          let da = ang - mid;
-          while (da > Math.PI) da -= Math.PI * 2;
-          while (da < -Math.PI) da += Math.PI * 2;
-          if (Math.abs(da) < mouth) inMouth = true;
-        }
-        if (!inMouth) {
-          ctx.fillStyle = flat;
-          ctx.beginPath();
-          ctx.arc(ox, oy, (rota.r + 1.05) * TILE_PX + 1, 0, Math.PI * 2);
-          ctx.arc(ox, oy, rota.r * TILE_PX + 1, 0, Math.PI * 2, true);
-          ctx.fill("evenodd");
-        }
       }
+      // (Sin anillo de acera pintado: las esquinas usan el color del tile;
+      //  el bordillo circular con huecos se dibuja en drawSidewalkDetail)
       ctx.restore();
     }
     // Parque: manchas elípticas grandes → rompe el escalón de 48px en el borde
