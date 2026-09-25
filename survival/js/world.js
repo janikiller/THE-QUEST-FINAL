@@ -570,21 +570,58 @@ function isOnAxisRoad(pos, axes, roadW = ROAD_W) {
   return false;
 }
 
-/** Rotonda: anillo de asfalto + isla de césped (forma circular, no cruce cuadrado). */
-function carveRoundabout(tiles, size, cx, cy, rRoad = 3.1, rIsland = 1.25) {
+/**
+ * Rotonda: anillo de asfalto + isla + acera en esquinas.
+ * Bocas N/S/E/O (solo el ancho de la avenida) conectan el anillo con las calles.
+ */
+function carveRoundabout(tiles, size, cx, cy, rRoad = 3.1, rIsland = 1.25, vx = null, hy = null) {
   const rWalk = rRoad + 1.15;
-  const y0 = Math.max(1, Math.floor(cy - rWalk - 1));
-  const y1 = Math.min(size - 2, Math.ceil(cy + rWalk + 1));
-  const x0 = Math.max(1, Math.floor(cx - rWalk - 1));
-  const x1 = Math.min(size - 2, Math.ceil(cx + rWalk + 1));
+  const y0 = Math.max(1, Math.floor(cy - rWalk - 1.5));
+  const y1 = Math.min(size - 2, Math.ceil(cy + rWalk + 1.5));
+  const x0 = Math.max(1, Math.floor(cx - rWalk - 1.5));
+  const x1 = Math.min(size - 2, Math.ceil(cx + rWalk + 1.5));
+  const onNS = (x) => vx != null && x >= vx && x < vx + ROAD_W;
+  const onEW = (y) => hy != null && y >= hy && y < hy + ROAD_W;
+
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
       const t = tiles[y * size + x];
       if (t === TILE.WALL || t === TILE.FLOOR || t === TILE.DOOR || t === TILE.BASE || t === TILE.WATER) continue;
       const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
-      if (d <= rIsland) tiles[y * size + x] = TILE.PARK;
-      else if (d <= rRoad) tiles[y * size + x] = TILE.ROAD;
-      else if (d <= rWalk) tiles[y * size + x] = TILE.SIDEWALK;
+      const approach = onNS(x) || onEW(y);
+      if (d <= rIsland) {
+        tiles[y * size + x] = TILE.PARK;
+      } else if (d <= rRoad) {
+        tiles[y * size + x] = TILE.ROAD;
+      } else if (approach && d <= rWalk + 1.2) {
+        // Boca: asfalto continuo desde el anillo hacia la avenida
+        tiles[y * size + x] = TILE.ROAD;
+      } else if (d <= rWalk) {
+        tiles[y * size + x] = TILE.SIDEWALK;
+      }
+    }
+  }
+
+  // Refuerzo fino de las 4 bocas (sin flare ancho que borre la forma circular)
+  if (vx != null && hy != null) {
+    const reach = Math.ceil(rWalk + 1.8);
+    const d0 = Math.floor(rIsland) + 1;
+    for (let d = d0; d <= reach; d++) {
+      for (let i = 0; i < ROAD_W; i++) {
+        for (const [x, y] of [
+          [vx + i, Math.round(cy) - d],
+          [vx + i, Math.round(cy) + d - 1],
+          [Math.round(cx) - d, hy + i],
+          [Math.round(cx) + d - 1, hy + i],
+        ]) {
+          if (x < 1 || y < 1 || x >= size - 1 || y >= size - 1) continue;
+          const t = tiles[y * size + x];
+          if (t === TILE.WALL || t === TILE.FLOOR || t === TILE.DOOR || t === TILE.BASE || t === TILE.WATER) continue;
+          const dist = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+          if (dist <= rIsland) continue;
+          tiles[y * size + x] = TILE.ROAD;
+        }
+      }
     }
   }
 }
@@ -685,8 +722,8 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       if (noise.noise2(vi * 1.7 + 2, hi * 1.9 + 5) < 0.55) continue;
       const rRoad = 3.1;
       const rIsland = 1.25;
-      carveRoundabout(tiles, size, cx, cy, rRoad, rIsland);
-      roundabouts.push({ x: cx, y: cy, r: rRoad, island: rIsland });
+      carveRoundabout(tiles, size, cx, cy, rRoad, rIsland, vRoads[vi], hRoads[hi]);
+      roundabouts.push({ x: cx, y: cy, r: rRoad, island: rIsland, vx: vRoads[vi], hy: hRoads[hi] });
       props.push({ type: "planter", x: cx, y: cy, tone: 1 });
       // Farolas alrededor de la rotonda
       for (let a = 0; a < 4; a++) {
@@ -719,8 +756,8 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       const cy = hy + ROAD_W * 0.5;
       const rota = roundabouts.find((r) => Math.hypot(r.x - cx, r.y - cy) < 1);
       if (rota) {
-        // Accesos en el borde de la rotonda
-        const d = Math.round(rota.r + 0.55);
+        // Cebra justo en la boca (sobre el asfalto de acceso, pegada al anillo)
+        const d = Math.max(ROAD_W + 1, Math.round(rota.r + 0.85));
         for (let i = 0; i < ROAD_W; i++) {
           markCrosswalk(vx + i, Math.round(cy - d), "v");
           markCrosswalk(vx + i, Math.round(cy + d), "v");

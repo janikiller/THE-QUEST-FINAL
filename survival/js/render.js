@@ -643,8 +643,8 @@ function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
   const size = game.world.size;
   const PAD = 12;
   const indoorKey = _viewIndoor ? `${_viewIndoor.x0},${_viewIndoor.y0},${_viewIndoor.style || ""}` : "out";
-  // v7 = parques orgánicos + minimapa de formas contínuas
-  const baseKey = `v7|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
+  // v8 = rotondas con bocas de acceso conectadas
+  const baseKey = `v8|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
   const outOfBounds =
     x0 < _groundMeta.x0 ||
     y0 < _groundMeta.y0 ||
@@ -757,32 +757,64 @@ function paintTerrainBase(ctx, game, tile, tx, ty, px, py, phase) {
   }
   const flat = terrainFlatColor(tile, phase);
   if (flat) {
+    const rota = game?.world?.roundabouts?.find((r) => Math.hypot(tx + 0.5 - r.x, ty + 0.5 - r.y) < r.r + 2.2);
+    const onRotaApproach = !!(rota && (
+      (rota.vx != null && tx >= rota.vx && tx < rota.vx + 2)
+      || (rota.hy != null && ty >= rota.hy && ty < rota.hy + 2)
+    ));
+    // Evitar que la acera "sangre" sobre las bocas de la rotonda
+    const overlap = (tile === TILE.SIDEWALK && rota) ? 1 : GROUND_OVERLAP;
     ctx.fillStyle = flat;
-    ctx.fillRect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
-    // Rotonda: relleno circular (isla / anillo) para que no se lea como cruce cuadrado
-    const rota = game?.world?.roundabouts?.find((r) => Math.hypot(tx + 0.5 - r.x, ty + 0.5 - r.y) < r.r + 1.6);
+    ctx.fillRect(px - overlap, py - overlap, TILE_PX + overlap * 2, TILE_PX + overlap * 2);
+
     if (rota) {
       const ox = (rota.x - tx) * TILE_PX + px;
       const oy = (rota.y - ty) * TILE_PX + py;
       const d = Math.hypot(tx + 0.5 - rota.x, ty + 0.5 - rota.y);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
+      ctx.clip();
       if (tile === TILE.PARK && d <= rota.island + 0.55) {
         ctx.fillStyle = flat;
         ctx.beginPath();
         ctx.arc(ox, oy, rota.island * TILE_PX + 6, 0, Math.PI * 2);
         ctx.fill();
-      } else if ((tile === TILE.ROAD || tile === TILE.CROSSWALK) && d <= rota.r + 0.35) {
-        ctx.fillStyle = flat;
-        ctx.beginPath();
-        ctx.arc(ox, oy, rota.r * TILE_PX + 4, 0, Math.PI * 2);
-        ctx.arc(ox, oy, Math.max(4, rota.island * TILE_PX - 2), 0, Math.PI * 2, true);
-        ctx.fill("evenodd");
-      } else if (tile === TILE.SIDEWALK && d > rota.r - 0.2 && d < rota.r + 1.4) {
-        ctx.fillStyle = flat;
-        ctx.beginPath();
-        ctx.arc(ox, oy, (rota.r + 1.15) * TILE_PX + 2, 0, Math.PI * 2);
-        ctx.arc(ox, oy, rota.r * TILE_PX - 2, 0, Math.PI * 2, true);
-        ctx.fill("evenodd");
+      } else if (tile === TILE.ROAD || tile === TILE.CROSSWALK) {
+        // Anillo circular completo de asfalto
+        if (d <= rota.r + 0.55) {
+          ctx.fillStyle = flat;
+          ctx.beginPath();
+          ctx.arc(ox, oy, rota.r * TILE_PX + 5, 0, Math.PI * 2);
+          ctx.arc(ox, oy, Math.max(4, rota.island * TILE_PX - 2), 0, Math.PI * 2, true);
+          ctx.fill("evenodd");
+        }
+        // Boca: asfalto de la avenida se solapa con el anillo (conexión visible)
+        if (onRotaApproach) {
+          ctx.fillStyle = flat;
+          ctx.fillRect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
+        }
+      } else if (tile === TILE.SIDEWALK && !onRotaApproach && d > rota.r - 0.2 && d < rota.r + 1.35) {
+        // Acera perimetral solo en los cuadrantes (no tapa las bocas)
+        const ang = Math.atan2(ty + 0.5 - rota.y, tx + 0.5 - rota.x);
+        const mouth = 0.55;
+        let inMouth = false;
+        for (let i = 0; i < 4; i++) {
+          const mid = -Math.PI / 2 + i * (Math.PI / 2);
+          let da = ang - mid;
+          while (da > Math.PI) da -= Math.PI * 2;
+          while (da < -Math.PI) da += Math.PI * 2;
+          if (Math.abs(da) < mouth) inMouth = true;
+        }
+        if (!inMouth) {
+          ctx.fillStyle = flat;
+          ctx.beginPath();
+          ctx.arc(ox, oy, (rota.r + 1.05) * TILE_PX + 1, 0, Math.PI * 2);
+          ctx.arc(ox, oy, rota.r * TILE_PX + 1, 0, Math.PI * 2, true);
+          ctx.fill("evenodd");
+        }
       }
+      ctx.restore();
     }
     // Parque: manchas elípticas grandes → rompe el escalón de 48px en el borde
     if (tile === TILE.PARK) {
@@ -854,6 +886,13 @@ function neighborTile(game, tx, ty) {
 
 /** Orillas orgánicas: banda ondulada entre tipos (sin grilla). */
 function softTileEdges(ctx, game, tx, ty, px, py, selfTile) {
+  // No suavizar acera→asfalto en bocas de rotonda (rompe la conexión visual)
+  const rota = game.world.roundabouts?.find((r) => Math.hypot(tx + 0.5 - r.x, ty + 0.5 - r.y) < (r.r || 3) + 2.5);
+  if (rota) {
+    const onApproach = (rota.vx != null && tx >= rota.vx - 1 && tx < rota.vx + 3)
+      || (rota.hy != null && ty >= rota.hy - 1 && ty < rota.hy + 3);
+    if (onApproach) return;
+  }
   const edges = [
     { dx: 0, dy: -1, horiz: true, inward: 1 },
     { dx: 0, dy: 1, horiz: true, inward: -1 },
@@ -990,7 +1029,7 @@ function drawRoadDetail(ctx, game, tile, tx, ty, px, py) {
     }
     ctx.stroke();
   } else {
-    // Anillo interior de la rotonda (bordillo de la isla)
+    // Anillo: bordillo de isla + arco exterior con huecos en bocas
     const ox = (inRota.x - tx) * TILE_PX + px;
     const oy = (inRota.y - ty) * TILE_PX + py;
     ctx.strokeStyle = "rgba(90,86,78,0.55)";
@@ -998,6 +1037,17 @@ function drawRoadDetail(ctx, game, tile, tx, ty, px, py) {
     ctx.beginPath();
     ctx.arc(ox, oy, inRota.island * TILE_PX + 2, 0, Math.PI * 2);
     ctx.stroke();
+    const gap = 0.32;
+    ctx.strokeStyle = "rgba(18,18,20,0.55)";
+    ctx.lineWidth = 2.8;
+    ctx.lineCap = "butt";
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const mid = -Math.PI / 2 + i * (Math.PI / 2);
+      ctx.arc(ox, oy, inRota.r * TILE_PX + 1, mid + gap, mid + Math.PI / 2 - gap);
+    }
+    ctx.stroke();
+    ctx.lineCap = "round";
   }
 
   const vertRoad = roadRunsVertical(game, tx, ty);
@@ -1024,7 +1074,7 @@ function drawRoadDetail(ctx, game, tile, tx, ty, px, py) {
     }
     ctx.lineCap = "round";
   } else {
-    const rota = game.world.roundabouts?.find((r) => Math.hypot(tx + 0.5 - r.x, ty + 0.5 - r.y) < r.r + 0.2);
+    const rota = game.world.roundabouts?.find((r) => Math.hypot(tx + 0.5 - r.x, ty + 0.5 - r.y) < r.r + 1.8);
     if (!rota) {
       ctx.strokeStyle = "rgba(190, 155, 50, 0.42)";
       ctx.lineWidth = 2.6;
@@ -1039,16 +1089,48 @@ function drawRoadDetail(ctx, game, tile, tx, ty, px, py) {
       }
       ctx.stroke();
       ctx.setLineDash([]);
-    } else if (Math.hypot(tx + 0.5 - rota.x, ty + 0.5 - rota.y) > rota.island + 0.3) {
-      ctx.strokeStyle = "rgba(190, 155, 50, 0.28)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      const ang = Math.atan2(ty + 0.5 - rota.y, tx + 0.5 - rota.x);
-      const rr = ((rota.r + rota.island) * 0.5) * TILE_PX;
-      const ox = (rota.x - tx) * TILE_PX + px;
-      const oy = (rota.y - ty) * TILE_PX + py;
-      ctx.arc(ox, oy, rr, ang - 0.35, ang + 0.35);
-      ctx.stroke();
+    } else {
+      const d = Math.hypot(tx + 0.5 - rota.x, ty + 0.5 - rota.y);
+      const onApproach = (rota.vx != null && tx >= rota.vx && tx < rota.vx + 2)
+        || (rota.hy != null && ty >= rota.hy && ty < rota.hy + 2);
+      // En la boca: línea discontinua de la avenida entrando a la rotonda
+      if (onApproach && d > rota.island + 0.2) {
+        ctx.strokeStyle = "rgba(190, 155, 50, 0.45)";
+        ctx.lineWidth = 2.6;
+        ctx.setLineDash([10, 12]);
+        ctx.beginPath();
+        if (rota.vx != null && tx >= rota.vx && tx < rota.vx + 2) {
+          ctx.moveTo(px + TILE_PX / 2, py - 1);
+          ctx.lineTo(px + TILE_PX / 2, py + TILE_PX + 1);
+        } else {
+          ctx.moveTo(px - 1, py + TILE_PX / 2);
+          ctx.lineTo(px + TILE_PX + 1, py + TILE_PX / 2);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (d > rota.island + 0.35 && d < rota.r + 0.15) {
+        // Arco de carril — con huecos en las bocas
+        const ang = Math.atan2(ty + 0.5 - rota.y, tx + 0.5 - rota.x);
+        const mouth = 0.55;
+        let inMouth = false;
+        for (let i = 0; i < 4; i++) {
+          const mid = -Math.PI / 2 + i * (Math.PI / 2);
+          let da = ang - mid;
+          while (da > Math.PI) da -= Math.PI * 2;
+          while (da < -Math.PI) da += Math.PI * 2;
+          if (Math.abs(da) < mouth) inMouth = true;
+        }
+        if (!inMouth) {
+          ctx.strokeStyle = "rgba(190, 155, 50, 0.3)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          const rr = ((rota.r + rota.island) * 0.5) * TILE_PX;
+          const ox = (rota.x - tx) * TILE_PX + px;
+          const oy = (rota.y - ty) * TILE_PX + py;
+          ctx.arc(ox, oy, rr, ang - 0.35, ang + 0.35);
+          ctx.stroke();
+        }
+      }
     }
   }
 
@@ -1087,21 +1169,30 @@ function drawSidewalkDetail(ctx, game, tx, ty, px, py) {
   const roadE = neighborTile(game, tx + 1, ty);
   const isRoadish = (t) => t === TILE.ROAD || t === TILE.CROSSWALK;
   ctx.fillStyle = "rgba(22,22,24,0.55)";
-  // En anillo de rotonda: bordillo circular en vez de tramos rectos
+  // En anillo de rotonda: bordillo circular con huecos en las bocas N/S/E/O
   const rota = game.world.roundabouts?.find((r) => Math.hypot(tx + 0.5 - r.x, ty + 0.5 - r.y) < r.r + 1.5);
   if (rota) {
     const ox = (rota.x - tx) * TILE_PX + px;
     const oy = (rota.y - ty) * TILE_PX + py;
-    ctx.strokeStyle = "rgba(22,22,24,0.65)";
-    ctx.lineWidth = 3.2;
+    const gap = 0.32;
+    ctx.strokeStyle = "rgba(18,18,20,0.75)";
+    ctx.lineWidth = 3.6;
+    ctx.lineCap = "butt";
     ctx.beginPath();
-    ctx.arc(ox, oy, rota.r * TILE_PX + 1, 0, Math.PI * 2);
+    for (let i = 0; i < 4; i++) {
+      const mid = -Math.PI / 2 + i * (Math.PI / 2);
+      ctx.arc(ox, oy, rota.r * TILE_PX + 1.5, mid + gap, mid + Math.PI / 2 - gap);
+    }
     ctx.stroke();
-    ctx.strokeStyle = "rgba(90,86,78,0.35)";
+    ctx.strokeStyle = "rgba(100,96,88,0.4)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(ox, oy, (rota.r + 1.05) * TILE_PX, 0, Math.PI * 2);
+    for (let i = 0; i < 4; i++) {
+      const mid = -Math.PI / 2 + i * (Math.PI / 2);
+      ctx.arc(ox, oy, (rota.r + 1.05) * TILE_PX, mid + gap, mid + Math.PI / 2 - gap);
+    }
     ctx.stroke();
+    ctx.lineCap = "round";
     return;
   }
   if (isRoadish(roadS)) fillRound(ctx, px + 1, py + TILE_PX - 4, TILE_PX - 2, 3.2, 1.2);
