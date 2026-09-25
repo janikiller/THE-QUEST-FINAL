@@ -131,7 +131,7 @@ export function createGame(world) {
       hunger: 82,
       thirst: 78,
       stamina: 100,
-      inv: { food: 2, water: 2, scrap: 1, wood: 1, med: 2, shirt: 1, bat: 1, pistol: 1, ammo_9mm: 12 },
+      inv: { food: 3, water: 4, scrap: 1, wood: 1, med: 2, shirt: 1, bat: 1, pistol: 1, ammo_9mm: 12 },
       equip: { hand: "bat", body: "shirt", bag: null, light: null },
       gearPhase: "clothes",
       gatherCd: 0,
@@ -848,6 +848,19 @@ function consume(game) {
   const p = game.player;
   p.gatherCd = 0.4;
   const maxHp = p.maxHealth || MAX_HEALTH;
+  // Sed/hambre críticas antes que med — evita morir de sed con botiquines
+  if (p.thirst < 25 && p.inv.water > 0) {
+    p.inv.water -= 1;
+    p.thirst = Math.min(100, p.thirst + 40);
+    setToast(game, "Bebe agua embotellada.");
+    return;
+  }
+  if (p.hunger < 25 && p.inv.food > 0) {
+    p.inv.food -= 1;
+    p.hunger = Math.min(100, p.hunger + 34);
+    setToast(game, "Comes una lata fría.");
+    return;
+  }
   if (p.inv.med > 0 && p.health < maxHp - 5) {
     p.inv.med -= 1;
     p.health = Math.min(maxHp, p.health + 55);
