@@ -2696,25 +2696,28 @@ function drawProp(ctx, p, px, py, phase) {
     ctx.arc(px, py - 8, 3.5, 0, Math.PI * 2);
     ctx.fill();
   } else if (p.type === "trash") {
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
-    ctx.fillRect(px - 6, py + 2, 12, 5);
-    ctx.fillStyle = "#3a4a3a";
-    roundRect(ctx, px - 7, py - 8, 14, 14, 2);
-    ctx.fill();
-    ctx.fillStyle = "#2a3a2a";
-    ctx.fillRect(px - 7, py - 10, 14, 3);
-    ctx.strokeStyle = "rgba(200,200,180,0.25)";
-    ctx.strokeRect(px - 5, py - 5, 10, 8);
-  } else if (p.type === "planter") {
     ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.fillRect(px - 10, py + 4, 20, 6);
+    ctx.beginPath();
+    ctx.ellipse(px, py + 5, 8, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#3a4a3a";
+    fillRound(ctx, px - 7, py - 8, 14, 14, 4);
+    strokeRound(ctx, px - 7, py - 8, 14, 14, 4, "rgba(20,28,20,0.4)", 1);
+    ctx.fillStyle = "#2a3a2a";
+    fillRound(ctx, px - 7, py - 10, 14, 3, 1.5);
+  } else if (p.type === "planter") {
+    ctx.fillStyle = "rgba(0,0,0,0.2)";
+    ctx.beginPath();
+    ctx.ellipse(px, py + 6, 12, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = p.wild ? "#4a3a28" : "#6a4a32";
-    ctx.fillRect(px - 11, py - 2, 22, 10);
+    fillRound(ctx, px - 11, py - 2, 22, 10, 3);
     ctx.fillStyle = "#3a2818";
-    ctx.fillRect(px - 9, py - 4, 18, 4);
+    fillRound(ctx, px - 9, py - 4, 18, 4, 2);
     if (p.tone === 2) {
       ctx.strokeStyle = "#6a5a38";
       ctx.lineWidth = 1.5;
+      ctx.lineCap = "round";
       ctx.beginPath();
       ctx.moveTo(px, py - 2);
       ctx.lineTo(px - 6, py - 13);
@@ -3393,6 +3396,7 @@ function drawLootPrompt(ctx, game, camX, camY, w, h, playerIndoor) {
 function drawPlayer(ctx, px, py, player, time, game = null) {
   ctx.save();
   ctx.translate(px, py);
+  ctx.scale(1.12, 1.12);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   // Parpadeo de i-frames (Stardew)
