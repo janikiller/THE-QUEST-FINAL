@@ -674,9 +674,6 @@ function drawCastShadow(ctx, x, y, rx, ry, phase, height = 1) {
 /** Sombras de volumen de edificios sobre acera/calzada. */
 function drawBuildingCastShadows(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
   if ((phase.shadowAlpha ?? 0) < 0.04) return;
-  const baseLen = Math.max(16, (phase.shadowLen ?? 1) * 32);
-  const ox = (phase.sunDx ?? 0.35) * baseLen;
-  const oy = (phase.sunDy ?? 0.55) * baseLen;
   for (const b of game.world.buildings) {
     if (b.x1 < x0 - 2 || b.x0 > x1 + 2 || b.y1 < y0 - 2 || b.y0 > y1 + 2) continue;
     const floors = b.floors || 2;
@@ -684,36 +681,15 @@ function drawBuildingCastShadows(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
     const py = b.y0 * TILE_PX - camY;
     const bw = (b.x1 - b.x0 + 1) * TILE_PX;
     const bh = (b.y1 - b.y0 + 1) * TILE_PX;
-    const fl = 0.85 + floors * 0.28;
-    const a = Math.min(0.48, (phase.shadowAlpha ?? 0.22) * (0.95 + floors * 0.12));
-    // Mancha principal proyectada fuera del footprint
-    const cx = px + bw * 0.5 + ox * 0.95 * fl;
-    const cy = py + bh * 0.62 + oy * 0.95 * fl;
+    const len = Math.max(12, (phase.shadowLen ?? 1) * (14 + floors * 6));
+    const ox = (phase.sunDx ?? 0.35) * len;
+    const oy = (phase.sunDy ?? 0.55) * len;
+    const a = Math.min(0.42, (phase.shadowAlpha ?? 0.22) * (0.9 + floors * 0.1));
+    // Drop-shadow clásico: footprint desplazado (la parte bajo el edificio se tapa al pintar el techo)
     ctx.fillStyle = `rgba(0,0,0,${a})`;
-    ctx.beginPath();
-    ctx.ellipse(
-      cx,
-      cy,
-      bw * 0.38 + Math.abs(ox) * 0.55 * fl,
-      Math.max(10, bh * 0.16 + Math.abs(oy) * 0.35 * fl),
-      Math.atan2(oy, ox) * 0.45,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-    // Contacto suave bajo el borde soleado
-    ctx.fillStyle = `rgba(0,0,0,${a * 0.45})`;
-    ctx.beginPath();
-    ctx.ellipse(
-      px + bw * 0.5 + ox * 0.25,
-      py + bh * 0.72 + oy * 0.2,
-      bw * 0.46,
-      8 + floors * 2,
-      0,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
+    fillRound(ctx, px + ox, py + oy, bw, bh, 6);
+    ctx.fillStyle = `rgba(0,0,0,${a * 0.4})`;
+    fillRound(ctx, px + ox * 1.4, py + oy * 1.4, bw, bh, 8);
   }
 }
 
