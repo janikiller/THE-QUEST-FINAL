@@ -643,7 +643,8 @@ function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
   const size = game.world.size;
   const PAD = 12;
   const indoorKey = _viewIndoor ? `${_viewIndoor.x0},${_viewIndoor.y0},${_viewIndoor.style || ""}` : "out";
-  const baseKey = `${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
+  // v2 = suelo continuo lineal (sin grilla de baldosas)
+  const baseKey = `v2|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
   const outOfBounds =
     x0 < _groundMeta.x0 ||
     y0 < _groundMeta.y0 ||
@@ -663,13 +664,28 @@ function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
       _groundCanvas.height = gh;
     }
     const g = _groundCanvas.getContext("2d", { alpha: false });
-    g.fillStyle = "#2a2a28";
+    g.imageSmoothingEnabled = true;
+    g.fillStyle = "#2a3228";
     g.fillRect(0, 0, gw, gh);
+
+    // Pass 1: rellenos CONTINUOS (solape grande → sin costuras cuadradas)
     for (let ty = cy0; ty < cy1; ty++) {
       for (let tx = cx0; tx < cx1; tx++) {
         const tile = game.world.tiles[ty * size + tx];
         if (isAnimatedGround(tile)) continue;
-        drawGround(g, game, tile, tx, ty, (tx - cx0) * TILE_PX, (ty - cy0) * TILE_PX, phase);
+        const px = (tx - cx0) * TILE_PX;
+        const py = (ty - cy0) * TILE_PX;
+        paintTerrainBase(g, game, tile, tx, ty, px, py, phase);
+      }
+    }
+    // Pass 2: detalle lineal (grietas, briznas, bordillos, líneas de carretera)
+    for (let ty = cy0; ty < cy1; ty++) {
+      for (let tx = cx0; tx < cx1; tx++) {
+        const tile = game.world.tiles[ty * size + tx];
+        if (isAnimatedGround(tile)) continue;
+        const px = (tx - cx0) * TILE_PX;
+        const py = (ty - cy0) * TILE_PX;
+        paintTerrainDetail(g, game, tile, tx, ty, px, py, phase);
       }
     }
     _groundMeta = { x0: cx0, y0: cy0, x1: cx1, y1: cy1 };
@@ -682,7 +698,6 @@ function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
     _groundMeta.y0 * TILE_PX - camY
   );
 
-  // Agua animada (fuera de caché)
   for (let ty = y0; ty < y1; ty++) {
     for (let tx = x0; tx < x1; tx++) {
       const tile = game.world.tiles[ty * size + tx];
@@ -692,37 +707,33 @@ function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
   }
 }
 
-function drawGround(ctx, game, tile, tx, ty, px, py, phase) {
-  if (tile === TILE.ROAD || tile === TILE.CROSSWALK) {
-    drawRoad(ctx, game, tile, tx, ty, px, py, phase);
-    softTileEdges(ctx, game, tx, ty, px, py, tile);
-    return;
+/** Color plano por tipo — sin variación por tile (rompe la grilla). */
+function terrainFlatColor(tile, phase) {
+  const night = phase?.night ? 10 : 0;
+  switch (tile) {
+    case TILE.ROAD:
+    case TILE.CROSSWALK:
+      return `rgb(${36 + night},${37 + night},${40 + night})`;
+    case TILE.SIDEWALK:
+      return `rgb(${86 + night},${83 + night},${78 + night})`;
+    case TILE.PARK:
+      return `rgb(${32},${62},${30})`;
+    case TILE.PARKING:
+      return `rgb(${70 + night},${72 + night},${76 + night})`;
+    case TILE.ALLEY:
+      return `rgb(${50 + night},${50 + night},${54 + night})`;
+    case TILE.RUBBLE:
+      return `rgb(${90},${84},${76})`;
+    case TILE.WATER:
+      return "#163428";
+    default:
+      return null;
   }
-  if (tile === TILE.SIDEWALK) {
-    drawSidewalk(ctx, game, tx, ty, px, py, phase);
-    softTileEdges(ctx, game, tx, ty, px, py, tile);
-    return;
-  }
-  if (tile === TILE.WATER) {
-    drawWater(ctx, game, tx, ty, px, py, game.time);
-    softTileEdges(ctx, game, tx, ty, px, py, tile);
-    return;
-  }
-  if (tile === TILE.PARK) {
-    drawGrass(ctx, tx, ty, px, py);
-    softTileEdges(ctx, game, tx, ty, px, py, tile);
-    return;
-  }
-  if (tile === TILE.PARKING) {
-    drawParking(ctx, tx, ty, px, py);
-    softTileEdges(ctx, game, tx, ty, px, py, tile);
-    return;
-  }
-  if (tile === TILE.ALLEY || tile === TILE.RUBBLE) {
-    drawAlley(ctx, tile, tx, ty, px, py);
-    softTileEdges(ctx, game, tx, ty, px, py, tile);
-    return;
-  }
+}
+
+const GROUND_OVERLAP = 10; // solape amplio → costuras invisibles entre tiles
+
+function paintTerrainBase(ctx, game, tile, tx, ty, px, py, phase) {
   if (tile === TILE.FLOOR || tile === TILE.BASE) {
     drawInterior(ctx, game, tile, tx, ty, px, py);
     return;
@@ -733,39 +744,67 @@ function drawGround(ctx, game, tile, tx, ty, px, py, phase) {
       drawIndoorWallTile(ctx, px, py, b, tx, ty);
       return;
     }
-    // Base de fachada + suciedad / grietas lineales
+    // Fachada continua del mismo edificio = mismo color
     ctx.fillStyle = b?.facade || "#4a4540";
-    ctx.fillRect(px - 0.25, py - 0.25, TILE_PX + 0.75, TILE_PX + 0.75);
-    ctx.strokeStyle = "rgba(0,0,0,0.18)";
-    ctx.lineWidth = 1.2;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(px + 6, py + 8);
-    ctx.quadraticCurveTo(px + 8, py + 22, px + 5, py + 38);
-    ctx.stroke();
-    if (((tx * 5 + ty * 9) % 7) === 0) {
-      ctx.strokeStyle = "rgba(15,12,10,0.4)";
-      ctx.beginPath();
-      ctx.moveTo(px + 10, py + 4);
-      ctx.quadraticCurveTo(px + 16, py + 20, px + 12, py + 40);
-      ctx.stroke();
-    }
-    if (((tx + ty * 3) % 5) === 0) {
-      ctx.fillStyle = "rgba(40, 60, 30, 0.2)";
-      ctx.beginPath();
-      ctx.ellipse(px + 24, py + 32, 8, 5, 0.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    ctx.fillRect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
     return;
   }
   if (tile === TILE.DOOR) {
     const b = buildingAt(game.world, tx + 0.5, ty + 0.5);
     ctx.fillStyle = b?.facade || "#5a4a3a";
-    ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
+    ctx.fillRect(px - 1, py - 1, TILE_PX + 2, TILE_PX + 2);
+    return;
+  }
+  const flat = terrainFlatColor(tile, phase);
+  if (flat) {
+    ctx.fillStyle = flat;
+    ctx.fillRect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
     return;
   }
   ctx.fillStyle = TILE_META[tile]?.color || "#333";
-  ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
+  ctx.fillRect(px - 1, py - 1, TILE_PX + 2, TILE_PX + 2);
+}
+
+function paintTerrainDetail(ctx, game, tile, tx, ty, px, py, phase) {
+  if (tile === TILE.ROAD || tile === TILE.CROSSWALK) {
+    drawRoadDetail(ctx, game, tile, tx, ty, px, py);
+    softTileEdges(ctx, game, tx, ty, px, py, tile);
+  } else if (tile === TILE.SIDEWALK) {
+    drawSidewalkDetail(ctx, game, tx, ty, px, py);
+    softTileEdges(ctx, game, tx, ty, px, py, tile);
+  } else if (tile === TILE.PARK) {
+    drawGrassDetail(ctx, tx, ty, px, py);
+    softTileEdges(ctx, game, tx, ty, px, py, tile);
+  } else if (tile === TILE.PARKING) {
+    drawParkingDetail(ctx, tx, ty, px, py);
+    softTileEdges(ctx, game, tx, ty, px, py, tile);
+  } else if (tile === TILE.ALLEY || tile === TILE.RUBBLE) {
+    drawAlleyDetail(ctx, tile, tx, ty, px, py);
+    softTileEdges(ctx, game, tx, ty, px, py, tile);
+  } else if (tile === TILE.WALL && !(_viewIndoor && buildingAt(game.world, tx + 0.5, ty + 0.5) === _viewIndoor)) {
+    // Grietas lineales ocasionales en fachada
+    if (((tx * 5 + ty * 9) % 7) === 0) {
+      ctx.strokeStyle = "rgba(15,12,10,0.35)";
+      ctx.lineWidth = 1.2;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(px + 10, py + 4);
+      ctx.quadraticCurveTo(px + 16, py + 20, px + 12, py + 40);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawGround(ctx, game, tile, tx, ty, px, py, phase) {
+  // Usado solo para agua animada (fuera de caché) y fallback
+  if (tile === TILE.WATER) {
+    paintTerrainBase(ctx, game, tile, tx, ty, px, py, phase);
+    drawWaterDetail(ctx, game, tx, ty, px, py, game.time);
+    softTileEdges(ctx, game, tx, ty, px, py, tile);
+    return;
+  }
+  paintTerrainBase(ctx, game, tile, tx, ty, px, py, phase);
+  paintTerrainDetail(ctx, game, tile, tx, ty, px, py, phase);
 }
 
 function neighborTile(game, tx, ty) {
@@ -809,270 +848,229 @@ function softTileEdges(ctx, game, tx, ty, px, py, selfTile) {
   }
 }
 
-function drawRoad(ctx, game, tile, tx, ty, px, py, phase) {
-  const n = ((tx * 19 + ty * 11) & 15);
-  const nightBoost = phase?.night ? 12 : 0;
-  // Asfalto continuo (poca variación → menos cuadritos)
-  const shade = 36 + (n % 3) + nightBoost;
-  ctx.fillStyle = `rgb(${shade},${shade + 1},${shade + 3})`;
-  ctx.fillRect(px - 0.25, py - 0.25, TILE_PX + 0.75, TILE_PX + 0.75);
-
+/** Detalle de carretera — solo trazos (la base plana ya está en paintTerrainBase). */
+function drawRoadDetail(ctx, game, tile, tx, ty, px, py) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
-  // Grietas lineales suaves
   if (((tx + ty * 3) % 11) === 0) {
-    ctx.strokeStyle = "rgba(18,16,14,0.4)";
-    ctx.lineWidth = 1.3;
+    ctx.strokeStyle = "rgba(18,16,14,0.38)";
+    ctx.lineWidth = 1.35;
     ctx.beginPath();
-    ctx.moveTo(px + 6, py + 14);
-    ctx.quadraticCurveTo(px + 20, py + 18, px + 36, py + 28);
+    ctx.moveTo(px + 4, py + 12);
+    ctx.quadraticCurveTo(px + 22, py + 20, px + 44, py + 30);
     ctx.stroke();
   }
   if (((tx * 13 + ty * 7) % 19) === 0) {
-    ctx.fillStyle = "rgba(10,12,14,0.32)";
+    ctx.fillStyle = "rgba(10,12,14,0.28)";
     ctx.beginPath();
-    ctx.ellipse(px + 22, py + 24, 9, 5, 0.35, 0, Math.PI * 2);
+    ctx.ellipse(px + 22, py + 24, 10, 5.5, 0.35, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Bordillo suave hacia acera
-  ctx.strokeStyle = "rgba(100,96,88,0.55)";
-  ctx.lineWidth = 2.2;
+  // Bordillo continuo hacia acera
+  ctx.strokeStyle = "rgba(110,104,92,0.5)";
+  ctx.lineWidth = 2.4;
   ctx.beginPath();
   if (neighborTile(game, tx, ty - 1) === TILE.SIDEWALK) {
-    ctx.moveTo(px + 2, py + 2);
-    ctx.lineTo(px + TILE_PX - 2, py + 2);
+    ctx.moveTo(px - 1, py + 2);
+    ctx.lineTo(px + TILE_PX + 1, py + 2);
   }
   if (neighborTile(game, tx, ty + 1) === TILE.SIDEWALK) {
-    ctx.moveTo(px + 2, py + TILE_PX - 2);
-    ctx.lineTo(px + TILE_PX - 2, py + TILE_PX - 2);
+    ctx.moveTo(px - 1, py + TILE_PX - 2);
+    ctx.lineTo(px + TILE_PX + 1, py + TILE_PX - 2);
   }
   if (neighborTile(game, tx - 1, ty) === TILE.SIDEWALK) {
-    ctx.moveTo(px + 2, py + 2);
-    ctx.lineTo(px + 2, py + TILE_PX - 2);
+    ctx.moveTo(px + 2, py - 1);
+    ctx.lineTo(px + 2, py + TILE_PX + 1);
   }
   if (neighborTile(game, tx + 1, ty) === TILE.SIDEWALK) {
-    ctx.moveTo(px + TILE_PX - 2, py + 2);
-    ctx.lineTo(px + TILE_PX - 2, py + TILE_PX - 2);
+    ctx.moveTo(px + TILE_PX - 2, py - 1);
+    ctx.lineTo(px + TILE_PX - 2, py + TILE_PX + 1);
   }
   ctx.stroke();
 
   const vertRoad = tx % 10 < 2;
   if (tile === TILE.CROSSWALK) {
-    ctx.fillStyle = "rgba(200,198,186,0.55)";
+    ctx.strokeStyle = "rgba(220,216,200,0.55)";
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = "round";
     if (vertRoad) {
-      for (let i = 0; i < 5; i++) fillRound(ctx, px + 4 + i * 9, py + 7, 5, TILE_PX - 14, 2);
+      for (let i = 0; i < 5; i++) {
+        const x = px + 8 + i * 8;
+        ctx.beginPath();
+        ctx.moveTo(x, py + 6);
+        ctx.lineTo(x, py + TILE_PX - 6);
+        ctx.stroke();
+      }
     } else {
-      for (let i = 0; i < 5; i++) fillRound(ctx, px + 7, py + 4 + i * 9, TILE_PX - 14, 5, 2);
+      for (let i = 0; i < 5; i++) {
+        const y = py + 8 + i * 8;
+        ctx.beginPath();
+        ctx.moveTo(px + 6, y);
+        ctx.lineTo(px + TILE_PX - 6, y);
+        ctx.stroke();
+      }
     }
-    ctx.strokeStyle = "rgba(240,238,228,0.7)";
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    if (vertRoad) {
-      ctx.moveTo(px + 5, py + 5);
-      ctx.lineTo(px + TILE_PX - 5, py + 5);
-    } else {
-      ctx.moveTo(px + 5, py + 5);
-      ctx.lineTo(px + 5, py + TILE_PX - 5);
-    }
-    ctx.stroke();
   } else {
-    // Línea central discontinua suave
-    ctx.strokeStyle = "rgba(180, 150, 55, 0.45)";
-    ctx.lineWidth = 2.4;
-    ctx.setLineDash([9, 11]);
+    // Línea central discontinua — atraviesa el tile sin cortes cuadrados
+    ctx.strokeStyle = "rgba(190, 155, 50, 0.42)";
+    ctx.lineWidth = 2.6;
+    ctx.setLineDash([10, 12]);
     ctx.beginPath();
     if (vertRoad) {
-      ctx.moveTo(px + TILE_PX / 2, py + 4);
-      ctx.lineTo(px + TILE_PX / 2, py + TILE_PX - 4);
+      ctx.moveTo(px + TILE_PX / 2, py - 1);
+      ctx.lineTo(px + TILE_PX / 2, py + TILE_PX + 1);
     } else {
-      ctx.moveTo(px + 4, py + TILE_PX / 2);
-      ctx.lineTo(px + TILE_PX - 4, py + TILE_PX / 2);
+      ctx.moveTo(px - 1, py + TILE_PX / 2);
+      ctx.lineTo(px + TILE_PX + 1, py + TILE_PX / 2);
     }
     ctx.stroke();
     ctx.setLineDash([]);
   }
 
-  // Puente sobre canal: tablones redondeados
   const up = neighborTile(game, tx, ty - 1);
   const down = neighborTile(game, tx, ty + 1);
   if (up === TILE.WATER || down === TILE.WATER || neighborTile(game, tx - 1, ty) === TILE.WATER || neighborTile(game, tx + 1, ty) === TILE.WATER) {
-    ctx.fillStyle = "rgba(100,78,52,0.4)";
-    for (let i = 0; i < 4; i++) fillRound(ctx, px + 5, py + 6 + i * 10, TILE_PX - 10, 5, 2);
-    strokeRound(ctx, px + 3, py + 3, TILE_PX - 6, TILE_PX - 6, 4, "rgba(40,30,20,0.45)", 1.2);
+    ctx.strokeStyle = "rgba(110,85,55,0.45)";
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = "round";
+    for (let i = 0; i < 4; i++) {
+      const y = py + 10 + i * 9;
+      ctx.beginPath();
+      ctx.moveTo(px + 6, y);
+      ctx.lineTo(px + TILE_PX - 6, y);
+      ctx.stroke();
+    }
   }
 }
 
-function drawSidewalk(ctx, game, tx, ty, px, py, phase) {
-  const nightBoost = phase?.night ? 8 : 0;
-  const base = 82 + ((tx + ty) % 4) + nightBoost;
-  // Superficie continua (sin 4 baldosas cuadradas duras)
-  ctx.fillStyle = `rgb(${base},${base - 3},${base - 8})`;
-  ctx.fillRect(px - 0.25, py - 0.25, TILE_PX + 0.75, TILE_PX + 0.75);
-
-  // Juntas lineales suaves (cruz)
-  ctx.strokeStyle = "rgba(40,36,30,0.22)";
-  ctx.lineWidth = 1;
+/** Acera continua — sin juntas en cruz (evita look de baldosas). */
+function drawSidewalkDetail(ctx, game, tx, ty, px, py) {
   ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(px + TILE_PX / 2, py + 4);
-  ctx.lineTo(px + TILE_PX / 2, py + TILE_PX - 4);
-  ctx.moveTo(px + 4, py + TILE_PX / 2);
-  ctx.lineTo(px + TILE_PX - 4, py + TILE_PX / 2);
-  ctx.stroke();
 
-  // Mancha / grieta orgánica
-  if (((tx * 5 + ty * 9) % 5) === 0) {
-    ctx.strokeStyle = "rgba(55,60,40,0.4)";
-    ctx.lineWidth = 1.3;
+  // Grietas orgánicas escasas (no rejilla)
+  if (((tx * 9 + ty * 4) % 13) === 0) {
+    ctx.strokeStyle = "rgba(28,24,20,0.32)";
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(px + TILE_PX / 2 - 1, py + 10);
-    ctx.quadraticCurveTo(px + TILE_PX / 2 + 2, py + 18, px + TILE_PX / 2, py + 26);
+    ctx.moveTo(px + 4, py + 14);
+    ctx.quadraticCurveTo(px + 20, py + 22, px + 42, py + 36);
     ctx.stroke();
   }
-  if (((tx + ty * 4) % 7) === 0) {
-    ctx.fillStyle = "rgba(30,28,24,0.28)";
+  if (((tx + ty * 5) % 17) === 0) {
+    ctx.fillStyle = "rgba(28,26,22,0.22)";
     ctx.beginPath();
-    ctx.ellipse(px + 20, py + 24, 7, 4, 0.3, 0, Math.PI * 2);
+    ctx.ellipse(px + 18 + (tx % 10), py + 22 + (ty % 8), 9, 4.5, 0.25, 0, Math.PI * 2);
     ctx.fill();
   }
-  if (((tx * 9 + ty) % 11) === 0) {
-    ctx.strokeStyle = "rgba(20,18,16,0.4)";
-    ctx.lineWidth = 1.15;
-    ctx.beginPath();
-    ctx.moveTo(px + 6, py + 10);
-    ctx.quadraticCurveTo(px + 18, py + 22, px + 38, py + 34);
-    ctx.stroke();
-  }
 
-  // Bordillo suave
-  ctx.fillStyle = "rgba(18,18,20,0.45)";
+  // Bordillo hacia carretera — trazo largo continuo
+  ctx.strokeStyle = "rgba(18,18,20,0.5)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
   if (neighborTile(game, tx, ty + 1) === TILE.ROAD || neighborTile(game, tx, ty + 1) === TILE.CROSSWALK) {
-    fillRound(ctx, px + 1, py + TILE_PX - 4, TILE_PX - 2, 3, 1.5);
+    ctx.moveTo(px - 1, py + TILE_PX - 2);
+    ctx.lineTo(px + TILE_PX + 1, py + TILE_PX - 2);
   }
   if (neighborTile(game, tx, ty - 1) === TILE.ROAD || neighborTile(game, tx, ty - 1) === TILE.CROSSWALK) {
-    fillRound(ctx, px + 1, py + 1, TILE_PX - 2, 2.5, 1.5);
+    ctx.moveTo(px - 1, py + 2);
+    ctx.lineTo(px + TILE_PX + 1, py + 2);
   }
   if (neighborTile(game, tx - 1, ty) === TILE.ROAD || neighborTile(game, tx - 1, ty) === TILE.CROSSWALK) {
-    fillRound(ctx, px + 1, py + 1, 2.5, TILE_PX - 2, 1.5);
+    ctx.moveTo(px + 2, py - 1);
+    ctx.lineTo(px + 2, py + TILE_PX + 1);
   }
   if (neighborTile(game, tx + 1, ty) === TILE.ROAD || neighborTile(game, tx + 1, ty) === TILE.CROSSWALK) {
-    fillRound(ctx, px + TILE_PX - 3.5, py + 1, 2.5, TILE_PX - 2, 1.5);
+    ctx.moveTo(px + TILE_PX - 2, py - 1);
+    ctx.lineTo(px + TILE_PX - 2, py + TILE_PX + 1);
   }
-
-  ctx.fillStyle = "rgba(140,130,110,0.1)";
-  ctx.fillRect(px, py, TILE_PX, 2);
+  ctx.stroke();
 }
 
-function drawWater(ctx, game, tx, ty, px, py, time) {
-  // Río tóxico post-apocalíptico: verde enfermo / aceite
-  const g = ctx.createLinearGradient(px, py, px + TILE_PX, py + TILE_PX);
-  g.addColorStop(0, "#1c3a28");
-  g.addColorStop(0.35, "#163428");
-  g.addColorStop(0.7, "#1a2e22");
-  g.addColorStop(1, "#0e2218");
-  ctx.fillStyle = g;
-  ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
+function drawWaterDetail(ctx, game, tx, ty, px, py, time) {
+  ctx.lineCap = "round";
 
-  // Manchas de aceite / brillo tóxico
   if (((tx * 5 + ty * 3) % 7) === 0) {
-    ctx.fillStyle = "rgba(40, 90, 40, 0.35)";
+    ctx.fillStyle = "rgba(40, 90, 40, 0.28)";
     ctx.beginPath();
-    ctx.ellipse(px + 22, py + 24, 12, 6, 0.3, 0, Math.PI * 2);
+    ctx.ellipse(px + 22, py + 24, 14, 6, 0.3, 0, Math.PI * 2);
     ctx.fill();
   }
   if (((tx + ty * 2) % 11) === 0) {
-    ctx.fillStyle = "rgba(20, 16, 10, 0.45)";
+    ctx.fillStyle = "rgba(20, 16, 10, 0.35)";
     ctx.beginPath();
-    ctx.ellipse(px + 18, py + 16, 9, 4, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(px + 18, py + 16, 10, 4, -0.2, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Orilla orgánica (líneas curvas, no banda cuadrada)
-  ctx.lineCap = "round";
   if (neighborTile(game, tx, ty - 1) !== TILE.WATER && neighborTile(game, tx, ty - 1) !== TILE.ROAD) {
-    ctx.strokeStyle = "rgba(70,60,48,0.85)";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = "rgba(70,60,48,0.8)";
+    ctx.lineWidth = 4.5;
     ctx.beginPath();
-    ctx.moveTo(px - 1, py + 4);
+    ctx.moveTo(px - 2, py + 4);
     ctx.quadraticCurveTo(px + 18, py + 1, px + 28, py + 5);
-    ctx.quadraticCurveTo(px + 40, py + 2, px + TILE_PX + 1, py + 4);
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(110,90,55,0.35)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(px + 4, py + 3);
-    ctx.quadraticCurveTo(px + 22, py + 6, px + 40, py + 2);
+    ctx.quadraticCurveTo(px + 40, py + 2, px + TILE_PX + 2, py + 4);
     ctx.stroke();
   }
   if (neighborTile(game, tx, ty + 1) !== TILE.WATER && neighborTile(game, tx, ty + 1) !== TILE.ROAD) {
-    ctx.strokeStyle = "rgba(70,60,48,0.85)";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = "rgba(70,60,48,0.8)";
+    ctx.lineWidth = 4.5;
     ctx.beginPath();
-    ctx.moveTo(px - 1, py + TILE_PX - 4);
-    ctx.quadraticCurveTo(px + 20, py + TILE_PX - 1, px + TILE_PX + 1, py + TILE_PX - 5);
+    ctx.moveTo(px - 2, py + TILE_PX - 4);
+    ctx.quadraticCurveTo(px + 20, py + TILE_PX - 1, px + TILE_PX + 2, py + TILE_PX - 5);
     ctx.stroke();
   }
 
-  ctx.strokeStyle = "rgba(90, 160, 90, 0.22)";
-  ctx.lineWidth = 1.4;
   const wave = Math.sin(time * 1.6 + tx * 0.55 + ty * 0.35) * 2.5;
+  ctx.strokeStyle = "rgba(90, 160, 90, 0.22)";
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(px + 2, py + 16 + wave);
-  ctx.quadraticCurveTo(px + 22, py + 12 + wave, px + 46, py + 18 + wave);
+  ctx.moveTo(px - 1, py + 16 + wave);
+  ctx.quadraticCurveTo(px + 22, py + 12 + wave, px + TILE_PX + 1, py + 18 + wave);
   ctx.stroke();
-  ctx.strokeStyle = "rgba(60, 100, 70, 0.18)";
+  ctx.strokeStyle = "rgba(60, 100, 70, 0.16)";
   ctx.beginPath();
-  ctx.moveTo(px + 2, py + 30 + wave * 0.6);
-  ctx.quadraticCurveTo(px + 24, py + 28 + wave * 0.6, px + 46, py + 32 + wave * 0.6);
+  ctx.moveTo(px - 1, py + 30 + wave * 0.6);
+  ctx.quadraticCurveTo(px + 24, py + 28 + wave * 0.6, px + TILE_PX + 1, py + 32 + wave * 0.6);
   ctx.stroke();
 
-  // Espuma / basura flotante redondeada
   if (((tx + ty) % 8) === 0) {
-    ctx.fillStyle = "rgba(120, 140, 60, 0.35)";
-    fillRound(ctx, px + 16, py + 20 + wave, 8, 3, 1.5);
-  }
-  if (((tx * 3 + ty) % 13) === 0) {
-    ctx.fillStyle = "rgba(70, 55, 40, 0.5)";
-    fillRound(ctx, px + 10, py + 28 + wave, 7, 4, 2);
+    ctx.fillStyle = "rgba(120, 140, 60, 0.3)";
+    ctx.beginPath();
+    ctx.ellipse(px + 20, py + 22 + wave, 5, 2.2, 0.1, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
-function drawGrass(ctx, tx, ty, px, py) {
-  // Base continua (poca variación entre tiles → menos “cuadritos”)
-  const g = 60 + ((tx + ty) % 3);
-  ctx.fillStyle = `rgb(30,${g},28)`;
-  ctx.fillRect(px - 0.5, py - 0.5, TILE_PX + 1.5, TILE_PX + 1.5);
-
-  // Soft noise dab (muy sutil)
-  if (((tx * 3 + ty * 5) % 4) === 0) {
-    ctx.fillStyle = "rgba(40,78,36,0.18)";
-    ctx.beginPath();
-    ctx.ellipse(px + 18 + (tx % 8), py + 20 + (ty % 6), 8, 5, 0.2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  if (((tx * 5 + ty * 3) % 17) === 0) {
-    ctx.fillStyle = "rgba(96,74,44,0.28)";
-    ctx.beginPath();
-    ctx.ellipse(px + 24, py + 26, 10, 6, 0.25, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Briznas curvas que cruzan bordes del tile
+function drawGrassDetail(ctx, tx, ty, px, py) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  for (let i = 0; i < 18; i++) {
-    const gx = px + ((tx * 5 + i * 13 + ty * 3) % 50) - 3;
-    const gy = py + 6 + ((ty * 7 + i * 9) % 38);
-    const lean = ((i % 5) - 2) * 2.2;
-    const tall = 8 + (i % 5);
-    ctx.strokeStyle = i % 3 === 0 ? "rgba(120,168,82,0.88)" : "rgba(52,102,50,0.7)";
-    ctx.lineWidth = i % 4 === 0 ? 1.85 : 1.15;
+
+  if (((tx * 3 + ty * 5) % 5) === 0) {
+    ctx.fillStyle = "rgba(40,78,36,0.16)";
+    ctx.beginPath();
+    ctx.ellipse(px + 18 + (tx % 8), py + 20 + (ty % 6), 11, 6, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (((tx * 5 + ty * 3) % 17) === 0) {
+    ctx.fillStyle = "rgba(96,74,44,0.22)";
+    ctx.beginPath();
+    ctx.ellipse(px + 24, py + 26, 11, 6, 0.25, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Briznas que cruzan bordes del tile → campo continuo
+  for (let i = 0; i < 16; i++) {
+    const gx = px + ((tx * 5 + i * 13 + ty * 3) % 54) - 4;
+    const gy = py + 4 + ((ty * 7 + i * 9) % 42);
+    const lean = ((i % 5) - 2) * 2.4;
+    const tall = 9 + (i % 5);
+    ctx.strokeStyle = i % 3 === 0 ? "rgba(120,168,82,0.85)" : "rgba(52,102,50,0.65)";
+    ctx.lineWidth = i % 4 === 0 ? 1.9 : 1.15;
     ctx.beginPath();
     ctx.moveTo(gx, gy + tall);
-    ctx.quadraticCurveTo(gx + lean * 0.35, gy + tall * 0.42, gx + lean, gy - 2);
+    ctx.quadraticCurveTo(gx + lean * 0.35, gy + tall * 0.42, gx + lean, gy - 3);
     ctx.stroke();
   }
   if (((tx + ty * 2) % 11) === 0) {
@@ -1089,54 +1087,79 @@ function drawGrass(ctx, tx, ty, px, py) {
   }
 }
 
-function drawParking(ctx, tx, ty, px, py) {
-  const n = ((tx + ty) % 4);
-  ctx.fillStyle = `rgb(${72 + n},${74 + n},${80 + n})`;
-  ctx.fillRect(px, py, TILE_PX + 0.5, TILE_PX + 0.5);
-  ctx.strokeStyle = "rgba(230,230,220,0.55)";
-  ctx.lineWidth = 1.6;
+/** Parking: solo líneas de plaza alineadas (sin cajas por tile). */
+function drawParkingDetail(ctx, tx, ty, px, py) {
   ctx.lineCap = "round";
-  strokeRound(ctx, px + 5, py + 3, TILE_PX - 10, TILE_PX - 6, 4, "rgba(230,230,220,0.55)", 1.6);
-  // Flecha suave
-  ctx.fillStyle = "rgba(220,220,210,0.35)";
+  ctx.strokeStyle = "rgba(220,218,205,0.42)";
+  ctx.lineWidth = 1.7;
+  // Líneas verticales que atraviesan el tile → filas contínuas
   ctx.beginPath();
-  ctx.moveTo(px + TILE_PX / 2, py + 14);
-  ctx.lineTo(px + TILE_PX / 2 + 6, py + 22);
-  ctx.lineTo(px + TILE_PX / 2 - 6, py + 22);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "rgba(220,220,210,0.5)";
-  ctx.font = `600 10px ${FONT_UI}`;
-  ctx.textAlign = "center";
-  ctx.fillText(String(((tx + ty * 3) % 24) + 1), px + TILE_PX / 2, py + TILE_PX / 2 + 10);
+  ctx.moveTo(px + 6, py - 1);
+  ctx.lineTo(px + 6, py + TILE_PX + 1);
+  ctx.moveTo(px + TILE_PX - 6, py - 1);
+  ctx.lineTo(px + TILE_PX - 6, py + TILE_PX + 1);
+  ctx.stroke();
+  // Tope superior solo en el borde de la fila
+  if (((ty * 3 + tx) % 2) === 0) {
+    ctx.beginPath();
+    ctx.moveTo(px + 6, py + 5);
+    ctx.lineTo(px + TILE_PX - 6, py + 5);
+    ctx.stroke();
+  }
 }
 
-function drawAlley(ctx, tile, tx, ty, px, py) {
-  ctx.fillStyle = tile === TILE.RUBBLE ? "#6a6258" : "#3a3a40";
-  ctx.fillRect(px - 0.25, py - 0.25, TILE_PX + 0.75, TILE_PX + 0.75);
+function drawAlleyDetail(ctx, tile, tx, ty, px, py) {
+  ctx.lineCap = "round";
   if (((tx + ty) % 5) === 0) {
-    ctx.fillStyle = "rgba(40,70,80,0.3)";
+    ctx.fillStyle = "rgba(40,70,80,0.22)";
     ctx.beginPath();
-    ctx.ellipse(px + 24, py + 30, 10, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(px + 24, py + 30, 12, 5, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-  // Escombros orgánicos
-  ctx.fillStyle = "#7a7060";
-  ctx.beginPath();
-  ctx.moveTo(px + 8, py + 28);
-  ctx.lineTo(px + 14, py + 18);
-  ctx.lineTo(px + 22, py + 26);
-  ctx.lineTo(px + 18, py + 32);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "#5a5048";
-  fillRound(ctx, px + 26, py + 16, 12, 10, 3);
-  if (tile === TILE.RUBBLE) {
-    ctx.fillStyle = "#8a8070";
-    fillRound(ctx, px + 14, py + 10, 10, 7, 2);
-    ctx.fillStyle = "#4a4440";
-    fillRound(ctx, px + 6, py + 32, 16, 5, 2);
+  if (((tx * 3 + ty) % 7) === 0) {
+    ctx.fillStyle = "rgba(90,80,70,0.55)";
+    ctx.beginPath();
+    ctx.moveTo(px + 8, py + 28);
+    ctx.quadraticCurveTo(px + 14, py + 16, px + 22, py + 26);
+    ctx.quadraticCurveTo(px + 16, py + 34, px + 8, py + 28);
+    ctx.fill();
   }
+  if (tile === TILE.RUBBLE && ((tx + ty * 2) % 4) === 0) {
+    ctx.fillStyle = "rgba(110,100,88,0.5)";
+    ctx.beginPath();
+    ctx.ellipse(px + 18, py + 20, 8, 5, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(70,64,56,0.55)";
+    ctx.beginPath();
+    ctx.ellipse(px + 30, py + 28, 7, 3.5, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Compat wrappers (por si algún caller antiguo queda)
+function drawRoad(ctx, game, tile, tx, ty, px, py, phase) {
+  paintTerrainBase(ctx, game, tile, tx, ty, px, py, phase);
+  drawRoadDetail(ctx, game, tile, tx, ty, px, py);
+}
+function drawSidewalk(ctx, game, tx, ty, px, py, phase) {
+  paintTerrainBase(ctx, game, TILE.SIDEWALK, tx, ty, px, py, phase);
+  drawSidewalkDetail(ctx, game, tx, ty, px, py);
+}
+function drawWater(ctx, game, tx, ty, px, py, time) {
+  paintTerrainBase(ctx, game, TILE.WATER, tx, ty, px, py, null);
+  drawWaterDetail(ctx, game, tx, ty, px, py, time);
+}
+function drawGrass(ctx, tx, ty, px, py) {
+  paintTerrainBase(ctx, null, TILE.PARK, tx, ty, px, py, null);
+  drawGrassDetail(ctx, tx, ty, px, py);
+}
+function drawParking(ctx, tx, ty, px, py) {
+  paintTerrainBase(ctx, null, TILE.PARKING, tx, ty, px, py, null);
+  drawParkingDetail(ctx, tx, ty, px, py);
+}
+function drawAlley(ctx, tile, tx, ty, px, py) {
+  paintTerrainBase(ctx, null, tile, tx, ty, px, py, null);
+  drawAlleyDetail(ctx, tile, tx, ty, px, py);
 }
 
 function drawInterior(ctx, game, tile, tx, ty, px, py) {
@@ -1180,47 +1203,57 @@ function drawLiveFurniture(ctx, game, camX, camY, x0, y0, x1, y1, building) {
 function drawInteriorFloor(ctx, tile, px, py, b, floorStyle, tx, ty) {
   if (tile === TILE.BASE) {
     ctx.fillStyle = "#4f6a40";
-    ctx.fillRect(px - 0.25, py - 0.25, TILE_PX + 0.75, TILE_PX + 0.75);
+    ctx.fillRect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
     strokeRound(ctx, px + 6, py + 6, TILE_PX - 12, TILE_PX - 12, 4, "rgba(180, 210, 120, 0.45)", 1.5);
     return;
   }
 
-  const odd = ((tx + ty) & 1) === 0;
+  // Color plano por estilo (sin damero odd/even → sin grilla)
   if (floorStyle === "tile") {
-    ctx.fillStyle = odd ? "#a89c90" : "#968c80";
-    ctx.fillRect(px - 0.25, py - 0.25, TILE_PX + 0.75, TILE_PX + 0.75);
-    ctx.strokeStyle = "rgba(48,40,34,0.28)";
-    ctx.lineWidth = 1;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(px + TILE_PX / 2, py + 3);
-    ctx.lineTo(px + TILE_PX / 2, py + TILE_PX - 3);
-    ctx.moveTo(px + 3, py + TILE_PX / 2);
-    ctx.lineTo(px + TILE_PX - 3, py + TILE_PX / 2);
-    ctx.stroke();
-  } else if (floorStyle === "concrete") {
-    ctx.fillStyle = odd ? "#8a8882" : "#7e7c76";
-    ctx.fillRect(px - 0.25, py - 0.25, TILE_PX + 0.75, TILE_PX + 0.75);
-    if (((tx * 3 + ty) % 5) === 0) {
-      ctx.strokeStyle = "rgba(40,38,34,0.25)";
+    ctx.fillStyle = "#9a9084";
+    ctx.fillRect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
+    // Juntas suaves solo cada 2 tiles en X (líneas largas, no cruz por baldosa)
+    if ((tx % 2) === 0) {
+      ctx.strokeStyle = "rgba(48,40,34,0.18)";
+      ctx.lineWidth = 1.1;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(px + TILE_PX, py - 1);
+      ctx.lineTo(px + TILE_PX, py + TILE_PX + 1);
+      ctx.stroke();
+    }
+    if ((ty % 2) === 0) {
+      ctx.strokeStyle = "rgba(48,40,34,0.14)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(px + 6, py + 10);
-      ctx.quadraticCurveTo(px + 22, py + 18, px + 40, py + 28);
+      ctx.moveTo(px - 1, py + TILE_PX);
+      ctx.lineTo(px + TILE_PX + 1, py + TILE_PX);
+      ctx.stroke();
+    }
+  } else if (floorStyle === "concrete") {
+    ctx.fillStyle = "#84827c";
+    ctx.fillRect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
+    if (((tx * 3 + ty) % 5) === 0) {
+      ctx.strokeStyle = "rgba(40,38,34,0.22)";
+      ctx.lineWidth = 1;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(px + 4, py + 10);
+      ctx.quadraticCurveTo(px + 22, py + 18, px + 44, py + 28);
       ctx.stroke();
     }
   } else {
-    // wood — vetas lineales
-    ctx.fillStyle = odd ? "#8a6a48" : "#7a5a3c";
-    ctx.fillRect(px - 0.25, py - 0.25, TILE_PX + 0.75, TILE_PX + 0.75);
-    ctx.strokeStyle = "rgba(40,28,14,0.28)";
-    ctx.lineWidth = 1.1;
+    // wood — tablones horizontales contínuos (mismo tono)
+    ctx.fillStyle = "#826044";
+    ctx.fillRect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
+    ctx.strokeStyle = "rgba(40,28,14,0.22)";
+    ctx.lineWidth = 1.15;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(px + 4, py + 12);
-    ctx.lineTo(px + TILE_PX - 4, py + 14);
-    ctx.moveTo(px + 4, py + 28);
-    ctx.lineTo(px + TILE_PX - 4, py + 26);
+    ctx.moveTo(px - 1, py + 12);
+    ctx.lineTo(px + TILE_PX + 1, py + 13);
+    ctx.moveTo(px - 1, py + 28);
+    ctx.lineTo(px + TILE_PX + 1, py + 27);
     ctx.stroke();
   }
 }
@@ -3755,33 +3788,54 @@ function drawMinimap(mctx, mini, game) {
     _miniBase.height = s;
     const b = _miniBase.getContext("2d");
     b.imageSmoothingEnabled = true;
+    b.imageSmoothingQuality = "high";
     b.clearRect(0, 0, s, s);
-    // Fondo suave
     b.fillStyle = "#1e241c";
     b.fillRect(0, 0, s, s);
-    // Terreno por tiles (colores suaves)
+
+    // Terreno continuo: solape grande + sin bordes por celda
+    const pad = Math.max(1.2, scale * 0.85);
     for (let y = 0; y < world.size; y++) {
       for (let x = 0; x < world.size; x++) {
         const tile = world.tiles[y * world.size + x];
-        const meta = TILE_META[tile];
-        if (!meta) continue;
-        let col = meta.color || "#222";
+        if (tile === TILE.WALL || tile === TILE.DOOR || tile === TILE.FLOOR || tile === TILE.BASE) continue;
+        let col = "#2a3228";
         if (tile === TILE.PARK) col = "#2a4a28";
         else if (tile === TILE.ROAD || tile === TILE.CROSSWALK) col = "#353840";
         else if (tile === TILE.SIDEWALK) col = "#5a5850";
         else if (tile === TILE.WATER) col = "#1a3a2a";
-        else if (tile === TILE.WALL) continue; // edificios encima
+        else if (tile === TILE.PARKING) col = "#4a4c52";
+        else if (tile === TILE.ALLEY || tile === TILE.RUBBLE) col = "#3a3a40";
+        else {
+          const meta = TILE_META[tile];
+          if (!meta) continue;
+          col = meta.color || "#222";
+        }
         b.fillStyle = col;
-        b.fillRect(x * scale, y * scale, scale + 0.8, scale + 0.8);
+        b.fillRect(x * scale - pad * 0.35, y * scale - pad * 0.35, scale + pad, scale + pad);
       }
     }
-    // Edificios como bloques redondeados (estilo mapa Stardew)
+
+    // Suavizado leve → mapa lineal, no píxeles
+    try {
+      const soft = document.createElement("canvas");
+      soft.width = s;
+      soft.height = s;
+      const sc = soft.getContext("2d");
+      sc.imageSmoothingEnabled = true;
+      sc.filter = "blur(0.85px)";
+      sc.drawImage(_miniBase, 0, 0);
+      b.clearRect(0, 0, s, s);
+      b.drawImage(soft, 0, 0);
+    } catch (_) { /* filter no disponible */ }
+
+    // Edificios como bloques redondeados (forma lineal tipo mapa Stardew)
     for (const building of world.buildings || []) {
       const bx = building.x0 * scale;
       const by = building.y0 * scale;
-      const bw = Math.max(2, (building.x1 - building.x0) * scale);
-      const bh = Math.max(2, (building.y1 - building.y0) * scale);
-      const r = Math.min(2.5, bw / 4, bh / 4);
+      const bw = Math.max(2.5, (building.x1 - building.x0) * scale);
+      const bh = Math.max(2.5, (building.y1 - building.y0) * scale);
+      const r = Math.min(3.2, bw / 3.2, bh / 3.2);
       b.fillStyle = building.facade || "#6a6560";
       b.beginPath();
       b.moveTo(bx + r, by);
@@ -3791,23 +3845,27 @@ function drawMinimap(mctx, mini, game) {
       b.arcTo(bx, by, bx + bw, by, r);
       b.closePath();
       b.fill();
-      b.strokeStyle = "rgba(0,0,0,0.35)";
-      b.lineWidth = 0.6;
+      b.strokeStyle = "rgba(0,0,0,0.28)";
+      b.lineWidth = 0.7;
       b.stroke();
     }
-    // Canal / agua resaltada
-    b.strokeStyle = "rgba(60,120,80,0.35)";
-    b.lineWidth = 1;
+
+    // Orillas de agua como trazo curvo suave
+    b.strokeStyle = "rgba(70,130,90,0.4)";
+    b.lineWidth = 1.4;
+    b.lineCap = "round";
+    b.lineJoin = "round";
     for (let y = 0; y < world.size; y++) {
       for (let x = 0; x < world.size; x++) {
         if (world.tiles[y * world.size + x] !== TILE.WATER) continue;
         const up = y > 0 ? world.tiles[(y - 1) * world.size + x] : TILE.WALL;
-        if (up !== TILE.WATER) {
-          b.beginPath();
-          b.moveTo(x * scale, y * scale);
-          b.lineTo((x + 1) * scale, y * scale);
-          b.stroke();
-        }
+        if (up === TILE.WATER) continue;
+        const x0 = x * scale;
+        const y0 = y * scale;
+        b.beginPath();
+        b.moveTo(x0, y0);
+        b.quadraticCurveTo(x0 + scale * 0.5, y0 - 0.6, x0 + scale, y0);
+        b.stroke();
       }
     }
     _miniSeed = world.seed;
@@ -3816,8 +3874,8 @@ function drawMinimap(mctx, mini, game) {
   }
   mctx.clearRect(0, 0, s, s);
   mctx.imageSmoothingEnabled = true;
+  mctx.imageSmoothingQuality = "high";
   mctx.drawImage(_miniBase, 0, 0);
-  // Entidades redondas
   for (const z of game.zombies) {
     mctx.fillStyle = z.boss ? "#e8a040" : "#7dcea0";
     const zs = z.boss ? 3.4 : 2.2;
