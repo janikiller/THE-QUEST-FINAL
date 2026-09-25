@@ -643,8 +643,8 @@ function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
   const size = game.world.size;
   const PAD = 12;
   const indoorKey = _viewIndoor ? `${_viewIndoor.x0},${_viewIndoor.y0},${_viewIndoor.style || ""}` : "out";
-  // v3 = suelo continuo lineal (sin grilla / sin juntas en cruz)
-  const baseKey = `v3|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
+  // v4 = orillas orgánicas + minimapa hi-res
+  const baseKey = `v4|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
   const outOfBounds =
     x0 < _groundMeta.x0 ||
     y0 < _groundMeta.y0 ||
@@ -773,7 +773,7 @@ function paintTerrainDetail(ctx, game, tile, tx, ty, px, py, phase) {
     drawSidewalkDetail(ctx, game, tx, ty, px, py);
     softTileEdges(ctx, game, tx, ty, px, py, tile);
   } else if (tile === TILE.PARK) {
-    drawGrassDetail(ctx, tx, ty, px, py);
+    drawGrassDetail(ctx, game, tx, ty, px, py);
     softTileEdges(ctx, game, tx, ty, px, py, tile);
   } else if (tile === TILE.PARKING) {
     drawParkingDetail(ctx, tx, ty, px, py);
@@ -1122,7 +1122,7 @@ function drawWaterDetail(ctx, game, tx, ty, px, py, time) {
   }
 }
 
-function drawGrassDetail(ctx, tx, ty, px, py) {
+function drawGrassDetail(ctx, game, tx, ty, px, py) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
@@ -1139,6 +1139,32 @@ function drawGrassDetail(ctx, tx, ty, px, py) {
     ctx.fill();
   }
 
+  // Extender césped hacia vecinos no-park → silueta irregular (no rectángulo)
+  if (game) {
+    const dirs = [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ];
+    ctx.fillStyle = "rgba(32,62,30,0.72)";
+    for (const [dx, dy] of dirs) {
+      const n = neighborTile(game, tx + dx, ty + dy);
+      if (n === TILE.PARK || n === TILE.WALL || n === TILE.DOOR || n === TILE.WATER) continue;
+      const ox = px + TILE_PX / 2 + dx * 22;
+      const oy = py + TILE_PX / 2 + dy * 22;
+      const rx = 14 + ((tx * 3 + ty + dx) % 5);
+      const ry = 10 + ((ty * 2 + tx + dy) % 4);
+      ctx.beginPath();
+      ctx.ellipse(ox, oy, rx, ry, (tx + ty) * 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   // Briznas que cruzan bordes del tile → campo continuo
   for (let i = 0; i < 16; i++) {
     const gx = px + ((tx * 5 + i * 13 + ty * 3) % 54) - 4;
@@ -1151,6 +1177,23 @@ function drawGrassDetail(ctx, tx, ty, px, py) {
     ctx.moveTo(gx, gy + tall);
     ctx.quadraticCurveTo(gx + lean * 0.35, gy + tall * 0.42, gx + lean, gy - 3);
     ctx.stroke();
+  }
+  // Briznas extras que invaden la acera
+  if (game) {
+    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+      const n = neighborTile(game, tx + dx, ty + dy);
+      if (n === TILE.PARK || n === TILE.WALL) continue;
+      for (let i = 0; i < 5; i++) {
+        const gx = px + TILE_PX / 2 + dx * 26 + ((i * 11 + tx) % 14) - 7;
+        const gy = py + TILE_PX / 2 + dy * 26 + ((i * 7 + ty) % 12) - 6;
+        ctx.strokeStyle = "rgba(90,140,70,0.7)";
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(gx, gy + 6);
+        ctx.quadraticCurveTo(gx + 2, gy + 2, gx + ((i % 3) - 1) * 3, gy - 4);
+        ctx.stroke();
+      }
+    }
   }
   if (((tx + ty * 2) % 11) === 0) {
     ctx.fillStyle = "#d4a858";
@@ -1230,7 +1273,7 @@ function drawWater(ctx, game, tx, ty, px, py, time) {
 }
 function drawGrass(ctx, tx, ty, px, py) {
   paintTerrainBase(ctx, null, TILE.PARK, tx, ty, px, py, null);
-  drawGrassDetail(ctx, tx, ty, px, py);
+  drawGrassDetail(ctx, null, tx, ty, px, py);
 }
 function drawParking(ctx, tx, ty, px, py) {
   paintTerrainBase(ctx, null, TILE.PARKING, tx, ty, px, py, null);
