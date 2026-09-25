@@ -536,9 +536,12 @@ html, body {
   bottom: 1.2rem;
   width: 148px;
   height: 148px;
-  background: rgba(10, 14, 10, 0.75);
-  border: 1px solid rgba(228, 239, 230, 0.18);
-  image-rendering: pixelated;
+  background: rgba(10, 14, 10, 0.78);
+  border: 1px solid rgba(228, 239, 230, 0.2);
+  border-radius: 14px;
+  image-rendering: auto;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   z-index: 3;
 }
 
