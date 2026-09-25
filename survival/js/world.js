@@ -18,19 +18,19 @@ export const TILE = {
 };
 
 export const TILE_META = {
-  [TILE.ROAD]: { name: "asfalto", walk: true, color: "#2a2c2e", speed: 1.05 },
-  [TILE.SIDEWALK]: { name: "acera", walk: true, color: "#5a564f", speed: 1 },
+  [TILE.ROAD]: { name: "asfalto", walk: true, color: "#3a3e46", speed: 1.05 },
+  [TILE.SIDEWALK]: { name: "acera", walk: true, color: "#8a8680", speed: 1 },
   [TILE.FLOOR]: { name: "interior", walk: true, color: "#4a3d32", speed: 1, indoor: true },
   [TILE.WALL]: { name: "muro", walk: false, color: "#3a3530", solid: true },
   [TILE.RUBBLE]: { name: "escombros", walk: true, color: "#524a42", speed: 0.65 },
   [TILE.PARK]: { name: "parque", walk: true, color: "#2a3a24", speed: 0.95 },
-  [TILE.PARKING]: { name: "parking", walk: true, color: "#323438", speed: 1 },
+  [TILE.PARKING]: { name: "parking", walk: true, color: "#4a4e56", speed: 1 },
   [TILE.WATER]: { name: "río tóxico", walk: false, color: "#1a3020", solid: true, drink: true },
-  [TILE.ALLEY]: { name: "callejón", walk: true, color: "#2a2a2e", speed: 0.9 },
+  [TILE.ALLEY]: { name: "callejón", walk: true, color: "#3a3a40", speed: 0.9 },
   [TILE.BARRICADE]: { name: "barricada", walk: false, color: "#6a4220", solid: true, built: true },
   [TILE.DOOR]: { name: "puerta", walk: true, color: "#6b4a2a", speed: 0.9, door: true },
   [TILE.BASE]: { name: "base", walk: true, color: "#3a4a30", speed: 1, indoor: true, base: true },
-  [TILE.CROSSWALK]: { name: "paso", walk: true, color: "#343436", speed: 1 },
+  [TILE.CROSSWALK]: { name: "paso", walk: true, color: "#3a3e46", speed: 1 },
 };
 
 export const LOOT = {
@@ -739,7 +739,7 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Pasos de peatones limpios en los accesos (no en el centro del cruce)
+  // Pasos de peatones limpios en cada acceso (banda única bien alineada)
   const crosswalkDir = new Map(); // "x,y" -> "v" | "h"
   function markCrosswalk(x, y, dir) {
     if (x < 0 || y < 0 || x >= size || y >= size) return;
@@ -756,7 +756,6 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       const cy = hy + ROAD_W * 0.5;
       const rota = roundabouts.find((r) => Math.hypot(r.x - cx, r.y - cy) < 1);
       if (rota) {
-        // Cebra justo en la boca (sobre el asfalto de acceso, pegada al anillo)
         const d = Math.max(ROAD_W + 1, Math.round(rota.r + 0.85));
         for (let i = 0; i < ROAD_W; i++) {
           markCrosswalk(vx + i, Math.round(cy - d), "v");
@@ -768,9 +767,9 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       }
       // Cruce normal: cebra justo fuera del cuadrado de intersección
       for (let i = 0; i < ROAD_W; i++) {
-        markCrosswalk(vx + i, hy - 1, "v"); // acceso sur→norte (calle vertical)
+        markCrosswalk(vx + i, hy - 1, "v");
         markCrosswalk(vx + i, hy + ROAD_W, "v");
-        markCrosswalk(vx - 1, hy + i, "h"); // acceso este→oeste (calle horizontal)
+        markCrosswalk(vx - 1, hy + i, "h");
         markCrosswalk(vx + ROAD_W, hy + i, "h");
       }
     }
@@ -876,30 +875,15 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Tapas de alcantarilla
+  // Tapas de alcantarilla (pocas, calle limpia)
   for (let y = 3; y < size - 3; y++) {
     for (let x = 3; x < size - 3; x++) {
       if (tiles[y * size + x] !== TILE.ROAD) continue;
-      if ((x * 17 + y * 31) % 47 === 0) props.push({ type: "manhole", x: x + 0.5, y: y + 0.5 });
+      if ((x * 17 + y * 31) % 71 === 0) props.push({ type: "manhole", x: x + 0.5, y: y + 0.5 });
     }
   }
 
-  // Cicatrices del colapso (respetar pasos y rotondas)
-  for (let y = 2; y < size - 2; y++) {
-    for (let x = 2; x < size - 2; x++) {
-      const t = tiles[y * size + x];
-      if (t !== TILE.ROAD && t !== TILE.SIDEWALK) continue;
-      if (roundabouts.some((r) => Math.hypot(x + 0.5 - r.x, y + 0.5 - r.y) < r.r + 2)) continue;
-      const r = noise.noise2(x * 0.55 + 9, y * 0.55 + seed * 0.0002);
-      if (t === TILE.ROAD && r > 0.82) tiles[y * size + x] = TILE.RUBBLE;
-      if (r > 0.85 && (x + y) % 7 === 0) {
-        props.push({ type: "debris", x: x + 0.5, y: y + 0.5, tone: (x + y) % 3 });
-      }
-      if (r > 0.88 && t === TILE.SIDEWALK && (x * y) % 13 === 0) {
-        props.push({ type: "barricadeJunk", x: x + 0.5, y: y + 0.5 });
-      }
-    }
-  }
+  // Sin cicatrices apocalípticas en calles: asfalto y aceras quedan limpios
 
   // Restaurar río ondulado + puentes
   for (let x = 0; x < size; x++) {
@@ -914,8 +898,9 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       const bank = (cy + bankOff + 0.5) | 0;
       if (bank < 1 || bank >= size - 1 || isBridge) continue;
       const t = tiles[bank * size + x];
-      if (t === TILE.WATER || t === TILE.ROAD || t === TILE.CROSSWALK) continue;
-      if (noise.noise2(x * 0.4, bank * 0.4) > 0.35) tiles[bank * size + x] = TILE.RUBBLE;
+      if (t === TILE.WATER || t === TILE.ROAD || t === TILE.CROSSWALK || t === TILE.SIDEWALK) continue;
+      // Orilla vegetal limpia, sin escombros en la vía
+      if (noise.noise2(x * 0.4, bank * 0.4) > 0.45) tiles[bank * size + x] = TILE.PARK;
     }
   }
 
@@ -954,6 +939,23 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   }
 
   props.sort((a, b) => a.y - b.y);
+  // Quitar escombros / basura suelta que haya caído sobre calzada o acera
+  for (let i = props.length - 1; i >= 0; i--) {
+    const p = props[i];
+    if (p.type !== "debris" && p.type !== "barricadeJunk") continue;
+    const tx = p.x | 0;
+    const ty = p.y | 0;
+    if (tx < 0 || ty < 0 || tx >= size || ty >= size) continue;
+    const t = tiles[ty * size + tx];
+    if (t === TILE.ROAD || t === TILE.CROSSWALK || t === TILE.SIDEWALK) props.splice(i, 1);
+  }
+  // Garantizar ejes de calle sin huecos de escombros
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (tiles[y * size + x] !== TILE.RUBBLE) continue;
+      if (isOnAxisRoad(x, vRoads) || isOnAxisRoad(y, hRoads)) tiles[y * size + x] = TILE.ROAD;
+    }
+  }
   const lamps = props.filter((p) => p.type === "lamp");
   const indoorLights = props.filter((p) => p.type === "indoorLamp" || p.type === "candle");
   const propGrid = buildPropGrid(props, size);
