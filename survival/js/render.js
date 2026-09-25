@@ -759,6 +759,31 @@ function paintTerrainBase(ctx, game, tile, tx, ty, px, py, phase) {
   if (flat) {
     ctx.fillStyle = flat;
     ctx.fillRect(px - GROUND_OVERLAP, py - GROUND_OVERLAP, TILE_PX + GROUND_OVERLAP * 2, TILE_PX + GROUND_OVERLAP * 2);
+    // Rotonda: relleno circular (isla / anillo) para que no se lea como cruce cuadrado
+    const rota = game?.world?.roundabouts?.find((r) => Math.hypot(tx + 0.5 - r.x, ty + 0.5 - r.y) < r.r + 1.6);
+    if (rota) {
+      const ox = (rota.x - tx) * TILE_PX + px;
+      const oy = (rota.y - ty) * TILE_PX + py;
+      const d = Math.hypot(tx + 0.5 - rota.x, ty + 0.5 - rota.y);
+      if (tile === TILE.PARK && d <= rota.island + 0.55) {
+        ctx.fillStyle = flat;
+        ctx.beginPath();
+        ctx.arc(ox, oy, rota.island * TILE_PX + 6, 0, Math.PI * 2);
+        ctx.fill();
+      } else if ((tile === TILE.ROAD || tile === TILE.CROSSWALK) && d <= rota.r + 0.35) {
+        ctx.fillStyle = flat;
+        ctx.beginPath();
+        ctx.arc(ox, oy, rota.r * TILE_PX + 4, 0, Math.PI * 2);
+        ctx.arc(ox, oy, Math.max(4, rota.island * TILE_PX - 2), 0, Math.PI * 2, true);
+        ctx.fill("evenodd");
+      } else if (tile === TILE.SIDEWALK && d > rota.r - 0.2 && d < rota.r + 1.4) {
+        ctx.fillStyle = flat;
+        ctx.beginPath();
+        ctx.arc(ox, oy, (rota.r + 1.15) * TILE_PX + 2, 0, Math.PI * 2);
+        ctx.arc(ox, oy, rota.r * TILE_PX - 2, 0, Math.PI * 2, true);
+        ctx.fill("evenodd");
+      }
+    }
     // Parque: manchas elípticas grandes → rompe el escalón de 48px en el borde
     if (tile === TILE.PARK) {
       const seed = (tx * 13 + ty * 7) & 15;
@@ -905,6 +930,22 @@ function softTileEdges(ctx, game, tx, ty, px, py, selfTile) {
   }
 }
 
+function roadRunsVertical(game, tx, ty) {
+  const v = game.world.vRoads;
+  if (v?.some((vx) => tx >= vx && tx < vx + 2)) return true;
+  const h = game.world.hRoads;
+  if (h?.some((hy) => ty >= hy && ty < hy + 2)) return false;
+  const dir = game.world.crosswalkDir?.get(`${tx},${ty}`);
+  if (dir === "v") return true;
+  if (dir === "h") return false;
+  const n = neighborTile(game, tx, ty - 1);
+  const s = neighborTile(game, tx, ty + 1);
+  const e = neighborTile(game, tx + 1, ty);
+  const w = neighborTile(game, tx - 1, ty);
+  const roadish = (t) => t === TILE.ROAD || t === TILE.CROSSWALK;
+  return (roadish(n) ? 1 : 0) + (roadish(s) ? 1 : 0) >= (roadish(e) ? 1 : 0) + (roadish(w) ? 1 : 0);
+}
+
 /** Detalle de carretera — solo trazos (la base plana ya está en paintTerrainBase). */
 function drawRoadDetail(ctx, game, tile, tx, ty, px, py) {
   ctx.lineCap = "round";
@@ -926,64 +967,89 @@ function drawRoadDetail(ctx, game, tile, tx, ty, px, py) {
   }
 
   // Bordillo continuo hacia acera — muy suave (no dibuja un marco cuadrado duro)
-  ctx.strokeStyle = "rgba(110,104,92,0.28)";
-  ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  if (neighborTile(game, tx, ty - 1) === TILE.SIDEWALK) {
-    ctx.moveTo(px - 1, py + 2);
-    ctx.lineTo(px + TILE_PX + 1, py + 2);
-  }
-  if (neighborTile(game, tx, ty + 1) === TILE.SIDEWALK) {
-    ctx.moveTo(px - 1, py + TILE_PX - 2);
-    ctx.lineTo(px + TILE_PX + 1, py + TILE_PX - 2);
-  }
-  if (neighborTile(game, tx - 1, ty) === TILE.SIDEWALK) {
-    ctx.moveTo(px + 2, py - 1);
-    ctx.lineTo(px + 2, py + TILE_PX + 1);
-  }
-  if (neighborTile(game, tx + 1, ty) === TILE.SIDEWALK) {
-    ctx.moveTo(px + TILE_PX - 2, py - 1);
-    ctx.lineTo(px + TILE_PX - 2, py + TILE_PX + 1);
-  }
-  ctx.stroke();
-
-  const vertRoad = tx % 10 < 2;
-  if (tile === TILE.CROSSWALK) {
-    ctx.strokeStyle = "rgba(220,216,200,0.55)";
-    ctx.lineWidth = 4.5;
-    ctx.lineCap = "round";
-    if (vertRoad) {
-      for (let i = 0; i < 5; i++) {
-        const x = px + 8 + i * 8;
-        ctx.beginPath();
-        ctx.moveTo(x, py + 6);
-        ctx.lineTo(x, py + TILE_PX - 6);
-        ctx.stroke();
-      }
-    } else {
-      for (let i = 0; i < 5; i++) {
-        const y = py + 8 + i * 8;
-        ctx.beginPath();
-        ctx.moveTo(px + 6, y);
-        ctx.lineTo(px + TILE_PX - 6, y);
-        ctx.stroke();
-      }
-    }
-  } else {
-    // Línea central discontinua — atraviesa el tile sin cortes cuadrados
-    ctx.strokeStyle = "rgba(190, 155, 50, 0.42)";
-    ctx.lineWidth = 2.6;
-    ctx.setLineDash([10, 12]);
+  const inRota = game.world.roundabouts?.find((r) => Math.hypot(tx + 0.5 - r.x, ty + 0.5 - r.y) < r.r + 0.35);
+  if (!inRota) {
+    ctx.strokeStyle = "rgba(110,104,92,0.28)";
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    if (vertRoad) {
-      ctx.moveTo(px + TILE_PX / 2, py - 1);
-      ctx.lineTo(px + TILE_PX / 2, py + TILE_PX + 1);
-    } else {
-      ctx.moveTo(px - 1, py + TILE_PX / 2);
-      ctx.lineTo(px + TILE_PX + 1, py + TILE_PX / 2);
+    if (neighborTile(game, tx, ty - 1) === TILE.SIDEWALK) {
+      ctx.moveTo(px - 1, py + 2);
+      ctx.lineTo(px + TILE_PX + 1, py + 2);
+    }
+    if (neighborTile(game, tx, ty + 1) === TILE.SIDEWALK) {
+      ctx.moveTo(px - 1, py + TILE_PX - 2);
+      ctx.lineTo(px + TILE_PX + 1, py + TILE_PX - 2);
+    }
+    if (neighborTile(game, tx - 1, ty) === TILE.SIDEWALK) {
+      ctx.moveTo(px + 2, py - 1);
+      ctx.lineTo(px + 2, py + TILE_PX + 1);
+    }
+    if (neighborTile(game, tx + 1, ty) === TILE.SIDEWALK) {
+      ctx.moveTo(px + TILE_PX - 2, py - 1);
+      ctx.lineTo(px + TILE_PX - 2, py + TILE_PX + 1);
     }
     ctx.stroke();
-    ctx.setLineDash([]);
+  } else {
+    // Anillo interior de la rotonda (bordillo de la isla)
+    const ox = (inRota.x - tx) * TILE_PX + px;
+    const oy = (inRota.y - ty) * TILE_PX + py;
+    ctx.strokeStyle = "rgba(90,86,78,0.55)";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(ox, oy, inRota.island * TILE_PX + 2, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  const vertRoad = roadRunsVertical(game, tx, ty);
+  if (tile === TILE.CROSSWALK) {
+    ctx.strokeStyle = "rgba(230,226,210,0.72)";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "butt";
+    if (vertRoad) {
+      for (let i = 0; i < 4; i++) {
+        const x = px + 10 + i * 9;
+        ctx.beginPath();
+        ctx.moveTo(x, py + 5);
+        ctx.lineTo(x, py + TILE_PX - 5);
+        ctx.stroke();
+      }
+    } else {
+      for (let i = 0; i < 4; i++) {
+        const y = py + 10 + i * 9;
+        ctx.beginPath();
+        ctx.moveTo(px + 5, y);
+        ctx.lineTo(px + TILE_PX - 5, y);
+        ctx.stroke();
+      }
+    }
+    ctx.lineCap = "round";
+  } else {
+    const rota = game.world.roundabouts?.find((r) => Math.hypot(tx + 0.5 - r.x, ty + 0.5 - r.y) < r.r + 0.2);
+    if (!rota) {
+      ctx.strokeStyle = "rgba(190, 155, 50, 0.42)";
+      ctx.lineWidth = 2.6;
+      ctx.setLineDash([10, 12]);
+      ctx.beginPath();
+      if (vertRoad) {
+        ctx.moveTo(px + TILE_PX / 2, py - 1);
+        ctx.lineTo(px + TILE_PX / 2, py + TILE_PX + 1);
+      } else {
+        ctx.moveTo(px - 1, py + TILE_PX / 2);
+        ctx.lineTo(px + TILE_PX + 1, py + TILE_PX / 2);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (Math.hypot(tx + 0.5 - rota.x, ty + 0.5 - rota.y) > rota.island + 0.3) {
+      ctx.strokeStyle = "rgba(190, 155, 50, 0.28)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const ang = Math.atan2(ty + 0.5 - rota.y, tx + 0.5 - rota.x);
+      const rr = ((rota.r + rota.island) * 0.5) * TILE_PX;
+      const ox = (rota.x - tx) * TILE_PX + px;
+      const oy = (rota.y - ty) * TILE_PX + py;
+      ctx.arc(ox, oy, rr, ang - 0.35, ang + 0.35);
+      ctx.stroke();
+    }
   }
 
   const up = neighborTile(game, tx, ty - 1);
@@ -1002,26 +1068,46 @@ function drawRoadDetail(ctx, game, tile, tx, ty, px, py) {
   }
 }
 
-/** Acera continua — sin juntas en cruz (evita look de baldosas). */
+/** Acera continua — bordillo limpio solo hacia la calle. */
 function drawSidewalkDetail(ctx, game, tx, ty, px, py) {
   ctx.lineCap = "round";
 
-  // Sin bordillo duro (antes marcaba cada manzana como un cuadro)
-  // Solo grietas orgánicas escasas
   if (((tx * 9 + ty * 4) % 13) === 0) {
-    ctx.strokeStyle = "rgba(28,24,20,0.28)";
-    ctx.lineWidth = 1.15;
+    ctx.strokeStyle = "rgba(28,24,20,0.22)";
+    ctx.lineWidth = 1.1;
     ctx.beginPath();
     ctx.moveTo(px + 4, py + 14);
     ctx.quadraticCurveTo(px + 20, py + 22, px + 42, py + 36);
     ctx.stroke();
   }
-  if (((tx + ty * 5) % 17) === 0) {
-    ctx.fillStyle = "rgba(28,26,22,0.18)";
+
+  const roadN = neighborTile(game, tx, ty - 1);
+  const roadS = neighborTile(game, tx, ty + 1);
+  const roadW = neighborTile(game, tx - 1, ty);
+  const roadE = neighborTile(game, tx + 1, ty);
+  const isRoadish = (t) => t === TILE.ROAD || t === TILE.CROSSWALK;
+  ctx.fillStyle = "rgba(22,22,24,0.55)";
+  // En anillo de rotonda: bordillo circular en vez de tramos rectos
+  const rota = game.world.roundabouts?.find((r) => Math.hypot(tx + 0.5 - r.x, ty + 0.5 - r.y) < r.r + 1.5);
+  if (rota) {
+    const ox = (rota.x - tx) * TILE_PX + px;
+    const oy = (rota.y - ty) * TILE_PX + py;
+    ctx.strokeStyle = "rgba(22,22,24,0.65)";
+    ctx.lineWidth = 3.2;
     ctx.beginPath();
-    ctx.ellipse(px + 18 + (tx % 10), py + 22 + (ty % 8), 9, 4.5, 0.25, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.arc(ox, oy, rota.r * TILE_PX + 1, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(90,86,78,0.35)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(ox, oy, (rota.r + 1.05) * TILE_PX, 0, Math.PI * 2);
+    ctx.stroke();
+    return;
   }
+  if (isRoadish(roadS)) fillRound(ctx, px + 1, py + TILE_PX - 4, TILE_PX - 2, 3.2, 1.2);
+  if (isRoadish(roadN)) fillRound(ctx, px + 1, py + 1, TILE_PX - 2, 3.2, 1.2);
+  if (isRoadish(roadW)) fillRound(ctx, px + 1, py + 1, 3.2, TILE_PX - 2, 1.2);
+  if (isRoadish(roadE)) fillRound(ctx, px + TILE_PX - 4.2, py + 1, 3.2, TILE_PX - 2, 1.2);
 }
 
 function drawWaterDetail(ctx, game, tx, ty, px, py, time) {

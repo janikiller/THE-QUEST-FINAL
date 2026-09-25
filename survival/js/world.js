@@ -570,11 +570,23 @@ function isOnAxisRoad(pos, axes, roadW = ROAD_W) {
   return false;
 }
 
-function axisIndexAt(pos, axes, roadW = ROAD_W) {
-  for (let i = 0; i < axes.length; i++) {
-    if (pos >= axes[i] && pos < axes[i] + roadW) return i;
+/** Rotonda: anillo de asfalto + isla de césped (forma circular, no cruce cuadrado). */
+function carveRoundabout(tiles, size, cx, cy, rRoad = 3.1, rIsland = 1.25) {
+  const rWalk = rRoad + 1.15;
+  const y0 = Math.max(1, Math.floor(cy - rWalk - 1));
+  const y1 = Math.min(size - 2, Math.ceil(cy + rWalk + 1));
+  const x0 = Math.max(1, Math.floor(cx - rWalk - 1));
+  const x1 = Math.min(size - 2, Math.ceil(cx + rWalk + 1));
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const t = tiles[y * size + x];
+      if (t === TILE.WALL || t === TILE.FLOOR || t === TILE.DOOR || t === TILE.BASE || t === TILE.WATER) continue;
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+      if (d <= rIsland) tiles[y * size + x] = TILE.PARK;
+      else if (d <= rRoad) tiles[y * size + x] = TILE.ROAD;
+      else if (d <= rWalk) tiles[y * size + x] = TILE.SIDEWALK;
+    }
   }
-  return -1;
 }
 
 /** Centro del canal ondulado (forma lineal, no banda recta). */
@@ -617,14 +629,7 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       if (isOnAxisRoad(x, vRoads) || isOnAxisRoad(y, hRoads)) tiles[y * size + x] = TILE.ROAD;
     }
   }
-
-  // Cruces / cebra
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      if (tiles[y * size + x] !== TILE.ROAD) continue;
-      if (isOnAxisRoad(x, vRoads) && isOnAxisRoad(y, hRoads)) tiles[y * size + x] = TILE.CROSSWALK;
-    }
-  }
+  // (Los pasos de peatones se colocan DESPUÉS, solo en los accesos — no en todo el cruce)
 
   // Manzanas entre ejes (tamaños variables → formas distintas)
   for (let hi = 0; hi < hRoads.length - 1; hi++) {
@@ -663,28 +668,122 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Farolas, hidrantes y papeleras en aceras junto a calles
+  // Rotondas en algunos cruces (rompe la forma todo-cuadrado)
+  const roundabouts = [];
+  for (let hi = 1; hi < hRoads.length - 1; hi++) {
+    for (let vi = 1; vi < vRoads.length - 1; vi++) {
+      const cx = vRoads[vi] + ROAD_W * 0.5;
+      const cy = hRoads[hi] + ROAD_W * 0.5;
+      // Evitar el canal
+      const canalHere = canalCenterAt(cx | 0, canalY, noise);
+      if (Math.abs(cy - canalHere) < canalHalf + 5) continue;
+      // Espacio mínimo entre ejes vecinos
+      const gapV = Math.min(vRoads[vi] - vRoads[vi - 1], vRoads[vi + 1] - vRoads[vi]);
+      const gapH = Math.min(hRoads[hi] - hRoads[hi - 1], hRoads[hi + 1] - hRoads[hi]);
+      if (gapV < 9 || gapH < 9) continue;
+      // ~1 de cada 3 cruces candidatas
+      if (noise.noise2(vi * 1.7 + 2, hi * 1.9 + 5) < 0.55) continue;
+      const rRoad = 3.1;
+      const rIsland = 1.25;
+      carveRoundabout(tiles, size, cx, cy, rRoad, rIsland);
+      roundabouts.push({ x: cx, y: cy, r: rRoad, island: rIsland });
+      props.push({ type: "planter", x: cx, y: cy, tone: 1 });
+      // Farolas alrededor de la rotonda
+      for (let a = 0; a < 4; a++) {
+        const ang = a * Math.PI * 0.5 + 0.4;
+        const lx = cx + Math.cos(ang) * (rRoad + 0.85);
+        const ly = cy + Math.sin(ang) * (rRoad + 0.85);
+        const tx = lx | 0;
+        const ty = ly | 0;
+        if (tx > 0 && ty > 0 && tx < size - 1 && ty < size - 1 && tiles[ty * size + tx] === TILE.SIDEWALK) {
+          props.push({ type: "lamp", x: lx, y: ly });
+        }
+      }
+    }
+  }
+
+  // Pasos de peatones limpios en los accesos (no en el centro del cruce)
+  const crosswalkDir = new Map(); // "x,y" -> "v" | "h"
+  function markCrosswalk(x, y, dir) {
+    if (x < 0 || y < 0 || x >= size || y >= size) return;
+    const t = tiles[y * size + x];
+    if (t !== TILE.ROAD && t !== TILE.CROSSWALK) return;
+    tiles[y * size + x] = TILE.CROSSWALK;
+    crosswalkDir.set(`${x},${y}`, dir);
+  }
+  for (let hi = 0; hi < hRoads.length; hi++) {
+    for (let vi = 0; vi < vRoads.length; vi++) {
+      const vx = vRoads[vi];
+      const hy = hRoads[hi];
+      const cx = vx + ROAD_W * 0.5;
+      const cy = hy + ROAD_W * 0.5;
+      const rota = roundabouts.find((r) => Math.hypot(r.x - cx, r.y - cy) < 1);
+      if (rota) {
+        // Accesos en el borde de la rotonda
+        const d = Math.round(rota.r + 0.55);
+        for (let i = 0; i < ROAD_W; i++) {
+          markCrosswalk(vx + i, Math.round(cy - d), "v");
+          markCrosswalk(vx + i, Math.round(cy + d), "v");
+          markCrosswalk(Math.round(cx - d), hy + i, "h");
+          markCrosswalk(Math.round(cx + d), hy + i, "h");
+        }
+        continue;
+      }
+      // Cruce normal: cebra justo fuera del cuadrado de intersección
+      for (let i = 0; i < ROAD_W; i++) {
+        markCrosswalk(vx + i, hy - 1, "v"); // acceso sur→norte (calle vertical)
+        markCrosswalk(vx + i, hy + ROAD_W, "v");
+        markCrosswalk(vx - 1, hy + i, "h"); // acceso este→oeste (calle horizontal)
+        markCrosswalk(vx + ROAD_W, hy + i, "h");
+      }
+    }
+  }
+
+  // Farolas alineadas en aceras (cada ~6 tiles, pegadas al bordillo)
+  function tryLamp(x, y, ox = 0.5, oy = 0.5) {
+    if (x < 1 || y < 1 || x >= size - 1 || y >= size - 1) return;
+    if (tiles[y * size + x] !== TILE.SIDEWALK) return;
+    if (roundabouts.some((r) => Math.hypot(x + 0.5 - r.x, y + 0.5 - r.y) < r.r + 1.6)) return;
+    // No pegar farolas a un paso de peatones
+    for (let oy2 = -1; oy2 <= 1; oy2++) {
+      for (let ox2 = -1; ox2 <= 1; ox2++) {
+        if (tiles[(y + oy2) * size + (x + ox2)] === TILE.CROSSWALK) return;
+      }
+    }
+    if (props.some((p) => p.type === "lamp" && Math.abs(p.x - (x + ox)) < 2.4 && Math.abs(p.y - (y + oy)) < 2.4)) return;
+    props.push({ type: "lamp", x: x + ox, y: y + oy });
+  }
+  for (const hy of hRoads) {
+    // Acera sur (oy hacia la calle) y norte, escalonadas
+    for (let x = 3; x < size - 3; x += 6) {
+      tryLamp(x, hy + ROAD_W, 0.5, 0.32);
+      tryLamp(x + 3, hy - 1, 0.5, 0.68);
+    }
+  }
+  for (const vx of vRoads) {
+    for (let y = 5; y < size - 3; y += 6) {
+      tryLamp(vx + ROAD_W, y, 0.32, 0.5);
+      tryLamp(vx - 1, y + 3, 0.68, 0.5);
+    }
+  }
+
+  // Hidrantes / papeleras / jardineras en acera (sin pelear con farolas)
   for (let y = 1; y < size - 1; y++) {
     for (let x = 1; x < size - 1; x++) {
       if (tiles[y * size + x] !== TILE.SIDEWALK) continue;
       let nearRoad = false;
-      for (let oy = -1; oy <= 1; oy++) {
+      for (let oy = -1; oy <= 1 && !nearRoad; oy++) {
         for (let ox = -1; ox <= 1; ox++) {
           const t = tiles[(y + oy) * size + (x + ox)];
-          if (t === TILE.ROAD || t === TILE.CROSSWALK) nearRoad = true;
+          if (t === TILE.ROAD || t === TILE.CROSSWALK) { nearRoad = true; break; }
         }
       }
       if (!nearRoad) continue;
+      if (props.some((p) => Math.abs(p.x - (x + 0.5)) < 1.1 && Math.abs(p.y - (y + 0.5)) < 1.1)) continue;
       const n = noise.noise2(x * 0.4, y * 0.4);
-      const lampRow = y % 8 === 3 && x % 4 !== 1;
-      const lampCol = x % 8 === 3 && y % 4 !== 1;
-      if (lampRow || lampCol) {
-        if (!props.some((p) => p.type === "lamp" && Math.abs(p.x - (x + 0.5)) < 1.2 && Math.abs(p.y - (y + 0.5)) < 1.2)) {
-          props.push({ type: "lamp", x: x + 0.5, y: y + 0.5 });
-        }
-      } else if ((x * 5 + y * 3) % 29 === 0) props.push({ type: "hydrant", x: x + 0.55, y: y + 0.55 });
-      else if ((x * 7 + y) % 23 === 0 && n > 0.2) props.push({ type: "trash", x: x + 0.4, y: y + 0.55 });
-      else if ((x + y * 5) % 37 === 0) props.push({ type: "planter", x: x + 0.5, y: y + 0.5, tone: n > 0.5 ? 1 : 0 });
+      if ((x * 5 + y * 3) % 31 === 0) props.push({ type: "hydrant", x: x + 0.55, y: y + 0.55 });
+      else if ((x * 7 + y) % 27 === 0 && n > 0.25) props.push({ type: "trash", x: x + 0.4, y: y + 0.55 });
+      else if ((x + y * 5) % 41 === 0) props.push({ type: "planter", x: x + 0.5, y: y + 0.5, tone: n > 0.5 ? 1 : 0 });
     }
   }
 
@@ -717,12 +816,15 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Semáforos / placas en cruces de ejes
+  // Semáforos / placas solo en cruces SIN rotonda
   for (let hi = 0; hi < hRoads.length; hi += 2) {
     for (let vi = 0; vi < vRoads.length; vi += 2) {
       const bx = vRoads[vi];
       const by = hRoads[hi];
       if (bx + 1 >= size || by + 1 >= size) continue;
+      const cx = bx + ROAD_W * 0.5;
+      const cy = by + ROAD_W * 0.5;
+      if (roundabouts.some((r) => Math.hypot(r.x - cx, r.y - cy) < 2)) continue;
       if (tiles[by * size + bx] !== TILE.CROSSWALK && tiles[by * size + bx] !== TILE.ROAD) continue;
       props.push({ type: "traffic", x: bx + ROAD_W + 0.35, y: by + ROAD_W + 0.35 });
       const a = (vi + hi) % STREET_NAMES.length;
@@ -745,17 +847,18 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
     }
   }
 
-  // Cicatrices del colapso
+  // Cicatrices del colapso (respetar pasos y rotondas)
   for (let y = 2; y < size - 2; y++) {
     for (let x = 2; x < size - 2; x++) {
       const t = tiles[y * size + x];
-      if (t !== TILE.ROAD && t !== TILE.CROSSWALK && t !== TILE.SIDEWALK) continue;
+      if (t !== TILE.ROAD && t !== TILE.SIDEWALK) continue;
+      if (roundabouts.some((r) => Math.hypot(x + 0.5 - r.x, y + 0.5 - r.y) < r.r + 2)) continue;
       const r = noise.noise2(x * 0.55 + 9, y * 0.55 + seed * 0.0002);
-      if (t === TILE.ROAD && r > 0.78) tiles[y * size + x] = TILE.RUBBLE;
-      if (r > 0.82 && (x + y) % 7 === 0) {
+      if (t === TILE.ROAD && r > 0.82) tiles[y * size + x] = TILE.RUBBLE;
+      if (r > 0.85 && (x + y) % 7 === 0) {
         props.push({ type: "debris", x: x + 0.5, y: y + 0.5, tone: (x + y) % 3 });
       }
-      if (r > 0.86 && t === TILE.SIDEWALK && (x * y) % 13 === 0) {
+      if (r > 0.88 && t === TILE.SIDEWALK && (x * y) % 13 === 0) {
         props.push({ type: "barricadeJunk", x: x + 0.5, y: y + 0.5 });
       }
     }
@@ -823,7 +926,7 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
   return {
     size, seed, tiles, loot, doors, buildings, props, interiors, decor, spawn, noise, canalY,
     lamps, indoorLights, propGrid, buildingIndex, tileRev: 0,
-    vRoads, hRoads,
+    vRoads, hRoads, roundabouts, crosswalkDir,
   };
 }
 
