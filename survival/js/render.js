@@ -2079,17 +2079,23 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
     return;
   }
 
-  const shadow = 4 + Math.min(4, floors);
+  const shadow = 3 + Math.min(3, floors);
 
-  // Sombra de volumen — sin salirse a la calzada
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
-  fillRound(ctx, px + shadow, py + shadow, bw, bh, 8);
+  // Clip al footprint del edificio: nunca pintar encima de la calzada
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(px - 1, py - 1, bw + 2, bh + 2);
+  ctx.clip();
 
-  // Cuerpo del edificio (esquinas suaves, sin overhang hacia la calle)
+  // Sombra de volumen — contenida en el footprint
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
+  fillRound(ctx, px + shadow, py + shadow, Math.max(4, bw - shadow), Math.max(4, bh - shadow), 6);
+
+  // Cuerpo del edificio (sin overhang hacia la calle)
   const wall = shade(b.facade, style === "warehouse" ? -22 : -12);
   ctx.fillStyle = wall;
-  fillRound(ctx, px + 1, py + 1, bw - 2, bh - 2, 6);
-  strokeRound(ctx, px + 1, py + 1, bw - 2, bh - 2, 6, "rgba(20,16,12,0.3)", 1.2);
+  fillRound(ctx, px + 2, py + 2, bw - 4, bh - 4, 5);
+  strokeRound(ctx, px + 2, py + 2, bw - 4, bh - 4, 5, "rgba(20,16,12,0.3)", 1.2);
 
   if (style === "warehouse") {
     ctx.strokeStyle = "rgba(0,0,0,0.22)";
@@ -2336,6 +2342,7 @@ function drawBuildingRoof(ctx, b, camX, camY, phase, entered, litWindows = []) {
   ctx.font = `600 8px ${FONT_UI}`;
   ctx.textAlign = "center";
   ctx.fillText(String((b.x0 + b.y0) % 90 + 10), doorPx + TILE_PX / 2, doorPy + 7);
+  ctx.restore();
 }
 
 

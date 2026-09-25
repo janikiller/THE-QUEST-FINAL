@@ -965,18 +965,50 @@ export function generateWorld(size = 100, seed = (Math.random() * 1e9) | 0) {
       }
     }
   }
-  // Halo de acera: ningún muro debe tocar asfalto/cebra (edificio separado de la calzada).
-  // No estrechar las avenidas principales (ejes N-S / E-O).
+  // Halo estricto: ningún muro/puerta toca asfalto o cebra (ni en avenidas).
+  // Si hace falta, la calzada se estrecha 1 tile junto al edificio; la calle sigue unida.
   for (let y = 1; y < size - 1; y++) {
     for (let x = 1; x < size - 1; x++) {
-      if (tiles[y * size + x] !== TILE.WALL && tiles[y * size + x] !== TILE.DOOR) continue;
+      const t = tiles[y * size + x];
+      if (t !== TILE.WALL && t !== TILE.DOOR) continue;
       for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + ox, ny = y + oy;
         const n = tiles[ny * size + nx];
-        if (n !== TILE.ROAD && n !== TILE.CROSSWALK) continue;
-        if (isOnAxisRoad(nx, vRoads) || isOnAxisRoad(ny, hRoads)) continue;
-        tiles[ny * size + nx] = TILE.SIDEWALK;
+        if (n === TILE.ROAD || n === TILE.CROSSWALK) tiles[ny * size + nx] = TILE.SIDEWALK;
       }
+    }
+  }
+  // Reabrir ejes de avenida donde NO toquen edificio (mantener calles unidas)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (!isOnAxisRoad(x, vRoads) && !isOnAxisRoad(y, hRoads)) continue;
+      if (tiles[y * size + x] !== TILE.SIDEWALK) continue;
+      let nearBuilding = false;
+      for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + ox, ny = y + oy;
+        if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue;
+        const n = tiles[ny * size + nx];
+        if (n === TILE.WALL || n === TILE.DOOR || n === TILE.FLOOR || n === TILE.BASE) {
+          nearBuilding = true;
+          break;
+        }
+      }
+      if (!nearBuilding) tiles[y * size + x] = TILE.ROAD;
+    }
+  }
+  // Restaurar cebras en accesos que el halo haya pisado
+  for (const [key, dir] of crosswalkDir) {
+    const [x, y] = key.split(",").map(Number);
+    if (x < 0 || y < 0 || x >= size || y >= size) continue;
+    const t = tiles[y * size + x];
+    if (t === TILE.ROAD || t === TILE.SIDEWALK) {
+      // Solo si no toca muro
+      let nearWall = false;
+      for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const n = tiles[(y + oy) * size + (x + ox)];
+        if (n === TILE.WALL || n === TILE.DOOR) { nearWall = true; break; }
+      }
+      if (!nearWall) tiles[y * size + x] = TILE.CROSSWALK;
     }
   }
   // Ajustar bounding boxes de edificios a muros/suelos reales
@@ -1154,8 +1186,13 @@ function carveCityBuilding(tiles, size, bx0, by0, bx1, by1, doors, buildings, in
     style, accent, noise, bx: bx0, by: by0,
   });
 
+  // Dumpster solo en acera del anillo (nunca sobre calzada)
   if (noise.noise2(bx0 + 2, by0 + 2) > 0.45) {
-    props.push({ type: "dumpster", x: ring.x0 + 0.5, y: ((y0 + y1) / 2) + 0.15 });
+    const dx = ring.x0 + 0.5;
+    const dy = ((y0 + y1) / 2) + 0.15;
+    if (tiles[(dy | 0) * size + (dx | 0)] === TILE.SIDEWALK) {
+      props.push({ type: "dumpster", x: dx, y: dy });
+    }
   }
   if (noise.noise2(bx0 + 5, by0 + 1) > 0.55) {
     props.push({ type: "sign", x: dx + (side === 2 ? -0.7 : side === 3 ? 0.7 : 0), y: dy + (side === 0 ? -0.7 : side === 1 ? 0.7 : 0), label: name.split(" ")[0] });
