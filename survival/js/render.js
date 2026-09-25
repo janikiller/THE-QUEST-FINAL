@@ -925,9 +925,9 @@ function drawRoadDetail(ctx, game, tile, tx, ty, px, py) {
     ctx.fill();
   }
 
-  // Bordillo continuo hacia acera
-  ctx.strokeStyle = "rgba(110,104,92,0.5)";
-  ctx.lineWidth = 2.4;
+  // Bordillo continuo hacia acera — muy suave (no dibuja un marco cuadrado duro)
+  ctx.strokeStyle = "rgba(110,104,92,0.28)";
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
   if (neighborTile(game, tx, ty - 1) === TILE.SIDEWALK) {
     ctx.moveTo(px - 1, py + 2);
@@ -1006,43 +1006,22 @@ function drawRoadDetail(ctx, game, tile, tx, ty, px, py) {
 function drawSidewalkDetail(ctx, game, tx, ty, px, py) {
   ctx.lineCap = "round";
 
-  // Grietas orgánicas escasas (no rejilla)
+  // Sin bordillo duro (antes marcaba cada manzana como un cuadro)
+  // Solo grietas orgánicas escasas
   if (((tx * 9 + ty * 4) % 13) === 0) {
-    ctx.strokeStyle = "rgba(28,24,20,0.32)";
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = "rgba(28,24,20,0.28)";
+    ctx.lineWidth = 1.15;
     ctx.beginPath();
     ctx.moveTo(px + 4, py + 14);
     ctx.quadraticCurveTo(px + 20, py + 22, px + 42, py + 36);
     ctx.stroke();
   }
   if (((tx + ty * 5) % 17) === 0) {
-    ctx.fillStyle = "rgba(28,26,22,0.22)";
+    ctx.fillStyle = "rgba(28,26,22,0.18)";
     ctx.beginPath();
     ctx.ellipse(px + 18 + (tx % 10), py + 22 + (ty % 8), 9, 4.5, 0.25, 0, Math.PI * 2);
     ctx.fill();
   }
-
-  // Bordillo hacia carretera — trazo largo continuo
-  ctx.strokeStyle = "rgba(18,18,20,0.5)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  if (neighborTile(game, tx, ty + 1) === TILE.ROAD || neighborTile(game, tx, ty + 1) === TILE.CROSSWALK) {
-    ctx.moveTo(px - 1, py + TILE_PX - 2);
-    ctx.lineTo(px + TILE_PX + 1, py + TILE_PX - 2);
-  }
-  if (neighborTile(game, tx, ty - 1) === TILE.ROAD || neighborTile(game, tx, ty - 1) === TILE.CROSSWALK) {
-    ctx.moveTo(px - 1, py + 2);
-    ctx.lineTo(px + TILE_PX + 1, py + 2);
-  }
-  if (neighborTile(game, tx - 1, ty) === TILE.ROAD || neighborTile(game, tx - 1, ty) === TILE.CROSSWALK) {
-    ctx.moveTo(px + 2, py - 1);
-    ctx.lineTo(px + 2, py + TILE_PX + 1);
-  }
-  if (neighborTile(game, tx + 1, ty) === TILE.ROAD || neighborTile(game, tx + 1, ty) === TILE.CROSSWALK) {
-    ctx.moveTo(px + TILE_PX - 2, py - 1);
-    ctx.lineTo(px + TILE_PX - 2, py + TILE_PX + 1);
-  }
-  ctx.stroke();
 }
 
 function drawWaterDetail(ctx, game, tx, ty, px, py, time) {
@@ -3990,7 +3969,7 @@ function drawMinimap(mctx, mini, game) {
   mid.height = hs;
   const mc = mid.getContext("2d");
   mc.imageSmoothingEnabled = true;
-  try { mc.filter = "blur(3.2px)"; } catch (_) {}
+  try { mc.filter = "blur(5.5px)"; } catch (_) {}
   mc.drawImage(big, 0, 0);
   mctx.drawImage(mid, 0, 0, hs, hs, 0, 0, s, s);
 
