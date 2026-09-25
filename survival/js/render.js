@@ -643,8 +643,8 @@ function drawCachedGround(ctx, game, phase, camX, camY, x0, y0, x1, y1) {
   const size = game.world.size;
   const PAD = 12;
   const indoorKey = _viewIndoor ? `${_viewIndoor.x0},${_viewIndoor.y0},${_viewIndoor.style || ""}` : "out";
-  // v5 = césped orgánico + minimapa por redes contínuas
-  const baseKey = `v5|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
+  // v6 = minimapa local ampliado + orillas sin esquinas recortadas
+  const baseKey = `v6|${game.world.seed}|${game.world.tileRev || 0}|${phase.name}|${phase.night ? 1 : 0}|${indoorKey}`;
   const outOfBounds =
     x0 < _groundMeta.x0 ||
     y0 < _groundMeta.y0 ||
@@ -812,7 +812,7 @@ function neighborTile(game, tx, ty) {
   return game.world.tiles[ty * game.world.size + tx];
 }
 
-/** Orillas orgánicas: banda suave + esquinas redondeadas (rompe silueta cuadrada). */
+/** Orillas orgánicas: banda ondulada entre tipos (sin grilla). */
 function softTileEdges(ctx, game, tx, ty, px, py, selfTile) {
   const edges = [
     { dx: 0, dy: -1, horiz: true, inward: 1 },
@@ -3856,11 +3856,6 @@ function drawHolsteredWeapons(ctx, player, handId) {
   });
 }
 
-
-let _miniBase = null;
-let _miniSeed = null;
-let _miniRev = -1;
-let _miniSize = 0;
 
 function drawMinimap(mctx, mini, game) {
   const s = mini.width;
